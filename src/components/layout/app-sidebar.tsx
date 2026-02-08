@@ -88,9 +88,9 @@ export function AppSidebar() {
             {groupIndex > 0 && <SidebarSeparator className="mx-3" />}
             <SidebarGroup
               className={cn(
-                "border-l-2 ml-1 transition-[border-color,margin] duration-200",
+                "border-l-2 transition-[border-color] duration-200",
                 group.borderClass,
-                "group-data-[collapsible=icon]:border-l-0 group-data-[collapsible=icon]:ml-0"
+                "group-data-[collapsible=icon]:border-l-0"
               )}
             >
               <SidebarGroupLabel className="uppercase tracking-wider text-[10px]">

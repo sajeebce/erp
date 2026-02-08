@@ -138,6 +138,34 @@
 }
 
 @layer utilities {
+  .scrollbar-auto-hide {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    &:hover {
+      scrollbar-color: oklch(0.5 0 0 / 25%) transparent;
+    }
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: transparent;
+      border-radius: 9999px;
+    }
+    &:hover::-webkit-scrollbar-thumb {
+      background: oklch(0.5 0 0 / 25%);
+    }
+  }
+
+  :is(.dark) .scrollbar-auto-hide:hover {
+    scrollbar-color: oklch(1 0 0 / 20%) transparent;
+    &::-webkit-scrollbar-thumb {
+      background: oklch(1 0 0 / 20%);
+    }
+  }
+
   .glass-card {
     @apply bg-white/80 backdrop-blur-sm border border-white/20 dark:bg-zinc-900/80 dark:border-white/10;
   }
