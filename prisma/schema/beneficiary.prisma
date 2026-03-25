@@ -1,0 +1,146 @@
+// ═══════════════════════════════════════════
+// NGO ERP — Beneficiary Management Models
+// Beneficiaries, Enrollments, Service
+// Delivery, Impact & Grievances
+// ═══════════════════════════════════════════
+
+model Beneficiary {
+  id              String            @id @default(uuid()) @db.Uuid
+  organizationId  String            @db.Uuid
+  beneficiaryNo   String
+  name            String
+  fatherSpouseName String?
+  dateOfBirth     DateTime?
+  age             Int?
+  gender          String?           // "Male", "Female", "Other"
+  nidNumber       String?
+  phone           String?
+  division        String?
+  district        String?
+  upazila         String?
+  union           String?
+  village         String?
+  address         String?
+  photo           String?           // File path
+  status          BeneficiaryStatus @default(ACTIVE)
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
+
+  organization      Organization          @relation(fields: [organizationId], references: [id])
+  enrollments       BeneficiaryEnrollment[]
+  serviceDeliveries ServiceDelivery[]
+  grievances        Grievance[]
+  mfiMembers        MFIMember[]
+
+  @@unique([organizationId, beneficiaryNo])
+  @@index([organizationId, nidNumber])
+  @@index([organizationId])
+  @@index([name])
+  @@index([district])
+  @@index([status])
+}
+
+model BeneficiaryEnrollment {
+  id              String           @id @default(uuid()) @db.Uuid
+  enrollmentNo    String           @unique
+  beneficiaryId   String           @db.Uuid
+  projectId       String           @db.Uuid
+  programName     String
+  enrollmentDate  DateTime
+  graduationDate  DateTime?
+  servicesAssigned String?         // JSON array of services
+  status          EnrollmentStatus @default(ACTIVE)
+  dropoutReason   String?
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  beneficiary     Beneficiary      @relation(fields: [beneficiaryId], references: [id])
+  project         Project          @relation(fields: [projectId], references: [id])
+
+  @@index([beneficiaryId])
+  @@index([projectId])
+  @@index([status])
+  @@unique([beneficiaryId, projectId])
+}
+
+model ServiceDelivery {
+  id              String                @id @default(uuid()) @db.Uuid
+  serviceNo       String                @unique
+  beneficiaryId   String                @db.Uuid
+  projectId       String                @db.Uuid
+  serviceType     String                // "Health Checkup", "Training", "Asset Distribution", "Cash Transfer", "Counseling"
+  date            DateTime
+  location        String?
+  deliveredById   String?               @db.Uuid // Employee FK — plain String, no @relation
+  quantity        Decimal?              @db.Decimal(10, 2)
+  value           Decimal?              @db.Decimal(18, 2)
+  status          ServiceDeliveryStatus @default(DELIVERED)
+  notes           String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  beneficiary     Beneficiary           @relation(fields: [beneficiaryId], references: [id])
+  project         Project               @relation(fields: [projectId], references: [id])
+
+  @@index([beneficiaryId])
+  @@index([projectId])
+  @@index([date])
+  @@index([projectId, date])
+}
+
+model ImpactIndicator {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    // e.g., "Access to Safe Water", "School Enrollment Rate"
+  unit        String    // e.g., "%", "count", "BDT"
+  category    String?   // e.g., "Health", "Education", "WASH"
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  assessments ImpactAssessment[]
+}
+
+model ImpactAssessment {
+  id              String          @id @default(uuid()) @db.Uuid
+  indicatorId     String          @db.Uuid
+  projectId       String?         @db.Uuid
+  baseline        Decimal         @db.Decimal(18, 2)
+  target          Decimal         @db.Decimal(18, 2)
+  currentValue    Decimal         @db.Decimal(18, 2)
+  achievementPct  Decimal         @db.Decimal(5, 2)
+  dataSource      String?
+  measurementDate DateTime
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  indicator       ImpactIndicator @relation(fields: [indicatorId], references: [id])
+
+  @@index([indicatorId])
+  @@index([projectId])
+}
+
+model Grievance {
+  id              String            @id @default(uuid()) @db.Uuid
+  grievanceNo     String            @unique
+  date            DateTime
+  beneficiaryId   String?           @db.Uuid
+  complainantName String
+  category        GrievanceCategory
+  description     String
+  severity        GrievanceSeverity @default(MEDIUM)
+  assignedToId    String?           @db.Uuid // Employee FK — plain String, no @relation
+  resolutionDate  DateTime?
+  resolutionNotes String?
+  status          GrievanceStatus   @default(OPEN)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  beneficiary     Beneficiary?      @relation(fields: [beneficiaryId], references: [id])
+
+  @@index([beneficiaryId])
+  @@index([status])
+  @@index([severity])
+}

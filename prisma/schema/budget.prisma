@@ -1,0 +1,126 @@
+// ═══════════════════════════════════════════
+// NGO ERP — Budget Management Models
+// Budgets, Budget Lines, Revisions,
+// Cost Allocation Rules & Entries
+// ═══════════════════════════════════════════
+
+model Budget {
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String
+  projectId    String       @db.Uuid
+  grantId      String?      @db.Uuid
+  fiscalYearId String       @db.Uuid
+  totalAmount  Decimal      @db.Decimal(18, 2)
+  currencyCode CurrencyCode @default(BDT)
+  status       BudgetStatus @default(DRAFT)
+  approvedById String?      @db.Uuid
+  approvedAt   DateTime?
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deletedAt    DateTime?
+
+  project      Project      @relation(fields: [projectId], references: [id])
+  grant        Grant?       @relation(fields: [grantId], references: [id])
+  fiscalYear   FiscalYear   @relation(fields: [fiscalYearId], references: [id])
+
+  lines        BudgetLine[]
+  revisions    BudgetRevision[]
+
+  @@index([projectId])
+  @@index([grantId])
+  @@index([status])
+}
+
+model BudgetLine {
+  id           String   @id @default(uuid()) @db.Uuid
+  budgetId     String   @db.Uuid
+  accountId    String   @db.Uuid
+  category     String
+  description  String
+  unit         String?
+  quantity     Decimal  @default(1) @db.Decimal(10, 2)
+  unitCost     Decimal  @db.Decimal(18, 2)
+  totalAmount  Decimal  @db.Decimal(18, 2)
+  notes        String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  budget       Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  account      Account  @relation(fields: [accountId], references: [id])
+
+  revisionLines BudgetRevisionLine[]
+
+  @@index([budgetId])
+  @@index([accountId])
+  @@index([category])
+}
+
+model BudgetRevision {
+  id              String         @id @default(uuid()) @db.Uuid
+  revisionNo      String         @unique
+  budgetId        String         @db.Uuid
+  date            DateTime       @default(now())
+  originalTotal   Decimal        @db.Decimal(18, 2)
+  revisedTotal    Decimal        @db.Decimal(18, 2)
+  changeAmount    Decimal        @db.Decimal(18, 2)
+  changePercent   Decimal        @db.Decimal(5, 2)
+  reason          String
+  status          ApprovalStatus @default(DRAFT)
+  approvedById    String?        @db.Uuid
+  approvedAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  budget          Budget         @relation(fields: [budgetId], references: [id])
+  lines           BudgetRevisionLine[]
+
+  @@index([budgetId])
+  @@index([status])
+}
+
+model BudgetRevisionLine {
+  id               String         @id @default(uuid()) @db.Uuid
+  revisionId       String         @db.Uuid
+  budgetLineId     String         @db.Uuid
+  originalAmount   Decimal        @db.Decimal(18, 2)
+  revisedAmount    Decimal        @db.Decimal(18, 2)
+  changeAmount     Decimal        @db.Decimal(18, 2)
+  reason           String?
+
+  revision         BudgetRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  budgetLine       BudgetLine     @relation(fields: [budgetLineId], references: [id])
+
+  @@index([revisionId])
+}
+
+model CostAllocationRule {
+  id           String    @id @default(uuid()) @db.Uuid
+  name         String
+  description  String?
+  totalAmount  Decimal   @db.Decimal(18, 2)
+  isActive     Boolean   @default(true)
+  frequency    String    @default("MONTHLY")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  entries      CostAllocationEntry[]
+}
+
+model CostAllocationEntry {
+  id              String             @id @default(uuid()) @db.Uuid
+  ruleId          String             @db.Uuid
+  projectId       String             @db.Uuid
+  percentage      Decimal            @db.Decimal(5, 2)
+  allocatedAmount Decimal            @db.Decimal(18, 2)
+  periodStart     DateTime
+  periodEnd       DateTime
+  createdAt       DateTime           @default(now())
+
+  rule            CostAllocationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  project         Project            @relation(fields: [projectId], references: [id])
+
+  @@index([ruleId])
+  @@index([projectId])
+}

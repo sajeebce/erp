@@ -1,0 +1,505 @@
+// ═══════════════════════════════════════════
+// NGO ERP — Base Schema
+// datasource, generator, all enums
+// ═══════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Auth & User ───
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+  PENDING
+}
+
+// ─── Approval (shared across modules) ───
+
+enum ApprovalStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+// ─── Finance ───
+
+enum VoucherType {
+  DEBIT
+  RECEIPT
+  CASH
+  BANK
+  JOURNAL
+  CONTRA
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+enum AccountNature {
+  DEBIT
+  CREDIT
+}
+
+enum CurrencyCode {
+  BDT
+  USD
+  EUR
+  GBP
+}
+
+enum BankAccountType {
+  CURRENT
+  SAVINGS
+  FIXED_DEPOSIT
+  MOBILE_BANKING
+  CASH
+}
+
+enum ReconciliationStatus {
+  PENDING
+  RECONCILED
+  DISCREPANCY
+}
+
+// ─── Budget ───
+
+enum BudgetStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  ACTIVE
+  CLOSED
+  REVISED
+}
+
+// ─── Donor & Grant ───
+
+enum DonorType {
+  BILATERAL
+  MULTILATERAL
+  FOUNDATION
+  CORPORATE
+  INDIVIDUAL
+  GOVERNMENT
+  INGO
+}
+
+enum GrantStatus {
+  PIPELINE
+  PROPOSAL
+  NEGOTIATION
+  ACTIVE
+  SUSPENDED
+  COMPLETED
+  CLOSED
+}
+
+enum GrantLifecycleStage {
+  IDENTIFICATION
+  PROPOSAL
+  NEGOTIATION
+  AGREEMENT
+  IMPLEMENTATION
+  CLOSEOUT
+}
+
+enum FundReceiptStatus {
+  PENDING
+  RECEIVED
+  CONFIRMED
+}
+
+enum DonorReportType {
+  FINANCIAL
+  NARRATIVE
+  PROGRESS
+  AUDIT
+  FUND_UTILIZATION
+  EXPENDITURE_STATEMENT
+}
+
+enum DonorReportStatus {
+  DRAFT
+  UNDER_REVIEW
+  SUBMITTED
+  ACCEPTED
+  REVISION_REQUIRED
+}
+
+// ─── Project ───
+
+enum ProjectStatus {
+  PIPELINE
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CLOSED
+  CANCELLED
+}
+
+enum ActivityStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  CANCELLED
+}
+
+enum MilestoneStatus {
+  ON_TRACK
+  ACHIEVED
+  AT_RISK
+  OVERDUE
+  CANCELLED
+}
+
+enum LogFrameLevel {
+  GOAL
+  PURPOSE
+  OUTPUT
+  ACTIVITY
+}
+
+enum CloseoutItemStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+// ─── Beneficiary ───
+
+enum BeneficiaryStatus {
+  ACTIVE
+  GRADUATED
+  INACTIVE
+  DECEASED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  GRADUATED
+  DROPPED_OUT
+  WAITLISTED
+  SUSPENDED
+}
+
+enum ServiceDeliveryStatus {
+  SCHEDULED
+  DELIVERED
+  CANCELLED
+  NO_SHOW
+}
+
+enum GrievanceSeverity {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum GrievanceCategory {
+  SERVICE_QUALITY
+  STAFF_BEHAVIOR
+  ELIGIBILITY
+  DELAY
+  CORRUPTION
+  OTHER
+}
+
+enum GrievanceStatus {
+  OPEN
+  UNDER_INVESTIGATION
+  RESOLVED
+  CLOSED
+}
+
+// ─── Procurement ───
+
+enum PRPriority {
+  URGENT
+  HIGH
+  NORMAL
+  LOW
+}
+
+enum PRStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+  APPROVED
+  REJECTED
+  PO_CREATED
+}
+
+enum POStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_RECEIVED
+  COMPLETED
+  CANCELLED
+}
+
+enum TenderStatus {
+  DRAFT
+  OPEN
+  EVALUATION
+  AWARDED
+  CANCELLED
+}
+
+enum ContractType {
+  SUPPLY
+  SERVICE
+  WORKS
+  CONSULTANCY
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  UNDER_RENEWAL
+  TERMINATED
+}
+
+enum StockStatus {
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+}
+
+enum GRNStatus {
+  PENDING_INSPECTION
+  ACCEPTED
+  REJECTED
+  PARTIAL
+}
+
+// ─── Assets ───
+
+enum DepreciationMethod {
+  STRAIGHT_LINE
+  DECLINING_BALANCE
+}
+
+enum AssetCondition {
+  NEW
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+  DISPOSED
+}
+
+enum AssetTransferStatus {
+  PENDING_APPROVAL
+  APPROVED
+  IN_TRANSIT
+  COMPLETED
+  REJECTED
+}
+
+enum MaintenanceType {
+  PREVENTIVE
+  CORRECTIVE
+  EMERGENCY
+}
+
+enum DisposalMethod {
+  SALE
+  AUCTION
+  SCRAP
+  DONATION
+  WRITE_OFF
+}
+
+// ─── HR ───
+
+enum EmploymentType {
+  FULL_TIME
+  CONTRACT
+  CONSULTANT
+  INTERN
+  VOLUNTEER
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  ON_LEAVE
+  PROBATION
+  RESIGNED
+  TERMINATED
+  RETIRED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  ON_LEAVE
+  HOLIDAY
+  WEEKEND
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  PROCESSING
+  PROCESSED
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum PerformanceRating {
+  OUTSTANDING
+  EXCEEDS_EXPECTATIONS
+  MEETS_EXPECTATIONS
+  BELOW_EXPECTATIONS
+  UNSATISFACTORY
+}
+
+enum TrainingType {
+  INTERNAL
+  EXTERNAL
+  ONLINE
+}
+
+enum TrainingStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// ─── Microfinance ───
+
+enum SamityStatus {
+  NEW
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum LoanCategory {
+  INCOME_GENERATING
+  AGRICULTURE
+  EDUCATION
+  HOUSING
+  EMERGENCY
+  SEASONAL
+  ENTERPRISE
+}
+
+enum RepaymentFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum InterestMethod {
+  FLAT
+  DECLINING_BALANCE
+}
+
+enum LoanAppStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  RECOMMENDED
+  APPROVED
+  REJECTED
+  DISBURSED
+}
+
+enum LoanAccountStatus {
+  PENDING_DISBURSEMENT
+  ACTIVE
+  CLOSED
+  WRITTEN_OFF
+  RESTRUCTURED
+}
+
+enum DisbursementMode {
+  CASH
+  BANK
+  MOBILE_BANKING
+}
+
+enum DisbursementStatus {
+  SCHEDULED
+  DISBURSED
+  ON_HOLD
+  CANCELLED
+}
+
+enum CollectionStatus {
+  COMPLETED
+  PARTIAL
+  MISSED
+}
+
+enum SavingsType {
+  COMPULSORY
+  VOLUNTARY
+  FIXED_DEPOSIT
+  DPS
+}
+
+enum LoanClassification {
+  REGULAR
+  WATCH
+  SUBSTANDARD
+  DOUBTFUL
+  BAD
+}
+
+// ─── System ───
+
+enum NotificationType {
+  APPROVAL_REQUEST
+  APPROVAL_COMPLETED
+  DEADLINE_REMINDER
+  BUDGET_ALERT
+  SYSTEM_ALERT
+  HR_NOTIFICATION
+  REPORT_DUE
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  APPROVE
+  REJECT
+  EXPORT
+  IMPORT
+}

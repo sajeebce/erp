@@ -1,0 +1,162 @@
+// ═══════════════════════════════════════════
+// NGO ERP — Donor & Grant Management Models
+// Donors, Grants, Fund Receipts,
+// Fund Requisitions & Donor Reports
+// ═══════════════════════════════════════════
+
+model Donor {
+  id               String     @id @default(uuid()) @db.Uuid
+  organizationId   String     @db.Uuid
+  name             String
+  type             DonorType
+  country          String?
+  address          String?
+  phone            String?
+  email            String?
+  website          String?
+  description      String?
+  relationshipStatus String?  // "Active", "Prospect", "Inactive"
+  totalFunded      Decimal    @default(0) @db.Decimal(18, 2)
+  isActive         Boolean    @default(true)
+  notes            String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  deletedAt        DateTime?
+
+  organization     Organization @relation(fields: [organizationId], references: [id])
+  contacts         DonorContact[]
+  grants           Grant[]
+
+  @@index([organizationId])
+  @@index([type])
+  @@index([name])
+}
+
+model DonorContact {
+  id          String  @id @default(uuid()) @db.Uuid
+  donorId     String  @db.Uuid
+  name        String
+  designation String?
+  email       String?
+  phone       String?
+  isPrimary   Boolean @default(false)
+
+  donor       Donor   @relation(fields: [donorId], references: [id], onDelete: Cascade)
+
+  @@index([donorId])
+}
+
+model Grant {
+  id              String              @id @default(uuid()) @db.Uuid
+  grantNo         String              @unique
+  title           String
+  donorId         String              @db.Uuid
+  projectId       String?             @db.Uuid
+  awardAmount     Decimal             @db.Decimal(18, 2)
+  disbursedAmount Decimal             @default(0) @db.Decimal(18, 2)
+  currencyCode    CurrencyCode        @default(BDT)
+  startDate       DateTime?
+  endDate         DateTime?
+  status          GrantStatus         @default(PIPELINE)
+  lifecycleStage  GrantLifecycleStage @default(IDENTIFICATION)
+  ngoabFdNo       String?             // NGOAB FD-1 reference number
+  agreementRef    String?
+  description     String?
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  deletedAt       DateTime?
+
+  donor            Donor              @relation(fields: [donorId], references: [id])
+  project          Project?           @relation(fields: [projectId], references: [id])
+
+  fundReceipts     FundReceipt[]
+  fundRequisitions FundRequisition[]
+  donorReports     DonorReport[]
+  journalEntries   JournalEntry[]
+  vouchers         Voucher[]
+  budgets          Budget[]
+
+  @@index([donorId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model FundReceipt {
+  id              String            @id @default(uuid()) @db.Uuid
+  organizationId  String            @db.Uuid
+  receiptNo       String
+  date            DateTime
+  donorId         String            @db.Uuid
+  grantId         String            @db.Uuid
+  amount          Decimal           @db.Decimal(18, 2)
+  currencyCode    CurrencyCode      @default(BDT)
+  exchangeRate    Decimal           @default(1) @db.Decimal(18, 6)
+  amountInBDT     Decimal           @db.Decimal(18, 2)
+  bankAccountId   String            @db.Uuid
+  bankReference   String?
+  status          FundReceiptStatus @default(PENDING)
+  notes           String?
+  journalEntryId  String?           @db.Uuid
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
+
+  organization   Organization      @relation(fields: [organizationId], references: [id])
+  grant          Grant             @relation(fields: [grantId], references: [id])
+  bankAccount    BankAccount       @relation(fields: [bankAccountId], references: [id])
+
+  @@unique([organizationId, receiptNo])
+  @@index([organizationId])
+  @@index([donorId])
+  @@index([grantId])
+  @@index([date])
+  @@index([status])
+}
+
+model FundRequisition {
+  id             String         @id @default(uuid()) @db.Uuid
+  requisitionNo  String         @unique
+  date           DateTime
+  grantId        String         @db.Uuid
+  projectId      String         @db.Uuid
+  amount         Decimal        @db.Decimal(18, 2)
+  purpose        String
+  requestedById  String         @db.Uuid // User FK — plain String, no @relation
+  status         ApprovalStatus @default(DRAFT)
+  approvedById   String?        @db.Uuid // User FK — plain String, no @relation
+  approvedAt     DateTime?
+  disbursedAt    DateTime?
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  grant          Grant          @relation(fields: [grantId], references: [id])
+  project        Project        @relation(fields: [projectId], references: [id])
+
+  @@index([grantId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model DonorReport {
+  id            String            @id @default(uuid()) @db.Uuid
+  reportNo      String            @unique
+  type          DonorReportType
+  grantId       String            @db.Uuid
+  periodStart   DateTime
+  periodEnd     DateTime
+  dueDate       DateTime
+  submittedDate DateTime?
+  status        DonorReportStatus @default(DRAFT)
+  preparedById  String?           @db.Uuid // User FK — plain String, no @relation
+  notes         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  grant         Grant             @relation(fields: [grantId], references: [id])
+
+  @@index([grantId])
+  @@index([dueDate])
+  @@index([status])
+}

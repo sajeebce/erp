@@ -1,0 +1,369 @@
+// ═══════════════════════════════════════════
+// NGO ERP — Human Resources Models
+// Departments, Designations, Employees,
+// Attendance, Leave, Payroll, Performance
+// & Training
+// ═══════════════════════════════════════════
+
+model Department {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @db.Uuid
+  name            String
+  code            String
+  headId          String?      @db.Uuid  // Department head (Employee) — plain String, no @relation
+  parentId        String?      @db.Uuid  // For sub-departments
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  parent       Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children     Department[] @relation("DepartmentHierarchy")
+  employees    Employee[]
+  users        User[]
+
+  @@unique([organizationId, name])
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model Designation {
+  id        String     @id @default(uuid()) @db.Uuid
+  title     String     @unique
+  level     Int?       // Hierarchy level for org chart
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+
+  employees Employee[]
+}
+
+model Employee {
+  id                String         @id @default(uuid()) @db.Uuid
+  organizationId    String         @db.Uuid
+  employeeNo        String
+  userId            String?        @unique @db.Uuid // Links to User for system access
+  fullName          String
+  nameInBangla      String?
+  fatherName        String?
+  motherName        String?
+  dateOfBirth       DateTime?
+  gender            String?
+  maritalStatus     String?
+  nidNumber         String?        @unique
+  passport          String?
+  phone             String?
+  email             String?
+  emergencyContact  String?
+  presentAddress    String?
+  permanentAddress  String?
+  photo             String?
+
+  departmentId      String         @db.Uuid
+  designationId     String         @db.Uuid
+  employmentType    EmploymentType @default(FULL_TIME)
+  joiningDate       DateTime
+  confirmationDate  DateTime?
+  endDate           DateTime?      // For contract employees
+  reportingToId     String?        @db.Uuid // Manager
+  status            EmployeeStatus @default(ACTIVE)
+
+  // Salary info
+  basicSalary       Decimal?       @db.Decimal(18, 2)
+  bankAccountNo     String?
+  bankName          String?
+  tinNumber         String?
+
+  notes             String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  deletedAt         DateTime?
+
+  organization      Organization   @relation(fields: [organizationId], references: [id])
+  user              User?          @relation(fields: [userId], references: [id])
+  department        Department     @relation(fields: [departmentId], references: [id])
+  designation       Designation    @relation(fields: [designationId], references: [id])
+  reportingTo       Employee?      @relation("EmployeeReporting", fields: [reportingToId], references: [id])
+  directReports     Employee[]     @relation("EmployeeReporting")
+
+  documents              EmployeeDocument[]
+  onboarding             OnboardingProgress[]
+  attendance             Attendance[]
+  leaveApplications      LeaveApplication[]
+  leaveBalances          LeaveBalance[]
+  payrollEntries         PayrollEntry[]
+  performanceReviews     PerformanceReview[]
+  trainingParticipations TrainingParticipant[]
+  projectTeams           ProjectTeamMember[]
+  projectAllocations     EmployeeProjectAllocation[]
+
+  @@unique([organizationId, employeeNo])
+  @@index([organizationId])
+  @@index([departmentId])
+  @@index([status])
+  @@index([employmentType])
+}
+
+model EmployeeDocument {
+  id          String   @id @default(uuid()) @db.Uuid
+  employeeId  String   @db.Uuid
+  name        String
+  type        String   // "NID", "Certificate", "Contract", "Photo", "Resume"
+  filePath    String
+  uploadedAt  DateTime @default(now())
+
+  employee    Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
+}
+
+model EmployeeProjectAllocation {
+  id          String   @id @default(uuid()) @db.Uuid
+  employeeId  String   @db.Uuid
+  projectId   String   @db.Uuid
+  percentage  Decimal  @db.Decimal(5, 2) // % of salary charged to this project
+  startDate   DateTime
+  endDate     DateTime?
+  isActive    Boolean  @default(true)
+
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  project     Project  @relation(fields: [projectId], references: [id])
+
+  @@index([employeeId])
+  @@index([projectId])
+}
+
+model OnboardingChecklist {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  isRequired  Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  progress    OnboardingProgress[]
+}
+
+model OnboardingProgress {
+  id            String              @id @default(uuid()) @db.Uuid
+  employeeId    String              @db.Uuid
+  checklistId   String              @db.Uuid
+  isCompleted   Boolean             @default(false)
+  completedAt   DateTime?
+  completedById String?             @db.Uuid  // User FK — plain String, no @relation
+  notes         String?
+
+  employee      Employee            @relation(fields: [employeeId], references: [id])
+  checklist     OnboardingChecklist @relation(fields: [checklistId], references: [id])
+
+  @@unique([employeeId, checklistId])
+  @@index([employeeId])
+}
+
+model Attendance {
+  id          String           @id @default(uuid()) @db.Uuid
+  employeeId  String           @db.Uuid
+  date        DateTime
+  status      AttendanceStatus @default(PRESENT)
+  checkIn     DateTime?
+  checkOut    DateTime?
+  otHours     Decimal          @default(0) @db.Decimal(4, 2)
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  employee    Employee         @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([date])
+}
+
+model LeaveType {
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String   @unique // "Annual", "Casual", "Sick", "Maternity", "Paternity", "Without Pay"
+  code            String   @unique
+  daysPerYear     Int
+  isCarryForward  Boolean  @default(false)
+  maxCarryForward Int?
+  isPaid          Boolean  @default(true)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  applications    LeaveApplication[]
+  balances        LeaveBalance[]
+}
+
+model LeaveBalance {
+  id             String    @id @default(uuid()) @db.Uuid
+  employeeId     String    @db.Uuid
+  leaveTypeId    String    @db.Uuid
+  fiscalYearId   String?   @db.Uuid
+  entitled       Int
+  taken          Int       @default(0)
+  remaining      Int
+  carriedForward Int       @default(0)
+
+  employee       Employee  @relation(fields: [employeeId], references: [id])
+  leaveType      LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@unique([employeeId, leaveTypeId, fiscalYearId])
+  @@index([employeeId])
+}
+
+model LeaveApplication {
+  id            String      @id @default(uuid()) @db.Uuid
+  applicationNo String      @unique
+  employeeId    String      @db.Uuid
+  leaveTypeId   String      @db.Uuid
+  startDate     DateTime
+  endDate       DateTime
+  days          Int
+  reason        String?
+  status        LeaveStatus @default(PENDING)
+  approvedById  String?     @db.Uuid  // User FK — plain String, no @relation
+  approvedAt    DateTime?
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  employee      Employee    @relation(fields: [employeeId], references: [id])
+  leaveType     LeaveType   @relation(fields: [leaveTypeId], references: [id])
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([startDate])
+}
+
+model SalaryComponent {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @unique // "Basic", "House Rent", "Medical", "Transport", "PF Deduction", "TDS"
+  code         String   @unique
+  type         String   // "EARNING" or "DEDUCTION"
+  isFixed      Boolean  @default(true)
+  isPercentage Boolean  @default(false)
+  percentageOf String?  // "BASIC" — if this is a % of another component
+  defaultValue Decimal  @default(0) @db.Decimal(18, 2)
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+model PayrollRun {
+  id              String           @id @default(uuid()) @db.Uuid
+  runNo           String           @unique
+  month           Int              // 1-12
+  year            Int
+  totalGross      Decimal          @default(0) @db.Decimal(18, 2)
+  totalDeductions Decimal          @default(0) @db.Decimal(18, 2)
+  totalNet        Decimal          @default(0) @db.Decimal(18, 2)
+  employeeCount   Int              @default(0)
+  status          PayrollRunStatus @default(DRAFT)
+  processedById   String?          @db.Uuid  // User FK — plain String, no @relation
+  processedAt     DateTime?
+  approvedById    String?          @db.Uuid  // User FK — plain String, no @relation
+  approvedAt      DateTime?
+  paidAt          DateTime?
+  journalEntryId  String?          @db.Uuid
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  entries         PayrollEntry[]
+
+  @@unique([month, year])
+  @@index([status])
+}
+
+model PayrollEntry {
+  id                 String     @id @default(uuid()) @db.Uuid
+  payrollRunId       String     @db.Uuid
+  employeeId         String     @db.Uuid
+  basicSalary        Decimal    @db.Decimal(18, 2)
+  houseRent          Decimal    @default(0) @db.Decimal(18, 2)
+  medicalAllowance   Decimal    @default(0) @db.Decimal(18, 2)
+  transportAllowance Decimal    @default(0) @db.Decimal(18, 2)
+  otherEarnings      Decimal    @default(0) @db.Decimal(18, 2)
+  grossSalary        Decimal    @db.Decimal(18, 2)
+  pfDeduction        Decimal    @default(0) @db.Decimal(18, 2)
+  tdsDeduction       Decimal    @default(0) @db.Decimal(18, 2)
+  otherDeductions    Decimal    @default(0) @db.Decimal(18, 2)
+  absentDeduction    Decimal    @default(0) @db.Decimal(18, 2)
+  netSalary          Decimal    @db.Decimal(18, 2)
+  workingDays        Int
+  presentDays        Int
+  absentDays         Int        @default(0)
+  otHours            Decimal    @default(0) @db.Decimal(6, 2)
+  otPayment          Decimal    @default(0) @db.Decimal(18, 2)
+  isPaid             Boolean    @default(false)
+
+  payrollRun         PayrollRun @relation(fields: [payrollRunId], references: [id])
+  employee           Employee   @relation(fields: [employeeId], references: [id])
+
+  @@unique([payrollRunId, employeeId])
+  @@index([payrollRunId])
+  @@index([employeeId])
+}
+
+model PerformanceReview {
+  id                 String            @id @default(uuid()) @db.Uuid
+  employeeId         String            @db.Uuid
+  reviewPeriod       String            // e.g., "2025-2026"
+  reviewType         String            // "ANNUAL", "MID_YEAR", "PROBATION"
+  selfScore          Decimal?          @db.Decimal(3, 1) // 0.0-5.0
+  supervisorScore    Decimal?          @db.Decimal(3, 1)
+  finalScore         Decimal?          @db.Decimal(3, 1)
+  rating             PerformanceRating?
+  selfComments       String?
+  supervisorComments String?
+  developmentPlan    String?
+  status             String            @default("DRAFT") // DRAFT, SELF_REVIEW, SUPERVISOR_REVIEW, COMPLETED
+  reviewedById       String?           @db.Uuid  // User FK — plain String, no @relation
+  completedAt        DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  employee           Employee          @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId])
+  @@index([reviewPeriod])
+}
+
+model Training {
+  id            String         @id @default(uuid()) @db.Uuid
+  trainingNo    String         @unique
+  title         String
+  type          TrainingType
+  facilitator   String?
+  venue         String?
+  startDate     DateTime
+  endDate       DateTime?
+  durationHours Int?
+  budget        Decimal        @default(0) @db.Decimal(18, 2)
+  actualCost    Decimal        @default(0) @db.Decimal(18, 2)
+  status        TrainingStatus @default(PLANNED)
+  description   String?
+  projectId     String?        @db.Uuid
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  participants  TrainingParticipant[]
+
+  @@index([status])
+  @@index([startDate])
+}
+
+model TrainingParticipant {
+  id          String   @id @default(uuid()) @db.Uuid
+  trainingId  String   @db.Uuid
+  employeeId  String   @db.Uuid
+  attended    Boolean  @default(false)
+  score       Decimal? @db.Decimal(5, 2) // Post-training assessment
+  feedback    String?
+
+  training    Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  employee    Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([trainingId, employeeId])
+  @@index([trainingId])
+}

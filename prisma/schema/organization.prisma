@@ -1,0 +1,144 @@
+model Organization {
+  id                     String   @id @default(uuid()) @db.Uuid
+  name                   String
+  slug                   String   @unique
+  customDomain           String?  @unique
+  domainVerified         Boolean  @default(false)
+  nameInBangla           String?
+  registrationNo         String?
+  ngoabLicenseNo         String?
+  mraLicenseNo           String?
+  vatRegistrationNo      String?
+  tin                    String?
+  address                String?
+  district               String?
+  phone                  String?
+  email                  String?
+  website                String?
+  logo                   String?
+  baseCurrency           CurrencyCode @default(BDT)
+  fiscalYearStartMonth   Int      @default(7)
+  dateFormat             String   @default("DD/MM/YYYY")
+  numberFormat           String   @default("BD")
+  timezone               String   @default("Asia/Dhaka")
+  isActive               Boolean  @default(true)
+  storageUsedBytes       BigInt   @default(0)
+  storageWarning80Sent   Boolean  @default(false)
+  storageWarning90Sent   Boolean  @default(false)
+  bandwidthUsedBytes     BigInt   @default(0)
+  bandwidthPeriodStart   DateTime?
+  bandwidthPeriodEnd     DateTime?
+  bandwidthWarning80Sent Boolean  @default(false)
+  bandwidthWarning90Sent Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  subscription       TenantSubscription?
+  users              User[]
+  roles              Role[]
+  fiscalYears        FiscalYear[]
+  accounts           Account[]
+  bankAccounts       BankAccount[]
+  donors             Donor[]
+  projects           Project[]
+  employees          Employee[]
+  departments        Department[]
+  beneficiaries      Beneficiary[]
+  vendors            Vendor[]
+  warehouses         Warehouse[]
+  assetCategories    AssetCategory[]
+  branches           Branch[]
+  numberSequences    NumberSequence[]
+  systemConfigs      SystemConfig[]
+  vouchers           Voucher[]
+  fundReceipts       FundReceipt[]
+
+  @@index([slug])
+}
+
+model FiscalYear {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  startDate      DateTime
+  endDate        DateTime
+  isCurrent      Boolean  @default(false)
+  isClosed       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  fiscalPeriods  FiscalPeriod[]
+  budgets        Budget[]
+  journalEntries JournalEntry[]
+
+  @@index([organizationId, isCurrent])
+  @@index([organizationId])
+}
+
+model FiscalPeriod {
+  id           String     @id @default(uuid()) @db.Uuid
+  fiscalYearId String     @db.Uuid
+  name         String
+  periodNumber Int
+  startDate    DateTime
+  endDate      DateTime
+  isClosed     Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+
+  fiscalYear   FiscalYear @relation(fields: [fiscalYearId], references: [id])
+
+  @@unique([fiscalYearId, periodNumber])
+}
+
+model Currency {
+  id       String       @id @default(uuid()) @db.Uuid
+  code     CurrencyCode @unique
+  name     String
+  symbol   String
+  isBase   Boolean      @default(false)
+  isActive Boolean      @default(true)
+
+  exchangeRates ExchangeRate[]
+}
+
+model ExchangeRate {
+  id            String       @id @default(uuid()) @db.Uuid
+  currencyId    String       @db.Uuid
+  rate          Decimal      @db.Decimal(18, 6)
+  effectiveDate DateTime
+  createdAt     DateTime     @default(now())
+
+  currency      Currency     @relation(fields: [currencyId], references: [id])
+
+  @@index([currencyId, effectiveDate])
+}
+
+model SystemConfig {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  key            String
+  value          String
+  type           String       @default("string")
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, key])
+  @@index([organizationId])
+}
+
+model NumberSequence {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  entity         String
+  prefix         String
+  separator      String       @default("-")
+  includeYear    Boolean      @default(true)
+  currentValue   Int          @default(0)
+  padLength      Int          @default(3)
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, entity])
+  @@index([organizationId])
+}

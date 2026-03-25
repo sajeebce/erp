@@ -1,0 +1,262 @@
+// ═══════════════════════════════════════════
+// NGO ERP — Microfinance Models
+// Branches, Samities, Members, Loans,
+// Disbursements, Repayments, Collections
+// & Savings
+// ═══════════════════════════════════════════
+
+model Branch {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @db.Uuid
+  code            String
+  name            String
+  location        String
+  managerId       String?  @db.Uuid  // Employee FK — plain String, no @relation
+  phone           String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  samities     Samity[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model Samity {
+  id             String       @id @default(uuid()) @db.Uuid
+  samityNo       String       @unique
+  name           String
+  branchId       String       @db.Uuid
+  formationDate  DateTime
+  meetingDay     String       // "Saturday", "Sunday", etc.
+  meetingTime    String?      // "09:00 AM"
+  fieldOfficerId String?      @db.Uuid  // Employee FK — plain String, no @relation
+  totalMembers   Int          @default(0)
+  status         SamityStatus @default(NEW)
+  location       String?
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  branch         Branch       @relation(fields: [branchId], references: [id])
+  members        MFIMember[]
+  collections    CollectionSheet[]
+
+  @@index([branchId])
+  @@index([status])
+}
+
+model MFIMember {
+  id              String      @id @default(uuid()) @db.Uuid
+  memberNo        String      @unique
+  beneficiaryId   String      @db.Uuid  // Links to Beneficiary master
+  samityId        String      @db.Uuid
+  admissionDate   DateTime
+  status          String      @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED, WITHDRAWN
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  beneficiary     Beneficiary @relation(fields: [beneficiaryId], references: [id])
+  samity          Samity      @relation(fields: [samityId], references: [id])
+  loanAccounts    LoanAccount[]
+  savingsAccounts SavingsAccount[]
+
+  @@index([beneficiaryId])
+  @@index([samityId])
+}
+
+model LoanProduct {
+  id                 String             @id @default(uuid()) @db.Uuid
+  productCode        String             @unique
+  name               String
+  category           LoanCategory
+  minAmount          Decimal            @db.Decimal(18, 2)
+  maxAmount          Decimal            @db.Decimal(18, 2)
+  interestRate       Decimal            @db.Decimal(5, 2) // Annual %
+  interestMethod     InterestMethod     @default(DECLINING_BALANCE)
+  maxDurationMonths  Int
+  repaymentFrequency RepaymentFrequency @default(WEEKLY)
+  gracePeriodDays    Int                @default(0)
+  serviceCharge      Decimal            @default(0) @db.Decimal(5, 2) // %
+  requiresSavings    Boolean            @default(true)
+  isActive           Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  loanApplications   LoanApplication[]
+  loanAccounts       LoanAccount[]
+
+  @@index([productCode])
+  @@index([category])
+}
+
+model LoanApplication {
+  id              String        @id @default(uuid()) @db.Uuid
+  applicationNo   String        @unique
+  date            DateTime
+  memberId        String        @db.Uuid
+  productId       String        @db.Uuid
+  amountRequested Decimal       @db.Decimal(18, 2)
+  purpose         String
+  durationMonths  Int
+  fieldOfficerId  String?       @db.Uuid  // Employee FK — plain String, no @relation
+  status          LoanAppStatus @default(SUBMITTED)
+  approvedAmount  Decimal?      @db.Decimal(18, 2)
+  approvedById    String?       @db.Uuid  // User FK — plain String, no @relation
+  approvedAt      DateTime?
+  rejectionReason String?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  product         LoanProduct   @relation(fields: [productId], references: [id])
+
+  @@index([memberId])
+  @@index([status])
+}
+
+model LoanAccount {
+  id                 String             @id @default(uuid()) @db.Uuid
+  accountNo          String             @unique
+  memberId           String             @db.Uuid
+  productId          String             @db.Uuid
+  principalAmount    Decimal            @db.Decimal(18, 2)
+  interestRate       Decimal            @db.Decimal(5, 2)
+  interestMethod     InterestMethod
+  durationMonths     Int
+  installmentAmount  Decimal            @db.Decimal(18, 2)
+  totalRepayable     Decimal            @db.Decimal(18, 2)
+  totalPaid          Decimal            @default(0) @db.Decimal(18, 2)
+  outstandingBalance Decimal            @db.Decimal(18, 2)
+  overdueAmount      Decimal            @default(0) @db.Decimal(18, 2)
+  daysOverdue        Int                @default(0)
+  classification     LoanClassification @default(REGULAR)
+  disbursedAt        DateTime?
+  maturityDate       DateTime?
+  lastPaymentDate    DateTime?
+  status             LoanAccountStatus  @default(PENDING_DISBURSEMENT)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  member             MFIMember          @relation(fields: [memberId], references: [id])
+  product            LoanProduct        @relation(fields: [productId], references: [id])
+  disbursement       LoanDisbursement?
+  repayments         LoanRepayment[]
+
+  @@index([memberId])
+  @@index([status])
+  @@index([classification])
+  @@index([accountNo])
+  @@index([memberId, status])
+}
+
+model LoanDisbursement {
+  id              String             @id @default(uuid()) @db.Uuid
+  disbursementNo  String             @unique
+  loanAccountId   String             @unique @db.Uuid  // 1:1 with LoanAccount
+  date            DateTime
+  amount          Decimal            @db.Decimal(18, 2)
+  mode            DisbursementMode
+  branchId        String?            @db.Uuid
+  disbursedById   String             @db.Uuid  // User FK — plain String, no @relation
+  status          DisbursementStatus @default(SCHEDULED)
+  reference       String?
+  journalEntryId  String?            @db.Uuid
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  loanAccount     LoanAccount        @relation(fields: [loanAccountId], references: [id])
+
+  @@index([loanAccountId])
+  @@index([date])
+}
+
+model LoanRepayment {
+  id              String      @id @default(uuid()) @db.Uuid
+  repaymentNo     String      @unique
+  loanAccountId   String      @db.Uuid
+  date            DateTime
+  principalAmount Decimal     @db.Decimal(18, 2)
+  interestAmount  Decimal     @db.Decimal(18, 2)
+  totalAmount     Decimal     @db.Decimal(18, 2)
+  penaltyAmount   Decimal     @default(0) @db.Decimal(18, 2)
+  collectedById   String      @db.Uuid  // User FK — plain String, no @relation
+  balanceAfter    Decimal     @db.Decimal(18, 2)
+  isOnTime        Boolean     @default(true)
+  journalEntryId  String?     @db.Uuid
+  notes           String?
+  createdAt       DateTime    @default(now())
+
+  loanAccount     LoanAccount @relation(fields: [loanAccountId], references: [id])
+
+  @@index([loanAccountId])
+  @@index([date])
+}
+
+model CollectionSheet {
+  id               String           @id @default(uuid()) @db.Uuid
+  collectionNo     String           @unique
+  samityId         String           @db.Uuid
+  date             DateTime
+  membersPresent   Int
+  totalCollectible Decimal          @db.Decimal(18, 2)
+  amountCollected  Decimal          @db.Decimal(18, 2)
+  shortfall        Decimal          @default(0) @db.Decimal(18, 2)
+  onTimePercent    Decimal          @default(0) @db.Decimal(5, 2)
+  collectedById    String           @db.Uuid  // User FK — plain String, no @relation
+  status           CollectionStatus @default(COMPLETED)
+  depositedAt      DateTime?
+  notes            String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  samity           Samity           @relation(fields: [samityId], references: [id])
+
+  @@index([samityId])
+  @@index([date])
+}
+
+model SavingsAccount {
+  id              String      @id @default(uuid()) @db.Uuid
+  accountNo       String      @unique
+  memberId        String      @db.Uuid
+  type            SavingsType
+  balance         Decimal     @default(0) @db.Decimal(18, 2)
+  totalDeposited  Decimal     @default(0) @db.Decimal(18, 2)
+  totalWithdrawn  Decimal     @default(0) @db.Decimal(18, 2)
+  interestEarned  Decimal     @default(0) @db.Decimal(18, 2)
+  interestRate    Decimal     @default(0) @db.Decimal(5, 2)
+  monthlyDeposit  Decimal     @default(0) @db.Decimal(18, 2) // For compulsory
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  member          MFIMember   @relation(fields: [memberId], references: [id])
+  transactions    SavingsTransaction[]
+
+  @@index([memberId])
+  @@index([type])
+  @@index([accountNo])
+}
+
+model SavingsTransaction {
+  id              String         @id @default(uuid()) @db.Uuid
+  accountId       String         @db.Uuid
+  date            DateTime
+  type            String         // "DEPOSIT", "WITHDRAWAL", "INTEREST"
+  amount          Decimal        @db.Decimal(18, 2)
+  balanceAfter    Decimal        @db.Decimal(18, 2)
+  reference       String?
+  transactedById  String         @db.Uuid  // User FK — plain String, no @relation
+  journalEntryId  String?        @db.Uuid
+  notes           String?
+  createdAt       DateTime       @default(now())
+
+  account         SavingsAccount @relation(fields: [accountId], references: [id])
+
+  @@index([accountId])
+  @@index([date])
+}

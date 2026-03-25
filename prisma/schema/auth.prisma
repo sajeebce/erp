@@ -1,0 +1,92 @@
+model User {
+  id                 String      @id @default(uuid()) @db.Uuid
+  organizationId     String      @db.Uuid
+  email              String
+  passwordHash       String
+  fullName           String
+  phone              String?
+  avatar             String?
+  roleId             String      @db.Uuid
+  departmentId       String?     @db.Uuid
+  status             UserStatus  @default(ACTIVE)
+  lastLoginAt        DateTime?
+  lastLoginIp        String?
+  failedLoginCount   Int         @default(0)
+  lockedUntil        DateTime?
+  mustChangePassword Boolean     @default(true)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  deletedAt          DateTime?
+
+  organization       Organization   @relation(fields: [organizationId], references: [id])
+  role               Role           @relation(fields: [roleId], references: [id])
+  department         Department?    @relation(fields: [departmentId], references: [id])
+  employee           Employee?
+  refreshTokens      RefreshToken[]
+  notifications      Notification[]
+  notificationSettings NotificationSetting[]
+  auditLogs          TenantAuditLog[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([roleId])
+  @@index([status])
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  token      String    @unique
+  ipAddress  String?
+  userAgent  String?
+  isRevoked  Boolean   @default(false)
+  revokedAt  DateTime?
+  expiresAt  DateTime
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Role {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @db.Uuid
+  name           String
+  description    String?
+  isSystem       Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  users          User[]
+  permissions    RolePermission[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  module      String
+  action      String
+  resource    String
+  description String?
+
+  roles       RolePermission[]
+
+  @@unique([module, action, resource])
+}
+
+model RolePermission {
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}

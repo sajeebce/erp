@@ -1,0 +1,179 @@
+// ═══════════════════════════════════════════
+// NGO ERP — Project Management Models
+// Projects, Activities, Milestones,
+// LogFrame, Closeout & Documents
+// ═══════════════════════════════════════════
+
+model Project {
+  id              String        @id @default(uuid()) @db.Uuid
+  organizationId  String        @db.Uuid
+  projectNo       String
+  name            String
+  description     String?
+  donorId         String?       @db.Uuid
+  startDate       DateTime?
+  endDate         DateTime?
+  totalBudget     Decimal       @default(0) @db.Decimal(18, 2)
+  amountSpent     Decimal       @default(0) @db.Decimal(18, 2)
+  location        String?       // District/Division
+  status          ProjectStatus @default(PIPELINE)
+  progress        Int           @default(0) // 0-100
+  managerId       String?       @db.Uuid // Project Manager (Employee) — plain String, no @relation
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  organization       Organization          @relation(fields: [organizationId], references: [id])
+  grants             Grant[]
+  accounts           Account[]
+  budgets            Budget[]
+  activities         Activity[]
+  milestones         Milestone[]
+  logFrameEntries    LogFrameEntry[]
+  closeout           ProjectCloseout?
+  teamMembers        ProjectTeamMember[]
+  documents          ProjectDocument[]
+  vouchers           Voucher[]
+  journalEntries     JournalEntry[]
+  fundRequisitions   FundRequisition[]
+  costAllocations    CostAllocationEntry[]
+  enrollments             BeneficiaryEnrollment[]
+  serviceDeliveries       ServiceDelivery[]
+  purchaseRequisitions    PurchaseRequisition[]
+  assets                  Asset[]
+  employeeAllocations     EmployeeProjectAllocation[]
+
+  @@unique([organizationId, projectNo])
+  @@index([organizationId])
+  @@index([status])
+  @@index([donorId])
+}
+
+model ProjectTeamMember {
+  id          String   @id @default(uuid()) @db.Uuid
+  projectId   String   @db.Uuid
+  employeeId  String   @db.Uuid
+  role        String?  // e.g., "Project Manager", "Field Coordinator"
+  startDate   DateTime
+  endDate     DateTime?
+  allocation  Int      @default(100) // % time allocated
+  isActive    Boolean  @default(true)
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  employee    Employee @relation(fields: [employeeId], references: [id])
+
+  @@index([projectId])
+  @@index([employeeId])
+}
+
+model Activity {
+  id            String         @id @default(uuid()) @db.Uuid
+  activityNo    String         @unique
+  name          String
+  description   String?
+  projectId     String         @db.Uuid
+  responsibleId String?        @db.Uuid // Employee — plain String, no @relation
+  startDate     DateTime?
+  endDate       DateTime?
+  budget        Decimal        @default(0) @db.Decimal(18, 2)
+  actualCost    Decimal        @default(0) @db.Decimal(18, 2)
+  progress      Int            @default(0) // 0-100
+  status        ActivityStatus @default(PLANNED)
+  parentId      String?        @db.Uuid // Sub-activities
+  sortOrder     Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  project       Project        @relation(fields: [projectId], references: [id])
+  parent        Activity?      @relation("ActivityHierarchy", fields: [parentId], references: [id])
+  children      Activity[]     @relation("ActivityHierarchy")
+
+  @@index([projectId])
+  @@index([status])
+  @@index([parentId])
+}
+
+model Milestone {
+  id            String          @id @default(uuid()) @db.Uuid
+  milestoneNo   String          @unique
+  description   String
+  projectId     String          @db.Uuid
+  targetDate    DateTime
+  actualDate    DateTime?
+  deliverable   String?
+  status        MilestoneStatus @default(ON_TRACK)
+  notes         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  project       Project         @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+  @@index([targetDate])
+}
+
+model LogFrameEntry {
+  id                  String        @id @default(uuid()) @db.Uuid
+  projectId           String        @db.Uuid
+  level               LogFrameLevel
+  narrative           String        // Narrative Summary
+  indicators          String?       // Objectively Verifiable Indicators
+  meansOfVerification String?       // Means of Verification
+  assumptions         String?
+  sortOrder           Int           @default(0)
+  parentId            String?       @db.Uuid
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  project             Project        @relation(fields: [projectId], references: [id])
+  parent              LogFrameEntry? @relation("LogFrameHierarchy", fields: [parentId], references: [id])
+  children            LogFrameEntry[] @relation("LogFrameHierarchy")
+
+  @@index([projectId])
+}
+
+model ProjectCloseout {
+  id          String                @id @default(uuid()) @db.Uuid
+  projectId   String                @unique @db.Uuid
+  startDate   DateTime?
+  completedAt DateTime?
+  progress    Int                   @default(0) // 0-100
+  notes       String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  project     Project               @relation(fields: [projectId], references: [id])
+  items       ProjectCloseoutItem[]
+}
+
+model ProjectCloseoutItem {
+  id          String             @id @default(uuid()) @db.Uuid
+  closeoutId  String             @db.Uuid
+  name        String             // e.g., "Final Financial Report", "Asset Disposition Plan"
+  status      CloseoutItemStatus @default(NOT_STARTED)
+  assigneeId  String?            @db.Uuid // User/Employee FK — plain String, no @relation
+  dueDate     DateTime?
+  completedAt DateTime?
+  notes       String?
+  sortOrder   Int                @default(0)
+
+  closeout    ProjectCloseout    @relation(fields: [closeoutId], references: [id], onDelete: Cascade)
+
+  @@index([closeoutId])
+}
+
+model ProjectDocument {
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String   @db.Uuid
+  name         String
+  description  String?
+  filePath     String
+  fileSize     Int?
+  mimeType     String?
+  uploadedById String   @db.Uuid // User FK — plain String, no @relation
+  createdAt    DateTime @default(now())
+
+  project      Project  @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+}
