@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -137,7 +138,11 @@ function getStatusVariant(status: string): "default" | "secondary" | "destructiv
   }
 }
 
-export default function BeneficiaryEnrollmentPage() {
+export default async function BeneficiaryEnrollmentPage() {
+  const t = await getTranslations('beneficiaries');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalEnrolled = enrollments.length;
   const active = enrollments.filter((e) => e.status === "Active").length;
   const graduated = enrollments.filter((e) => e.status === "Graduated").length;
@@ -147,23 +152,23 @@ export default function BeneficiaryEnrollmentPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Beneficiary Enrollment"
-        description="Manage beneficiary enrollment and program registration"
+        title={t('enrollment.title')}
+        description={t('enrollment.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New Enrollment
+          {t('enrollment.addEnrollment')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Enrolled</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('enrollment.totalEnrolled')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalEnrolled}</p>
@@ -171,7 +176,7 @@ export default function BeneficiaryEnrollmentPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('enrollment.active')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{active}</p>
@@ -179,7 +184,7 @@ export default function BeneficiaryEnrollmentPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Graduated</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('enrollment.graduated')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{graduated}</p>
@@ -187,30 +192,30 @@ export default function BeneficiaryEnrollmentPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Dropout Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('enrollment.dropoutRate')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatPercent(dropoutRate)}</p>
+            <p className="text-2xl font-bold">{formatPercent(dropoutRate, locale)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Enrollment Register</CardTitle>
+          <CardTitle>{t('enrollment.enrollmentRegister')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">Enrollment ID</TableHead>
-                <TableHead>Beneficiary Name</TableHead>
-                <TableHead>Program</TableHead>
-                <TableHead>Enrollment Date</TableHead>
-                <TableHead>District</TableHead>
-                <TableHead>Upazila</TableHead>
-                <TableHead>Services Assigned</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[100px]">{t('enrollment.enrollmentId')}</TableHead>
+                <TableHead>{t('enrollment.beneficiaryName')}</TableHead>
+                <TableHead>{t('enrollment.program')}</TableHead>
+                <TableHead>{t('enrollment.enrollDate')}</TableHead>
+                <TableHead>{t('enrollment.district')}</TableHead>
+                <TableHead>{t('enrollment.upazila')}</TableHead>
+                <TableHead>{t('enrollment.servicesAssigned')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -219,7 +224,7 @@ export default function BeneficiaryEnrollmentPage() {
                   <TableCell className="font-mono text-sm">{enrollment.id}</TableCell>
                   <TableCell className="font-medium">{enrollment.beneficiaryName}</TableCell>
                   <TableCell>{enrollment.program}</TableCell>
-                  <TableCell>{formatDate(enrollment.enrollmentDate)}</TableCell>
+                  <TableCell>{formatDate(enrollment.enrollmentDate, locale)}</TableCell>
                   <TableCell>{enrollment.district}</TableCell>
                   <TableCell>{enrollment.upazila}</TableCell>
                   <TableCell>

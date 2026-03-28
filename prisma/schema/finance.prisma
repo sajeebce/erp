@@ -9,7 +9,7 @@ model Account {
   organizationId  String        @db.Uuid
   code            String
   name            String
-  nameInBangla    String?
+  localizedName   Json?
   type            AccountType
   nature          AccountNature
   parentId        String?       @db.Uuid

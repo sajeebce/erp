@@ -214,6 +214,12 @@ export async function POST(request: NextRequest) {
       maxAge: 7 * 24 * 60 * 60,
     })
 
+    // Set locale cookie (default to 'en' for new registrations)
+    response.cookies.set('NEXT_LOCALE', 'en', {
+      path: '/',
+      maxAge: 365 * 24 * 60 * 60, // 1 year
+    })
+
     return response
   } catch (error) {
     return handleRouteError(error)

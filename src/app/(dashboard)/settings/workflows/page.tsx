@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +73,9 @@ const workflows: Workflow[] = [
   },
 ];
 
-export default function WorkflowsPage() {
+export default async function WorkflowsPage() {
+  const t = await getTranslations('settings');
+  const tc = await getTranslations('common');
   const totalWorkflows = workflows.length;
   const activeWorkflows = workflows.filter((w) => w.status === "Active").length;
   const inactiveWorkflows = workflows.filter((w) => w.status === "Inactive").length;
@@ -80,19 +83,19 @@ export default function WorkflowsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Approval Workflows"
-        description="Configure multi-level approval workflows"
+        title={t('workflows.title')}
+        description={t('workflows.description')}
       >
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Create Workflow
+          {t('workflows.createWorkflow')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Workflows</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('workflows.totalWorkflows')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -103,7 +106,7 @@ export default function WorkflowsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('workflows.active')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -114,7 +117,7 @@ export default function WorkflowsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Inactive</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('workflows.inactive')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -127,17 +130,17 @@ export default function WorkflowsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Workflow Configuration</CardTitle>
+          <CardTitle>{t('workflows.workflowConfig')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Workflow Name</TableHead>
-                <TableHead>Module</TableHead>
-                <TableHead>Trigger</TableHead>
-                <TableHead>Approval Steps</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('workflows.workflowName')}</TableHead>
+                <TableHead>{t('workflows.module')}</TableHead>
+                <TableHead>{t('workflows.trigger')}</TableHead>
+                <TableHead>{t('workflows.approvalSteps')}</TableHead>
+                <TableHead>{t('workflows.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

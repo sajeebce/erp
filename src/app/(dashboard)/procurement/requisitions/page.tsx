@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 interface PurchaseRequisition {
   id: string;
@@ -171,7 +172,11 @@ function getPriorityVariant(priority: string): "default" | "secondary" | "outlin
   }
 }
 
-export default function PurchaseRequisitionsPage() {
+export default async function PurchaseRequisitionsPage() {
+  const t = await getTranslations('procurement');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalRequisitions = requisitions.length;
   const totalValue = requisitions.reduce((sum, r) => sum + r.estimatedCost, 0);
   const pendingApproval = requisitions.filter((r) =>
@@ -182,23 +187,23 @@ export default function PurchaseRequisitionsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Purchase Requisitions"
-        description="Submit and manage internal purchase requests"
+        title={t('requisitions.title')}
+        description={t('requisitions.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New Requisition
+          {t('requisitions.newRequisition')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Requisitions</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('requisitions.totalRequisitions')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalRequisitions}</p>
@@ -206,15 +211,15 @@ export default function PurchaseRequisitionsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Value</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('requisitions.totalValue')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalValue)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalValue, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Approval</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('requisitions.pendingApproval')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-amber-600">{pendingApproval}</p>
@@ -222,7 +227,7 @@ export default function PurchaseRequisitionsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">PO Created</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('requisitions.poCreated')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-emerald-600">{poCreated}</p>
@@ -232,32 +237,32 @@ export default function PurchaseRequisitionsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Purchase Requisitions</CardTitle>
+          <CardTitle>{t('requisitions.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[120px]">PR No</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Requested By</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Items Description</TableHead>
-                <TableHead className="text-right">Estimated Cost</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>PO Ref</TableHead>
+                <TableHead className="w-[120px]">{t('requisitions.prNo')}</TableHead>
+                <TableHead>{t('requisitions.date')}</TableHead>
+                <TableHead>{t('requisitions.requestedBy')}</TableHead>
+                <TableHead>{t('requisitions.department')}</TableHead>
+                <TableHead>{t('requisitions.itemsDescription')}</TableHead>
+                <TableHead className="text-right">{t('requisitions.estimatedCost')}</TableHead>
+                <TableHead>{t('requisitions.priority')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
+                <TableHead>{t('requisitions.poRef')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {requisitions.map((req) => (
                 <TableRow key={req.id}>
                   <TableCell className="font-mono text-sm">{req.id}</TableCell>
-                  <TableCell>{formatDate(req.date)}</TableCell>
+                  <TableCell>{formatDate(req.date, locale)}</TableCell>
                   <TableCell className="font-medium">{req.requestedBy}</TableCell>
                   <TableCell className="text-sm">{req.department}</TableCell>
                   <TableCell className="max-w-[280px] truncate text-sm">{req.itemsDescription}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(req.estimatedCost)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(req.estimatedCost, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getPriorityVariant(req.priority)} className="text-[10px]">
                       {req.priority}

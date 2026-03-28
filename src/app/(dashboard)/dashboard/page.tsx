@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -10,7 +11,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, Legend,
 } from 'recharts'
-import { formatBDT } from '@/lib/formatters'
+import { useFormatters } from '@/hooks/use-formatters'
 
 interface DashboardData {
   kpis: {
@@ -44,6 +45,8 @@ const CHART_COLORS = [
 ]
 
 export default function DashboardPage() {
+  const t = useTranslations('dashboard')
+  const { formatCurrency } = useFormatters()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -74,16 +77,16 @@ export default function DashboardPage() {
     )
   }
 
-  if (!data) return <div className="text-center py-10 text-muted-foreground">Failed to load dashboard</div>
+  if (!data) return <div className="text-center py-10 text-muted-foreground">{t('failedToLoad')}</div>
 
   const kpiCards = [
-    { title: 'Total Fund Received', value: formatBDT(data.kpis.totalFundReceived), icon: Wallet, color: 'text-blue-600' },
-    { title: 'Fund Utilized', value: formatBDT(data.kpis.fundUtilized), icon: TrendingUp, color: 'text-emerald-600', sub: `${data.kpis.utilizationRate.toFixed(1)}% utilization` },
-    { title: 'Active Projects', value: String(data.kpis.activeProjects), icon: FolderOpen, color: 'text-violet-600' },
-    { title: 'Active Beneficiaries', value: data.kpis.activeBeneficiaries.toLocaleString(), icon: Users, color: 'text-teal-600' },
-    { title: 'Pending Approvals', value: String(data.kpis.pendingApprovals), icon: Clock, color: 'text-amber-600' },
-    { title: 'Staff Count', value: String(data.kpis.staffCount), icon: UserCheck, color: 'text-indigo-600' },
-    { title: 'Compliance Score', value: `${data.kpis.complianceScore}%`, icon: Shield, color: 'text-emerald-600' },
+    { title: t('kpis.totalFundReceived'), value: formatCurrency(data.kpis.totalFundReceived), icon: Wallet, color: 'text-blue-600' },
+    { title: t('kpis.fundUtilized'), value: formatCurrency(data.kpis.fundUtilized), icon: TrendingUp, color: 'text-emerald-600', sub: t('kpis.utilization', { rate: data.kpis.utilizationRate.toFixed(1) }) },
+    { title: t('kpis.activeProjects'), value: String(data.kpis.activeProjects), icon: FolderOpen, color: 'text-violet-600' },
+    { title: t('kpis.activeBeneficiaries'), value: data.kpis.activeBeneficiaries.toLocaleString(), icon: Users, color: 'text-teal-600' },
+    { title: t('kpis.pendingApprovals'), value: String(data.kpis.pendingApprovals), icon: Clock, color: 'text-amber-600' },
+    { title: t('kpis.staffCount'), value: String(data.kpis.staffCount), icon: UserCheck, color: 'text-indigo-600' },
+    { title: t('kpis.complianceScore'), value: `${data.kpis.complianceScore}%`, icon: Shield, color: 'text-emerald-600' },
   ]
 
   return (
@@ -113,7 +116,7 @@ export default function DashboardPage() {
         {/* Monthly Income vs Expense */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Monthly Income vs Expense</CardTitle>
+            <CardTitle className="text-base">{t('charts.monthlyIncomeExpense')}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
@@ -121,7 +124,7 @@ export default function DashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="month" className="text-xs" tick={{ fontSize: 11 }} />
                 <YAxis className="text-xs" tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
-                <Tooltip formatter={(value: number) => formatBDT(value)} />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Legend />
                 <Area type="monotone" dataKey="income" stackId="1" stroke="hsl(160, 60%, 45%)" fill="hsl(160, 60%, 45%)" fillOpacity={0.3} />
                 <Area type="monotone" dataKey="expense" stackId="2" stroke="hsl(0, 75%, 55%)" fill="hsl(0, 75%, 55%)" fillOpacity={0.3} />
@@ -133,7 +136,7 @@ export default function DashboardPage() {
         {/* Donor Contributions (Donut) */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Donor Contributions</CardTitle>
+            <CardTitle className="text-base">{t('charts.donorContributions')}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
@@ -143,7 +146,7 @@ export default function DashboardPage() {
                     <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => formatBDT(value)} />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -155,7 +158,7 @@ export default function DashboardPage() {
         {/* Fund by Project */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Fund by Project</CardTitle>
+            <CardTitle className="text-base">{t('charts.fundByProject')}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
@@ -163,7 +166,7 @@ export default function DashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} />
                 <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(value: number) => formatBDT(value)} />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Bar dataKey="totalBudget" fill="hsl(221, 83%, 53%)" radius={[0, 4, 4, 0]} name="Budget" />
               </BarChart>
             </ResponsiveContainer>
@@ -173,7 +176,7 @@ export default function DashboardPage() {
         {/* Project Progress */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Project Progress</CardTitle>
+            <CardTitle className="text-base">{t('charts.projectProgress')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -200,19 +203,19 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Recent Transactions</CardTitle>
+            <CardTitle className="text-base">{t('recentTransactions')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {data.recentTransactions.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No recent transactions</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t('noRecentTransactions')}</p>
               ) : data.recentTransactions.map((tx) => (
                 <div key={tx.entryNo} className="flex items-center justify-between border-b pb-2 last:border-0">
                   <div>
                     <p className="text-sm font-medium">{tx.description}</p>
                     <p className="text-xs text-muted-foreground">{tx.entryNo} &bull; {new Date(tx.date).toLocaleDateString()}</p>
                   </div>
-                  <span className="text-sm font-mono font-medium">{formatBDT(Number(tx.totalDebit))}</span>
+                  <span className="text-sm font-mono font-medium">{formatCurrency(Number(tx.totalDebit))}</span>
                 </div>
               ))}
             </div>
@@ -221,16 +224,16 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Upcoming Deadlines</CardTitle>
+            <CardTitle className="text-base">{t('upcomingDeadlines')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {data.upcomingDeadlines.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No upcoming deadlines</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t('noUpcomingDeadlines')}</p>
               ) : data.upcomingDeadlines.map((dl) => (
                 <div key={dl.reportNo} className="flex items-center justify-between border-b pb-2 last:border-0">
                   <div>
-                    <p className="text-sm font-medium">{dl.type} Report</p>
+                    <p className="text-sm font-medium">{t('report', { type: dl.type })}</p>
                     <p className="text-xs text-muted-foreground">{dl.grantTitle}</p>
                   </div>
                   <span className="text-xs text-amber-600 font-medium">{new Date(dl.dueDate).toLocaleDateString()}</span>

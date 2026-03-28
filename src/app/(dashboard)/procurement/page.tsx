@@ -1,3 +1,4 @@
+import { getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 interface PurchaseRequisition {
   prNo: string;
@@ -110,7 +111,8 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" |
   }
 }
 
-export default function ProcurementPage() {
+export default async function ProcurementPage() {
+  const locale = await getLocale();
   const totalAmount = requisitions.reduce((sum, r) => sum + r.amount, 0);
   const pendingCount = requisitions.filter((r) => r.status === "Pending Approval").length;
 
@@ -144,7 +146,7 @@ export default function ProcurementPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Value</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalAmount)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalAmount, locale)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -186,10 +188,10 @@ export default function ProcurementPage() {
               {requisitions.map((req) => (
                 <TableRow key={req.prNo}>
                   <TableCell className="font-mono text-sm">{req.prNo}</TableCell>
-                  <TableCell>{formatDate(req.date)}</TableCell>
+                  <TableCell>{formatDate(req.date, locale)}</TableCell>
                   <TableCell className="font-medium max-w-[250px] truncate">{req.description}</TableCell>
                   <TableCell>{req.project}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(req.amount)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(req.amount, locale)}</TableCell>
                   <TableCell>{req.requestedBy}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(req.status)}>{req.status}</Badge>

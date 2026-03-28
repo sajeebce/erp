@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { formatBDT } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 
 interface PayrollEntry {
   employeeId: string;
@@ -208,7 +209,11 @@ function getPaymentStatusVariant(status: string): "default" | "secondary" | "out
   }
 }
 
-export default function PayrollPage() {
+export default async function PayrollPage() {
+  const t = await getTranslations('hr');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalGross = payrollData.reduce((sum, p) => sum + p.grossSalary, 0);
   const totalDeductions = payrollData.reduce((sum, p) => sum + p.taxDeduction + p.pfDeduction, 0);
   const totalNet = payrollData.reduce((sum, p) => sum + p.netSalary, 0);
@@ -216,75 +221,75 @@ export default function PayrollPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Payroll - February 2026"
-        description="Process monthly payroll and manage salary structures"
+        title={t('payroll.title')}
+        description={t('payroll.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export Payslips
+          {t('payroll.exportPayslips')}
         </Button>
         <Button size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Bank Transfer File
+          {t('payroll.bankTransferFile')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Gross Salary</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('payroll.totalGrossSalary')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalGross)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalGross, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Deductions</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('payroll.totalDeductions')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalDeductions)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalDeductions, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Net Salary</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('payroll.totalNetSalary')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalNet)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalNet, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pay Period</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('payroll.payPeriod')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">Feb 2026</p>
-            <p className="text-xs text-muted-foreground">{payrollData.length} employees</p>
+            <p className="text-xs text-muted-foreground">{payrollData.length} {t('payroll.employees')}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Payroll Register</CardTitle>
+          <CardTitle>{t('payroll.payrollRegister')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Employee ID</TableHead>
-                <TableHead>Employee Name</TableHead>
-                <TableHead>Designation</TableHead>
-                <TableHead className="text-right">Basic</TableHead>
-                <TableHead className="text-right">House Rent</TableHead>
-                <TableHead className="text-right">Medical</TableHead>
-                <TableHead className="text-right">Transport</TableHead>
-                <TableHead className="text-right">Gross</TableHead>
-                <TableHead className="text-right">Tax</TableHead>
-                <TableHead className="text-right">PF</TableHead>
-                <TableHead className="text-right">Net Salary</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('payroll.employeeId')}</TableHead>
+                <TableHead>{t('payroll.employeeName')}</TableHead>
+                <TableHead>{t('payroll.designation')}</TableHead>
+                <TableHead className="text-right">{t('payroll.basic')}</TableHead>
+                <TableHead className="text-right">{t('payroll.houseRent')}</TableHead>
+                <TableHead className="text-right">{t('payroll.medical')}</TableHead>
+                <TableHead className="text-right">{t('payroll.transport')}</TableHead>
+                <TableHead className="text-right">{t('payroll.gross')}</TableHead>
+                <TableHead className="text-right">{t('payroll.tax')}</TableHead>
+                <TableHead className="text-right">{t('payroll.pf')}</TableHead>
+                <TableHead className="text-right">{t('payroll.netSalary')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -293,14 +298,14 @@ export default function PayrollPage() {
                   <TableCell className="font-mono text-sm">{entry.employeeId}</TableCell>
                   <TableCell className="font-medium">{entry.name}</TableCell>
                   <TableCell>{entry.designation}</TableCell>
-                  <TableCell className="text-right font-mono text-sm">{formatBDT(entry.basicSalary)}</TableCell>
-                  <TableCell className="text-right font-mono text-sm">{formatBDT(entry.houseRent)}</TableCell>
-                  <TableCell className="text-right font-mono text-sm">{formatBDT(entry.medical)}</TableCell>
-                  <TableCell className="text-right font-mono text-sm">{formatBDT(entry.transport)}</TableCell>
-                  <TableCell className="text-right font-mono text-sm font-semibold">{formatBDT(entry.grossSalary)}</TableCell>
-                  <TableCell className="text-right font-mono text-sm">{formatBDT(entry.taxDeduction)}</TableCell>
-                  <TableCell className="text-right font-mono text-sm">{formatBDT(entry.pfDeduction)}</TableCell>
-                  <TableCell className="text-right font-mono text-sm font-semibold">{formatBDT(entry.netSalary)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">{formatCurrency(entry.basicSalary, locale)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">{formatCurrency(entry.houseRent, locale)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">{formatCurrency(entry.medical, locale)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">{formatCurrency(entry.transport, locale)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(entry.grossSalary, locale)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">{formatCurrency(entry.taxDeduction, locale)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">{formatCurrency(entry.pfDeduction, locale)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(entry.netSalary, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getPaymentStatusVariant(entry.paymentStatus)}>{entry.paymentStatus}</Badge>
                   </TableCell>

@@ -1,3 +1,7 @@
+'use client'
+
+import { useRouter } from "next/navigation";
+import { useTranslations } from 'next-intl';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download, ChevronRight, ChevronDown } from "lucide-react";
-import { formatBDT } from "@/lib/formatters";
+import { useFormatters } from '@/hooks/use-formatters'
 
 interface Account {
   code: string;
@@ -66,69 +70,74 @@ function getTypeBadgeVariant(type: string): "default" | "secondary" | "outline" 
 }
 
 export default function FinancePage() {
+  const router = useRouter()
+  const t = useTranslations('finance')
+  const tc = useTranslations('common')
+  const { formatCurrency } = useFormatters()
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Finance & Accounting"
-        description="Chart of Accounts - Manage your organization's financial structure"
+        title={t('title')}
+        description={t('description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
-        <Button size="sm">
+        <Button size="sm" onClick={() => router.push('/finance/chart-of-accounts')}>
           <Plus className="h-4 w-4 mr-2" />
-          Add Account
+          {t('chartOfAccounts.addAccount')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Assets</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('summary.totalAssets')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(45850000)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(45850000)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Liabilities</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('summary.totalLiabilities')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(8750000)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(8750000)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Income</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('summary.totalIncome')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(125000000)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(125000000)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Expenses</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('summary.totalExpenses')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(98500000)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(98500000)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Chart of Accounts</CardTitle>
+          <CardTitle>{t('chartOfAccounts.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[120px]">Code</TableHead>
-                <TableHead>Account Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
+                <TableHead className="w-[120px]">{t('chartOfAccounts.code')}</TableHead>
+                <TableHead>{t('chartOfAccounts.accountName')}</TableHead>
+                <TableHead>{t('chartOfAccounts.type')}</TableHead>
+                <TableHead className="text-right">{t('common.balance')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -154,7 +163,7 @@ export default function FinancePage() {
                     <Badge variant={getTypeBadgeVariant(account.type)}>{account.type}</Badge>
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {formatBDT(account.balance)}
+                    {formatCurrency(account.balance)}
                   </TableCell>
                 </TableRow>
               ))}

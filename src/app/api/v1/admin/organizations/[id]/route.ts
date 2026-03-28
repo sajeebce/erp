@@ -53,7 +53,7 @@ export async function GET(
 
 const UPDATABLE_FIELDS = [
   'name',
-  'nameInBangla',
+  'localizedName',
   'registrationNo',
   'ngoabLicenseNo',
   'mraLicenseNo',

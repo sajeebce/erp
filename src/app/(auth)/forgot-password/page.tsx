@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { Landmark, Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function ForgotPasswordPage() {
+  const t = useTranslations('auth')
   const [orgSlug, setOrgSlug] = useState('')
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -31,10 +33,10 @@ export default function ForgotPasswordPage() {
       if (data.success) {
         setSent(true)
       } else {
-        setError(data.error?.message || 'Something went wrong')
+        setError(data.error?.message || t('forgotPassword.somethingWrong'))
       }
     } catch {
-      setError('Network error. Please try again.')
+      setError(t('forgotPassword.networkError'))
     } finally {
       setLoading(false)
     }
@@ -49,14 +51,14 @@ export default function ForgotPasswordPage() {
               <CheckCircle2 className="h-6 w-6 text-emerald-600" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Check Your Email</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t('forgotPassword.checkEmailTitle')}</CardTitle>
           <CardDescription>
-            If an account exists with <strong>{email}</strong>, we&apos;ve sent a password reset link. Check your inbox and spam folder.
+            {t.rich('forgotPassword.checkEmailDesc', { email, strong: (chunks) => <strong>{chunks}</strong> })}
           </CardDescription>
         </CardHeader>
         <CardFooter className="justify-center">
           <Link href="/login" className="text-sm text-primary font-medium hover:underline flex items-center gap-1">
-            <ArrowLeft className="h-3 w-3" /> Back to Login
+            <ArrowLeft className="h-3 w-3" /> {t('forgotPassword.backToLogin')}
           </Link>
         </CardFooter>
       </Card>
@@ -71,8 +73,8 @@ export default function ForgotPasswordPage() {
             <Landmark className="h-6 w-6 text-primary-foreground" />
           </div>
         </div>
-        <CardTitle className="text-2xl font-bold">Forgot Password</CardTitle>
-        <CardDescription>Enter your email and we&apos;ll send you a reset link</CardDescription>
+        <CardTitle className="text-2xl font-bold">{t('forgotPassword.title')}</CardTitle>
+        <CardDescription>{t('forgotPassword.description')}</CardDescription>
       </CardHeader>
 
       <form onSubmit={handleSubmit}>
@@ -84,11 +86,11 @@ export default function ForgotPasswordPage() {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="orgSlug">Organization</Label>
+            <Label htmlFor="orgSlug">{t('forgotPassword.orgLabel')}</Label>
             <div className="flex items-center gap-0">
               <Input
                 id="orgSlug"
-                placeholder="your-organization"
+                placeholder={t('forgotPassword.orgPlaceholder')}
                 value={orgSlug}
                 onChange={(e) => setOrgSlug(e.target.value.toLowerCase())}
                 className="rounded-r-none"
@@ -101,11 +103,11 @@ export default function ForgotPasswordPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('forgotPassword.emailLabel')}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="you@organization.org"
+              placeholder={t('forgotPassword.emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -116,10 +118,10 @@ export default function ForgotPasswordPage() {
         <CardFooter className="flex flex-col gap-4">
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Send Reset Link
+            {t('forgotPassword.sendResetLink')}
           </Button>
           <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
-            <ArrowLeft className="h-3 w-3" /> Back to Login
+            <ArrowLeft className="h-3 w-3" /> {t('forgotPassword.backToLogin')}
           </Link>
         </CardFooter>
       </form>

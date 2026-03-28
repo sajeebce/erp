@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -121,7 +122,10 @@ function getLogLevelVariant(level: string): "default" | "secondary" | "outline" 
   }
 }
 
-export default function BackupLogsPage() {
+export default async function BackupLogsPage() {
+  const t = await getTranslations('settings');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalBackups = backups.length;
   const successfulBackups = backups.filter((b) => b.status === "Success").length;
   const failedBackups = backups.filter((b) => b.status === "Failed").length;
@@ -133,17 +137,17 @@ export default function BackupLogsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Backup & Logs"
-        description="Manage database backups, view system logs, and configure data retention"
+        title={t('backupLogs.title')}
+        description={t('backupLogs.description')}
       >
         <div className="flex gap-2">
           <Button variant="outline" size="sm">
             <FileText className="h-4 w-4 mr-2" />
-            Export Logs
+            {t('backupLogs.exportLogs')}
           </Button>
           <Button size="sm">
             <Database className="h-4 w-4 mr-2" />
-            Run Backup Now
+            {t('backupLogs.runBackupNow')}
           </Button>
         </div>
       </PageHeader>
@@ -152,7 +156,7 @@ export default function BackupLogsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Last Backup</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('backupLogs.lastBackup')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -164,31 +168,31 @@ export default function BackupLogsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Success Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('backupLogs.successRate')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-emerald-500" />
-              <p className="text-2xl font-bold">{formatPercent(successRate)}</p>
+              <p className="text-2xl font-bold">{formatPercent(successRate, locale)}</p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">{successfulBackups} of {totalBackups} successful</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('backupLogs.successful', { count: successfulBackups, total: totalBackups })}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Failed Backups</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('backupLogs.failedBackups')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-red-500" />
               <p className="text-2xl font-bold">{failedBackups}</p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">in last 10 backups</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('backupLogs.inLastBackups', { count: 10 })}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Storage Used</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('backupLogs.storageUsed')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -196,7 +200,7 @@ export default function BackupLogsPage() {
               <p className="text-2xl font-bold">{totalSizeGB} GB</p>
             </div>
             <Progress value={storagePercent} className="h-1.5 mt-2" />
-            <p className="text-xs text-muted-foreground mt-1">of {allocatedGB} GB allocated ({formatPercent(storagePercent)})</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('backupLogs.ofAllocated', { size: `${allocatedGB} GB`, percent: formatPercent(storagePercent, locale) })}</p>
           </CardContent>
         </Card>
       </div>
@@ -208,24 +212,24 @@ export default function BackupLogsPage() {
             <div className="flex items-center gap-2">
               <RefreshCw className="h-5 w-5 text-muted-foreground" />
               <div>
-                <CardTitle className="text-base">Backup Schedules</CardTitle>
-                <CardDescription>Automated backup configuration and next run times</CardDescription>
+                <CardTitle className="text-base">{t('backupLogs.backupSchedules')}</CardTitle>
+                <CardDescription>{t('backupLogs.backupSchedulesDesc')}</CardDescription>
               </div>
             </div>
-            <Button variant="outline" size="sm">Add Schedule</Button>
+            <Button variant="outline" size="sm">{t('backupLogs.addSchedule')}</Button>
           </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Backup Type</TableHead>
-                <TableHead>Frequency</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Retention</TableHead>
-                <TableHead>Last Run</TableHead>
-                <TableHead>Next Run</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('backupLogs.backupType')}</TableHead>
+                <TableHead>{t('backupLogs.frequency')}</TableHead>
+                <TableHead>{t('backupLogs.time')}</TableHead>
+                <TableHead>{t('backupLogs.retention')}</TableHead>
+                <TableHead>{t('backupLogs.lastRun')}</TableHead>
+                <TableHead>{t('backupLogs.nextRun')}</TableHead>
+                <TableHead>{t('backupLogs.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -256,13 +260,13 @@ export default function BackupLogsPage() {
             <div className="flex items-center gap-2">
               <Database className="h-5 w-5 text-muted-foreground" />
               <div>
-                <CardTitle className="text-base">Backup History</CardTitle>
-                <CardDescription>Recent backup operations and their statuses</CardDescription>
+                <CardTitle className="text-base">{t('backupLogs.backupHistory')}</CardTitle>
+                <CardDescription>{t('backupLogs.backupHistoryDesc')}</CardDescription>
               </div>
             </div>
             <Button variant="outline" size="sm">
               <Trash2 className="h-4 w-4 mr-2" />
-              Purge Expired
+              {t('backupLogs.purgeExpired')}
             </Button>
           </div>
         </CardHeader>
@@ -270,14 +274,14 @@ export default function BackupLogsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[130px]">Backup ID</TableHead>
-                <TableHead>Date/Time</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Size</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Initiated By</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead className="w-[130px]">{t('backupLogs.backupId')}</TableHead>
+                <TableHead>{t('backupLogs.dateTime')}</TableHead>
+                <TableHead>{t('backupLogs.type')}</TableHead>
+                <TableHead>{t('backupLogs.size')}</TableHead>
+                <TableHead>{t('backupLogs.duration')}</TableHead>
+                <TableHead>{t('backupLogs.status')}</TableHead>
+                <TableHead>{t('backupLogs.initiatedBy')}</TableHead>
+                <TableHead className="text-right">{t('backupLogs.action')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -298,7 +302,7 @@ export default function BackupLogsPage() {
                     {backup.status === "Success" && (
                       <Button variant="ghost" size="sm">
                         <Download className="h-3 w-3 mr-1" />
-                        Download
+                        {tc('buttons.download')}
                       </Button>
                     )}
                   </TableCell>
@@ -316,16 +320,16 @@ export default function BackupLogsPage() {
             <div className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-muted-foreground" />
               <div>
-                <CardTitle className="text-base">System Logs</CardTitle>
-                <CardDescription>Application events, warnings, and errors</CardDescription>
+                <CardTitle className="text-base">{t('backupLogs.systemLogs')}</CardTitle>
+                <CardDescription>{t('backupLogs.systemLogsDesc')}</CardDescription>
               </div>
             </div>
             <div className="flex gap-2">
               <Badge variant="secondary" className="text-xs">
-                {systemLogs.filter(l => l.level === "ERROR").length} Errors
+                {systemLogs.filter(l => l.level === "ERROR").length} {t('backupLogs.errors')}
               </Badge>
               <Badge variant="outline" className="text-xs">
-                {systemLogs.filter(l => l.level === "WARN").length} Warnings
+                {systemLogs.filter(l => l.level === "WARN").length} {t('backupLogs.warnings')}
               </Badge>
             </div>
           </div>
@@ -334,11 +338,11 @@ export default function BackupLogsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[170px]">Timestamp</TableHead>
-                <TableHead className="w-[70px]">Level</TableHead>
-                <TableHead>Message</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>User</TableHead>
+                <TableHead className="w-[170px]">{t('backupLogs.timestamp')}</TableHead>
+                <TableHead className="w-[70px]">{t('backupLogs.level')}</TableHead>
+                <TableHead>{t('backupLogs.message')}</TableHead>
+                <TableHead>{t('backupLogs.source')}</TableHead>
+                <TableHead>{t('backupLogs.user')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -364,8 +368,8 @@ export default function BackupLogsPage() {
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-muted-foreground" />
             <div>
-              <CardTitle className="text-base">Data Retention Policy</CardTitle>
-              <CardDescription>How long different data types are retained before automatic cleanup</CardDescription>
+              <CardTitle className="text-base">{t('backupLogs.dataRetention')}</CardTitle>
+              <CardDescription>{t('backupLogs.dataRetentionDesc')}</CardDescription>
             </div>
           </div>
         </CardHeader>

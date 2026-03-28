@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 interface ServiceDelivery {
   id: string;
@@ -42,7 +43,7 @@ const services: ServiceDelivery[] = [
     date: "2026-01-18",
     location: "Pirganj Branch Office, Rangpur",
     deliveredBy: "Mizanur Rahman",
-    quantityValue: formatBDT(5000),
+    quantityValue: "৳5,000",
     status: "Delivered",
   },
   {
@@ -102,7 +103,7 @@ const services: ServiceDelivery[] = [
     date: "2025-12-20",
     location: "Bakerganj Branch, Barishal",
     deliveredBy: "Faruk Ahmed",
-    quantityValue: formatBDT(3500),
+    quantityValue: "৳3,500",
     status: "Cancelled",
   },
   {
@@ -147,7 +148,11 @@ function getServiceBadgeVariant(type: string): "default" | "secondary" | "outlin
   }
 }
 
-export default function ServiceDeliveryPage() {
+export default async function ServiceDeliveryPage() {
+  const t = await getTranslations('beneficiaries');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalServices = services.length;
   const deliveredThisMonth = services.filter(
     (s) => s.status === "Delivered" && s.date.startsWith("2026-01")
@@ -158,23 +163,23 @@ export default function ServiceDeliveryPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Service Delivery"
-        description="Track and manage service delivery to beneficiaries"
+        title={t('serviceDelivery.title')}
+        description={t('serviceDelivery.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Record Service
+          {t('serviceDelivery.addService')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Services</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('serviceDelivery.totalServices')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalServices}</p>
@@ -182,7 +187,7 @@ export default function ServiceDeliveryPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Delivered This Month</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('serviceDelivery.deliveredThisMonth')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{deliveredThisMonth}</p>
@@ -190,7 +195,7 @@ export default function ServiceDeliveryPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('serviceDelivery.pending')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{pending}</p>
@@ -198,7 +203,7 @@ export default function ServiceDeliveryPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Beneficiaries Reached</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('serviceDelivery.beneficiariesReached')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{uniqueBeneficiaries}</p>
@@ -208,20 +213,20 @@ export default function ServiceDeliveryPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Service Delivery Log</CardTitle>
+          <CardTitle>{t('serviceDelivery.serviceDeliveryLog')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">Service ID</TableHead>
-                <TableHead>Beneficiary</TableHead>
-                <TableHead>Service Type</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Delivered By</TableHead>
-                <TableHead>Quantity / Value</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[100px]">{t('serviceDelivery.serviceId')}</TableHead>
+                <TableHead>{t('serviceDelivery.beneficiary')}</TableHead>
+                <TableHead>{t('serviceDelivery.serviceType')}</TableHead>
+                <TableHead>{t('serviceDelivery.date')}</TableHead>
+                <TableHead>{t('serviceDelivery.location')}</TableHead>
+                <TableHead>{t('serviceDelivery.deliveredBy')}</TableHead>
+                <TableHead>{t('serviceDelivery.quantityValue')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -234,7 +239,7 @@ export default function ServiceDeliveryPage() {
                       {service.serviceType}
                     </Badge>
                   </TableCell>
-                  <TableCell>{formatDate(service.date)}</TableCell>
+                  <TableCell>{formatDate(service.date, locale)}</TableCell>
                   <TableCell className="max-w-[200px] truncate">{service.location}</TableCell>
                   <TableCell>{service.deliveredBy}</TableCell>
                   <TableCell>{service.quantityValue}</TableCell>

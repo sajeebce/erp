@@ -1,10 +1,11 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Download, CheckCircle2, Circle, Clock } from "lucide-react";
-import { formatBDT, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 interface ChecklistItem {
   name: string;
@@ -256,23 +257,27 @@ function getCompletionPercent(checklist: ChecklistItem[]): number {
   return Math.round((completed / checklist.length) * 100);
 }
 
-export default function ProjectCloseoutPage() {
+export default async function ProjectCloseoutPage() {
+  const t = await getTranslations('projects');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Project Closeout"
-        description="Manage project completion and closeout processes"
+        title={t('closeout.title')}
+        description={t('closeout.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Projects in Closeout</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('closeout.projectsInCloseout')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{closeoutProjects.length}</p>
@@ -280,7 +285,7 @@ export default function ProjectCloseoutPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Fully Closed</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('closeout.fullyClosed')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
@@ -290,7 +295,7 @@ export default function ProjectCloseoutPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Items Total</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('closeout.pendingItemsTotal')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
@@ -315,22 +320,22 @@ export default function ProjectCloseoutPage() {
                   <div>
                     <CardTitle className="text-lg">{project.name}</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      <span className="font-mono">{project.id}</span> | {project.donor} | Grant: <span className="font-mono">{project.grant}</span> | Budget: {formatBDT(project.budget)}
+                      <span className="font-mono">{project.id}</span> | {project.donor} | Grant: <span className="font-mono">{project.grant}</span> | Budget: {formatCurrency(project.budget, locale)}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Project End: {formatDate(project.endDate)} | Manager: {project.projectManager}
+                      {t('closeout.projectEnd')}: {formatDate(project.endDate, locale)} | {t('closeout.manager')}: {project.projectManager}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
                     <Badge variant={completionPercent === 100 ? "default" : "secondary"}>
-                      {completionPercent === 100 ? "Closed" : "In Progress"}
+                      {completionPercent === 100 ? t('closeout.closed') : t('closeout.inProgress')}
                     </Badge>
-                    <p className="text-sm font-medium mt-1">{completedCount}/{project.checklist.length} Complete</p>
+                    <p className="text-sm font-medium mt-1">{completedCount}/{project.checklist.length} {t('closeout.complete')}</p>
                   </div>
                 </div>
                 <div className="space-y-1 mt-3">
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Closeout Progress</span>
+                    <span className="text-muted-foreground">{t('closeout.closeoutProgress')}</span>
                     <span className="font-medium">{completionPercent}%</span>
                   </div>
                   <Progress value={completionPercent} />
@@ -354,12 +359,12 @@ export default function ProjectCloseoutPage() {
                           </Badge>
                         </div>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span>Due: {formatDate(item.dueDate)}</span>
+                          <span>{t('closeout.due')}: {formatDate(item.dueDate, locale)}</span>
                           {item.completedDate && (
-                            <span>Done: {formatDate(item.completedDate)}</span>
+                            <span>{t('closeout.done')}: {formatDate(item.completedDate, locale)}</span>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">Assignee: {item.assignee}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t('closeout.assignee')}: {item.assignee}</p>
                       </div>
                     </div>
                   ))}

@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -115,15 +116,17 @@ function StatusIndicator({ enabled }: { enabled: boolean }) {
   return <XCircle className="h-4 w-4 text-muted-foreground" />;
 }
 
-export default function NotificationsSettingsPage() {
+export default async function NotificationsSettingsPage() {
+  const t = await getTranslations('settings');
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Notifications"
-        description="Configure email and in-app notification preferences"
+        title={t('notifications.title')}
+        description={t('notifications.description')}
       >
         <Button variant="outline" size="sm">
-          Save Changes
+          {t('notifications.saveChanges')}
         </Button>
       </PageHeader>
 
@@ -142,17 +145,17 @@ export default function NotificationsSettingsPage() {
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-2 text-sm">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>Email</span>
+                    <span>{t('notifications.email')}</span>
                     <StatusIndicator enabled={category.emailEnabled} />
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Bell className="h-4 w-4 text-muted-foreground" />
-                    <span>In-App</span>
+                    <span>{t('notifications.inApp')}</span>
                     <StatusIndicator enabled={category.inAppEnabled} />
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Smartphone className="h-4 w-4 text-muted-foreground" />
-                    <span>SMS</span>
+                    <span>{t('notifications.sms')}</span>
                     <StatusIndicator enabled={category.smsEnabled} />
                   </div>
                 </div>
@@ -160,7 +163,7 @@ export default function NotificationsSettingsPage() {
 
               <div className="border-t pt-3">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                  Triggers
+                  {t('notifications.triggers')}
                 </p>
                 <div className="space-y-1">
                   {category.triggers.map((trigger) => (

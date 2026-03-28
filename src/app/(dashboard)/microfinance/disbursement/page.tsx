@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatDate, formatNumber } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/formatters";
 
 interface Disbursement {
   disbursementId: string;
@@ -168,7 +169,10 @@ function getModeVariant(mode: string): "default" | "secondary" | "outline" {
   }
 }
 
-export default function DisbursementPage() {
+export default async function DisbursementPage() {
+  const t = await getTranslations('microfinance');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const disbursedEntries = disbursements.filter((d) => d.status === "Disbursed");
   const thisMonthDisbursed = disbursedEntries
     .filter((d) => d.date.startsWith("2026-02"))
@@ -180,83 +184,83 @@ export default function DisbursementPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Loan Disbursement"
-        description="Process loan disbursements to approved applicants"
+        title={t('disbursement.title')}
+        description={t('disbursement.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New Disbursement
+          {t('disbursement.newDisbursement')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Disbursed This Month</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('disbursement.disbursedThisMonth')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(thisMonthDisbursed)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(thisMonthDisbursed, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total This Year</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('disbursement.totalThisYear')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(thisYearDisbursed)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(thisYearDisbursed, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('disbursement.pending')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatNumber(pending)}</p>
+            <p className="text-2xl font-bold">{formatNumber(pending, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Disbursement Count</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('disbursement.disbursementCount')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatNumber(disbursementCount)}</p>
+            <p className="text-2xl font-bold">{formatNumber(disbursementCount, locale)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Disbursement Schedule</CardTitle>
+          <CardTitle>{t('disbursement.schedule')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Disbursement ID</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Loan Account</TableHead>
-                <TableHead>Borrower</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead className="text-right">Disbursed Amount</TableHead>
-                <TableHead>Mode</TableHead>
-                <TableHead>Branch</TableHead>
-                <TableHead>Disbursed By</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('disbursement.disbursementId')}</TableHead>
+                <TableHead>{t('disbursement.date')}</TableHead>
+                <TableHead>{t('disbursement.loanAccount')}</TableHead>
+                <TableHead>{t('disbursement.borrower')}</TableHead>
+                <TableHead>{t('disbursement.product')}</TableHead>
+                <TableHead className="text-right">{t('disbursement.disbursedAmount')}</TableHead>
+                <TableHead>{t('disbursement.mode')}</TableHead>
+                <TableHead>{t('disbursement.branch')}</TableHead>
+                <TableHead>{t('disbursement.disbursedBy')}</TableHead>
+                <TableHead>{t('disbursement.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {disbursements.map((dis) => (
                 <TableRow key={dis.disbursementId}>
                   <TableCell className="font-mono text-sm">{dis.disbursementId}</TableCell>
-                  <TableCell>{formatDate(dis.date)}</TableCell>
+                  <TableCell>{formatDate(dis.date, locale)}</TableCell>
                   <TableCell className="font-mono text-sm">{dis.loanAccount}</TableCell>
                   <TableCell className="font-medium">{dis.borrower}</TableCell>
                   <TableCell>{dis.product}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(dis.disbursedAmount)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(dis.disbursedAmount, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getModeVariant(dis.mode)}>{dis.mode}</Badge>
                   </TableCell>

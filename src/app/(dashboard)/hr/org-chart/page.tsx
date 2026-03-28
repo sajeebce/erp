@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -106,18 +107,20 @@ const departments: Department[] = [
 
 const totalStaff = departments.reduce((sum, d) => sum + d.staffCount, 0);
 
-export default function OrgChartPage() {
+export default async function OrgChartPage() {
+  const t = await getTranslations('hr');
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Organization Chart"
-        description="View the organizational hierarchy and reporting structure"
+        title={t('orgChart.title')}
+        description={t('orgChart.description')}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Departments</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('orgChart.totalDepartments')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{departments.length}</p>
@@ -125,7 +128,7 @@ export default function OrgChartPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Staff</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('orgChart.totalStaff')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalStaff}</p>
@@ -133,7 +136,7 @@ export default function OrgChartPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Sub-Departments</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('orgChart.subDepartments')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
@@ -147,14 +150,14 @@ export default function OrgChartPage() {
       <div className="flex justify-center">
         <Card className="w-full max-w-md border-2 border-primary/30 bg-primary/5">
           <CardHeader className="pb-2 text-center">
-            <CardTitle className="text-lg">Executive Director</CardTitle>
+            <CardTitle className="text-lg">{t('orgChart.executiveDirector')}</CardTitle>
           </CardHeader>
           <CardContent className="text-center">
             <p className="font-semibold">Dr. Aminul Haque</p>
             <p className="text-sm text-muted-foreground">Head Office, Dhaka</p>
             <div className="flex items-center justify-center gap-1 mt-2 text-sm text-muted-foreground">
               <Users className="h-4 w-4" />
-              <span>{totalStaff} staff across {departments.length} departments</span>
+              <span>{t('orgChart.staffAcrossDepartments', { count: totalStaff, departments: departments.length })}</span>
             </div>
           </CardContent>
         </Card>
@@ -186,7 +189,7 @@ export default function OrgChartPage() {
               <CardContent className="pt-0">
                 <div className="border-t pt-3 space-y-2">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Sub-Departments
+                    {t('orgChart.subDepartments')}
                   </p>
                   {dept.subDepartments.map((sub) => (
                     <div

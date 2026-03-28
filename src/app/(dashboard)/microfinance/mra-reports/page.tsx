@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -118,7 +119,10 @@ function getFrequencyVariant(frequency: string): "default" | "secondary" | "outl
   }
 }
 
-export default function MRAReportsPage() {
+export default async function MRAReportsPage() {
+  const t = await getTranslations('microfinance');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalReports = mraReports.length;
   const dueThisMonth = mraReports.filter((r) => r.dueDate.startsWith("2026-02")).length;
   const submitted = mraReports.filter((r) => r.status === "Submitted" || r.status === "Accepted").length;
@@ -127,69 +131,69 @@ export default function MRAReportsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="MRA Reports"
-        description="Generate Microcredit Regulatory Authority (MRA) compliance reports"
+        title={t('mraReports.title')}
+        description={t('mraReports.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export All
+          {t('mraReports.exportAll')}
         </Button>
         <Button size="sm">
           <FileText className="h-4 w-4 mr-2" />
-          Generate Report
+          {t('mraReports.generateReport')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Reports</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('mraReports.totalReports')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatNumber(totalReports)}</p>
+            <p className="text-2xl font-bold">{formatNumber(totalReports, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Due This Month</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('mraReports.dueThisMonth')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatNumber(dueThisMonth)}</p>
+            <p className="text-2xl font-bold">{formatNumber(dueThisMonth, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Submitted</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('mraReports.submitted')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatNumber(submitted)}</p>
+            <p className="text-2xl font-bold">{formatNumber(submitted, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('mraReports.pending')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatNumber(pending)}</p>
+            <p className="text-2xl font-bold">{formatNumber(pending, locale)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>MRA Regulatory Reports</CardTitle>
+          <CardTitle>{t('mraReports.regulatoryReports')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Report Code</TableHead>
-                <TableHead>Report Name</TableHead>
-                <TableHead>Frequency</TableHead>
-                <TableHead>Period</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Submitted Date</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('mraReports.reportCode')}</TableHead>
+                <TableHead>{t('mraReports.reportName')}</TableHead>
+                <TableHead>{t('mraReports.frequency')}</TableHead>
+                <TableHead>{t('mraReports.period')}</TableHead>
+                <TableHead>{t('mraReports.dueDate')}</TableHead>
+                <TableHead>{t('mraReports.submittedDate')}</TableHead>
+                <TableHead>{t('mraReports.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -201,9 +205,9 @@ export default function MRAReportsPage() {
                     <Badge variant={getFrequencyVariant(report.frequency)}>{report.frequency}</Badge>
                   </TableCell>
                   <TableCell>{report.period}</TableCell>
-                  <TableCell>{formatDate(report.dueDate)}</TableCell>
+                  <TableCell>{formatDate(report.dueDate, locale)}</TableCell>
                   <TableCell>
-                    {report.submittedDate ? formatDate(report.submittedDate) : <span className="text-muted-foreground">—</span>}
+                    {report.submittedDate ? formatDate(report.submittedDate, locale) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(report.status)}>{report.status}</Badge>

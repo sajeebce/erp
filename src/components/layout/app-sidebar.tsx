@@ -1,6 +1,8 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Sidebar,
@@ -24,31 +26,38 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ChevronRight, Building } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronRight, Building, ChevronsUpDown, LogOut, User, Settings } from "lucide-react";
 import { navigation } from "@/data/navigation";
 import { cn } from "@/lib/utils";
 
 const navGroups = [
   {
-    label: "Core",
+    labelKey: "groups.core" as const,
     borderClass: "border-l-blue-500/40",
     dotClass: "bg-blue-500",
     urls: ["/dashboard", "/finance", "/budget"],
   },
   {
-    label: "Programs",
+    labelKey: "groups.programs" as const,
     borderClass: "border-l-emerald-500/40",
     dotClass: "bg-emerald-500",
     urls: ["/donors", "/projects", "/beneficiaries"],
   },
   {
-    label: "Operations",
+    labelKey: "groups.operations" as const,
     borderClass: "border-l-amber-500/40",
     dotClass: "bg-amber-500",
     urls: ["/procurement", "/assets", "/hr", "/microfinance"],
   },
   {
-    label: "System",
+    labelKey: "groups.system" as const,
     borderClass: "border-l-slate-400/40",
     dotClass: "bg-slate-400",
     urls: ["/reports", "/settings"],
@@ -58,8 +67,40 @@ const navGroups = [
   items: navigation.filter((n) => group.urls.includes(n.url)),
 }));
 
+interface UserInfo {
+  fullName: string;
+  email: string;
+}
+
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const t = useTranslations("navigation");
+  const [user, setUser] = useState<UserInfo | null>(null);
+
+  useEffect(() => {
+    fetch("/api/v1/auth/me")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) setUser({ fullName: json.data.fullName, email: json.data.email });
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleLogout() {
+    try {
+      await fetch("/api/v1/auth/logout", { method: "POST" });
+    } catch { /* ignore */ }
+    router.push("/login");
+    router.refresh();
+  }
+
+  const initials = user?.fullName
+    ?.split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "?";
 
   return (
     <Sidebar collapsible="icon">
@@ -72,9 +113,9 @@ export function AppSidebar() {
                   <Building className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">NGO ERP</span>
+                  <span className="truncate font-semibold">{t("appName")}</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    Management System
+                    {t("appDesc")}
                   </span>
                 </div>
               </Link>
@@ -84,7 +125,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         {navGroups.map((group, groupIndex) => (
-          <div key={group.label}>
+          <div key={group.labelKey}>
             {groupIndex > 0 && <SidebarSeparator className="mx-3" />}
             <SidebarGroup
               className={cn(
@@ -100,7 +141,7 @@ export function AppSidebar() {
                     group.dotClass
                   )}
                 />
-                {group.label}
+                {t(group.labelKey)}
               </SidebarGroupLabel>
               <SidebarMenu>
                 {group.items.map((item) => (
@@ -112,14 +153,14 @@ export function AppSidebar() {
                     <SidebarMenuItem>
                       <CollapsibleTrigger asChild>
                         <SidebarMenuButton
-                          tooltip={item.title}
+                          tooltip={t(item.title)}
                           isActive={
                             pathname === item.url ||
                             pathname.startsWith(item.url + "/")
                           }
                         >
                           {item.icon && <item.icon />}
-                          <span>{item.title}</span>
+                          <span>{t(item.title)}</span>
                           {item.items && item.items.length > 0 && (
                             <ChevronRight className="ml-auto transition-transform duration-200 ease-in-out group-data-[state=open]/collapsible:rotate-90" />
                           )}
@@ -129,13 +170,13 @@ export function AppSidebar() {
                         <CollapsibleContent>
                           <SidebarMenuSub>
                             {item.items.map((subItem) => (
-                              <SidebarMenuSubItem key={subItem.title}>
+                              <SidebarMenuSubItem key={subItem.url}>
                                 <SidebarMenuSubButton
                                   asChild
                                   isActive={pathname === subItem.url}
                                 >
                                   <Link href={subItem.url}>
-                                    <span>{subItem.title}</span>
+                                    <span>{t(subItem.title)}</span>
                                   </Link>
                                 </SidebarMenuSubButton>
                               </SidebarMenuSubItem>
@@ -154,19 +195,39 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  AD
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">Admin User</span>
-                <span className="truncate text-xs text-muted-foreground">
-                  admin@ngo-erp.org
-                </span>
-              </div>
-            </SidebarMenuButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton size="lg" className="cursor-pointer">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold">{user?.fullName || "..."}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {user?.email || ""}
+                    </span>
+                  </div>
+                  <ChevronsUpDown className="ml-auto h-4 w-4 text-muted-foreground" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="top" className="w-[--radix-dropdown-menu-trigger-width]">
+                <DropdownMenuItem onClick={() => router.push("/settings/organization")}>
+                  <User className="mr-2 h-4 w-4" />
+                  {t("userMenu.profile")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/settings")}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  {t("userMenu.settings")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  {t("userMenu.logout")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

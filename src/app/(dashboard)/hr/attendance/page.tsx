@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -166,7 +167,11 @@ function getAttendanceBadge(percent: number): "default" | "secondary" | "destruc
   return "destructive";
 }
 
-export default function AttendancePage() {
+export default async function AttendancePage() {
+  const t = await getTranslations('hr');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalEmployees = attendanceRecords.length;
   const avgAttendance =
     attendanceRecords.reduce((sum, r) => sum + r.attendancePercent, 0) / attendanceRecords.length;
@@ -176,19 +181,19 @@ export default function AttendancePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Attendance - February 2026"
-        description="Track and manage employee attendance records"
+        title={t('attendance.title')}
+        description={t('attendance.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Employees</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('attendance.totalEmployees')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalEmployees}</p>
@@ -196,15 +201,15 @@ export default function AttendancePage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Attendance</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('attendance.avgAttendance')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatPercent(avgAttendance)}</p>
+            <p className="text-2xl font-bold">{formatPercent(avgAttendance, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Late Instances</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('attendance.totalLateInstances')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalLate}</p>
@@ -212,7 +217,7 @@ export default function AttendancePage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Leave Days</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('attendance.totalLeaveDays')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalLeave}</p>
@@ -222,21 +227,21 @@ export default function AttendancePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Monthly Attendance Register</CardTitle>
+          <CardTitle>{t('attendance.monthlyAttendanceRegister')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Employee Name</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead className="text-right">Working Days</TableHead>
-                <TableHead className="text-right">Present</TableHead>
-                <TableHead className="text-right">Absent</TableHead>
-                <TableHead className="text-right">Late</TableHead>
-                <TableHead className="text-right">Leave</TableHead>
-                <TableHead className="text-right">OT Hours</TableHead>
-                <TableHead className="text-right">Attendance %</TableHead>
+                <TableHead>{t('attendance.employeeName')}</TableHead>
+                <TableHead>{t('attendance.department')}</TableHead>
+                <TableHead className="text-right">{t('attendance.workingDays')}</TableHead>
+                <TableHead className="text-right">{t('attendance.present')}</TableHead>
+                <TableHead className="text-right">{t('attendance.absent')}</TableHead>
+                <TableHead className="text-right">{t('attendance.late')}</TableHead>
+                <TableHead className="text-right">{t('attendance.leave')}</TableHead>
+                <TableHead className="text-right">{t('attendance.otHours')}</TableHead>
+                <TableHead className="text-right">{t('attendance.attendancePercent')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -252,7 +257,7 @@ export default function AttendancePage() {
                   <TableCell className="text-right font-mono">{record.otHours}</TableCell>
                   <TableCell className="text-right">
                     <Badge variant={getAttendanceBadge(record.attendancePercent)}>
-                      {formatPercent(record.attendancePercent)}
+                      {formatPercent(record.attendancePercent, locale)}
                     </Badge>
                   </TableCell>
                 </TableRow>

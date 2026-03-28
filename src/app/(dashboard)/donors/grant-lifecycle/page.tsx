@@ -1,10 +1,11 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Download, Calendar, User, ArrowRight } from "lucide-react";
-import { formatBDT, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 const lifecycleStages = [
   "Identification",
@@ -134,23 +135,27 @@ function getStageBadgeVariant(stage: LifecycleStage): "default" | "secondary" | 
   }
 }
 
-export default function GrantLifecyclePage() {
+export default async function GrantLifecyclePage() {
+  const t = await getTranslations('donors');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Grant Lifecycle Tracker"
-        description="Track grants through identification, proposal, negotiation, agreement, implementation, and closeout"
+        title={t('grantLifecycle.title')}
+        description={t('grantLifecycle.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">In Pipeline</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('grantLifecycle.inPipeline')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
@@ -160,7 +165,7 @@ export default function GrantLifecyclePage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">In Implementation</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('grantLifecycle.inImplementation')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
@@ -170,7 +175,7 @@ export default function GrantLifecyclePage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">In Closeout</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('grantLifecycle.inCloseout')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
@@ -192,7 +197,7 @@ export default function GrantLifecyclePage() {
                   <div>
                     <CardTitle className="text-base">{grant.title}</CardTitle>
                     <p className="text-xs text-muted-foreground mt-1">
-                      <span className="font-mono">{grant.id}</span> | {grant.donor} | {formatBDT(grant.amount)}
+                      <span className="font-mono">{grant.id}</span> | {grant.donor} | {formatCurrency(grant.amount, locale)}
                     </p>
                   </div>
                   <Badge variant={getStageBadgeVariant(grant.currentStage)}>
@@ -222,7 +227,7 @@ export default function GrantLifecyclePage() {
                               : "text-muted-foreground"
                           }`}
                         >
-                          {stage}
+                          {t(`grantLifecycle.stages.${stage}`)}
                         </span>
                       </div>
                       {index < lifecycleStages.length - 1 && (
@@ -235,7 +240,7 @@ export default function GrantLifecyclePage() {
                 {/* Overall Progress */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Overall Progress</span>
+                    <span className="text-muted-foreground">{t('grantLifecycle.overallProgress')}</span>
                     <span className="font-medium">{overallProgress}%</span>
                   </div>
                   <Progress value={overallProgress} />
@@ -245,7 +250,7 @@ export default function GrantLifecyclePage() {
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Calendar className="h-3.5 w-3.5" />
-                    <span>{formatDate(grant.startDate)} - {formatDate(grant.expectedEndDate)}</span>
+                    <span>{formatDate(grant.startDate, locale)} - {formatDate(grant.expectedEndDate, locale)}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <User className="h-3.5 w-3.5" />
@@ -255,9 +260,9 @@ export default function GrantLifecyclePage() {
 
                 {/* Next Action */}
                 <div className="bg-muted/50 rounded-md p-2.5">
-                  <p className="text-xs font-medium text-muted-foreground mb-0.5">Next Action</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-0.5">{t('grantLifecycle.nextAction')}</p>
                   <p className="text-sm">{grant.nextAction}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Due: {formatDate(grant.nextActionDate)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('grantLifecycle.due')}: {formatDate(grant.nextActionDate, locale)}</p>
                 </div>
               </CardContent>
             </Card>

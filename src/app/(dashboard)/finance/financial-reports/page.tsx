@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -117,16 +118,19 @@ function getCategoryColor(category: string): string {
   }
 }
 
-export default function FinancialReportsPage() {
+export default async function FinancialReportsPage() {
+  const t = await getTranslations('finance.financialReports');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Financial Reports"
-        description="Generate trial balance, income statements, and balance sheets"
+        title={t('title')}
+        description={t('description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export All
+          {t('exportAll')}
         </Button>
       </PageHeader>
 
@@ -154,11 +158,11 @@ export default function FinancialReportsPage() {
               </CardDescription>
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
-                  Last generated: {formatDate(report.lastGenerated)}
+                  {t('lastGenerated', { date: formatDate(report.lastGenerated, locale) })}
                 </p>
                 <Button size="sm" variant="outline">
                   <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
-                  Generate
+                  {t('generate')}
                 </Button>
               </div>
             </CardContent>

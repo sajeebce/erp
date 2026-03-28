@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
           id: true,
           code: true,
           name: true,
-          nameInBangla: true,
+          localizedName: true,
           type: true,
           nature: true,
           parentId: true,
@@ -102,6 +102,7 @@ export async function POST(request: NextRequest) {
       description,
       fundCode,
       projectId,
+      localizedName,
     } = body
 
     if (!code || !name || !type || !nature) {
@@ -182,6 +183,7 @@ export async function POST(request: NextRequest) {
         description: description || null,
         fundCode: fundCode || null,
         projectId: projectId || null,
+        localizedName: localizedName || null,
       },
       select: {
         id: true,
@@ -196,6 +198,7 @@ export async function POST(request: NextRequest) {
         isActive: true,
         fundCode: true,
         projectId: true,
+        localizedName: true,
         createdAt: true,
         updatedAt: true,
         parent: {

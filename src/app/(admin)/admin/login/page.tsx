@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Shield, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,6 +12,7 @@ import {
 } from '@/components/ui/card'
 
 export default function AdminLoginPage() {
+  const t = useTranslations('admin')
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -33,7 +35,7 @@ export default function AdminLoginPage() {
       const data = await res.json()
 
       if (!data.success) {
-        setError(data.error?.message || 'Login failed')
+        setError(data.error?.message || t('login.loginFailed'))
         return
       }
 
@@ -43,7 +45,7 @@ export default function AdminLoginPage() {
       router.push('/admin/dashboard')
       router.refresh()
     } catch {
-      setError('Network error. Please try again.')
+      setError(t('login.networkError'))
     } finally {
       setLoading(false)
     }
@@ -57,8 +59,8 @@ export default function AdminLoginPage() {
             <Shield className="h-6 w-6 text-primary-foreground" />
           </div>
         </div>
-        <CardTitle className="text-2xl font-bold">Super Admin</CardTitle>
-        <CardDescription>Sign in to the admin panel</CardDescription>
+        <CardTitle className="text-2xl font-bold">{t('login.title')}</CardTitle>
+        <CardDescription>{t('login.subtitle')}</CardDescription>
       </CardHeader>
 
       <form onSubmit={handleSubmit}>
@@ -70,7 +72,7 @@ export default function AdminLoginPage() {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('login.email')}</Label>
             <Input
               id="email"
               type="email"
@@ -82,7 +84,7 @@ export default function AdminLoginPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t('login.password')}</Label>
             <div className="relative">
               <Input
                 id="password"
@@ -108,7 +110,7 @@ export default function AdminLoginPage() {
         <CardFooter>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Sign In
+            {t('login.signIn')}
           </Button>
         </CardFooter>
       </form>

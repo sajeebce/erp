@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +33,7 @@ import {
   RadialBarChart,
   RadialBar,
 } from "recharts";
-import { formatBDT } from "@/lib/formatters";
+import { useFormatters } from '@/hooks/use-formatters'
 import { cn } from "@/lib/utils";
 import {
   TrendingUp,
@@ -153,11 +154,13 @@ function getStatusColor(status: string): string {
 }
 
 export default function AnalyticsPage() {
+  const t = useTranslations('dashboard');
+  const { formatCurrency } = useFormatters()
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Analytics"
-        description="Comprehensive analytics and performance insights for FY 2025-26"
+        title={t('analytics.title')}
+        description={t('analytics.description')}
       >
         <div className="flex gap-2">
           <Button variant="outline" size="sm">
@@ -166,7 +169,7 @@ export default function AnalyticsPage() {
           </Button>
           <Button variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />
-            Export Report
+            {t('analytics.exportReport')}
           </Button>
         </div>
       </PageHeader>
@@ -196,7 +199,7 @@ export default function AnalyticsPage() {
                 <span className={cn("font-medium", item.trend === "up" ? "text-emerald-500" : "text-red-500")}>
                   {item.change}
                 </span>
-                <span className="text-muted-foreground">vs last year ({item.previous})</span>
+                <span className="text-muted-foreground">{t('analytics.vsLastYear', { previous: item.previous })}</span>
               </div>
             </CardContent>
           </Card>
@@ -210,8 +213,8 @@ export default function AnalyticsPage() {
             <div className="flex items-center gap-2">
               <Wallet className="h-5 w-5 text-muted-foreground" />
               <div>
-                <CardTitle className="text-base">Fund Flow Analysis</CardTitle>
-                <CardDescription>Monthly fund received, utilized, and running balance</CardDescription>
+                <CardTitle className="text-base">{t('analytics.fundFlowTitle')}</CardTitle>
+                <CardDescription>{t('analytics.fundFlowDesc')}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -221,7 +224,7 @@ export default function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="month" className="text-xs" />
                 <YAxis tickFormatter={(v) => `${(v / 1000000).toFixed(1)}M`} className="text-xs" />
-                <Tooltip formatter={(v: number) => formatBDT(v)} />
+                <Tooltip formatter={(v: number) => formatCurrency(v)} />
                 <Legend />
                 <Bar dataKey="received" name="Received" fill="hsl(221, 83%, 53%)" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="utilized" name="Utilized" fill="hsl(160, 84%, 39%)" radius={[4, 4, 0, 0]} />
@@ -236,8 +239,8 @@ export default function AnalyticsPage() {
             <div className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-muted-foreground" />
               <div>
-                <CardTitle className="text-base">Expense Breakdown</CardTitle>
-                <CardDescription>By category (FY 2025-26 YTD)</CardDescription>
+                <CardTitle className="text-base">{t('analytics.expenseBreakdownTitle')}</CardTitle>
+                <CardDescription>{t('analytics.expenseBreakdownDesc')}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -257,7 +260,7 @@ export default function AnalyticsPage() {
                     <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v: number) => formatBDT(v)} />
+                <Tooltip formatter={(v: number) => formatCurrency(v)} />
               </PieChart>
             </ResponsiveContainer>
             <div className="space-y-2 mt-2">
@@ -281,8 +284,8 @@ export default function AnalyticsPage() {
           <div className="flex items-center gap-2">
             <Target className="h-5 w-5 text-muted-foreground" />
             <div>
-              <CardTitle className="text-base">Donor Performance Tracker</CardTitle>
-              <CardDescription>Committed vs received vs utilized by donor</CardDescription>
+              <CardTitle className="text-base">{t('analytics.donorPerformanceTitle')}</CardTitle>
+              <CardDescription>{t('analytics.donorPerformanceDesc')}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -290,21 +293,21 @@ export default function AnalyticsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Donor</TableHead>
-                <TableHead className="text-right">Committed</TableHead>
-                <TableHead className="text-right">Received</TableHead>
-                <TableHead className="text-right">Utilized</TableHead>
-                <TableHead>Receipt Rate</TableHead>
-                <TableHead>Burn Rate</TableHead>
+                <TableHead>{t('analytics.donor')}</TableHead>
+                <TableHead className="text-right">{t('analytics.committed')}</TableHead>
+                <TableHead className="text-right">{t('analytics.received')}</TableHead>
+                <TableHead className="text-right">{t('analytics.utilized')}</TableHead>
+                <TableHead>{t('analytics.receiptRate')}</TableHead>
+                <TableHead>{t('analytics.burnRate')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {donorPerformanceData.map((donor) => (
                 <TableRow key={donor.donor}>
                   <TableCell className="font-medium">{donor.donor}</TableCell>
-                  <TableCell className="text-right text-sm">{formatBDT(donor.committed)}</TableCell>
-                  <TableCell className="text-right text-sm">{formatBDT(donor.received)}</TableCell>
-                  <TableCell className="text-right text-sm">{formatBDT(donor.utilized)}</TableCell>
+                  <TableCell className="text-right text-sm">{formatCurrency(donor.committed)}</TableCell>
+                  <TableCell className="text-right text-sm">{formatCurrency(donor.received)}</TableCell>
+                  <TableCell className="text-right text-sm">{formatCurrency(donor.utilized)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Progress value={donor.receivedPct} className="h-2 w-20" />
@@ -331,18 +334,18 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Project Performance Matrix</CardTitle>
-            <CardDescription>Budget utilization, timeline, and beneficiary reach</CardDescription>
+            <CardTitle className="text-base">{t('analytics.projectPerformanceTitle')}</CardTitle>
+            <CardDescription>{t('analytics.projectPerformanceDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Budget Used</TableHead>
-                  <TableHead>Time Progress</TableHead>
-                  <TableHead>Beneficiary Reach</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t('analytics.project')}</TableHead>
+                  <TableHead>{t('analytics.budgetUsed')}</TableHead>
+                  <TableHead>{t('analytics.timeProgress')}</TableHead>
+                  <TableHead>{t('analytics.beneficiaryReach')}</TableHead>
+                  <TableHead>{t('analytics.status')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -351,7 +354,7 @@ export default function AnalyticsPage() {
                     <TableCell>
                       <div>
                         <p className="font-medium text-sm">{project.name}</p>
-                        <p className="text-xs text-muted-foreground">{formatBDT(project.spent)} / {formatBDT(project.budget)}</p>
+                        <p className="text-xs text-muted-foreground">{formatCurrency(project.spent)} / {formatCurrency(project.budget)}</p>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -377,7 +380,7 @@ export default function AnalyticsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={project.status === "on-track" ? "default" : project.status === "at-risk" ? "outline" : "destructive"}>
-                        {project.status === "on-track" ? "On Track" : project.status === "at-risk" ? "At Risk" : "Delayed"}
+                        {project.status === "on-track" ? t('analytics.onTrack') : project.status === "at-risk" ? t('analytics.atRisk') : t('analytics.delayed')}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -392,8 +395,8 @@ export default function AnalyticsPage() {
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-muted-foreground" />
               <div>
-                <CardTitle className="text-base">Staff Distribution</CardTitle>
-                <CardDescription>285 staff across departments</CardDescription>
+                <CardTitle className="text-base">{t('analytics.staffDistributionTitle')}</CardTitle>
+                <CardDescription>{t('analytics.staffDistributionDesc')}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -427,8 +430,8 @@ export default function AnalyticsPage() {
             <div className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-muted-foreground" />
               <div>
-                <CardTitle className="text-base">Geographic Distribution</CardTitle>
-                <CardDescription>Operations across Bangladesh by division</CardDescription>
+                <CardTitle className="text-base">{t('analytics.geographicTitle')}</CardTitle>
+                <CardDescription>{t('analytics.geographicDesc')}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -436,11 +439,11 @@ export default function AnalyticsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Division</TableHead>
-                  <TableHead className="text-center">Beneficiaries</TableHead>
-                  <TableHead className="text-center">Projects</TableHead>
-                  <TableHead className="text-center">Offices</TableHead>
-                  <TableHead className="text-right">Spend (BDT)</TableHead>
+                  <TableHead>{t('analytics.division')}</TableHead>
+                  <TableHead className="text-center">{t('analytics.beneficiaries')}</TableHead>
+                  <TableHead className="text-center">{t('analytics.projects')}</TableHead>
+                  <TableHead className="text-center">{t('analytics.offices')}</TableHead>
+                  <TableHead className="text-right">{t('analytics.spendBdt')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -450,7 +453,7 @@ export default function AnalyticsPage() {
                     <TableCell className="text-center text-sm">{geo.beneficiaries.toLocaleString()}</TableCell>
                     <TableCell className="text-center text-sm">{geo.projects}</TableCell>
                     <TableCell className="text-center text-sm">{geo.offices}</TableCell>
-                    <TableCell className="text-right text-sm">{formatBDT(geo.spend)}</TableCell>
+                    <TableCell className="text-right text-sm">{formatCurrency(geo.spend)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -460,19 +463,19 @@ export default function AnalyticsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Compliance & Reporting Tracker</CardTitle>
-            <CardDescription>Upcoming regulatory and donor reporting deadlines</CardDescription>
+            <CardTitle className="text-base">{t('analytics.complianceTitle')}</CardTitle>
+            <CardDescription>{t('analytics.complianceDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {complianceData.map((item) => (
               <div key={item.item} className="flex items-center justify-between p-3 rounded-lg border">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{item.item}</p>
-                  <p className="text-xs text-muted-foreground">Due: {item.deadline}</p>
+                  <p className="text-xs text-muted-foreground">{t('analytics.due', { date: item.deadline })}</p>
                 </div>
                 <div className="flex items-center gap-2 ml-2">
                   <Badge variant={item.daysLeft <= 14 ? "destructive" : item.daysLeft <= 30 ? "outline" : "secondary"}>
-                    {item.daysLeft}d left
+                    {t('analytics.daysLeft', { days: item.daysLeft })}
                   </Badge>
                 </div>
               </div>
@@ -484,8 +487,8 @@ export default function AnalyticsPage() {
       {/* Year-over-Year Full Comparison */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Year-over-Year Comparison</CardTitle>
-          <CardDescription>FY 2025-26 (current) vs FY 2024-25 (previous)</CardDescription>
+          <CardTitle className="text-base">{t('analytics.yoyTitle')}</CardTitle>
+          <CardDescription>{t('analytics.yoyDesc')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -494,7 +497,7 @@ export default function AnalyticsPage() {
                 <div>
                   <p className="text-xs text-muted-foreground">{item.metric}</p>
                   <p className="text-lg font-bold">{item.current}</p>
-                  <p className="text-xs text-muted-foreground">prev: {item.previous}</p>
+                  <p className="text-xs text-muted-foreground">{t('analytics.prev', { value: item.previous })}</p>
                 </div>
                 <Badge
                   variant={item.metric === "Overhead Ratio" ? (item.trend === "down" ? "default" : "destructive") : (item.trend === "up" ? "default" : "destructive")}

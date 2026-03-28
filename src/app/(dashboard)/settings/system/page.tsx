@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -103,16 +104,19 @@ const systemModules = [
   { name: "Mobile App Backend", enabled: false, version: "0.9.5" },
 ];
 
-export default function SystemConfigurationPage() {
+export default async function SystemConfigurationPage() {
+  const t = await getTranslations('settings');
+  const tc = await getTranslations('common');
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="System Configuration"
-        description="Manage system-wide settings, security, number sequences, and integrations"
+        title={t('system.title')}
+        description={t('system.description')}
       >
         <Button variant="outline" size="sm">
           <Settings className="h-4 w-4 mr-2" />
-          Edit Settings
+          {t('system.editSettings')}
         </Button>
       </PageHeader>
 
@@ -120,50 +124,50 @@ export default function SystemConfigurationPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">System Version</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('system.systemVersion')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Server className="h-4 w-4 text-blue-500" />
               <p className="text-2xl font-bold">v3.4.1</p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Last updated: 01 Feb 2026</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('system.lastUpdated', { date: '01 Feb 2026' })}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Modules</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('system.activeModules')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Database className="h-4 w-4 text-emerald-500" />
               <p className="text-2xl font-bold">{systemModules.filter(m => m.enabled).length}</p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">of {systemModules.length} total modules</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('system.ofTotalModules', { total: systemModules.length })}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Security Score</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('system.securityScore')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-emerald-500" />
               <p className="text-2xl font-bold">87/100</p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Enable 2FA to reach 95</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('system.enable2faToReach', { score: '95' })}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Storage Usage</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('system.storageUsage')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <HardDrive className="h-4 w-4 text-orange-500" />
               <p className="text-2xl font-bold">24.8 GB</p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">of 100 GB allocated</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('system.ofAllocated', { size: '100 GB' })}</p>
           </CardContent>
         </Card>
       </div>
@@ -175,8 +179,8 @@ export default function SystemConfigurationPage() {
             <div className="flex items-center gap-2">
               <Lock className="h-5 w-5 text-muted-foreground" />
               <div>
-                <CardTitle className="text-base">Security & Authentication</CardTitle>
-                <CardDescription>Password policy, session, and access controls</CardDescription>
+                <CardTitle className="text-base">{t('system.securityAuth')}</CardTitle>
+                <CardDescription>{t('system.securityAuthDesc')}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -198,8 +202,8 @@ export default function SystemConfigurationPage() {
             <div className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-muted-foreground" />
               <div>
-                <CardTitle className="text-base">Email / SMTP Configuration</CardTitle>
-                <CardDescription>Outbound email server settings</CardDescription>
+                <CardTitle className="text-base">{t('system.emailSmtp')}</CardTitle>
+                <CardDescription>{t('system.emailSmtpDesc')}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -214,7 +218,7 @@ export default function SystemConfigurationPage() {
               <div className="pt-2 border-t">
                 <Button variant="outline" size="sm" className="w-full">
                   <Mail className="h-4 w-4 mr-2" />
-                  Send Test Email
+                  {t('system.sendTestEmail')}
                 </Button>
               </div>
             </div>
@@ -227,8 +231,8 @@ export default function SystemConfigurationPage() {
             <div className="flex items-center gap-2">
               <Receipt className="h-5 w-5 text-muted-foreground" />
               <div>
-                <CardTitle className="text-base">Tax Configuration</CardTitle>
-                <CardDescription>VAT, TDS, AIT, and other tax rates</CardDescription>
+                <CardTitle className="text-base">{t('system.taxConfig')}</CardTitle>
+                <CardDescription>{t('system.taxConfigDesc')}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -250,8 +254,8 @@ export default function SystemConfigurationPage() {
             <div className="flex items-center gap-2">
               <Settings className="h-5 w-5 text-muted-foreground" />
               <div>
-                <CardTitle className="text-base">Default Values</CardTitle>
-                <CardDescription>System defaults for common operations</CardDescription>
+                <CardTitle className="text-base">{t('system.defaultValues')}</CardTitle>
+                <CardDescription>{t('system.defaultValuesDesc')}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -274,8 +278,8 @@ export default function SystemConfigurationPage() {
           <div className="flex items-center gap-2">
             <Hash className="h-5 w-5 text-muted-foreground" />
             <div>
-              <CardTitle className="text-base">Number Sequences</CardTitle>
-              <CardDescription>Auto-numbering format for vouchers, orders, and IDs</CardDescription>
+              <CardTitle className="text-base">{t('system.numberSequences')}</CardTitle>
+              <CardDescription>{t('system.numberSequencesDesc')}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -283,10 +287,10 @@ export default function SystemConfigurationPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Document Type</TableHead>
-                <TableHead>Format Pattern</TableHead>
-                <TableHead>Example (Next)</TableHead>
-                <TableHead className="text-center">Current #</TableHead>
+                <TableHead>{t('system.documentType')}</TableHead>
+                <TableHead>{t('system.formatPattern')}</TableHead>
+                <TableHead>{t('system.exampleNext')}</TableHead>
+                <TableHead className="text-center">{t('system.currentNumber')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -311,8 +315,8 @@ export default function SystemConfigurationPage() {
           <div className="flex items-center gap-2">
             <Key className="h-5 w-5 text-muted-foreground" />
             <div>
-              <CardTitle className="text-base">System Modules</CardTitle>
-              <CardDescription>Enable or disable ERP modules</CardDescription>
+              <CardTitle className="text-base">{t('system.systemModules')}</CardTitle>
+              <CardDescription>{t('system.systemModulesDesc')}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -320,10 +324,10 @@ export default function SystemConfigurationPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Module Name</TableHead>
-                <TableHead>Version</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Enabled</TableHead>
+                <TableHead>{t('system.moduleName')}</TableHead>
+                <TableHead>{t('system.version')}</TableHead>
+                <TableHead>{t('system.status')}</TableHead>
+                <TableHead className="text-right">{t('system.enabled')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

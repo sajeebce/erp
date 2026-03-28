@@ -4,7 +4,6 @@ model Organization {
   slug                   String   @unique
   customDomain           String?  @unique
   domainVerified         Boolean  @default(false)
-  nameInBangla           String?
   registrationNo         String?
   ngoabLicenseNo         String?
   mraLicenseNo           String?
@@ -21,6 +20,9 @@ model Organization {
   dateFormat             String   @default("DD/MM/YYYY")
   numberFormat           String   @default("BD")
   timezone               String   @default("Asia/Dhaka")
+  defaultLanguage        String   @default("en")
+  supportedLanguages     String[] @default(["en"])
+  localizedName          Json?
   isActive               Boolean  @default(true)
   storageUsedBytes       BigInt   @default(0)
   storageWarning80Sent   Boolean  @default(false)

@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { formatBDT, formatDate, formatPercent, formatNumber } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatPercent, formatNumber } from "@/lib/formatters";
 
 interface OverdueLoan {
   loanAccount: string;
@@ -198,7 +199,10 @@ function getDaysOverdueColor(days: number): string {
   return "text-destructive font-bold";
 }
 
-export default function OverduePage() {
+export default async function OverduePage() {
+  const t = await getTranslations('microfinance');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalOverdueLoans = overdueLoans.length;
   const totalOverdueAmount = overdueLoans.reduce((sum, l) => sum + l.overdueAmount, 0);
   const totalOutstanding = overdueLoans.reduce((sum, l) => sum + l.outstanding, 0);
@@ -213,70 +217,70 @@ export default function OverduePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Overdue Management"
-        description="Track and manage overdue loans and recovery"
+        title={t('overdue.title')}
+        description={t('overdue.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Overdue Loans</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('overdue.totalOverdueLoans')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatNumber(totalOverdueLoans)}</p>
+            <p className="text-2xl font-bold">{formatNumber(totalOverdueLoans, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Overdue Amount</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('overdue.totalOverdueAmount')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-destructive">{formatBDT(totalOverdueAmount)}</p>
+            <p className="text-2xl font-bold text-destructive">{formatCurrency(totalOverdueAmount, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">PAR {">"}30</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('overdue.par30')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatPercent(par30Rate)}</p>
+            <p className="text-2xl font-bold">{formatPercent(par30Rate, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Recovery Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('overdue.recoveryRate')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatPercent(recoveryRate)}</p>
+            <p className="text-2xl font-bold">{formatPercent(recoveryRate, locale)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Overdue Loan Portfolio</CardTitle>
+          <CardTitle>{t('overdue.overdueLoanPortfolio')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Loan Account</TableHead>
-                <TableHead>Borrower</TableHead>
-                <TableHead>Samity</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead className="text-right">Loan Amount</TableHead>
-                <TableHead className="text-right">Outstanding</TableHead>
-                <TableHead className="text-right">Overdue Amount</TableHead>
-                <TableHead className="text-right">Days Overdue</TableHead>
-                <TableHead>Last Payment</TableHead>
-                <TableHead>Classification</TableHead>
-                <TableHead>Recovery Action</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('overdue.loanAccount')}</TableHead>
+                <TableHead>{t('overdue.borrower')}</TableHead>
+                <TableHead>{t('overdue.samity')}</TableHead>
+                <TableHead>{t('overdue.product')}</TableHead>
+                <TableHead className="text-right">{t('overdue.loanAmount')}</TableHead>
+                <TableHead className="text-right">{t('overdue.outstanding')}</TableHead>
+                <TableHead className="text-right">{t('overdue.overdueAmount')}</TableHead>
+                <TableHead className="text-right">{t('overdue.daysOverdue')}</TableHead>
+                <TableHead>{t('overdue.lastPayment')}</TableHead>
+                <TableHead>{t('overdue.classification')}</TableHead>
+                <TableHead>{t('overdue.recoveryAction')}</TableHead>
+                <TableHead>{t('overdue.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -286,13 +290,13 @@ export default function OverduePage() {
                   <TableCell className="font-medium">{loan.borrower}</TableCell>
                   <TableCell>{loan.samity}</TableCell>
                   <TableCell>{loan.product}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(loan.loanAmount)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(loan.outstanding)}</TableCell>
-                  <TableCell className="text-right font-mono text-destructive">{formatBDT(loan.overdueAmount)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(loan.loanAmount, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(loan.outstanding, locale)}</TableCell>
+                  <TableCell className="text-right font-mono text-destructive">{formatCurrency(loan.overdueAmount, locale)}</TableCell>
                   <TableCell className={`text-right ${getDaysOverdueColor(loan.daysOverdue)}`}>
                     {loan.daysOverdue}
                   </TableCell>
-                  <TableCell>{formatDate(loan.lastPaymentDate)}</TableCell>
+                  <TableCell>{formatDate(loan.lastPaymentDate, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getClassificationVariant(loan.classification)}>{loan.classification}</Badge>
                   </TableCell>

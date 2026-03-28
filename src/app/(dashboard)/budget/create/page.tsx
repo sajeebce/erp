@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Save, Download, Users, Target, Settings, BarChart3 } from "lucide-react";
-import { formatBDT, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatPercent } from "@/lib/formatters";
 
 interface BudgetLineItem {
   id: string;
@@ -174,7 +175,10 @@ function getCategoryVariant(category: string): "default" | "secondary" | "outlin
   }
 }
 
-export default function BudgetCreatePage() {
+export default async function BudgetCreatePage() {
+  const t = await getTranslations('budget.create');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalBudget = budgetLineItems.reduce((sum, item) => sum + item.total, 0);
   const personnelCost = budgetLineItems
     .filter((item) => item.category === "Personnel")
@@ -193,61 +197,61 @@ export default function BudgetCreatePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Create Budget"
-        description="WASH Program - Sylhet Division (FY 2026-2027)"
+        title={t('title')}
+        description={t('description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Save className="h-4 w-4 mr-2" />
-          Save Draft
+          {t('saveDraft')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Budget</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('totalBudget')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatBDT(totalBudget)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalBudget, locale)}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Personnel Cost</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('personnelCost')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatPercent(personnelPercent)}</p>
+              <p className="text-2xl font-bold">{formatPercent(personnelPercent, locale)}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Direct Program Cost</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('directProgramCost')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatPercent(directProgramPercent)}</p>
+              <p className="text-2xl font-bold">{formatPercent(directProgramPercent, locale)}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Admin Ratio</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('adminRatio')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Settings className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatPercent(adminRatio)}</p>
+              <p className="text-2xl font-bold">{formatPercent(adminRatio, locale)}</p>
             </div>
           </CardContent>
         </Card>
@@ -255,20 +259,20 @@ export default function BudgetCreatePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Budget Line Items</CardTitle>
+          <CardTitle>{t('budgetLineItems')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Category</TableHead>
-                <TableHead>Budget Head</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="w-[90px]">Unit</TableHead>
-                <TableHead className="text-right w-[60px]">Qty</TableHead>
-                <TableHead className="text-right">Unit Cost</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead>Notes</TableHead>
+                <TableHead>{t('category')}</TableHead>
+                <TableHead>{t('budgetHead')}</TableHead>
+                <TableHead>{t('itemDescription')}</TableHead>
+                <TableHead className="w-[90px]">{t('unit')}</TableHead>
+                <TableHead className="text-right w-[60px]">{t('qty')}</TableHead>
+                <TableHead className="text-right">{t('unitCost')}</TableHead>
+                <TableHead className="text-right">{t('total')}</TableHead>
+                <TableHead>{t('notes')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -282,20 +286,20 @@ export default function BudgetCreatePage() {
                   <TableCell className="text-sm">{item.unit}</TableCell>
                   <TableCell className="text-right font-mono text-sm">{item.quantity}</TableCell>
                   <TableCell className="text-right font-mono text-sm">
-                    {formatBDT(item.unitCost)}
+                    {formatCurrency(item.unitCost, locale)}
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm">
-                    {formatBDT(item.total)}
+                    {formatCurrency(item.total, locale)}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{item.notes}</TableCell>
                 </TableRow>
               ))}
               <TableRow className="bg-muted/50 font-semibold">
                 <TableCell colSpan={6} className="text-right font-semibold">
-                  Total Budget
+                  {t('totalBudget')}
                 </TableCell>
                 <TableCell className="text-right font-mono font-semibold">
-                  {formatBDT(totalBudget)}
+                  {formatCurrency(totalBudget, locale)}
                 </TableCell>
                 <TableCell />
               </TableRow>

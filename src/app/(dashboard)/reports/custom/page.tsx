@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -72,26 +73,29 @@ function getScheduleVariant(schedule: string): "default" | "secondary" | "outlin
   }
 }
 
-export default function CustomReportsPage() {
+export default async function CustomReportsPage() {
+  const t = await getTranslations('reports');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalSaved = savedReports.length;
   const scheduledReports = savedReports.filter((r) => r.schedule !== "None").length;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Custom Reports"
-        description="Build custom reports with flexible filters and export options"
+        title={t('custom.title')}
+        description={t('custom.description')}
       >
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Create New Report
+          {t('custom.createNewReport')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Saved Reports</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('custom.savedReports')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -102,7 +106,7 @@ export default function CustomReportsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Scheduled Reports</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('custom.scheduledReports')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -113,7 +117,7 @@ export default function CustomReportsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Last Generated</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('custom.lastGenerated')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -129,16 +133,16 @@ export default function CustomReportsPage() {
           <Card key={report.name}>
             <CardHeader>
               <CardTitle className="text-base">{report.name}</CardTitle>
-              <CardDescription>Created by {report.createdBy}</CardDescription>
+              <CardDescription>{t('custom.createdBy', { name: report.createdBy })}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center gap-2 text-sm">
                 <Database className="h-3 w-3 text-muted-foreground" />
-                <span className="text-muted-foreground">Source:</span>
+                <span className="text-muted-foreground">{t('custom.source')}:</span>
                 <Badge variant="outline">{report.dataSource}</Badge>
               </div>
               <div className="text-sm">
-                <span className="text-muted-foreground">Columns:</span>
+                <span className="text-muted-foreground">{t('custom.columns')}:</span>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {report.columns.slice(0, 4).map((col) => (
                     <Badge key={col} variant="secondary" className="text-xs">
@@ -147,13 +151,13 @@ export default function CustomReportsPage() {
                   ))}
                   {report.columns.length > 4 && (
                     <Badge variant="secondary" className="text-xs">
-                      +{report.columns.length - 4} more
+                      {t('custom.more', { count: report.columns.length - 4 })}
                     </Badge>
                   )}
                 </div>
               </div>
               <div className="text-sm">
-                <span className="text-muted-foreground">Filters:</span>
+                <span className="text-muted-foreground">{t('custom.filters')}:</span>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {report.filters.map((filter) => (
                     <Badge key={filter} variant="outline" className="text-xs">
@@ -165,20 +169,20 @@ export default function CustomReportsPage() {
               <div className="flex items-center justify-between text-sm pt-2 border-t">
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <Clock className="h-3 w-3" />
-                  Last run: {formatDate(report.lastRun)}
+                  {t('custom.lastRun', { date: formatDate(report.lastRun, locale) })}
                 </div>
                 <Badge variant={getScheduleVariant(report.schedule)}>
-                  {report.schedule === "None" ? "Manual" : report.schedule}
+                  {report.schedule === "None" ? t('custom.manual') : report.schedule}
                 </Badge>
               </div>
               <div className="flex gap-2 pt-1">
                 <Button variant="outline" size="sm" className="flex-1">
                   <Settings className="h-3 w-3 mr-1" />
-                  Edit
+                  {t('custom.edit')}
                 </Button>
                 <Button size="sm" className="flex-1">
                   <Play className="h-3 w-3 mr-1" />
-                  Run
+                  {t('custom.run')}
                 </Button>
               </div>
             </CardContent>
@@ -191,14 +195,14 @@ export default function CustomReportsPage() {
               <Plus className="h-6 w-6 text-muted-foreground" />
             </div>
             <div className="text-center">
-              <p className="font-medium">Create New Report</p>
+              <p className="font-medium">{t('custom.createNewReport')}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Build a custom report with drag-and-drop columns and filters
+                {t('custom.createNewReportDesc')}
               </p>
             </div>
             <Button variant="outline" size="sm">
               <Plus className="h-4 w-4 mr-2" />
-              Get Started
+              {t('custom.getStarted')}
             </Button>
           </CardContent>
         </Card>

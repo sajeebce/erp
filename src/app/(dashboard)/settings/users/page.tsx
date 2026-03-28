@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -144,7 +145,10 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" |
   }
 }
 
-export default function UsersPage() {
+export default async function UsersPage() {
+  const t = await getTranslations('settings');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalUsers = users.length;
   const activeUsers = users.filter((u) => u.status === "Active").length;
   const inactiveUsers = users.filter((u) => u.status === "Inactive").length;
@@ -153,19 +157,19 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="User Management"
-        description="Manage user accounts and access control"
+        title={t('users.title')}
+        description={t('users.description')}
       >
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Add User
+          {t('users.addUser')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Users</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('users.totalUsers')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -176,7 +180,7 @@ export default function UsersPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('users.active')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -187,7 +191,7 @@ export default function UsersPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Inactive</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('users.inactive')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -198,7 +202,7 @@ export default function UsersPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Activation</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('users.pendingActivation')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -211,19 +215,19 @@ export default function UsersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>User Accounts</CardTitle>
+          <CardTitle>{t('users.userAccounts')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[90px]">User ID</TableHead>
-                <TableHead>Full Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Last Login</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[90px]">{t('users.userId')}</TableHead>
+                <TableHead>{t('users.fullName')}</TableHead>
+                <TableHead>{t('users.email')}</TableHead>
+                <TableHead>{t('users.role')}</TableHead>
+                <TableHead>{t('users.department')}</TableHead>
+                <TableHead>{t('users.lastLogin')}</TableHead>
+                <TableHead>{t('users.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -237,7 +241,7 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell className="text-sm">{user.department}</TableCell>
                   <TableCell className="text-sm">
-                    {user.lastLogin === "-" ? "-" : formatDate(user.lastLogin)}
+                    {user.lastLogin === "-" ? "-" : formatDate(user.lastLogin, locale)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(user.status)}>{user.status}</Badge>

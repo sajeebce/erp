@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       id: org.id,
       name: org.name,
       slug: org.slug,
-      nameInBangla: org.nameInBangla,
+      localizedName: org.localizedName,
       isActive: org.isActive,
       storageUsedBytes: org.storageUsedBytes.toString(),
       bandwidthUsedBytes: org.bandwidthUsedBytes.toString(),

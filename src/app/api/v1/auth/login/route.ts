@@ -147,6 +147,13 @@ export async function POST(request: NextRequest) {
       maxAge: 7 * 24 * 60 * 60, // 7 days
     })
 
+    // Set locale cookie based on user preference or org default
+    const locale = user.preferredLanguage || organization.defaultLanguage || 'en'
+    response.cookies.set('NEXT_LOCALE', locale, {
+      path: '/',
+      maxAge: 365 * 24 * 60 * 60, // 1 year
+    })
+
     return response
   } catch (error) {
     return handleRouteError(error)

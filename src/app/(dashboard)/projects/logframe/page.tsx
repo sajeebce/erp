@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -113,7 +114,10 @@ function getLevelRowClass(level: string): string {
   }
 }
 
-export default function LogframePage() {
+export default async function LogframePage() {
+  const t = await getTranslations('projects');
+  const tc = await getTranslations('common');
+
   const goalCount = logframeData.filter((r) => r.level === "Goal").length;
   const purposeCount = logframeData.filter((r) => r.level === "Purpose").length;
   const outputCount = logframeData.filter((r) => r.level === "Output").length;
@@ -122,12 +126,12 @@ export default function LogframePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Logical Framework"
-        description="Manage project logframes with goals, outcomes, outputs, and indicators"
+        title={t('logFrame.title')}
+        description={t('logFrame.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
       </PageHeader>
 
@@ -141,10 +145,10 @@ export default function LogframePage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant="outline">{goalCount} Goal</Badge>
-              <Badge variant="outline">{purposeCount} Purpose</Badge>
-              <Badge variant="secondary">{outputCount} Outputs</Badge>
-              <Badge variant="secondary">{activityCount} Activities</Badge>
+              <Badge variant="outline">{goalCount} {t('logFrame.goal')}</Badge>
+              <Badge variant="outline">{purposeCount} {t('logFrame.purpose')}</Badge>
+              <Badge variant="secondary">{outputCount} {t('logFrame.outputs')}</Badge>
+              <Badge variant="secondary">{activityCount} {t('logFrame.activities')}</Badge>
             </div>
           </div>
         </CardHeader>
@@ -155,11 +159,11 @@ export default function LogframePage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">Level</TableHead>
-                <TableHead className="w-[22%]">Narrative Summary</TableHead>
-                <TableHead className="w-[24%]">Objectively Verifiable Indicators (OVI)</TableHead>
-                <TableHead className="w-[24%]">Means of Verification (MOV)</TableHead>
-                <TableHead className="w-[22%]">Assumptions</TableHead>
+                <TableHead className="w-[100px]">{t('logFrame.level')}</TableHead>
+                <TableHead className="w-[22%]">{t('logFrame.narrativeSummary')}</TableHead>
+                <TableHead className="w-[24%]">{t('logFrame.ovi')}</TableHead>
+                <TableHead className="w-[24%]">{t('logFrame.mov')}</TableHead>
+                <TableHead className="w-[22%]">{t('logFrame.assumptions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

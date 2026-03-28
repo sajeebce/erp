@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Download, Settings, FolderTree, BarChart3, Percent } from "lucide-react";
-import { formatBDT, formatPercent, formatNumber } from "@/lib/formatters";
+import { formatCurrency, formatPercent, formatNumber } from "@/lib/formatters";
 
 interface ProjectAllocation {
   projectName: string;
@@ -140,7 +141,10 @@ function getMethodVariant(method: string): "default" | "secondary" | "outline" |
   }
 }
 
-export default function CostAllocationPage() {
+export default async function CostAllocationPage() {
+  const t = await getTranslations('budget.costAllocation');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalSharedCosts = costAllocations.reduce((sum, item) => sum + item.totalAmount, 0);
   const projectsCovered = projects.length;
 
@@ -161,34 +165,34 @@ export default function CostAllocationPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Cost Allocation"
-        description="Allocate shared costs across projects and donors"
+        title={t('title')}
+        description={t('description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Settings className="h-4 w-4 mr-2" />
-          Allocation Rules
+          {t('allocationRules')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Shared Costs</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('totalSharedCosts')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatBDT(totalSharedCosts)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalSharedCosts, locale)}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Projects Covered</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('projectsCovered')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -199,7 +203,7 @@ export default function CostAllocationPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Cost Items</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('costItems')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{costAllocations.length}</p>
@@ -207,12 +211,12 @@ export default function CostAllocationPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Allocation per Project</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('avgAllocation')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Percent className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatBDT(Math.round(totalSharedCosts / projectsCovered))}</p>
+              <p className="text-2xl font-bold">{formatCurrency(Math.round(totalSharedCosts / projectsCovered), locale)}</p>
             </div>
           </CardContent>
         </Card>
@@ -220,21 +224,21 @@ export default function CostAllocationPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Cost Allocation Matrix</CardTitle>
+          <CardTitle>{t('matrix')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[220px]">Cost Item</TableHead>
-                  <TableHead className="text-right min-w-[120px]">Total Amount</TableHead>
+                  <TableHead className="min-w-[220px]">{t('costItem')}</TableHead>
+                  <TableHead className="text-right min-w-[120px]">{t('totalAmount')}</TableHead>
                   {projects.map((project) => (
                     <TableHead key={project} className="text-center min-w-[140px]">
                       {project}
                     </TableHead>
                   ))}
-                  <TableHead className="min-w-[110px]">Method</TableHead>
+                  <TableHead className="min-w-[110px]">{t('method')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -242,7 +246,7 @@ export default function CostAllocationPage() {
                   <TableRow key={item.id}>
                     <TableCell className="text-sm font-medium">{item.costItem}</TableCell>
                     <TableCell className="text-right font-mono text-sm">
-                      {formatBDT(item.totalAmount)}
+                      {formatCurrency(item.totalAmount, locale)}
                     </TableCell>
                     {projects.map((projectName) => {
                       const allocation = item.allocations.find(
@@ -252,10 +256,10 @@ export default function CostAllocationPage() {
                         <TableCell key={projectName} className="text-center">
                           <div className="space-y-0.5">
                             <p className="font-mono text-sm">
-                              {allocation ? formatBDT(allocation.amount) : "-"}
+                              {allocation ? formatCurrency(allocation.amount, locale) : "-"}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {allocation ? formatPercent(allocation.percent) : "-"}
+                              {allocation ? formatPercent(allocation.percent, locale) : "-"}
                             </p>
                           </div>
                         </TableCell>
@@ -269,16 +273,16 @@ export default function CostAllocationPage() {
                   </TableRow>
                 ))}
                 <TableRow className="bg-muted/50 font-semibold">
-                  <TableCell className="font-semibold">Total per Project</TableCell>
+                  <TableCell className="font-semibold">{t('totalPerProject')}</TableCell>
                   <TableCell className="text-right font-mono font-semibold">
-                    {formatBDT(totalSharedCosts)}
+                    {formatCurrency(totalSharedCosts, locale)}
                   </TableCell>
                   {projectTotals.map((pt) => (
                     <TableCell key={pt.projectName} className="text-center">
                       <div className="space-y-0.5">
-                        <p className="font-mono font-semibold">{formatBDT(pt.total)}</p>
+                        <p className="font-mono font-semibold">{formatCurrency(pt.total, locale)}</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatPercent((pt.total / totalSharedCosts) * 100)}
+                          {formatPercent((pt.total / totalSharedCosts) * 100, locale)}
                         </p>
                       </div>
                     </TableCell>

@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -82,25 +83,28 @@ function getFormatVariant(format: string): "default" | "secondary" | "outline" {
   }
 }
 
-export default function ProcurementReportsPage() {
+export default async function ProcurementReportsPage() {
+  const t = await getTranslations('reports');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalReports = reports.length;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Procurement Reports"
-        description="Generate purchase orders, vendor analysis, and inventory reports"
+        title={t('procurement.title')}
+        description={t('procurement.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export All
+          {t('procurement.exportAll')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Available Reports</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('procurement.availableReports')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -111,7 +115,7 @@ export default function ProcurementReportsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Categories</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('procurement.categories')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -126,18 +130,18 @@ export default function ProcurementReportsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Procurement Reports</CardTitle>
+          <CardTitle>{t('procurement.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Report Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Period</TableHead>
-                <TableHead>Last Generated</TableHead>
-                <TableHead>Format</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t('procurement.reportName')}</TableHead>
+                <TableHead>{t('procurement.category')}</TableHead>
+                <TableHead>{t('procurement.period')}</TableHead>
+                <TableHead>{t('procurement.lastGenerated')}</TableHead>
+                <TableHead>{t('procurement.format')}</TableHead>
+                <TableHead className="text-right">{t('procurement.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -148,7 +152,7 @@ export default function ProcurementReportsPage() {
                     <Badge variant="outline">{report.category}</Badge>
                   </TableCell>
                   <TableCell className="text-sm">{report.period}</TableCell>
-                  <TableCell className="text-sm">{formatDate(report.lastGenerated)}</TableCell>
+                  <TableCell className="text-sm">{formatDate(report.lastGenerated, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getFormatVariant(report.format)}>{report.format}</Badge>
                   </TableCell>
@@ -156,7 +160,7 @@ export default function ProcurementReportsPage() {
                     <div className="flex items-center justify-end gap-1">
                       <Button variant="ghost" size="sm">
                         <Play className="h-3 w-3 mr-1" />
-                        Generate
+                        {t('procurement.generate')}
                       </Button>
                       <Button variant="ghost" size="sm">
                         <FileText className="h-3 w-3" />

@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -141,7 +142,10 @@ function getTypeVariant(type: string): "default" | "secondary" | "outline" | "de
   }
 }
 
-export default function ProjectReportsPage() {
+export default async function ProjectReportsPage() {
+  const t = await getTranslations('reports');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalReports = reports.length;
   const completed = reports.filter((r) => r.status === "Completed").length;
   const inDraft = reports.filter((r) => r.status === "In Draft").length;
@@ -150,19 +154,19 @@ export default function ProjectReportsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Project Reports"
-        description="Generate project progress, budget vs actual, and outcome reports"
+        title={t('project.title')}
+        description={t('project.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Reports</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('project.totalReports')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -173,7 +177,7 @@ export default function ProjectReportsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Completed</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('project.completed')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -184,7 +188,7 @@ export default function ProjectReportsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">In Draft</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('project.inDraft')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -195,7 +199,7 @@ export default function ProjectReportsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Due This Month</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('project.dueThisMonth')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -208,18 +212,18 @@ export default function ProjectReportsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Project Report Register</CardTitle>
+          <CardTitle>{t('project.register')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Report Name</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Period</TableHead>
-                <TableHead>Author</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('project.reportName')}</TableHead>
+                <TableHead>{t('project.project')}</TableHead>
+                <TableHead>{t('project.type')}</TableHead>
+                <TableHead>{t('project.period')}</TableHead>
+                <TableHead>{t('project.author')}</TableHead>
+                <TableHead>{t('project.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatDate, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatPercent } from "@/lib/formatters";
 
 interface AssetDisposal {
   disposalId: string;
@@ -120,7 +121,11 @@ function getMethodVariant(method: string): "default" | "secondary" | "outline" |
   }
 }
 
-export default function AssetDisposalPage() {
+export default async function AssetDisposalPage() {
+  const t = await getTranslations('assets');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalDisposals = disposals.length;
   const totalBookValue = disposals.reduce((sum, d) => sum + d.bookValueAtDisposal, 0);
   const totalRecovery = disposals.reduce((sum, d) => sum + d.recoveryAmount, 0);
@@ -130,23 +135,23 @@ export default function AssetDisposalPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Asset Disposal"
-        description="Manage asset disposal and write-off processes"
+        title={t('disposal.title')}
+        description={t('disposal.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New Disposal
+          {t('disposal.newDisposal')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Disposals</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('disposal.totalDisposals')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalDisposals}</p>
@@ -154,48 +159,48 @@ export default function AssetDisposalPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Book Value</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('disposal.totalBookValue')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalBookValue)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalBookValue, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Recovery</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('disposal.totalRecovery')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalRecovery)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalRecovery, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Recovery Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('disposal.recoveryRate')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatPercent(recoveryRate)}</p>
+            <p className="text-2xl font-bold">{formatPercent(recoveryRate, locale)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Disposal Register</CardTitle>
+          <CardTitle>{t('disposal.disposalRegister')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Disposal ID</TableHead>
-                <TableHead>Asset</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-right">Original Value</TableHead>
-                <TableHead className="text-right">Book Value</TableHead>
-                <TableHead>Disposal Method</TableHead>
-                <TableHead className="text-right">Recovery Amount</TableHead>
-                <TableHead>Disposal Date</TableHead>
-                <TableHead>Approved By</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('disposal.disposalId')}</TableHead>
+                <TableHead>{t('disposal.asset')}</TableHead>
+                <TableHead>{t('disposal.category')}</TableHead>
+                <TableHead className="text-right">{t('disposal.originalValue')}</TableHead>
+                <TableHead className="text-right">{t('disposal.bookValue')}</TableHead>
+                <TableHead>{t('disposal.disposalMethod')}</TableHead>
+                <TableHead className="text-right">{t('disposal.recoveryAmount')}</TableHead>
+                <TableHead>{t('disposal.disposalDate')}</TableHead>
+                <TableHead>{t('disposal.approvedBy')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -204,13 +209,13 @@ export default function AssetDisposalPage() {
                   <TableCell className="font-mono text-sm">{disposal.disposalId}</TableCell>
                   <TableCell className="font-medium">{disposal.asset}</TableCell>
                   <TableCell>{disposal.category}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(disposal.originalValue)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(disposal.bookValueAtDisposal)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(disposal.originalValue, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(disposal.bookValueAtDisposal, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getMethodVariant(disposal.disposalMethod)}>{disposal.disposalMethod}</Badge>
                   </TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(disposal.recoveryAmount)}</TableCell>
-                  <TableCell>{formatDate(disposal.disposalDate)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(disposal.recoveryAmount, locale)}</TableCell>
+                  <TableCell>{formatDate(disposal.disposalDate, locale)}</TableCell>
                   <TableCell>{disposal.approvedBy || <span className="text-muted-foreground">--</span>}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(disposal.status)}>{disposal.status}</Badge>

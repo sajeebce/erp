@@ -43,7 +43,7 @@ model Employee {
   employeeNo        String
   userId            String?        @unique @db.Uuid // Links to User for system access
   fullName          String
-  nameInBangla      String?
+  localizedName     Json?
   fatherName        String?
   motherName        String?
   dateOfBirth       DateTime?

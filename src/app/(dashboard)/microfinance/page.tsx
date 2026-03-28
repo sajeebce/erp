@@ -1,3 +1,4 @@
+import { getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatPercent, formatNumber } from "@/lib/formatters";
+import { formatCurrency, formatPercent, formatNumber } from "@/lib/formatters";
 
 interface Samity {
   samityId: string;
@@ -124,7 +125,8 @@ function getCollectionRateColor(rate: number): string {
   return "text-destructive";
 }
 
-export default function MicrofinancePage() {
+export default async function MicrofinancePage() {
+  const locale = await getLocale();
   const totalMembers = samities.reduce((sum, s) => sum + s.members, 0);
   const totalActiveLoans = samities.reduce((sum, s) => sum + s.activeLoans, 0);
   const totalOutstanding = samities.reduce((sum, s) => sum + s.totalOutstanding, 0);
@@ -152,7 +154,7 @@ export default function MicrofinancePage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Members</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatNumber(totalMembers)}</p>
+            <p className="text-2xl font-bold">{formatNumber(totalMembers, locale)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -160,7 +162,7 @@ export default function MicrofinancePage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Active Loans</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatNumber(totalActiveLoans)}</p>
+            <p className="text-2xl font-bold">{formatNumber(totalActiveLoans, locale)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -168,7 +170,7 @@ export default function MicrofinancePage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Outstanding</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalOutstanding)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalOutstanding, locale)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -176,7 +178,7 @@ export default function MicrofinancePage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Avg Collection Rate</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatPercent(avgCollectionRate)}</p>
+            <p className="text-2xl font-bold">{formatPercent(avgCollectionRate, locale)}</p>
           </CardContent>
         </Card>
       </div>
@@ -207,12 +209,12 @@ export default function MicrofinancePage() {
                   <TableCell>{samity.branch}</TableCell>
                   <TableCell className="text-right">{samity.members}</TableCell>
                   <TableCell className="text-right">{samity.activeLoans}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(samity.totalOutstanding)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(samity.totalOutstanding, locale)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Progress value={samity.collectionRate} className="flex-1" />
                       <span className={`text-sm font-medium w-14 text-right ${getCollectionRateColor(samity.collectionRate)}`}>
-                        {formatPercent(samity.collectionRate)}
+                        {formatPercent(samity.collectionRate, locale)}
                       </span>
                     </div>
                   </TableCell>

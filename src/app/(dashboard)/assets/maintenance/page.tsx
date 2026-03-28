@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 interface MaintenanceEntry {
   maintenanceId: string;
@@ -135,7 +136,11 @@ function getTypeVariant(type: string): "default" | "secondary" | "destructive" {
   }
 }
 
-export default function AssetMaintenancePage() {
+export default async function AssetMaintenancePage() {
+  const t = await getTranslations('assets');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalMaintenance = maintenanceLogs.length;
   const scheduled = maintenanceLogs.filter((m) => m.status === "Scheduled" || m.status === "In Progress").length;
   const completed = maintenanceLogs.filter((m) => m.status === "Completed").length;
@@ -144,23 +149,23 @@ export default function AssetMaintenancePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Asset Maintenance"
-        description="Schedule and track asset maintenance activities"
+        title={t('maintenance.title')}
+        description={t('maintenance.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Schedule Maintenance
+          {t('maintenance.scheduleMaintenance')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Maintenance</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('maintenance.totalMaintenance')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalMaintenance}</p>
@@ -168,7 +173,7 @@ export default function AssetMaintenancePage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Scheduled / In Progress</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('maintenance.scheduledInProgress')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{scheduled}</p>
@@ -176,7 +181,7 @@ export default function AssetMaintenancePage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Completed</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('maintenance.completed')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{completed}</p>
@@ -184,31 +189,31 @@ export default function AssetMaintenancePage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Cost</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('maintenance.totalCost')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalCost)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalCost, locale)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Maintenance Log</CardTitle>
+          <CardTitle>{t('maintenance.maintenanceLog')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Maintenance ID</TableHead>
-                <TableHead>Asset</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Scheduled Date</TableHead>
-                <TableHead>Completion Date</TableHead>
-                <TableHead className="text-right">Cost</TableHead>
-                <TableHead>Vendor / Technician</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('maintenance.maintenanceId')}</TableHead>
+                <TableHead>{t('maintenance.asset')}</TableHead>
+                <TableHead>{t('maintenance.type')}</TableHead>
+                <TableHead>{t('maintenance.description2')}</TableHead>
+                <TableHead>{t('maintenance.scheduledDate')}</TableHead>
+                <TableHead>{t('maintenance.completionDate')}</TableHead>
+                <TableHead className="text-right">{t('maintenance.cost')}</TableHead>
+                <TableHead>{t('maintenance.vendorTechnician')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -220,9 +225,9 @@ export default function AssetMaintenancePage() {
                     <Badge variant={getTypeVariant(entry.type)}>{entry.type}</Badge>
                   </TableCell>
                   <TableCell className="max-w-[250px] truncate">{entry.description}</TableCell>
-                  <TableCell>{formatDate(entry.scheduledDate)}</TableCell>
-                  <TableCell>{entry.completionDate ? formatDate(entry.completionDate) : <span className="text-muted-foreground">--</span>}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(entry.cost)}</TableCell>
+                  <TableCell>{formatDate(entry.scheduledDate, locale)}</TableCell>
+                  <TableCell>{entry.completionDate ? formatDate(entry.completionDate, locale) : <span className="text-muted-foreground">--</span>}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(entry.cost, locale)}</TableCell>
                   <TableCell>{entry.vendor}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(entry.status)}>{entry.status}</Badge>

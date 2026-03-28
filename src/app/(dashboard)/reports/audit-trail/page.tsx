@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -224,7 +225,9 @@ function getStatusVariant(status: string): "default" | "destructive" {
   return status === "Success" ? "default" : "destructive";
 }
 
-export default function AuditTrailPage() {
+export default async function AuditTrailPage() {
+  const t = await getTranslations('reports');
+  const tc = await getTranslations('common');
   const todayLogs = auditLogs.filter((l) => l.timestamp.startsWith("2026-02-02"));
   const totalActionsToday = todayLogs.length;
   const activeUsers = new Set(auditLogs.filter((l) => l.user !== "Unknown").map((l) => l.user)).size;
@@ -238,19 +241,19 @@ export default function AuditTrailPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Audit Trail"
-        description="Track system activities, data changes, and user actions"
+        title={t('auditTrail.title')}
+        description={t('auditTrail.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export Logs
+          {t('auditTrail.exportLogs')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Actions Today</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('auditTrail.totalActionsToday')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -261,7 +264,7 @@ export default function AuditTrailPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Users Active</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('auditTrail.usersActive')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -272,7 +275,7 @@ export default function AuditTrailPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Failed Attempts</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('auditTrail.failedAttempts')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -283,7 +286,7 @@ export default function AuditTrailPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Most Active Module</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('auditTrail.mostActiveModule')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -296,20 +299,20 @@ export default function AuditTrailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Activity Log</CardTitle>
+          <CardTitle>{t('auditTrail.activityLog')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Timestamp</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Module</TableHead>
-                <TableHead>Record ID</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>IP Address</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('auditTrail.timestamp')}</TableHead>
+                <TableHead>{t('auditTrail.user')}</TableHead>
+                <TableHead>{t('auditTrail.action')}</TableHead>
+                <TableHead>{t('auditTrail.module')}</TableHead>
+                <TableHead>{t('auditTrail.recordId')}</TableHead>
+                <TableHead>{t('auditTrail.details')}</TableHead>
+                <TableHead>{t('auditTrail.ipAddress')}</TableHead>
+                <TableHead>{t('auditTrail.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

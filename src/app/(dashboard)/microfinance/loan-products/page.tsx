@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatPercent, formatNumber } from "@/lib/formatters";
+import { formatCurrency, formatPercent, formatNumber } from "@/lib/formatters";
 
 interface LoanProduct {
   productCode: string;
@@ -136,7 +137,10 @@ function getCategoryColor(category: string): "default" | "secondary" | "outline"
   }
 }
 
-export default function LoanProductsPage() {
+export default async function LoanProductsPage() {
+  const t = await getTranslations('microfinance');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalProducts = loanProducts.length;
   const totalActiveLoans = loanProducts.reduce((sum, p) => sum + p.activeLoans, 0);
   const totalPortfolio = loanProducts.reduce((sum, p) => sum + p.activeLoans * ((p.minAmount + p.maxAmount) / 2), 0);
@@ -145,74 +149,74 @@ export default function LoanProductsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Loan Products"
-        description="Configure and manage microfinance loan products"
+        title={t('loanProducts.title')}
+        description={t('loanProducts.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New Product
+          {t('loanProducts.newProduct')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Products</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('loanProducts.totalProducts')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatNumber(totalProducts)}</p>
+            <p className="text-2xl font-bold">{formatNumber(totalProducts, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Loans</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('loanProducts.activeLoans')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatNumber(totalActiveLoans)}</p>
+            <p className="text-2xl font-bold">{formatNumber(totalActiveLoans, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Portfolio</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('loanProducts.totalPortfolio')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalPortfolio)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalPortfolio, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Interest Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('loanProducts.avgInterestRate')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatPercent(avgInterestRate)}</p>
+            <p className="text-2xl font-bold">{formatPercent(avgInterestRate, locale)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Loan Product Catalog</CardTitle>
+          <CardTitle>{t('loanProducts.catalog')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Product Code</TableHead>
-                <TableHead>Product Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-right">Min Amount</TableHead>
-                <TableHead className="text-right">Max Amount</TableHead>
-                <TableHead className="text-right">Interest Rate</TableHead>
-                <TableHead className="text-right">Duration</TableHead>
-                <TableHead>Repayment</TableHead>
-                <TableHead className="text-right">Grace Period</TableHead>
-                <TableHead className="text-right">Service Charge</TableHead>
-                <TableHead className="text-right">Active Loans</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('loanProducts.productCode')}</TableHead>
+                <TableHead>{t('loanProducts.name')}</TableHead>
+                <TableHead>{t('loanProducts.category')}</TableHead>
+                <TableHead className="text-right">{t('loanProducts.minAmount')}</TableHead>
+                <TableHead className="text-right">{t('loanProducts.maxAmount')}</TableHead>
+                <TableHead className="text-right">{t('loanProducts.interestRate')}</TableHead>
+                <TableHead className="text-right">{t('loanProducts.duration')}</TableHead>
+                <TableHead>{t('loanProducts.repayment')}</TableHead>
+                <TableHead className="text-right">{t('loanProducts.gracePeriod')}</TableHead>
+                <TableHead className="text-right">{t('loanProducts.serviceCharge')}</TableHead>
+                <TableHead className="text-right">{t('loanProducts.activeLoans')}</TableHead>
+                <TableHead>{t('loanProducts.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -223,14 +227,14 @@ export default function LoanProductsPage() {
                   <TableCell>
                     <Badge variant={getCategoryColor(product.category)}>{product.category}</Badge>
                   </TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(product.minAmount)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(product.maxAmount)}</TableCell>
-                  <TableCell className="text-right">{formatPercent(product.interestRate)}</TableCell>
-                  <TableCell className="text-right">{product.duration} months</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(product.minAmount, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(product.maxAmount, locale)}</TableCell>
+                  <TableCell className="text-right">{formatPercent(product.interestRate, locale)}</TableCell>
+                  <TableCell className="text-right">{product.duration} {t('loanProducts.months')}</TableCell>
                   <TableCell>{product.repaymentFrequency}</TableCell>
-                  <TableCell className="text-right">{product.gracePeriod > 0 ? `${product.gracePeriod} months` : "None"}</TableCell>
-                  <TableCell className="text-right">{formatPercent(product.serviceCharge)}</TableCell>
-                  <TableCell className="text-right">{formatNumber(product.activeLoans)}</TableCell>
+                  <TableCell className="text-right">{product.gracePeriod > 0 ? `${product.gracePeriod} ${t('loanProducts.months')}` : t('loanProducts.none')}</TableCell>
+                  <TableCell className="text-right">{formatPercent(product.serviceCharge, locale)}</TableCell>
+                  <TableCell className="text-right">{formatNumber(product.activeLoans, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(product.status)}>{product.status}</Badge>
                   </TableCell>

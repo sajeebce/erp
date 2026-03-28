@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   CommandDialog,
   CommandEmpty,
@@ -16,6 +17,7 @@ import { navigation } from "@/data/navigation";
 export function CommandPalette() {
   const [open, setOpen] = React.useState(false);
   const router = useRouter();
+  const t = useTranslations("navigation");
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -35,22 +37,22 @@ export function CommandPalette() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search modules, pages, features..." />
+      <CommandInput placeholder={t("searchPlaceholder")} />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandEmpty>{t("noResults")}</CommandEmpty>
         {navigation.map((module, idx) => (
           <React.Fragment key={module.title}>
-            <CommandGroup heading={module.title}>
+            <CommandGroup heading={t(module.title)}>
               <CommandItem onSelect={() => handleSelect(module.url)}>
                 {module.icon && <module.icon className="mr-2 h-4 w-4" />}
-                <span>{module.title}</span>
+                <span>{t(module.title)}</span>
               </CommandItem>
               {module.items?.map((sub) => (
                 <CommandItem
                   key={sub.url}
                   onSelect={() => handleSelect(sub.url)}
                 >
-                  <span className="ml-6">{sub.title}</span>
+                  <span className="ml-6">{t(sub.title)}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

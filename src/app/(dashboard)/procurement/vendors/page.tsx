@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Plus, Star } from 'lucide-react'
 import { ColumnDef } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
@@ -29,26 +30,28 @@ function renderRating(rating: number) {
   )
 }
 
-const columns: ColumnDef<Vendor>[] = [
-  { accessorKey: 'vendorNo', header: 'Vendor No', cell: ({ row }) => <span className="font-mono text-sm font-medium">{row.getValue('vendorNo')}</span> },
-  { accessorKey: 'companyName', header: 'Company Name', cell: ({ row }) => <span className="font-medium">{row.getValue('companyName')}</span> },
-  { accessorKey: 'category', header: 'Category', cell: ({ row }) => <StatusBadge status={row.getValue('category')} /> },
-  { accessorKey: 'rating', header: 'Rating', cell: ({ row }) => renderRating(Number(row.getValue('rating'))) },
-  { accessorKey: 'totalOrders', header: 'Total Orders', cell: ({ row }) => <span className="font-mono text-sm">{row.getValue('totalOrders') ?? 0}</span> },
-  { accessorKey: 'isApproved', header: 'Approved', cell: ({ row }) => {
-    const approved = row.getValue('isApproved')
-    return (
-      <Badge variant={approved ? 'default' : 'outline'} className="text-[11px]">
-        {approved ? 'Approved' : 'Pending'}
-      </Badge>
-    )
-  }},
-]
-
 export default function VendorsPage() {
+  const t = useTranslations('procurement')
+  const tc = useTranslations('common')
   const router = useRouter()
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
+
+  const columns: ColumnDef<Vendor>[] = [
+    { accessorKey: 'vendorNo', header: t('vendors.vendorNo'), cell: ({ row }) => <span className="font-mono text-sm font-medium">{row.getValue('vendorNo')}</span> },
+    { accessorKey: 'companyName', header: t('vendors.companyName'), cell: ({ row }) => <span className="font-medium">{row.getValue('companyName')}</span> },
+    { accessorKey: 'category', header: t('vendors.category'), cell: ({ row }) => <StatusBadge status={row.getValue('category')} /> },
+    { accessorKey: 'rating', header: t('vendors.rating'), cell: ({ row }) => renderRating(Number(row.getValue('rating'))) },
+    { accessorKey: 'totalOrders', header: t('vendors.totalOrders'), cell: ({ row }) => <span className="font-mono text-sm">{row.getValue('totalOrders') ?? 0}</span> },
+    { accessorKey: 'isApproved', header: t('vendors.approved'), cell: ({ row }) => {
+      const approved = row.getValue('isApproved')
+      return (
+        <Badge variant={approved ? 'default' : 'outline'} className="text-[11px]">
+          {approved ? tc('status.APPROVED') : tc('status.PENDING')}
+        </Badge>
+      )
+    }},
+  ]
 
   useEffect(() => {
     fetch('/api/v1/procurement/vendors?limit=100')
@@ -60,9 +63,9 @@ export default function VendorsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Vendor Management" description="Manage vendor registry and performance tracking">
+      <PageHeader title={t('vendors.title')} description={t('vendors.description')}>
         <Button size="sm" onClick={() => router.push('/procurement/vendors/new')}>
-          <Plus className="h-4 w-4 mr-2" />Add Vendor
+          <Plus className="h-4 w-4 mr-2" />{t('vendors.addVendor')}
         </Button>
       </PageHeader>
 
@@ -70,7 +73,7 @@ export default function VendorsPage() {
         columns={columns}
         data={vendors}
         searchKey="companyName"
-        searchPlaceholder="Search vendors..."
+        searchPlaceholder={t('vendors.searchPlaceholder')}
         isLoading={loading}
         onRowClick={(row) => router.push(`/procurement/vendors/${row.id}`)}
       />

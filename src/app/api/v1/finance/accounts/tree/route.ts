@@ -10,6 +10,7 @@ interface AccountTreeNode {
   id: string
   code: string
   name: string
+  localizedName: Record<string, string> | null
   type: string
   nature: string
   level: number
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
         level: true,
         isGroup: true,
         isActive: true,
+        localizedName: true,
       },
       orderBy: { code: 'asc' },
     })
@@ -48,6 +50,7 @@ export async function GET(request: NextRequest) {
         id: account.id,
         code: account.code,
         name: account.name,
+        localizedName: account.localizedName as Record<string, string> | null,
         type: account.type,
         nature: account.nature,
         level: account.level,

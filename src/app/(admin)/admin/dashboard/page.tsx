@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -50,6 +51,7 @@ interface DashboardStats {
 }
 
 export default function AdminDashboardPage() {
+  const t = useTranslations('admin')
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [recentOrgs, setRecentOrgs] = useState<OrgSummary[]>([])
@@ -118,16 +120,16 @@ export default function AdminDashboardPage() {
   }
 
   if (!stats) {
-    return <div className="text-center py-10 text-muted-foreground">Failed to load dashboard</div>
+    return <div className="text-center py-10 text-muted-foreground">{t('dashboard.failedToLoad')}</div>
   }
 
   const kpiCards = [
-    { title: 'Total Organizations', value: String(stats.totalOrganizations), icon: Building2, color: 'text-blue-600' },
-    { title: 'Active Organizations', value: String(stats.activeOrganizations), icon: ShieldCheck, color: 'text-emerald-600' },
-    { title: 'Total Users', value: stats.totalUsers.toLocaleString(), icon: Users, color: 'text-violet-600' },
-    { title: 'Active Subscriptions', value: String(stats.activeSubscriptions), icon: CreditCard, color: 'text-teal-600' },
-    { title: 'Trial Organizations', value: String(stats.trialOrgs), icon: Activity, color: 'text-amber-600' },
-    { title: 'Total Revenue', value: `$${stats.totalRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-indigo-600' },
+    { title: t('dashboard.totalOrganizations'), value: String(stats.totalOrganizations), icon: Building2, color: 'text-blue-600' },
+    { title: t('dashboard.activeOrganizations'), value: String(stats.activeOrganizations), icon: ShieldCheck, color: 'text-emerald-600' },
+    { title: t('dashboard.totalUsers'), value: stats.totalUsers.toLocaleString(), icon: Users, color: 'text-violet-600' },
+    { title: t('dashboard.activeSubscriptions'), value: String(stats.activeSubscriptions), icon: CreditCard, color: 'text-teal-600' },
+    { title: t('dashboard.trialOrganizations'), value: String(stats.trialOrgs), icon: Activity, color: 'text-amber-600' },
+    { title: t('dashboard.totalRevenue'), value: `$${stats.totalRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-indigo-600' },
   ]
 
   return (
@@ -155,12 +157,12 @@ export default function AdminDashboardPage() {
         {/* Recent Organizations */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Recent Organizations</CardTitle>
+            <CardTitle className="text-base">{t('dashboard.recentOrganizations')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {recentOrgs.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No organizations yet</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t('dashboard.noOrganizations')}</p>
               ) : recentOrgs.map((org) => (
                 <div
                   key={org.id}
@@ -169,7 +171,7 @@ export default function AdminDashboardPage() {
                 >
                   <div>
                     <p className="text-sm font-medium">{org.name}</p>
-                    <p className="text-xs text-muted-foreground">{org.slug} &bull; {org._count?.users || 0} users</p>
+                    <p className="text-xs text-muted-foreground">{org.slug} &bull; {org._count?.users || 0} {t('dashboard.users')}</p>
                   </div>
                   <StatusBadge status={org.isActive ? 'ACTIVE' : 'INACTIVE'} />
                 </div>
@@ -181,12 +183,12 @@ export default function AdminDashboardPage() {
         {/* Subscription Breakdown */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Subscription Breakdown</CardTitle>
+            <CardTitle className="text-base">{t('dashboard.subscriptionBreakdown')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {subBreakdown.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No subscriptions yet</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t('dashboard.noSubscriptions')}</p>
               ) : subBreakdown.map((item) => (
                 <div key={item.status} className="flex items-center justify-between border-b pb-2 last:border-0">
                   <StatusBadge status={item.status} />

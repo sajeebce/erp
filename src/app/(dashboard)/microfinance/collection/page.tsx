@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { formatBDT, formatDate, formatPercent, formatNumber } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatPercent, formatNumber } from "@/lib/formatters";
 
 interface Collection {
   collectionId: string;
@@ -142,7 +143,10 @@ function getOnTimeColor(rate: number): string {
   return "text-destructive";
 }
 
-export default function CollectionPage() {
+export default async function CollectionPage() {
+  const t = await getTranslations('microfinance');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalCollected = collections.reduce((sum, c) => sum + c.amountCollected, 0);
   const totalCollectible = collections.reduce((sum, c) => sum + c.totalCollectible, 0);
   const totalShortfall = collections.reduce((sum, c) => sum + c.shortfall, 0);
@@ -151,68 +155,68 @@ export default function CollectionPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Loan Collection"
-        description="Record and manage weekly/monthly loan repayment collections"
+        title={t('collection.title')}
+        description={t('collection.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Collected This Week</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('collection.totalCollectedThisWeek')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalCollected)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalCollected, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Collection Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('collection.collectionRate')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatPercent(collectionRate)}</p>
+            <p className="text-2xl font-bold">{formatPercent(collectionRate, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Collectible</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('collection.totalCollectible')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalCollectible)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalCollectible, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Shortfall Amount</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('collection.shortfallAmount')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-destructive">{formatBDT(totalShortfall)}</p>
+            <p className="text-2xl font-bold text-destructive">{formatCurrency(totalShortfall, locale)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Weekly Collection - Week 06, February 2026</CardTitle>
+          <CardTitle>{t('collection.weeklyCollection')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Collection ID</TableHead>
-                <TableHead>Samity</TableHead>
-                <TableHead>Collection Date</TableHead>
-                <TableHead className="text-right">Members Present</TableHead>
-                <TableHead className="text-right">Total Collectible</TableHead>
-                <TableHead className="text-right">Amount Collected</TableHead>
-                <TableHead className="text-right">Shortfall</TableHead>
-                <TableHead className="w-[160px]">On-time %</TableHead>
-                <TableHead>Collected By</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('collection.collectionId')}</TableHead>
+                <TableHead>{t('collection.samity')}</TableHead>
+                <TableHead>{t('collection.collectionDate')}</TableHead>
+                <TableHead className="text-right">{t('collection.membersPresent')}</TableHead>
+                <TableHead className="text-right">{t('collection.totalCollectible')}</TableHead>
+                <TableHead className="text-right">{t('collection.amountCollected')}</TableHead>
+                <TableHead className="text-right">{t('collection.shortfall')}</TableHead>
+                <TableHead className="w-[160px]">{t('collection.onTimePercent')}</TableHead>
+                <TableHead>{t('collection.collectedBy')}</TableHead>
+                <TableHead>{t('collection.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -220,18 +224,18 @@ export default function CollectionPage() {
                 <TableRow key={col.collectionId}>
                   <TableCell className="font-mono text-sm">{col.collectionId}</TableCell>
                   <TableCell className="font-medium">{col.samity}</TableCell>
-                  <TableCell>{formatDate(col.collectionDate)}</TableCell>
+                  <TableCell>{formatDate(col.collectionDate, locale)}</TableCell>
                   <TableCell className="text-right">{col.membersPresent}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(col.totalCollectible)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(col.amountCollected)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(col.totalCollectible, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(col.amountCollected, locale)}</TableCell>
                   <TableCell className="text-right font-mono text-destructive">
-                    {col.shortfall > 0 ? formatBDT(col.shortfall) : "—"}
+                    {col.shortfall > 0 ? formatCurrency(col.shortfall, locale) : "—"}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Progress value={col.onTimePercent} className="flex-1" />
                       <span className={`text-sm font-medium w-14 text-right ${getOnTimeColor(col.onTimePercent)}`}>
-                        {formatPercent(col.onTimePercent)}
+                        {formatPercent(col.onTimePercent, locale)}
                       </span>
                     </div>
                   </TableCell>

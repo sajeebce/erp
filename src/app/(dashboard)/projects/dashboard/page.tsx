@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,7 @@ import {
   Clock,
   MapPin,
 } from "lucide-react";
-import { formatBDT, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatPercent } from "@/lib/formatters";
 
 interface ProjectSummary {
   id: string;
@@ -173,7 +174,11 @@ function getBurnRateColor(spent: number, budget: number, progress: number): stri
   return "text-emerald-600";
 }
 
-export default function ProjectDashboardPage() {
+export default async function ProjectDashboardPage() {
+  const t = await getTranslations('projects');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const activeProjects = projects.filter((p) => p.status === "Active");
   const totalBudget = projects.reduce((sum, p) => sum + p.budget, 0);
   const totalSpent = projects.reduce((sum, p) => sum + p.spent, 0);
@@ -188,12 +193,12 @@ export default function ProjectDashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Project Dashboard"
-        description="Overview of all projects, budgets, and key performance metrics"
+        title={t('dashboard.title')}
+        description={t('dashboard.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export Report
+          {t('dashboard.exportReport')}
         </Button>
       </PageHeader>
 
@@ -201,7 +206,7 @@ export default function ProjectDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Projects</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.activeProjects')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -209,27 +214,27 @@ export default function ProjectDashboardPage() {
               <p className="text-2xl font-bold">{activeProjects.length}</p>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {projects.filter((p) => p.status === "Pipeline").length} in pipeline
+              {projects.filter((p) => p.status === "Pipeline").length} {t('dashboard.inPipeline')}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Budget</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.totalBudget')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatBDT(totalBudget)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalBudget, locale)}</p>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {formatBDT(totalSpent)} spent ({formatPercent((totalSpent / totalBudget) * 100)})
+              {formatCurrency(totalSpent, locale)} {t('dashboard.spent')} ({formatPercent((totalSpent / totalBudget) * 100, locale)})
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Progress</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.avgProgress')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -241,7 +246,7 @@ export default function ProjectDashboardPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Team Members</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.teamMembers')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -249,7 +254,7 @@ export default function ProjectDashboardPage() {
               <p className="text-2xl font-bold">{totalTeamMembers}</p>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Across {activeProjects.length} active projects
+              {t('dashboard.acrossActiveProjects', { count: activeProjects.length })}
             </p>
           </CardContent>
         </Card>
@@ -259,7 +264,7 @@ export default function ProjectDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Activities</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.totalActivities')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -270,7 +275,7 @@ export default function ProjectDashboardPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Completed Activities</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.completedActivities')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -278,13 +283,13 @@ export default function ProjectDashboardPage() {
               <p className="text-2xl font-bold text-emerald-600">{totalCompleted}</p>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {totalActivities > 0 ? formatPercent((totalCompleted / totalActivities) * 100) : "0%"} completion rate
+              {t('dashboard.completionRate', { percent: totalActivities > 0 ? formatPercent((totalCompleted / totalActivities) * 100, locale) : "0%" })}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Delayed Activities</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.delayedActivities')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -292,7 +297,7 @@ export default function ProjectDashboardPage() {
               <p className="text-2xl font-bold text-amber-600">{totalDelayed}</p>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Requires immediate attention
+              {t('dashboard.requiresImmediateAttention')}
             </p>
           </CardContent>
         </Card>
@@ -301,21 +306,21 @@ export default function ProjectDashboardPage() {
       {/* Project Performance Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Project Performance Summary</CardTitle>
+          <CardTitle>{t('dashboard.projectPerformanceSummary')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[80px]">ID</TableHead>
-                <TableHead>Project Name</TableHead>
-                <TableHead>Donor</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead className="text-right">Budget</TableHead>
-                <TableHead className="text-right">Spent</TableHead>
-                <TableHead className="w-[140px]">Progress</TableHead>
-                <TableHead className="text-center">Activities</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[80px]">{t('dashboard.id')}</TableHead>
+                <TableHead>{t('dashboard.projectName')}</TableHead>
+                <TableHead>{t('dashboard.donor')}</TableHead>
+                <TableHead>{t('dashboard.location')}</TableHead>
+                <TableHead className="text-right">{t('dashboard.budget')}</TableHead>
+                <TableHead className="text-right">{t('dashboard.spent')}</TableHead>
+                <TableHead className="w-[140px]">{t('dashboard.progress')}</TableHead>
+                <TableHead className="text-center">{t('dashboard.activities')}</TableHead>
+                <TableHead>{t('dashboard.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -330,9 +335,9 @@ export default function ProjectDashboardPage() {
                       {project.location}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right font-mono text-sm">{formatBDT(project.budget)}</TableCell>
+                  <TableCell className="text-right font-mono text-sm">{formatCurrency(project.budget, locale)}</TableCell>
                   <TableCell className={`text-right font-mono text-sm ${getBurnRateColor(project.spent, project.budget, project.progress)}`}>
-                    {formatBDT(project.spent)}
+                    {formatCurrency(project.spent, locale)}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -345,7 +350,7 @@ export default function ProjectDashboardPage() {
                       <span className="text-emerald-600">{project.completedActivities}</span>
                       <span className="text-muted-foreground">/{project.activities}</span>
                       {project.delayedActivities > 0 && (
-                        <span className="text-destructive ml-1">({project.delayedActivities} delayed)</span>
+                        <span className="text-destructive ml-1">({project.delayedActivities} {t('dashboard.delayed')})</span>
                       )}
                     </div>
                   </TableCell>

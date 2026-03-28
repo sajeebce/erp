@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { Landmark, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Landmark, Eye, EyeOff, Loader2, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 
 export default function LoginPage() {
   const router = useRouter()
+  const t = useTranslations('auth')
   const [orgSlug, setOrgSlug] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -33,14 +35,14 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (!data.success) {
-        setError(data.error?.message || 'Login failed')
+        setError(data.error?.message || t('login.loginFailed'))
         return
       }
 
       router.push('/dashboard')
       router.refresh()
     } catch {
-      setError('Network error. Please try again.')
+      setError(t('login.networkError'))
     } finally {
       setLoading(false)
     }
@@ -54,12 +56,29 @@ export default function LoginPage() {
             <Landmark className="h-6 w-6 text-primary-foreground" />
           </div>
         </div>
-        <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
-        <CardDescription>Sign in to your NGO ERP account</CardDescription>
+        <CardTitle className="text-2xl font-bold">{t('login.title')}</CardTitle>
+        <CardDescription>{t('login.description')}</CardDescription>
       </CardHeader>
 
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          <button
+            type="button"
+            onClick={() => {
+              setOrgSlug('shapla-foundation')
+              setEmail('rahim@shapla.org')
+              setPassword('SecurePass@2026!')
+              setError('')
+            }}
+            className="w-full flex items-center justify-between rounded-lg border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-sm transition-colors hover:bg-primary/10 hover:border-primary/60"
+          >
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="font-medium text-foreground">{t('login.demoAccount')}</span>
+              <span className="text-xs text-muted-foreground">{t('login.demoDesc')}</span>
+            </div>
+            <Copy className="h-4 w-4 text-primary shrink-0" />
+          </button>
+
           {error && (
             <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
               {error}
@@ -67,11 +86,11 @@ export default function LoginPage() {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="orgSlug">Organization</Label>
+            <Label htmlFor="orgSlug">{t('login.orgLabel')}</Label>
             <div className="flex items-center gap-0">
               <Input
                 id="orgSlug"
-                placeholder="your-organization"
+                placeholder={t('login.orgPlaceholder')}
                 value={orgSlug}
                 onChange={(e) => setOrgSlug(e.target.value.toLowerCase())}
                 className="rounded-r-none"
@@ -84,11 +103,11 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('login.emailLabel')}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="you@organization.org"
+              placeholder={t('login.emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -97,9 +116,9 @@ export default function LoginPage() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('login.passwordLabel')}</Label>
               <Link href="/forgot-password" className="text-xs text-primary hover:underline">
-                Forgot password?
+                {t('login.forgotPassword')}
               </Link>
             </div>
             <div className="relative">
@@ -127,12 +146,12 @@ export default function LoginPage() {
         <CardFooter className="flex flex-col gap-4">
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Sign In
+            {t('login.signIn')}
           </Button>
           <p className="text-sm text-muted-foreground text-center">
-            Don&apos;t have an account?{' '}
+            {t('login.noAccount')}{' '}
             <Link href="/register" className="text-primary font-medium hover:underline">
-              Create Organization
+              {t('login.createOrg')}
             </Link>
           </p>
         </CardFooter>

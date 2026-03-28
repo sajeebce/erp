@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -147,7 +148,11 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" {
   }
 }
 
-export default function PerformancePage() {
+export default async function PerformancePage() {
+  const t = await getTranslations('hr');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const completedReviews = reviews.filter((r) => r.status === "Completed");
   const completedCount = completedReviews.length;
   const avgScore = completedReviews.length > 0
@@ -161,19 +166,19 @@ export default function PerformancePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Performance Management (ePMS)"
-        description="Manage employee performance reviews and appraisals"
+        title={t('performance.title')}
+        description={t('performance.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Reviews Completed</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('performance.reviewsCompleted')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{completedCount}/{reviews.length}</p>
@@ -181,15 +186,15 @@ export default function PerformancePage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Average Score</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('performance.averageScore')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatPercent(avgScore)}</p>
+            <p className="text-2xl font-bold">{formatPercent(avgScore, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Outstanding</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('performance.outstanding')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{outstandingCount}</p>
@@ -197,7 +202,7 @@ export default function PerformancePage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Needs Improvement</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('performance.needsImprovement')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-destructive">{needsImprovement}</p>
@@ -207,20 +212,20 @@ export default function PerformancePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Performance Reviews - Jul to Dec 2025</CardTitle>
+          <CardTitle>{t('performance.performanceReviews')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Employee</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Review Period</TableHead>
-                <TableHead className="text-right">Self Score</TableHead>
-                <TableHead className="text-right">Supervisor Score</TableHead>
-                <TableHead className="text-right">Final Score</TableHead>
-                <TableHead>Rating</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('performance.employee')}</TableHead>
+                <TableHead>{t('performance.department')}</TableHead>
+                <TableHead>{t('performance.period')}</TableHead>
+                <TableHead className="text-right">{t('performance.selfScore')}</TableHead>
+                <TableHead className="text-right">{t('performance.supervisorScore')}</TableHead>
+                <TableHead className="text-right">{t('performance.finalScore')}</TableHead>
+                <TableHead>{t('performance.rating')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

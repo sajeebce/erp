@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatPercent } from "@/lib/formatters";
 
 interface AssetCategory {
   code: string;
@@ -101,7 +102,11 @@ function getStatusVariant(status: string): "default" | "outline" {
   return status === "Active" ? "default" : "outline";
 }
 
-export default function AssetCategoriesPage() {
+export default async function AssetCategoriesPage() {
+  const t = await getTranslations('assets');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalCategories = categories.length;
   const totalAssets = categories.reduce((sum, c) => sum + c.assetCount, 0);
   const totalValue = categories.reduce((sum, c) => sum + c.totalValue, 0);
@@ -111,23 +116,23 @@ export default function AssetCategoriesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Asset Categories"
-        description="Define and manage asset categories and depreciation rules"
+        title={t('categories.title')}
+        description={t('categories.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Add Category
+          {t('categories.addCategory')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Categories</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('categories.totalCategories')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalCategories}</p>
@@ -135,7 +140,7 @@ export default function AssetCategoriesPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Assets</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('categories.totalAssets')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalAssets}</p>
@@ -143,38 +148,38 @@ export default function AssetCategoriesPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Value</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('categories.totalValue')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalValue)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalValue, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Depreciation Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('categories.avgDepreciationRate')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatPercent(avgDepreciationRate)}</p>
+            <p className="text-2xl font-bold">{formatPercent(avgDepreciationRate, locale)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Category Configuration</CardTitle>
+          <CardTitle>{t('categories.categoryConfiguration')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Category Code</TableHead>
-                <TableHead>Category Name</TableHead>
-                <TableHead className="text-right">Useful Life (Years)</TableHead>
-                <TableHead>Depreciation Method</TableHead>
-                <TableHead className="text-right">Depreciation Rate %</TableHead>
-                <TableHead className="text-right">Asset Count</TableHead>
-                <TableHead className="text-right">Total Value</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('categories.categoryCode')}</TableHead>
+                <TableHead>{t('categories.name')}</TableHead>
+                <TableHead className="text-right">{t('categories.usefulLife')}</TableHead>
+                <TableHead>{t('categories.depreciationMethod')}</TableHead>
+                <TableHead className="text-right">{t('categories.depreciationRate')}</TableHead>
+                <TableHead className="text-right">{t('categories.assetCount')}</TableHead>
+                <TableHead className="text-right">{t('categories.totalValue')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -186,9 +191,9 @@ export default function AssetCategoriesPage() {
                   <TableCell>
                     <Badge variant="outline">{category.depreciationMethod}</Badge>
                   </TableCell>
-                  <TableCell className="text-right font-mono">{formatPercent(category.depreciationRate)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatPercent(category.depreciationRate, locale)}</TableCell>
                   <TableCell className="text-right">{category.assetCount}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(category.totalValue)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(category.totalValue, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(category.status)}>{category.status}</Badge>
                   </TableCell>

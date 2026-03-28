@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -148,7 +149,11 @@ function getReportTypeBadgeVariant(type: string): "default" | "secondary" | "out
   }
 }
 
-export default function DonorReportsPage() {
+export default async function DonorReportsPage() {
+  const t = await getTranslations('donors');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalReports = donorReports.length;
   const dueThisMonth = donorReports.filter(
     (r) => r.dueDate.startsWith("2026-02") && !["Accepted", "Submitted"].includes(r.status)
@@ -163,23 +168,23 @@ export default function DonorReportsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Donor Reports"
-        description="Generate financial and narrative reports for donors"
+        title={t('reports.title')}
+        description={t('reports.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New Report
+          {t('reports.addReport')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Reports</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('reports.totalReports')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalReports}</p>
@@ -187,7 +192,7 @@ export default function DonorReportsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Due This Month</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('reports.dueThisMonth')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{dueThisMonth}</p>
@@ -195,7 +200,7 @@ export default function DonorReportsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Overdue</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('reports.overdue')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-destructive">{overdue}</p>
@@ -203,7 +208,7 @@ export default function DonorReportsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Submitted</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('reports.submitted')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{submitted}</p>
@@ -213,20 +218,20 @@ export default function DonorReportsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Donor Report Management</CardTitle>
+          <CardTitle>{t('reports.donorReportManagement')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">Report ID</TableHead>
-                <TableHead>Report Type</TableHead>
-                <TableHead>Donor</TableHead>
-                <TableHead>Grant</TableHead>
-                <TableHead>Period</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Submitted Date</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[100px]">{t('reports.reportId')}</TableHead>
+                <TableHead>{t('reports.reportType')}</TableHead>
+                <TableHead>{t('reports.donor')}</TableHead>
+                <TableHead>{t('reports.grant')}</TableHead>
+                <TableHead>{t('reports.period')}</TableHead>
+                <TableHead>{t('reports.dueDate')}</TableHead>
+                <TableHead>{t('reports.submittedDate')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -241,9 +246,9 @@ export default function DonorReportsPage() {
                   <TableCell>{report.donor}</TableCell>
                   <TableCell>{report.grant}</TableCell>
                   <TableCell className="text-sm">{report.period}</TableCell>
-                  <TableCell>{formatDate(report.dueDate)}</TableCell>
+                  <TableCell>{formatDate(report.dueDate, locale)}</TableCell>
                   <TableCell>
-                    {report.submittedDate ? formatDate(report.submittedDate) : (
+                    {report.submittedDate ? formatDate(report.submittedDate, locale) : (
                       <span className="text-muted-foreground">--</span>
                     )}
                   </TableCell>

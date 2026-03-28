@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { ColumnDef } from '@tanstack/react-table'
 import { DataTable } from '@/components/shared/data-table'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -34,10 +35,15 @@ interface Domain {
   domainVerified: boolean
 }
 
-const columns: ColumnDef<Domain>[] = [
+export default function AdminDomainsPage() {
+  const t = useTranslations('admin')
+  const [domains, setDomains] = useState<Domain[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const columns: ColumnDef<Domain>[] = [
   {
     id: 'orgName',
-    header: 'Organization',
+    header: t('domains.organization'),
     cell: ({ row }) => {
       const d = row.original
       return <span className="font-medium">{d.orgName || d.organization?.name || '--'}</span>
@@ -45,12 +51,12 @@ const columns: ColumnDef<Domain>[] = [
   },
   {
     accessorKey: 'slug',
-    header: 'Slug',
+    header: t('domains.slug'),
     cell: ({ row }) => <span className="font-mono text-sm text-muted-foreground">{row.getValue('slug')}</span>,
   },
   {
     accessorKey: 'customDomain',
-    header: 'Custom Domain',
+    header: t('domains.customDomain'),
     cell: ({ row }) => {
       const domain = row.getValue('customDomain') as string | null
       return domain
@@ -60,17 +66,13 @@ const columns: ColumnDef<Domain>[] = [
   },
   {
     accessorKey: 'domainVerified',
-    header: 'Verified',
+    header: t('domains.verified'),
     cell: ({ row }) => {
       const verified = row.getValue('domainVerified') as boolean
       return <StatusBadge status={verified ? 'ACTIVE' : 'PENDING'} />
     },
   },
 ]
-
-export default function AdminDomainsPage() {
-  const [domains, setDomains] = useState<Domain[]>([])
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     adminFetch('/api/v1/admin/domains?limit=100')
@@ -81,13 +83,13 @@ export default function AdminDomainsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Domains" description="Manage organization slugs and custom domain mappings" />
+      <PageHeader title={t('domains.title')} description={t('domains.description')} />
 
       <DataTable
         columns={columns}
         data={domains}
         searchKey="slug"
-        searchPlaceholder="Search by slug..."
+        searchPlaceholder={t('domains.searchPlaceholder')}
         isLoading={loading}
       />
     </div>

@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -148,7 +149,8 @@ function formatTimeAgo(timestamp: string): string {
   return `${diffDays}d ago`;
 }
 
-export default function ActivityFeedPage() {
+export default async function ActivityFeedPage() {
+  const t = await getTranslations('dashboard');
   const todayActivities = activities.filter((a) => a.timestamp.startsWith("2026-02-08")).length;
   const approvalCount = activities.filter((a) => a.type === "approval").length;
   const activeSessions = loginActivities.filter((s) => s.status === "Active").length;
@@ -156,12 +158,12 @@ export default function ActivityFeedPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Activity Feed"
-        description="Real-time feed of all system activities, approvals, and user actions"
+        title={t('activityFeed.title')}
+        description={t('activityFeed.description')}
       >
         <Button variant="outline" size="sm">
           <Filter className="h-4 w-4 mr-2" />
-          Filter Activities
+          {t('activityFeed.filterActivities')}
         </Button>
       </PageHeader>
 
@@ -169,50 +171,50 @@ export default function ActivityFeedPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Today&apos;s Activities</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('activityFeed.todaysActivities')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-blue-500" />
               <p className="text-2xl font-bold">{todayActivities}</p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">actions recorded today</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('activityFeed.actionsRecordedToday')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Approvals</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('activityFeed.approvals')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-emerald-500" />
               <p className="text-2xl font-bold">{approvalCount}</p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">approval actions this week</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('activityFeed.approvalActionsThisWeek')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Sessions</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('activityFeed.activeSessions')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-purple-500" />
               <p className="text-2xl font-bold">{activeSessions}</p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">users currently online</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('activityFeed.usersCurrentlyOnline')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total This Week</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('activityFeed.totalThisWeek')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-orange-500" />
               <p className="text-2xl font-bold">{activities.length}</p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">activities since Feb 5</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('activityFeed.activitiesSince')}</p>
           </CardContent>
         </Card>
       </div>
@@ -224,13 +226,13 @@ export default function ActivityFeedPage() {
             <div className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-muted-foreground" />
               <div>
-                <CardTitle className="text-base">Activity Timeline</CardTitle>
-                <CardDescription>Chronological feed of all system events</CardDescription>
+                <CardTitle className="text-base">{t('activityFeed.activityTimeline')}</CardTitle>
+                <CardDescription>{t('activityFeed.activityTimelineDesc')}</CardDescription>
               </div>
             </div>
             <Button variant="outline" size="sm">
               <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+              {t('activityFeed.refresh')}
             </Button>
           </div>
         </CardHeader>
@@ -297,8 +299,8 @@ export default function ActivityFeedPage() {
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-muted-foreground" />
             <div>
-              <CardTitle className="text-base">User Sessions</CardTitle>
-              <CardDescription>Currently active and recent login sessions</CardDescription>
+              <CardTitle className="text-base">{t('activityFeed.userSessions')}</CardTitle>
+              <CardDescription>{t('activityFeed.userSessionsDesc')}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -306,13 +308,13 @@ export default function ActivityFeedPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Login Time</TableHead>
-                <TableHead>Logout Time</TableHead>
-                <TableHead>IP Address</TableHead>
-                <TableHead>Device</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('activityFeed.user')}</TableHead>
+                <TableHead>{t('activityFeed.role')}</TableHead>
+                <TableHead>{t('activityFeed.loginTime')}</TableHead>
+                <TableHead>{t('activityFeed.logoutTime')}</TableHead>
+                <TableHead>{t('activityFeed.ipAddress')}</TableHead>
+                <TableHead>{t('activityFeed.device')}</TableHead>
+                <TableHead>{t('activityFeed.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

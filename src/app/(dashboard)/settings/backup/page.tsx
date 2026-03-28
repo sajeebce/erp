@@ -1,3 +1,4 @@
+import { getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -202,7 +203,8 @@ function getLogLevelVariant(level: string): "default" | "secondary" | "outline" 
   }
 }
 
-export default function BackupPage() {
+export default async function BackupPage() {
+  const locale = await getLocale();
   const totalBackups = backups.length;
   const successfulBackups = backups.filter((b) => b.status === "Success").length;
   const successRate = (successfulBackups / totalBackups) * 100;
@@ -250,7 +252,7 @@ export default function BackupPage() {
           <CardContent>
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-green-500" />
-              <p className="text-2xl font-bold">{formatPercent(successRate)}</p>
+              <p className="text-2xl font-bold">{formatPercent(successRate, locale)}</p>
             </div>
           </CardContent>
         </Card>

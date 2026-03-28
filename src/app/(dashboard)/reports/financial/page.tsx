@@ -1,26 +1,28 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { FileText } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/shared/page-header'
 
-const reports = [
-  { title: 'Trial Balance', description: 'All accounts with debit/credit balances', type: 'trial-balance' },
-  { title: 'Income Statement', description: 'Revenue minus expenses', type: 'income-statement' },
-  { title: 'Balance Sheet', description: 'Assets, liabilities, and equity', type: 'balance-sheet' },
-  { title: 'Cash Flow Statement', description: 'Cash inflows and outflows', type: 'cash-flow' },
-  { title: 'Fund Position', description: 'Fund balances by grant/donor', type: 'fund-position' },
-]
-
 export default function FinancialReportsPage() {
+  const t = useTranslations('reports')
   const router = useRouter()
+
+  const reports = [
+    { title: t('financial.trialBalance'), description: t('financial.trialBalanceDesc'), type: 'trial-balance' },
+    { title: t('financial.incomeStatement'), description: t('financial.incomeStatementDesc'), type: 'income-statement' },
+    { title: t('financial.balanceSheet'), description: t('financial.balanceSheetDesc'), type: 'balance-sheet' },
+    { title: t('financial.cashFlow'), description: t('financial.cashFlowDesc'), type: 'cash-flow' },
+    { title: t('financial.fundPosition'), description: t('financial.fundPositionDesc'), type: 'fund-position' },
+  ]
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Financial Reports"
-        description="Generate Trial Balance, Income Statement, Balance Sheet, and Cash Flow reports"
+        title={t('financial.title')}
+        description={t('financial.description')}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

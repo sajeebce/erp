@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 interface PurchaseOrder {
   id: string;
@@ -118,7 +119,11 @@ function getStatusVariant(status: string): "default" | "secondary" | "destructiv
   }
 }
 
-export default function PurchaseOrdersPage() {
+export default async function PurchaseOrdersPage() {
+  const t = await getTranslations('procurement');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalPOs = purchaseOrders.length;
   const totalValue = purchaseOrders
     .filter((po) => po.status !== "Cancelled")
@@ -131,23 +136,23 @@ export default function PurchaseOrdersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Purchase Orders"
-        description="Create and manage purchase orders to vendors"
+        title={t('orders.title')}
+        description={t('orders.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Create PO
+          {t('orders.createPO')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total POs</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('orders.totalPOs')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalPOs}</p>
@@ -155,15 +160,15 @@ export default function PurchaseOrdersPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Value</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('orders.totalValue')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalValue)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalValue, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Delivery</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('orders.pendingDelivery')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{pendingDelivery}</p>
@@ -171,7 +176,7 @@ export default function PurchaseOrdersPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Completed</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('orders.completed')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{completed}</p>
@@ -181,33 +186,33 @@ export default function PurchaseOrdersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Purchase Order Register</CardTitle>
+          <CardTitle>{t('orders.purchaseOrderRegister')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[130px]">PO No</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead className="max-w-[250px]">Items Description</TableHead>
-                <TableHead>Delivery Date</TableHead>
-                <TableHead className="text-right">Total Amount</TableHead>
-                <TableHead>Payment Terms</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[130px]">{t('orders.poNo')}</TableHead>
+                <TableHead>{t('orders.date')}</TableHead>
+                <TableHead>{t('orders.vendor')}</TableHead>
+                <TableHead className="max-w-[250px]">{t('orders.itemsDescription')}</TableHead>
+                <TableHead>{t('orders.deliveryDate')}</TableHead>
+                <TableHead className="text-right">{t('orders.totalAmount')}</TableHead>
+                <TableHead>{t('orders.paymentTerms')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {purchaseOrders.map((po) => (
                 <TableRow key={po.id}>
                   <TableCell className="font-mono text-sm">{po.id}</TableCell>
-                  <TableCell>{formatDate(po.date)}</TableCell>
+                  <TableCell>{formatDate(po.date, locale)}</TableCell>
                   <TableCell className="font-medium">{po.vendor}</TableCell>
                   <TableCell className="max-w-[250px] truncate text-sm text-muted-foreground">
                     {po.itemsDescription}
                   </TableCell>
-                  <TableCell>{formatDate(po.deliveryDate)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(po.totalAmount)}</TableCell>
+                  <TableCell>{formatDate(po.deliveryDate, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(po.totalAmount, locale)}</TableCell>
                   <TableCell className="text-sm">{po.paymentTerms}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(po.status)}>

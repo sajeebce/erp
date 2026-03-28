@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -126,7 +127,11 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" |
   }
 }
 
-export default function ProjectMilestonesPage() {
+export default async function ProjectMilestonesPage() {
+  const t = await getTranslations('projects');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalMilestones = milestones.length;
   const achieved = milestones.filter((m) => m.status === "Achieved").length;
   const onTrack = milestones.filter((m) => m.status === "On Track").length;
@@ -135,23 +140,23 @@ export default function ProjectMilestonesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Project Milestones"
-        description="Track key milestones and deliverables for each project"
+        title={t('milestones.title')}
+        description={t('milestones.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Add Milestone
+          {t('milestones.addMilestone')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Milestones</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('milestones.totalMilestones')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalMilestones}</p>
@@ -159,7 +164,7 @@ export default function ProjectMilestonesPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Achieved</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('milestones.achieved')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{achieved}</p>
@@ -167,7 +172,7 @@ export default function ProjectMilestonesPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">On Track</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('milestones.onTrack')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{onTrack}</p>
@@ -175,7 +180,7 @@ export default function ProjectMilestonesPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">At Risk / Overdue</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('milestones.atRiskOverdue')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-destructive">{atRisk}</p>
@@ -185,19 +190,19 @@ export default function ProjectMilestonesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Milestone Tracking</CardTitle>
+          <CardTitle>{t('milestones.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[80px]">ID</TableHead>
-                <TableHead>Milestone</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Target Date</TableHead>
-                <TableHead>Actual Date</TableHead>
-                <TableHead>Deliverable</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[80px]">{t('milestones.id')}</TableHead>
+                <TableHead>{t('milestones.milestone')}</TableHead>
+                <TableHead>{t('milestones.project')}</TableHead>
+                <TableHead>{t('milestones.targetDate')}</TableHead>
+                <TableHead>{t('milestones.actualDate')}</TableHead>
+                <TableHead>{t('milestones.deliverable')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -206,9 +211,9 @@ export default function ProjectMilestonesPage() {
                   <TableCell className="font-mono text-sm">{ms.id}</TableCell>
                   <TableCell className="font-medium">{ms.milestone}</TableCell>
                   <TableCell className="text-sm">{ms.project}</TableCell>
-                  <TableCell>{formatDate(ms.targetDate)}</TableCell>
+                  <TableCell>{formatDate(ms.targetDate, locale)}</TableCell>
                   <TableCell>
-                    {ms.actualDate ? formatDate(ms.actualDate) : (
+                    {ms.actualDate ? formatDate(ms.actualDate, locale) : (
                       <span className="text-muted-foreground">--</span>
                     )}
                   </TableCell>

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { LanguageSwitcher } from '@/components/shared/language-switcher'
 
 const navItems = [
   { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
@@ -97,6 +98,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Menu className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-semibold">Super Admin</h1>
+          <div className="ml-auto flex items-center gap-1">
+            <LanguageSwitcher />
+          </div>
         </header>
         <div className="flex-1 p-4 md:p-6">
           {children}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { ColumnDef } from '@tanstack/react-table'
 import { DataTable } from '@/components/shared/data-table'
 import { PageHeader } from '@/components/shared/page-header'
@@ -36,20 +37,25 @@ interface Plan {
   subscriptionCount?: number
 }
 
-const columns: ColumnDef<Plan>[] = [
+export default function AdminPlansPage() {
+  const t = useTranslations('admin')
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const columns: ColumnDef<Plan>[] = [
   {
     accessorKey: 'name',
-    header: 'Plan Name',
+    header: t('plans.name'),
     cell: ({ row }) => <span className="font-medium">{row.getValue('name')}</span>,
   },
   {
     accessorKey: 'priceMonthly',
-    header: 'Monthly Price',
+    header: t('plans.priceMonthly'),
     cell: ({ row }) => <span className="font-mono text-sm">${Number(row.getValue('priceMonthly')).toLocaleString()}</span>,
   },
   {
     accessorKey: 'maxUsers',
-    header: 'Max Users',
+    header: t('plans.maxUsers'),
     cell: ({ row }) => {
       const val = row.getValue('maxUsers') as number
       return val === -1 || val === 0 ? 'Unlimited' : String(val)
@@ -57,7 +63,7 @@ const columns: ColumnDef<Plan>[] = [
   },
   {
     accessorKey: 'maxProjects',
-    header: 'Max Projects',
+    header: t('plans.maxProjects'),
     cell: ({ row }) => {
       const val = row.getValue('maxProjects') as number
       return val === -1 || val === 0 ? 'Unlimited' : String(val)
@@ -65,7 +71,7 @@ const columns: ColumnDef<Plan>[] = [
   },
   {
     accessorKey: 'storageGb',
-    header: 'Storage',
+    header: t('plans.storage'),
     cell: ({ row }) => {
       const gb = row.getValue('storageGb') as number
       return gb === -1 ? 'Unlimited' : `${gb} GB`
@@ -73,17 +79,13 @@ const columns: ColumnDef<Plan>[] = [
   },
   {
     id: 'subscriptionCount',
-    header: 'Subscriptions',
+    header: t('plans.subscriptions'),
     cell: ({ row }) => {
       const plan = row.original
       return plan._count?.subscriptions ?? plan.subscriptionCount ?? 0
     },
   },
 ]
-
-export default function AdminPlansPage() {
-  const [plans, setPlans] = useState<Plan[]>([])
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     adminFetch('/api/v1/admin/plans')
@@ -94,13 +96,13 @@ export default function AdminPlansPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Subscription Plans" description="Manage platform subscription tiers and pricing" />
+      <PageHeader title={t('plans.title')} description={t('plans.description')} />
 
       <DataTable
         columns={columns}
         data={plans}
         searchKey="name"
-        searchPlaceholder="Search plans..."
+        searchPlaceholder={t('plans.searchPlaceholder')}
         isLoading={loading}
       />
     </div>

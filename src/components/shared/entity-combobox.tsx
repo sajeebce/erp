@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { ChevronsUpDown, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -28,12 +29,13 @@ export function EntityCombobox({
   options,
   value,
   onValueChange,
-  placeholder = 'Select...',
-  searchPlaceholder = 'Search...',
-  emptyMessage = 'No results found.',
+  placeholder,
+  searchPlaceholder,
+  emptyMessage,
   className,
   disabled,
 }: EntityComboboxProps) {
+  const t = useTranslations('common')
   const [open, setOpen] = useState(false)
   const selected = options.find(o => o.value === value)
 
@@ -47,15 +49,15 @@ export function EntityCombobox({
           disabled={disabled}
           className={cn('w-full justify-between font-normal', !selected && 'text-muted-foreground', className)}
         >
-          {selected?.label || placeholder}
+          {selected?.label || placeholder || t('combobox.select')}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
         <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput placeholder={searchPlaceholder || t('combobox.search')} />
           <CommandList>
-            <CommandEmpty>{emptyMessage}</CommandEmpty>
+            <CommandEmpty>{emptyMessage || t('combobox.noResults')}</CommandEmpty>
             <CommandGroup>
               {options.map(option => (
                 <CommandItem

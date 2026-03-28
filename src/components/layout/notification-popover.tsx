@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Bell, CheckCircle2, AlertTriangle, Info, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +68,7 @@ const colorMap = {
 };
 
 export function NotificationPopover() {
+  const t = useTranslations("navigation");
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
@@ -83,9 +85,9 @@ export function NotificationPopover() {
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between p-4 pb-2">
-          <h4 className="text-sm font-semibold">Notifications</h4>
+          <h4 className="text-sm font-semibold">{t("notifications")}</h4>
           <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
-            Mark all read
+            {t("markAllRead")}
           </Button>
         </div>
         <Separator />
@@ -122,7 +124,7 @@ export function NotificationPopover() {
         <Separator />
         <div className="p-2">
           <Button variant="ghost" size="sm" className="w-full text-xs">
-            View all notifications
+            {t("viewAllNotifications")}
           </Button>
         </div>
       </PopoverContent>

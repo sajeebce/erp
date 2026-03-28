@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Plus } from 'lucide-react'
 import { ColumnDef } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
@@ -20,20 +21,22 @@ interface Beneficiary {
   enrollmentCount: number
 }
 
-const columns: ColumnDef<Beneficiary>[] = [
-  { accessorKey: 'beneficiaryNo', header: 'Beneficiary No', cell: ({ row }) => <span className="font-mono text-sm font-medium">{row.getValue('beneficiaryNo')}</span> },
-  { accessorKey: 'name', header: 'Name', cell: ({ row }) => <span className="font-medium">{row.getValue('name')}</span> },
-  { accessorKey: 'gender', header: 'Gender' },
-  { accessorKey: 'district', header: 'District' },
-  { accessorKey: 'upazila', header: 'Upazila' },
-  { accessorKey: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.getValue('status')} /> },
-  { accessorKey: 'enrollmentCount', header: 'Enrollments', cell: ({ row }) => <span className="font-mono text-sm">{row.getValue('enrollmentCount') ?? 0}</span> },
-]
-
 export default function BeneficiariesPage() {
   const router = useRouter()
+  const t = useTranslations('beneficiaries')
+  const tc = useTranslations('common')
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([])
   const [loading, setLoading] = useState(true)
+
+  const columns: ColumnDef<Beneficiary>[] = [
+    { accessorKey: 'beneficiaryNo', header: t('fields.beneficiaryNo'), cell: ({ row }) => <span className="font-mono text-sm font-medium">{row.getValue('beneficiaryNo')}</span> },
+    { accessorKey: 'name', header: t('fields.name'), cell: ({ row }) => <span className="font-medium">{row.getValue('name')}</span> },
+    { accessorKey: 'gender', header: t('fields.gender') },
+    { accessorKey: 'district', header: t('fields.district') },
+    { accessorKey: 'upazila', header: t('fields.upazila') },
+    { accessorKey: 'status', header: tc('labels.status'), cell: ({ row }) => <StatusBadge status={row.getValue('status')} /> },
+    { accessorKey: 'enrollmentCount', header: t('fields.enrollments'), cell: ({ row }) => <span className="font-mono text-sm">{row.getValue('enrollmentCount') ?? 0}</span> },
+  ]
 
   useEffect(() => {
     fetch('/api/v1/beneficiaries?limit=100')
@@ -45,9 +48,9 @@ export default function BeneficiariesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Beneficiary Registry" description="Manage beneficiary registry and program enrollment">
+      <PageHeader title={t('registry.title')} description={t('registry.description')}>
         <Button size="sm" onClick={() => router.push('/beneficiaries/new')}>
-          <Plus className="h-4 w-4 mr-2" />Register Beneficiary
+          <Plus className="h-4 w-4 mr-2" />{t('registerBeneficiary')}
         </Button>
       </PageHeader>
 
@@ -55,7 +58,7 @@ export default function BeneficiariesPage() {
         columns={columns}
         data={beneficiaries}
         searchKey="name"
-        searchPlaceholder="Search beneficiaries..."
+        searchPlaceholder={t('registry.searchPlaceholder')}
         isLoading={loading}
         onRowClick={(row) => router.push(`/beneficiaries/${row.id}`)}
       />

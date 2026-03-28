@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -144,7 +145,10 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" |
   }
 }
 
-export default function DonorReportsCenterPage() {
+export default async function DonorReportsCenterPage() {
+  const t = await getTranslations('reports');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalDue = reports.length;
   const submitted = reports.filter((r) => r.status === "Submitted").length;
   const overdue = reports.filter((r) => r.status === "Overdue").length;
@@ -153,19 +157,19 @@ export default function DonorReportsCenterPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Donor Reports"
-        description="Generate donor-specific financial and narrative reports"
+        title={t('donor.title')}
+        description={t('donor.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Due</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('donor.totalDue')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -176,7 +180,7 @@ export default function DonorReportsCenterPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Submitted</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('donor.submitted')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -187,7 +191,7 @@ export default function DonorReportsCenterPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Overdue</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('donor.overdue')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -198,7 +202,7 @@ export default function DonorReportsCenterPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Upcoming</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('donor.upcoming')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -211,20 +215,20 @@ export default function DonorReportsCenterPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Donor Report Tracker</CardTitle>
+          <CardTitle>{t('donor.tracker')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Report Type</TableHead>
-                <TableHead>Donor</TableHead>
-                <TableHead>Grant</TableHead>
-                <TableHead>Period</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Format</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead>{t('donor.reportType')}</TableHead>
+                <TableHead>{t('donor.donor')}</TableHead>
+                <TableHead>{t('donor.grant')}</TableHead>
+                <TableHead>{t('donor.period')}</TableHead>
+                <TableHead>{t('donor.dueDate')}</TableHead>
+                <TableHead>{t('donor.status')}</TableHead>
+                <TableHead>{t('donor.format')}</TableHead>
+                <TableHead className="text-right">{t('donor.action')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -238,7 +242,7 @@ export default function DonorReportsCenterPage() {
                     {report.grant}
                   </TableCell>
                   <TableCell className="text-sm">{report.period}</TableCell>
-                  <TableCell className="text-sm">{formatDate(report.dueDate)}</TableCell>
+                  <TableCell className="text-sm">{formatDate(report.dueDate, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(report.status)}>{report.status}</Badge>
                   </TableCell>
@@ -246,7 +250,7 @@ export default function DonorReportsCenterPage() {
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm">
                       <Send className="h-3 w-3 mr-1" />
-                      {report.status === "Submitted" ? "View" : "Prepare"}
+                      {report.status === "Submitted" ? tc('buttons.view') : t('donor.prepare')}
                     </Button>
                   </TableCell>
                 </TableRow>

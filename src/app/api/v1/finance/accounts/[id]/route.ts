@@ -26,7 +26,7 @@ export async function GET(
         id: true,
         code: true,
         name: true,
-        nameInBangla: true,
+        localizedName: true,
         type: true,
         nature: true,
         parentId: true,
@@ -124,7 +124,7 @@ export async function PUT(
     const body = await request.json()
 
     // Only allow updating specific fields — code, type, nature cannot be changed
-    const allowedFields = ['name', 'description', 'isActive', 'fundCode', 'projectId'] as const
+    const allowedFields = ['name', 'description', 'isActive', 'fundCode', 'projectId', 'localizedName'] as const
     const data: Record<string, unknown> = {}
 
     for (const field of allowedFields) {
@@ -166,7 +166,7 @@ export async function PUT(
         id: true,
         code: true,
         name: true,
-        nameInBangla: true,
+        localizedName: true,
         type: true,
         nature: true,
         parentId: true,

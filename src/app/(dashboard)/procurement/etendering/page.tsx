@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 interface Tender {
   id: string;
@@ -117,7 +118,11 @@ function getStatusVariant(status: string): "default" | "secondary" | "destructiv
   }
 }
 
-export default function ETenderingPage() {
+export default async function ETenderingPage() {
+  const t = await getTranslations('procurement');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const openTenders = tenders.filter((t) => t.status === "Open").length;
   const underEvaluation = tenders.filter((t) => t.status === "Evaluation").length;
   const totalValue = tenders
@@ -132,23 +137,23 @@ export default function ETenderingPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="eTendering"
-        description="Manage competitive bidding and tender processes"
+        title={t('eTendering.title')}
+        description={t('eTendering.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New Tender
+          {t('eTendering.newTender')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Open Tenders</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('eTendering.openTenders')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{openTenders}</p>
@@ -156,7 +161,7 @@ export default function ETenderingPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Under Evaluation</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('eTendering.underEvaluation')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{underEvaluation}</p>
@@ -164,15 +169,15 @@ export default function ETenderingPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Value</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('eTendering.totalValue')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalValue)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalValue, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Bids Per Tender</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('eTendering.avgBidsPerTender')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{avgBidsPerTender}</p>
@@ -182,20 +187,20 @@ export default function ETenderingPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Tender Register</CardTitle>
+          <CardTitle>{t('eTendering.tenderRegister')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[140px]">Tender No</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Publication Date</TableHead>
-                <TableHead>Closing Date</TableHead>
-                <TableHead className="text-right">Estimated Value</TableHead>
-                <TableHead className="text-center">Bids Received</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[140px]">{t('eTendering.tenderNo')}</TableHead>
+                <TableHead>{t('eTendering.title2')}</TableHead>
+                <TableHead>{t('eTendering.category')}</TableHead>
+                <TableHead>{t('eTendering.publicationDate')}</TableHead>
+                <TableHead>{t('eTendering.closingDate')}</TableHead>
+                <TableHead className="text-right">{t('eTendering.estimatedValue')}</TableHead>
+                <TableHead className="text-center">{t('eTendering.bidsReceived')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -208,9 +213,9 @@ export default function ETenderingPage() {
                       {tender.category}
                     </Badge>
                   </TableCell>
-                  <TableCell>{formatDate(tender.publicationDate)}</TableCell>
-                  <TableCell>{formatDate(tender.closingDate)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(tender.estimatedValue)}</TableCell>
+                  <TableCell>{formatDate(tender.publicationDate, locale)}</TableCell>
+                  <TableCell>{formatDate(tender.closingDate, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(tender.estimatedValue, locale)}</TableCell>
                   <TableCell className="text-center">{tender.bidsReceived}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(tender.status)}>

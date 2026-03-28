@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { ColumnDef } from '@tanstack/react-table'
 import { DataTable } from '@/components/shared/data-table'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -37,10 +38,15 @@ interface Subscription {
   currentPeriodStart?: string
 }
 
-const columns: ColumnDef<Subscription>[] = [
+export default function AdminSubscriptionsPage() {
+  const t = useTranslations('admin')
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const columns: ColumnDef<Subscription>[] = [
   {
     id: 'orgName',
-    header: 'Organization',
+    header: t('subscriptions.organization'),
     cell: ({ row }) => {
       const sub = row.original
       return <span className="font-medium">{sub.orgName || sub.organization?.name || '--'}</span>
@@ -48,7 +54,7 @@ const columns: ColumnDef<Subscription>[] = [
   },
   {
     id: 'planName',
-    header: 'Plan',
+    header: t('subscriptions.plan'),
     cell: ({ row }) => {
       const sub = row.original
       return sub.planName || sub.plan?.name || '--'
@@ -56,12 +62,12 @@ const columns: ColumnDef<Subscription>[] = [
   },
   {
     accessorKey: 'status',
-    header: 'Status',
+    header: t('subscriptions.status'),
     cell: ({ row }) => <StatusBadge status={row.getValue('status')} />,
   },
   {
     accessorKey: 'billingCycle',
-    header: 'Billing Cycle',
+    header: t('subscriptions.billingCycle'),
     cell: ({ row }) => {
       const cycle = row.getValue('billingCycle') as string
       return <span className="capitalize">{cycle?.toLowerCase()}</span>
@@ -69,7 +75,7 @@ const columns: ColumnDef<Subscription>[] = [
   },
   {
     accessorKey: 'currentPeriodEnd',
-    header: 'Period Ends',
+    header: t('subscriptions.periodEnds'),
     cell: ({ row }) => {
       const date = row.getValue('currentPeriodEnd') as string
       if (!date) return '--'
@@ -77,10 +83,6 @@ const columns: ColumnDef<Subscription>[] = [
     },
   },
 ]
-
-export default function AdminSubscriptionsPage() {
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     adminFetch('/api/v1/admin/subscriptions?limit=100')
@@ -91,13 +93,13 @@ export default function AdminSubscriptionsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Subscriptions" description="View and manage all organization subscriptions" />
+      <PageHeader title={t('subscriptions.title')} description={t('subscriptions.description')} />
 
       <DataTable
         columns={columns}
         data={subscriptions}
         searchKey="orgName"
-        searchPlaceholder="Search by organization..."
+        searchPlaceholder={t('subscriptions.searchPlaceholder')}
         isLoading={loading}
       />
     </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { ColumnDef } from '@tanstack/react-table'
 import { DataTable } from '@/components/shared/data-table'
 import { PageHeader } from '@/components/shared/page-header'
@@ -36,10 +37,15 @@ interface AuditLogEntry {
   createdAt: string
 }
 
-const columns: ColumnDef<AuditLogEntry>[] = [
+export default function AdminAuditLogPage() {
+  const t = useTranslations('admin')
+  const [logs, setLogs] = useState<AuditLogEntry[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const columns: ColumnDef<AuditLogEntry>[] = [
   {
     accessorKey: 'action',
-    header: 'Action',
+    header: t('auditLog.action'),
     cell: ({ row }) => {
       const action = row.getValue('action') as string
       return <span className="font-medium text-sm">{action.replace(/_/g, ' ')}</span>
@@ -47,7 +53,7 @@ const columns: ColumnDef<AuditLogEntry>[] = [
   },
   {
     accessorKey: 'entityType',
-    header: 'Entity Type',
+    header: t('auditLog.entityType'),
     cell: ({ row }) => {
       const type = row.getValue('entityType') as string
       return <span className="text-sm capitalize">{type?.toLowerCase().replace(/_/g, ' ')}</span>
@@ -55,7 +61,7 @@ const columns: ColumnDef<AuditLogEntry>[] = [
   },
   {
     id: 'superAdminName',
-    header: 'Admin',
+    header: t('auditLog.admin'),
     cell: ({ row }) => {
       const entry = row.original
       return <span className="text-sm">{entry.superAdminName || entry.superAdmin?.name || '--'}</span>
@@ -63,12 +69,12 @@ const columns: ColumnDef<AuditLogEntry>[] = [
   },
   {
     accessorKey: 'ipAddress',
-    header: 'IP Address',
+    header: t('auditLog.ipAddress'),
     cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{row.getValue('ipAddress')}</span>,
   },
   {
     accessorKey: 'createdAt',
-    header: 'Timestamp',
+    header: t('auditLog.timestamp'),
     cell: ({ row }) => {
       const date = row.getValue('createdAt') as string
       return (
@@ -86,10 +92,6 @@ const columns: ColumnDef<AuditLogEntry>[] = [
   },
 ]
 
-export default function AdminAuditLogPage() {
-  const [logs, setLogs] = useState<AuditLogEntry[]>([])
-  const [loading, setLoading] = useState(true)
-
   useEffect(() => {
     adminFetch('/api/v1/admin/audit-log?limit=100')
       .then(json => { if (json.success) setLogs(json.data) })
@@ -99,13 +101,13 @@ export default function AdminAuditLogPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Audit Log" description="Track all super admin actions and platform changes" />
+      <PageHeader title={t('auditLog.title')} description={t('auditLog.description')} />
 
       <DataTable
         columns={columns}
         data={logs}
         searchKey="action"
-        searchPlaceholder="Search by action..."
+        searchPlaceholder={t('auditLog.searchPlaceholder')}
         isLoading={loading}
       />
     </div>

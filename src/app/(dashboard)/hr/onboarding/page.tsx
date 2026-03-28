@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -125,7 +126,11 @@ function getStatusVariant(status: string): "default" | "secondary" | "destructiv
   }
 }
 
-export default function OnboardingPage() {
+export default async function OnboardingPage() {
+  const t = await getTranslations('hr');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalNew = onboardingEmployees.length;
   const completed = onboardingEmployees.filter((e) => e.status === "Completed").length;
   const inProgress = onboardingEmployees.filter((e) => e.status === "In Progress").length;
@@ -134,23 +139,23 @@ export default function OnboardingPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Onboarding"
-        description="Manage new employee onboarding checklists and processes"
+        title={t('onboarding.title')}
+        description={t('onboarding.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New Onboarding
+          {t('onboarding.newOnboarding')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">New Employees</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('onboarding.newEmployees')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalNew}</p>
@@ -158,7 +163,7 @@ export default function OnboardingPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Completed</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('onboarding.completed')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{completed}</p>
@@ -166,7 +171,7 @@ export default function OnboardingPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">In Progress</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('onboarding.inProgress')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{inProgress}</p>
@@ -174,7 +179,7 @@ export default function OnboardingPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Overdue</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('onboarding.overdue')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-destructive">{overdue}</p>
@@ -184,19 +189,19 @@ export default function OnboardingPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Onboarding Tracker</CardTitle>
+          <CardTitle>{t('onboarding.onboardingTracker')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Employee Name</TableHead>
-                <TableHead>Position</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Start Date</TableHead>
-                <TableHead>Tasks Progress</TableHead>
-                <TableHead className="text-right">Completion %</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('onboarding.employeeName')}</TableHead>
+                <TableHead>{t('onboarding.position')}</TableHead>
+                <TableHead>{t('onboarding.department')}</TableHead>
+                <TableHead>{t('onboarding.startDate')}</TableHead>
+                <TableHead>{t('onboarding.tasksProgress')}</TableHead>
+                <TableHead className="text-right">{t('onboarding.completionPercent')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -208,7 +213,7 @@ export default function OnboardingPage() {
                     <TableCell className="font-medium">{employee.name}</TableCell>
                     <TableCell>{employee.position}</TableCell>
                     <TableCell>{employee.department}</TableCell>
-                    <TableCell>{formatDate(employee.startDate)}</TableCell>
+                    <TableCell>{formatDate(employee.startDate, locale)}</TableCell>
                     <TableCell>
                       <div className="space-y-1">
                         <Progress value={percent} className="h-2 w-32" />
@@ -226,7 +231,7 @@ export default function OnboardingPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      {formatPercent(percent)}
+                      {formatPercent(percent, locale)}
                       <span className="text-muted-foreground text-xs ml-1">
                         ({completedTasks}/{employee.tasks.length})
                       </span>

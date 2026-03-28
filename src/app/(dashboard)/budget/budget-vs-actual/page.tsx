@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Download, TrendingUp, TrendingDown, Target, BarChart3 } from "lucide-react";
-import { formatBDT, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatPercent } from "@/lib/formatters";
 
 interface BudgetVsActualItem {
   id: string;
@@ -158,7 +159,10 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" |
   }
 }
 
-export default function BudgetVsActualPage() {
+export default async function BudgetVsActualPage() {
+  const t = await getTranslations('budget.vsActual');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalBudget = budgetVsActualItems.reduce((sum, item) => sum + item.budgetAmount, 0);
   const totalActual = budgetVsActualItems.reduce((sum, item) => sum + item.actualSpent, 0);
   const totalVariance = totalBudget - totalActual;
@@ -169,38 +173,38 @@ export default function BudgetVsActualPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Budget vs Actual"
-        description="Compare budgeted amounts against actual expenditures"
+        title={t('title')}
+        description={t('description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Budget</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('totalBudget')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatBDT(totalBudget)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalBudget, locale)}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Actual</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('totalActual')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalActual)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalActual, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Variance</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('totalVariance')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -210,19 +214,19 @@ export default function BudgetVsActualPage() {
                 <TrendingUp className="h-4 w-4 text-destructive" />
               )}
               <p className={`text-2xl font-bold ${totalVariance >= 0 ? "text-green-600" : "text-destructive"}`}>
-                {formatBDT(Math.abs(totalVariance))}
+                {formatCurrency(Math.abs(totalVariance), locale)}
               </p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Burn Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('burnRate')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatPercent(burnRate)}</p>
+              <p className="text-2xl font-bold">{formatPercent(burnRate, locale)}</p>
             </div>
           </CardContent>
         </Card>
@@ -230,19 +234,19 @@ export default function BudgetVsActualPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Budget vs Actual Comparison</CardTitle>
+          <CardTitle>{t('comparison')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Budget Head</TableHead>
-                <TableHead className="text-right">Budget Amount</TableHead>
-                <TableHead className="text-right">Actual Spent</TableHead>
-                <TableHead className="text-right">Variance</TableHead>
-                <TableHead className="text-right w-[90px]">Variance %</TableHead>
-                <TableHead className="w-[160px]">Progress</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('budgetHead')}</TableHead>
+                <TableHead className="text-right">{t('budgetAmount')}</TableHead>
+                <TableHead className="text-right">{t('actualSpent')}</TableHead>
+                <TableHead className="text-right">{t('variance')}</TableHead>
+                <TableHead className="text-right w-[90px]">{t('variancePercent')}</TableHead>
+                <TableHead className="w-[160px]">{t('progress')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -263,24 +267,24 @@ export default function BudgetVsActualPage() {
                     <TableRow key={item.id}>
                       <TableCell className="text-sm pl-8">{item.budgetHead}</TableCell>
                       <TableCell className="text-right font-mono text-sm">
-                        {formatBDT(item.budgetAmount)}
+                        {formatCurrency(item.budgetAmount, locale)}
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm">
-                        {formatBDT(item.actualSpent)}
+                        {formatCurrency(item.actualSpent, locale)}
                       </TableCell>
                       <TableCell
                         className={`text-right font-mono text-sm ${
                           item.variance >= 0 ? "text-green-600" : "text-destructive"
                         }`}
                       >
-                        {item.variance >= 0 ? "" : "-"}{formatBDT(Math.abs(item.variance))}
+                        {item.variance >= 0 ? "" : "-"}{formatCurrency(Math.abs(item.variance), locale)}
                       </TableCell>
                       <TableCell
                         className={`text-right font-mono text-sm ${
                           item.variancePercent >= 0 ? "text-green-600" : "text-destructive"
                         }`}
                       >
-                        {item.variancePercent >= 0 ? "+" : ""}{formatPercent(item.variancePercent)}
+                        {item.variancePercent >= 0 ? "+" : ""}{formatPercent(item.variancePercent, locale)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -289,7 +293,7 @@ export default function BudgetVsActualPage() {
                             className="flex-1"
                           />
                           <span className="text-xs text-muted-foreground w-10 text-right">
-                            {formatPercent((item.actualSpent / item.budgetAmount) * 100)}
+                            {formatPercent((item.actualSpent / item.budgetAmount) * 100, locale)}
                           </span>
                         </div>
                       </TableCell>
@@ -300,53 +304,53 @@ export default function BudgetVsActualPage() {
                   )),
                   <TableRow key={`subtotal-${category}`} className="border-b-2">
                     <TableCell className="text-sm font-medium pl-8 italic">
-                      Subtotal - {category}
+                      {t('subtotal', { category })}
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm font-medium">
-                      {formatBDT(categoryBudget)}
+                      {formatCurrency(categoryBudget, locale)}
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm font-medium">
-                      {formatBDT(categoryActual)}
+                      {formatCurrency(categoryActual, locale)}
                     </TableCell>
                     <TableCell
                       className={`text-right font-mono text-sm font-medium ${
                         categoryVariance >= 0 ? "text-green-600" : "text-destructive"
                       }`}
                     >
-                      {categoryVariance >= 0 ? "" : "-"}{formatBDT(Math.abs(categoryVariance))}
+                      {categoryVariance >= 0 ? "" : "-"}{formatCurrency(Math.abs(categoryVariance), locale)}
                     </TableCell>
                     <TableCell
                       className={`text-right font-mono text-sm font-medium ${
                         categoryVariancePercent >= 0 ? "text-green-600" : "text-destructive"
                       }`}
                     >
-                      {categoryVariancePercent >= 0 ? "+" : ""}{formatPercent(categoryVariancePercent)}
+                      {categoryVariancePercent >= 0 ? "+" : ""}{formatPercent(categoryVariancePercent, locale)}
                     </TableCell>
                     <TableCell colSpan={2} />
                   </TableRow>,
                 ];
               })}
               <TableRow className="bg-muted/50 font-semibold">
-                <TableCell className="font-semibold">Grand Total</TableCell>
+                <TableCell className="font-semibold">{t('grandTotal')}</TableCell>
                 <TableCell className="text-right font-mono font-semibold">
-                  {formatBDT(totalBudget)}
+                  {formatCurrency(totalBudget, locale)}
                 </TableCell>
                 <TableCell className="text-right font-mono font-semibold">
-                  {formatBDT(totalActual)}
+                  {formatCurrency(totalActual, locale)}
                 </TableCell>
                 <TableCell
                   className={`text-right font-mono font-semibold ${
                     totalVariance >= 0 ? "text-green-600" : "text-destructive"
                   }`}
                 >
-                  {totalVariance >= 0 ? "" : "-"}{formatBDT(Math.abs(totalVariance))}
+                  {totalVariance >= 0 ? "" : "-"}{formatCurrency(Math.abs(totalVariance), locale)}
                 </TableCell>
                 <TableCell
                   className={`text-right font-mono font-semibold ${
                     totalVariance >= 0 ? "text-green-600" : "text-destructive"
                   }`}
                 >
-                  {totalVariance >= 0 ? "+" : ""}{formatPercent((totalVariance / totalBudget) * 100)}
+                  {totalVariance >= 0 ? "+" : ""}{formatPercent((totalVariance / totalBudget) * 100, locale)}
                 </TableCell>
                 <TableCell colSpan={2} />
               </TableRow>

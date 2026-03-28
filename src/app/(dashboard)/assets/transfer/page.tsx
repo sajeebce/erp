@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -114,7 +115,11 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" {
   }
 }
 
-export default function AssetTransferPage() {
+export default async function AssetTransferPage() {
+  const t = await getTranslations('assets');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalTransfers = transfers.length;
   const completed = transfers.filter((t) => t.status === "Completed").length;
   const pending = transfers.filter((t) => t.status === "Pending Approval").length;
@@ -123,23 +128,23 @@ export default function AssetTransferPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Asset Transfer"
-        description="Track asset movements between offices and locations"
+        title={t('transfer.title')}
+        description={t('transfer.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New Transfer
+          {t('transfer.newTransfer')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Transfers</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('transfer.totalTransfers')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalTransfers}</p>
@@ -147,7 +152,7 @@ export default function AssetTransferPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Completed</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('transfer.completed')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{completed}</p>
@@ -155,7 +160,7 @@ export default function AssetTransferPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Approval</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('transfer.pendingApproval')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{pending}</p>
@@ -163,7 +168,7 @@ export default function AssetTransferPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">In Transit</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('transfer.inTransit')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{inTransit}</p>
@@ -173,28 +178,28 @@ export default function AssetTransferPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Transfer Log</CardTitle>
+          <CardTitle>{t('transfer.transferLog')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Transfer ID</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Asset</TableHead>
-                <TableHead>From Location</TableHead>
-                <TableHead>To Location</TableHead>
-                <TableHead>Transferred By</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead>Approved By</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('transfer.transferId')}</TableHead>
+                <TableHead>{t('transfer.date')}</TableHead>
+                <TableHead>{t('transfer.asset')}</TableHead>
+                <TableHead>{t('transfer.fromLocation')}</TableHead>
+                <TableHead>{t('transfer.toLocation')}</TableHead>
+                <TableHead>{t('transfer.transferredBy')}</TableHead>
+                <TableHead>{t('transfer.reason')}</TableHead>
+                <TableHead>{t('transfer.approvedBy')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {transfers.map((transfer) => (
                 <TableRow key={transfer.transferId}>
                   <TableCell className="font-mono text-sm">{transfer.transferId}</TableCell>
-                  <TableCell>{formatDate(transfer.date)}</TableCell>
+                  <TableCell>{formatDate(transfer.date, locale)}</TableCell>
                   <TableCell className="font-medium">{transfer.asset}</TableCell>
                   <TableCell>{transfer.fromLocation}</TableCell>
                   <TableCell>{transfer.toLocation}</TableCell>

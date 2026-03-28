@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download, FileEdit, CheckCircle, Clock, XCircle } from "lucide-react";
-import { formatBDT, formatDate, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatPercent } from "@/lib/formatters";
 
 interface BudgetRevision {
   revisionNo: string;
@@ -134,7 +135,10 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" |
   }
 }
 
-export default function BudgetRevisionPage() {
+export default async function BudgetRevisionPage() {
+  const t = await getTranslations('budget.revision');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalRevisions = revisions.length;
   const approvedCount = revisions.filter((r) => r.status === "Approved").length;
   const pendingCount = revisions.filter((r) => r.status === "Pending").length;
@@ -145,23 +149,23 @@ export default function BudgetRevisionPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Budget Revision"
-        description="Request and track budget revisions and reallocations"
+        title={t('title')}
+        description={t('description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New Revision
+          {t('newRevision')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Revisions</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('totalRevisions')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -172,7 +176,7 @@ export default function BudgetRevisionPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Approved</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('approved')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -183,7 +187,7 @@ export default function BudgetRevisionPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('pending')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -194,11 +198,11 @@ export default function BudgetRevisionPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Impact (Approved)</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('totalImpact')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className={`text-2xl font-bold ${totalImpact >= 0 ? "text-green-600" : "text-destructive"}`}>
-              {totalImpact >= 0 ? "+" : ""}{formatBDT(totalImpact)}
+              {totalImpact >= 0 ? "+" : ""}{formatCurrency(totalImpact, locale)}
             </p>
           </CardContent>
         </Card>
@@ -206,35 +210,35 @@ export default function BudgetRevisionPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Budget Revision History</CardTitle>
+          <CardTitle>{t('revisionHistory')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">Revision No</TableHead>
-                <TableHead className="w-[100px]">Date</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead className="text-right">Original Budget</TableHead>
-                <TableHead className="text-right">Revised Budget</TableHead>
-                <TableHead className="text-right">Change</TableHead>
-                <TableHead className="text-right w-[80px]">Change %</TableHead>
-                <TableHead className="w-[250px]">Reason</TableHead>
-                <TableHead>Approved By</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[100px]">{t('revisionNo')}</TableHead>
+                <TableHead className="w-[100px]">{t('date')}</TableHead>
+                <TableHead>{t('project')}</TableHead>
+                <TableHead className="text-right">{t('originalBudget')}</TableHead>
+                <TableHead className="text-right">{t('revisedBudget')}</TableHead>
+                <TableHead className="text-right">{t('change')}</TableHead>
+                <TableHead className="text-right w-[80px]">{t('changePercent')}</TableHead>
+                <TableHead className="w-[250px]">{t('reason')}</TableHead>
+                <TableHead>{t('approvedBy')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {revisions.map((revision) => (
                 <TableRow key={revision.revisionNo}>
                   <TableCell className="font-mono text-sm">{revision.revisionNo}</TableCell>
-                  <TableCell className="text-sm">{formatDate(revision.date)}</TableCell>
+                  <TableCell className="text-sm">{formatDate(revision.date, locale)}</TableCell>
                   <TableCell className="text-sm font-medium">{revision.project}</TableCell>
                   <TableCell className="text-right font-mono text-sm">
-                    {formatBDT(revision.originalBudget)}
+                    {formatCurrency(revision.originalBudget, locale)}
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm">
-                    {formatBDT(revision.revisedBudget)}
+                    {formatCurrency(revision.revisedBudget, locale)}
                   </TableCell>
                   <TableCell
                     className={`text-right font-mono text-sm ${
@@ -246,7 +250,7 @@ export default function BudgetRevisionPage() {
                     }`}
                   >
                     {revision.changeAmount > 0 ? "+" : ""}
-                    {formatBDT(revision.changeAmount)}
+                    {formatCurrency(revision.changeAmount, locale)}
                   </TableCell>
                   <TableCell
                     className={`text-right font-mono text-sm ${
@@ -258,7 +262,7 @@ export default function BudgetRevisionPage() {
                     }`}
                   >
                     {revision.changePercent > 0 ? "+" : ""}
-                    {formatPercent(revision.changePercent)}
+                    {formatPercent(revision.changePercent, locale)}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {revision.reason}

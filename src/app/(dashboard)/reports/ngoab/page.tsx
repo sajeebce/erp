@@ -1,27 +1,29 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { FileText } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/shared/page-header'
 
-const forms = [
-  { title: 'FD-1: Project Registration', description: 'Project proposal and registration with NGOAB', form: 'fd-1' },
-  { title: 'FD-2: Fund Release', description: 'Application for release of foreign donation funds', form: 'fd-2' },
-  { title: 'FD-3: Quarterly Progress', description: 'Quarterly progress report on project activities', form: 'fd-3' },
-  { title: 'FD-4: Personnel Details', description: 'Details of local and foreign personnel employed', form: 'fd-4' },
-  { title: 'FD-5: Asset Register', description: 'Statement of assets acquired with foreign funds', form: 'fd-5' },
-  { title: 'FD-6: Annual Audit', description: 'Annual audit report and financial statements', form: 'fd-6' },
-]
-
 export default function NGOABReportsPage() {
+  const t = useTranslations('reports')
   const router = useRouter()
+
+  const forms = [
+    { title: t('ngoab.fd1'), description: t('ngoab.fd1Desc'), form: 'fd-1' },
+    { title: t('ngoab.fd2'), description: t('ngoab.fd2Desc'), form: 'fd-2' },
+    { title: t('ngoab.fd3'), description: t('ngoab.fd3Desc'), form: 'fd-3' },
+    { title: t('ngoab.fd4'), description: t('ngoab.fd4Desc'), form: 'fd-4' },
+    { title: t('ngoab.fd5'), description: t('ngoab.fd5Desc'), form: 'fd-5' },
+    { title: t('ngoab.fd6'), description: t('ngoab.fd6Desc'), form: 'fd-6' },
+  ]
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="NGOAB Compliance Reports"
-        description="NGO Affairs Bureau regulatory forms and compliance submissions"
+        title={t('ngoab.title')}
+        description={t('ngoab.description')}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

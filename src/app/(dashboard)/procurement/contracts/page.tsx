@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 interface Contract {
   id: string;
@@ -127,7 +128,11 @@ function getTypeVariant(type: string): "default" | "secondary" | "outline" {
   }
 }
 
-export default function ContractsPage() {
+export default async function ContractsPage() {
+  const t = await getTranslations('procurement');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const activeContracts = contracts.filter((c) => c.status === "Active").length;
   const totalValue = contracts.reduce((sum, c) => sum + c.value, 0);
   const expiringSoon = contracts.filter((c) => {
@@ -141,23 +146,23 @@ export default function ContractsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Contracts"
-        description="Manage procurement contracts and agreements"
+        title={t('contracts.title')}
+        description={t('contracts.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New Contract
+          {t('contracts.newContract')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Contracts</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('contracts.activeContracts')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{activeContracts}</p>
@@ -165,15 +170,15 @@ export default function ContractsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Value</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('contracts.totalValue')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalValue)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalValue, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Expiring Soon</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('contracts.expiringSoon')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-amber-600">{expiringSoon}</p>
@@ -181,7 +186,7 @@ export default function ContractsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Under Renewal</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('contracts.underRenewal')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{underRenewal}</p>
@@ -191,20 +196,20 @@ export default function ContractsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Contract Register</CardTitle>
+          <CardTitle>{t('contracts.contractRegister')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[130px]">Contract No</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Start Date</TableHead>
-                <TableHead>End Date</TableHead>
-                <TableHead className="text-right">Value</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[130px]">{t('contracts.contractNo')}</TableHead>
+                <TableHead>{t('contracts.contractTitle')}</TableHead>
+                <TableHead>{t('contracts.vendor')}</TableHead>
+                <TableHead>{t('contracts.type')}</TableHead>
+                <TableHead>{t('contracts.startDate')}</TableHead>
+                <TableHead>{t('contracts.endDate')}</TableHead>
+                <TableHead className="text-right">{t('contracts.value')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -218,9 +223,9 @@ export default function ContractsPage() {
                       {contract.type}
                     </Badge>
                   </TableCell>
-                  <TableCell>{formatDate(contract.startDate)}</TableCell>
-                  <TableCell>{formatDate(contract.endDate)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(contract.value)}</TableCell>
+                  <TableCell>{formatDate(contract.startDate, locale)}</TableCell>
+                  <TableCell>{formatDate(contract.endDate, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(contract.value, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(contract.status)}>
                       {contract.status}

@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download, Wallet, Landmark, Smartphone, Banknote } from "lucide-react";
-import { formatBDT } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 
 interface CashBankAccount {
   accountCode: string;
@@ -145,7 +146,10 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" |
   }
 }
 
-export default function BankCashPage() {
+export default async function BankCashPage() {
+  const t = await getTranslations('finance.bankCash');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalCash = accounts
     .filter((a) => a.type === "Cash")
     .reduce((sum, a) => sum + a.currentBalance, 0);
@@ -160,61 +164,61 @@ export default function BankCashPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Bank & Cash"
-        description="Manage bank accounts and cash positions"
+        title={t('title')}
+        description={t('description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Add Account
+          {t('addAccount')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Cash</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('totalCash')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Banknote className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatBDT(totalCash)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalCash, locale)}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Bank</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('totalBank')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Landmark className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatBDT(totalBank)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalBank, locale)}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Mobile Banking</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('totalMobileBanking')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Smartphone className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatBDT(totalMobile)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalMobile, locale)}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Grand Total</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('grandTotal')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Wallet className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatBDT(grandTotal)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(grandTotal, locale)}</p>
             </div>
           </CardContent>
         </Card>
@@ -222,20 +226,20 @@ export default function BankCashPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Cash & Bank Accounts</CardTitle>
+          <CardTitle>{t('cashBankAccounts')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[90px]">Code</TableHead>
-                <TableHead>Account Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Bank Name</TableHead>
-                <TableHead>Account Number</TableHead>
-                <TableHead className="text-right">Current Balance</TableHead>
-                <TableHead className="w-[80px]">Currency</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[90px]">{t('code')}</TableHead>
+                <TableHead>{t('accountName')}</TableHead>
+                <TableHead>{t('type')}</TableHead>
+                <TableHead>{t('bankName')}</TableHead>
+                <TableHead>{t('accountNumber')}</TableHead>
+                <TableHead className="text-right">{t('currentBalance')}</TableHead>
+                <TableHead className="w-[80px]">{t('currency')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -249,7 +253,7 @@ export default function BankCashPage() {
                   <TableCell className="text-sm">{account.bankName}</TableCell>
                   <TableCell className="font-mono text-sm">{account.accountNumber}</TableCell>
                   <TableCell className="text-right font-mono text-sm">
-                    {formatBDT(account.currentBalance)}
+                    {formatCurrency(account.currentBalance, locale)}
                   </TableCell>
                   <TableCell className="text-sm">{account.currency}</TableCell>
                   <TableCell>
@@ -259,10 +263,10 @@ export default function BankCashPage() {
               ))}
               <TableRow className="bg-muted/50 font-semibold">
                 <TableCell colSpan={5} className="text-right font-semibold">
-                  Grand Total
+                  {t('grandTotal')}
                 </TableCell>
                 <TableCell className="text-right font-mono font-semibold">
-                  {formatBDT(grandTotal)}
+                  {formatCurrency(grandTotal, locale)}
                 </TableCell>
                 <TableCell colSpan={2} />
               </TableRow>

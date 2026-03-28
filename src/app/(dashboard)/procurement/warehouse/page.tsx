@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatNumber, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatNumber, formatPercent } from "@/lib/formatters";
 
 interface Store {
   id: string;
@@ -93,7 +94,11 @@ function getCapacityColor(percent: number): string {
   return "[&>div]:bg-emerald-500";
 }
 
-export default function WarehousePage() {
+export default async function WarehousePage() {
+  const t = await getTranslations('procurement');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalStores = stores.length;
   const totalItems = stores.reduce((sum, s) => sum + s.itemsCount, 0);
   const totalValue = stores.reduce((sum, s) => sum + s.totalValue, 0);
@@ -102,23 +107,23 @@ export default function WarehousePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Warehouse"
-        description="Manage warehouse locations and storage"
+        title={t('warehouse.title')}
+        description={t('warehouse.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Add Store
+          {t('warehouse.addStore')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Stores</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('warehouse.totalStores')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalStores}</p>
@@ -126,46 +131,46 @@ export default function WarehousePage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Items</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('warehouse.totalItems')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatNumber(totalItems)}</p>
+            <p className="text-2xl font-bold">{formatNumber(totalItems, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Value</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('warehouse.totalValue')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalValue)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalValue, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Capacity</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('warehouse.avgCapacity')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatPercent(avgCapacity)}</p>
+            <p className="text-2xl font-bold">{formatPercent(avgCapacity, locale)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Store Directory</CardTitle>
+          <CardTitle>{t('warehouse.storeDirectory')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[90px]">Store ID</TableHead>
-                <TableHead>Store Name</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead className="w-[180px]">Capacity</TableHead>
-                <TableHead>Manager</TableHead>
-                <TableHead className="text-right">Items Count</TableHead>
-                <TableHead className="text-right">Total Value</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[90px]">{t('warehouse.storeId')}</TableHead>
+                <TableHead>{t('warehouse.storeName')}</TableHead>
+                <TableHead>{t('warehouse.location')}</TableHead>
+                <TableHead className="w-[180px]">{t('warehouse.capacity')}</TableHead>
+                <TableHead>{t('warehouse.manager')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.itemsCount')}</TableHead>
+                <TableHead className="text-right">{t('warehouse.totalValue')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -181,13 +186,13 @@ export default function WarehousePage() {
                         className={`flex-1 h-2 ${getCapacityColor(store.capacityPercent)}`}
                       />
                       <span className="text-sm font-medium w-10 text-right">
-                        {formatPercent(store.capacityPercent)}
+                        {formatPercent(store.capacityPercent, locale)}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell>{store.manager}</TableCell>
-                  <TableCell className="text-right font-mono">{formatNumber(store.itemsCount)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(store.totalValue)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatNumber(store.itemsCount, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(store.totalValue, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(store.status)}>
                       {store.status}

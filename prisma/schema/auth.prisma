@@ -14,6 +14,7 @@ model User {
   failedLoginCount   Int         @default(0)
   lockedUntil        DateTime?
   mustChangePassword Boolean     @default(true)
+  preferredLanguage  String?
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
   deletedAt          DateTime?

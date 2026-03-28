@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -151,16 +152,18 @@ function getAccessIcon(access: string) {
   }
 }
 
-export default function RolesPage() {
+export default async function RolesPage() {
+  const t = await getTranslations('settings');
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Roles & Permissions"
-        description="Define roles and configure granular permissions"
+        title={t('roles.title')}
+        description={t('roles.description')}
       >
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Create Role
+          {t('roles.createRole')}
         </Button>
       </PageHeader>
 
@@ -180,7 +183,7 @@ export default function RolesPage() {
             <CardContent>
               <div className="space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Module Permissions
+                  {t('roles.modulePermissions')}
                 </p>
                 <div className="space-y-1.5">
                   {role.permissions.map((perm) => (

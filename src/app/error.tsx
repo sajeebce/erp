@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -11,6 +12,8 @@ export default function Error({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const t = useTranslations('common')
+
   useEffect(() => {
     console.error('Application error:', error)
   }, [error])
@@ -24,14 +27,14 @@ export default function Error({
           </div>
         </div>
         <h1 className="text-4xl font-bold">500</h1>
-        <p className="text-lg text-muted-foreground">Something went wrong</p>
+        <p className="text-lg text-muted-foreground">{t('errors.somethingWentWrong')}</p>
         <p className="text-sm text-muted-foreground max-w-md">
-          An unexpected error occurred. Our team has been notified.
+          {t('errors.unexpectedError')}
         </p>
         <div className="flex gap-3 justify-center pt-2">
-          <Button onClick={reset}>Try Again</Button>
+          <Button onClick={reset}>{t('errors.tryAgain')}</Button>
           <Button variant="outline" onClick={() => window.location.href = '/dashboard'}>
-            Go to Dashboard
+            {t('errors.goToDashboard')}
           </Button>
         </div>
       </div>

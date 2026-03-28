@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Plus } from 'lucide-react'
 import { ColumnDef } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
@@ -38,25 +39,31 @@ interface Organization {
   storageUsedMb?: number
 }
 
-const columns: ColumnDef<Organization>[] = [
+export default function AdminOrganizationsPage() {
+  const t = useTranslations('admin')
+  const router = useRouter()
+  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const columns: ColumnDef<Organization>[] = [
   {
     accessorKey: 'name',
-    header: 'Organization',
+    header: t('organizations.orgName'),
     cell: ({ row }) => <span className="font-medium">{row.getValue('name')}</span>,
   },
   {
     accessorKey: 'slug',
-    header: 'Slug',
+    header: t('organizations.slug'),
     cell: ({ row }) => <span className="text-sm text-muted-foreground font-mono">{row.getValue('slug')}</span>,
   },
   {
     accessorKey: 'isActive',
-    header: 'Status',
+    header: t('organizations.status'),
     cell: ({ row }) => <StatusBadge status={row.getValue('isActive') ? 'ACTIVE' : 'INACTIVE'} />,
   },
   {
     accessorKey: 'subscriptionStatus',
-    header: 'Subscription',
+    header: t('organizations.subscription'),
     cell: ({ row }) => {
       const status = row.getValue('subscriptionStatus') as string
       return status ? <StatusBadge status={status} /> : <span className="text-xs text-muted-foreground">--</span>
@@ -64,12 +71,12 @@ const columns: ColumnDef<Organization>[] = [
   },
   {
     id: 'userCount',
-    header: 'Users',
+    header: t('organizations.users'),
     cell: ({ row }) => row.original._count?.users ?? 0,
   },
   {
     accessorKey: 'storageUsedMb',
-    header: 'Storage',
+    header: t('organizations.storage'),
     cell: ({ row }) => {
       const mb = row.getValue('storageUsedMb') as number | undefined
       if (!mb) return <span className="text-xs text-muted-foreground">--</span>
@@ -77,11 +84,6 @@ const columns: ColumnDef<Organization>[] = [
     },
   },
 ]
-
-export default function AdminOrganizationsPage() {
-  const router = useRouter()
-  const [organizations, setOrganizations] = useState<Organization[]>([])
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     adminFetch('/api/v1/admin/organizations?limit=100')
@@ -92,9 +94,9 @@ export default function AdminOrganizationsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Organizations" description="Manage all tenant organizations on the platform">
+      <PageHeader title={t('organizations.title')} description={t('organizations.description')}>
         <Button size="sm" onClick={() => router.push('/admin/organizations/new')}>
-          <Plus className="h-4 w-4 mr-2" />Create Organization
+          <Plus className="h-4 w-4 mr-2" />{t('organizations.createOrg')}
         </Button>
       </PageHeader>
 
@@ -102,7 +104,7 @@ export default function AdminOrganizationsPage() {
         columns={columns}
         data={organizations}
         searchKey="name"
-        searchPlaceholder="Search organizations..."
+        searchPlaceholder={t('organizations.searchPlaceholder')}
         isLoading={loading}
         onRowClick={(row) => router.push(`/admin/organizations/${row.id}`)}
       />

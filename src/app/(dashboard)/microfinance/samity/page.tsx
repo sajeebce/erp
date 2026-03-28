@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { Plus } from 'lucide-react'
 import { ColumnDef } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
@@ -20,19 +21,21 @@ interface Samity {
   status: string
 }
 
-const columns: ColumnDef<Samity>[] = [
-  { accessorKey: 'samityNo', header: 'Samity No', cell: ({ row }) => <span className="font-mono text-sm font-medium">{row.getValue('samityNo')}</span> },
-  { accessorKey: 'name', header: 'Samity Name', cell: ({ row }) => <span className="font-medium">{row.getValue('name')}</span> },
-  { id: 'branchName', header: 'Branch', cell: ({ row }) => {
-    const samity = row.original
-    return samity.branch?.name || samity.branchName || '\u2014'
-  }},
-  { accessorKey: 'meetingDay', header: 'Meeting Day' },
-  { accessorKey: 'totalMembers', header: 'Members', cell: ({ row }) => <span className="font-mono text-sm">{row.getValue('totalMembers') ?? 0}</span> },
-  { accessorKey: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.getValue('status')} /> },
-]
-
 export default function SamityPage() {
+  const t = useTranslations('microfinance')
+  const tc = useTranslations('common')
+
+  const columns: ColumnDef<Samity>[] = [
+    { accessorKey: 'samityNo', header: t('samity.samityNo'), cell: ({ row }) => <span className="font-mono text-sm font-medium">{row.getValue('samityNo')}</span> },
+    { accessorKey: 'name', header: t('samity.name'), cell: ({ row }) => <span className="font-medium">{row.getValue('name')}</span> },
+    { id: 'branchName', header: t('samity.branch'), cell: ({ row }) => {
+      const samity = row.original
+      return samity.branch?.name || samity.branchName || '\u2014'
+    }},
+    { accessorKey: 'meetingDay', header: t('samity.meetingDay') },
+    { accessorKey: 'totalMembers', header: t('samity.members'), cell: ({ row }) => <span className="font-mono text-sm">{row.getValue('totalMembers') ?? 0}</span> },
+    { accessorKey: 'status', header: tc('labels.status'), cell: ({ row }) => <StatusBadge status={row.getValue('status')} /> },
+  ]
   const router = useRouter()
   const [samities, setSamities] = useState<Samity[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,9 +50,9 @@ export default function SamityPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Samity Management" description="Manage microfinance groups, members, and meeting schedules">
+      <PageHeader title={t('samity.title')} description={t('samity.description')}>
         <Button size="sm" onClick={() => router.push('/microfinance/samity/new')}>
-          <Plus className="h-4 w-4 mr-2" />New Samity
+          <Plus className="h-4 w-4 mr-2" />{t('samity.newSamity')}
         </Button>
       </PageHeader>
 
@@ -57,7 +60,7 @@ export default function SamityPage() {
         columns={columns}
         data={samities}
         searchKey="name"
-        searchPlaceholder="Search samities..."
+        searchPlaceholder={t('samity.searchPlaceholder')}
         isLoading={loading}
         onRowClick={(row) => router.push(`/microfinance/samity/${row.id}`)}
       />

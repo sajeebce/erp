@@ -17,6 +17,7 @@
 6. [API Routes & CRUD Operations](#6-api-routes--crud-operations)
 7. [Implementation Phases](#7-implementation-phases)
 8. [Testing Guidelines](#8-testing-guidelines)
+9. [Internationalization (i18n)](#9-internationalization-i18n)
 
 ---
 
@@ -1655,7 +1656,7 @@ model Organization {
   slug               String   @unique  // URL-friendly: "shapla-foundation" → shapla-foundation.ngoerp.com
   customDomain       String?  @unique  // Tenant's own domain: "erp.shaplango.org"
   domainVerified     Boolean  @default(false) // DNS verification status
-  nameInBangla       String?
+  localizedName      Json?    // e.g. { "en": "Shapla Foundation", "bn": "শাপলা ফাউন্ডেশন" }
   registrationNo     String?
   ngoabLicenseNo     String?
   mraLicenseNo       String?
@@ -1808,7 +1809,7 @@ model Account {
   organizationId  String        @db.Uuid  // ← TENANT SCOPE
   code            String        // e.g., "1000", "1100", "1101"
   name          String
-  nameInBangla  String?
+  localizedName Json?         // e.g. { "en": "Current Assets", "bn": "চলতি সম্পদ" }
   type          AccountType
   nature        AccountNature
   parentId      String?       @db.Uuid
@@ -3132,7 +3133,7 @@ model Employee {
   employeeNo        String
   userId            String?        @unique @db.Uuid // Links to User for system access
   fullName          String
-  nameInBangla      String?
+  localizedName     Json?          // e.g. { "en": "John Doe", "bn": "জন ডো" }
   fatherName        String?
   motherName        String?
   dateOfBirth       DateTime?
@@ -5218,6 +5219,117 @@ nodemailer              # Email sending (or Resend)
 # Existing (keep)
 next, react, react-dom, tailwindcss, shadcn, recharts, lucide-react, next-themes
 ```
+
+---
+
+---
+
+## 9. Internationalization (i18n)
+
+### 9.1 Architecture
+
+Full 3-layer internationalization using `next-intl` (cookie-based, no URL prefix):
+
+| Layer | Library/Approach | Description |
+|-------|-----------------|-------------|
+| **App-level i18n** | `next-intl` | All UI strings (labels, buttons, headers, status, errors) translatable |
+| **Data-level localization** | JSON column (`localizedName`) | User-generated content stored as `{"en": "...", "bn": "..."}` |
+| **Locale-aware display** | `Intl` API + `date-fns` locale | Dates, numbers, currency respect user locale |
+
+### 9.2 Supported Locales
+
+| Code | Language | Status |
+|------|----------|--------|
+| `en` | English | Default, complete |
+| `bn` | Bengali (বাংলা) | Complete |
+
+### 9.3 Message File Structure
+
+```
+src/messages/
+  en/                        # English translations
+    common.json              # ~150 keys: buttons, statuses, pagination, errors
+    navigation.json          # ~90 keys: sidebar labels, app name
+    auth.json                # Login, register, forgot/reset password
+    dashboard.json           # KPIs, charts, analytics
+    finance.json             # Chart of accounts, vouchers, JE
+    budget.json, donors.json, projects.json, beneficiaries.json,
+    procurement.json, assets.json, hr.json, microfinance.json,
+    reports.json, settings.json, admin.json
+  bn/                        # Bengali translations (mirror structure)
+```
+
+**Total: ~2,200 translation keys across 16 namespaces per locale.**
+
+### 9.4 Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/i18n/config.ts` | Locale constants, display names |
+| `src/i18n/request.ts` | Server-side locale resolution (reads `NEXT_LOCALE` cookie) |
+| `src/hooks/use-formatters.ts` | Locale-aware currency/date/number formatting hook |
+| `src/lib/formatters.ts` | Formatting functions (accept locale parameter) |
+| `src/lib/localized-name.ts` | `getLocalizedName()` helper for data-level localization |
+| `src/components/shared/language-switcher.tsx` | Globe dropdown: English ↔ বাংলা |
+| `src/components/shared/localized-name-input.tsx` | Dual-locale (EN/BN) name input |
+
+### 9.5 Locale Resolution Priority
+
+1. **User** `preferredLanguage` (from User model)
+2. **Organization** `defaultLanguage` (from Organization model)
+3. **Default** `en`
+
+Resolved locale is stored in `NEXT_LOCALE` cookie (set on login, register, and language switch).
+
+### 9.6 Usage Patterns
+
+**Server Components:**
+```tsx
+import { getTranslations, getLocale } from 'next-intl/server'
+
+export default async function Page() {
+  const t = await getTranslations('finance')
+  const locale = await getLocale()
+  return <h1>{t('title')}</h1>
+}
+```
+
+**Client Components:**
+```tsx
+'use client'
+import { useTranslations } from 'next-intl'
+import { useFormatters } from '@/hooks/use-formatters'
+
+export default function Page() {
+  const t = useTranslations('finance')
+  const { formatCurrency, formatDate } = useFormatters()
+  return <span>{formatCurrency(50000)}</span>
+}
+```
+
+**Data-level localization:**
+```tsx
+import { getLocalizedName } from '@/lib/localized-name'
+const displayName = getLocalizedName(account.localizedName, account.name, locale)
+```
+
+### 9.7 Database Fields
+
+| Model | Field | Type | Purpose |
+|-------|-------|------|---------|
+| Organization | `defaultLanguage` | `String @default("en")` | Org-level default locale |
+| Organization | `localizedName` | `Json?` | `{"en": "...", "bn": "..."}` |
+| User | `preferredLanguage` | `String?` | User-level locale override |
+| Account | `localizedName` | `Json?` | Chart of accounts name localization |
+| Employee | `localizedName` | `Json?` | Employee name localization |
+
+### 9.8 API Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `PUT` | `/api/v1/settings/language` | Update user language preference + set cookie |
+
+Login/Register APIs automatically set `NEXT_LOCALE` cookie based on user/org preferences.
 
 ---
 

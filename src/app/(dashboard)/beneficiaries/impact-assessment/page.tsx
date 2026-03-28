@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -121,7 +122,11 @@ function getProgressColor(achievement: number): string {
   return "[&>div]:bg-red-500";
 }
 
-export default function ImpactAssessmentPage() {
+export default async function ImpactAssessmentPage() {
+  const t = await getTranslations('beneficiaries');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalIndicators = indicators.length;
   const onTarget = indicators.filter((i) => i.achievement >= 80).length;
   const belowTarget = indicators.filter((i) => i.achievement < 80).length;
@@ -133,19 +138,19 @@ export default function ImpactAssessmentPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Impact Assessment"
-        description="Track program outcomes and measure impact against targets"
+        title={t('impactAssessment.title')}
+        description={t('impactAssessment.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export Report
+          {t('impactAssessment.exportReport')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Indicators Tracked</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('impactAssessment.indicatorsTracked')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalIndicators}</p>
@@ -153,7 +158,7 @@ export default function ImpactAssessmentPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">On Target</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('impactAssessment.onTarget')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-emerald-600">{onTarget}</p>
@@ -161,7 +166,7 @@ export default function ImpactAssessmentPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Below Target</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('impactAssessment.belowTarget')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-amber-600">{belowTarget}</p>
@@ -169,38 +174,38 @@ export default function ImpactAssessmentPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Data Freshness</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('impactAssessment.dataFreshness')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatDate(latestUpdate)}</p>
+            <p className="text-2xl font-bold">{formatDate(latestUpdate, locale)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Impact Indicators</CardTitle>
+          <CardTitle>{t('impactAssessment.impactIndicators')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Indicator Name</TableHead>
-                <TableHead className="text-right">Baseline (%)</TableHead>
-                <TableHead className="text-right">Target (%)</TableHead>
-                <TableHead className="text-right">Current (%)</TableHead>
-                <TableHead className="w-[200px]">Achievement</TableHead>
-                <TableHead>Data Source</TableHead>
-                <TableHead>Last Updated</TableHead>
+                <TableHead>{t('impactAssessment.indicatorName')}</TableHead>
+                <TableHead className="text-right">{t('impactAssessment.baseline')} (%)</TableHead>
+                <TableHead className="text-right">{t('impactAssessment.target')} (%)</TableHead>
+                <TableHead className="text-right">{t('impactAssessment.current')} (%)</TableHead>
+                <TableHead className="w-[200px]">{t('impactAssessment.achievement')}</TableHead>
+                <TableHead>{t('impactAssessment.dataSource')}</TableHead>
+                <TableHead>{t('impactAssessment.lastUpdated')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {indicators.map((indicator) => (
                 <TableRow key={indicator.id}>
                   <TableCell className="font-medium">{indicator.name}</TableCell>
-                  <TableCell className="text-right font-mono">{formatPercent(indicator.baseline)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatPercent(indicator.target)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatPercent(indicator.currentValue)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatPercent(indicator.baseline, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatPercent(indicator.target, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatPercent(indicator.currentValue, locale)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Progress
@@ -208,12 +213,12 @@ export default function ImpactAssessmentPage() {
                         className={`flex-1 h-2 ${getProgressColor(indicator.achievement)}`}
                       />
                       <Badge variant={getAchievementVariant(indicator.achievement)} className="text-[10px] w-14 justify-center">
-                        {formatPercent(indicator.achievement)}
+                        {formatPercent(indicator.achievement, locale)}
                       </Badge>
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{indicator.dataSource}</TableCell>
-                  <TableCell>{formatDate(indicator.lastUpdated)}</TableCell>
+                  <TableCell>{formatDate(indicator.lastUpdated, locale)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

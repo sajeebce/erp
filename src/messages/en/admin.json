@@ -1,0 +1,108 @@
+{
+  "title": "Super Admin",
+  "description": "Super Admin Panel",
+  "dashboard": {
+    "title": "Admin Dashboard",
+    "totalOrganizations": "Total Organizations",
+    "activeOrganizations": "Active Organizations",
+    "totalUsers": "Total Users",
+    "totalRevenue": "Total Revenue",
+    "activeSubscriptions": "Active Subscriptions",
+    "trialOrganizations": "Trial Organizations",
+    "recentOrganizations": "Recent Organizations",
+    "noOrganizations": "No organizations yet",
+    "users": "users",
+    "subscriptionBreakdown": "Subscription Breakdown",
+    "noSubscriptions": "No subscriptions yet",
+    "failedToLoad": "Failed to load dashboard"
+  },
+  "organizations": {
+    "title": "Organizations",
+    "description": "Manage all tenant organizations on the platform",
+    "addOrg": "Add Organization",
+    "createOrg": "Create Organization",
+    "orgName": "Organization",
+    "slug": "Slug",
+    "status": "Status",
+    "subscription": "Subscription",
+    "users": "Users",
+    "storage": "Storage",
+    "actions": "Actions",
+    "searchPlaceholder": "Search organizations..."
+  },
+  "plans": {
+    "title": "Subscription Plans",
+    "description": "Manage platform subscription tiers and pricing",
+    "addPlan": "Add Plan",
+    "name": "Plan Name",
+    "priceMonthly": "Monthly Price",
+    "priceYearly": "Yearly Price",
+    "maxUsers": "Max Users",
+    "maxProjects": "Max Projects",
+    "storage": "Storage",
+    "features": "Features",
+    "subscriptions": "Subscriptions",
+    "searchPlaceholder": "Search plans..."
+  },
+  "subscriptions": {
+    "title": "Subscriptions",
+    "description": "View and manage all organization subscriptions",
+    "organization": "Organization",
+    "plan": "Plan",
+    "status": "Status",
+    "billingCycle": "Billing Cycle",
+    "periodEnds": "Period Ends",
+    "searchPlaceholder": "Search by organization..."
+  },
+  "domains": {
+    "title": "Domains",
+    "description": "Manage organization slugs and custom domain mappings",
+    "organization": "Organization",
+    "slug": "Slug",
+    "customDomain": "Custom Domain",
+    "verified": "Verified",
+    "searchPlaceholder": "Search by slug..."
+  },
+  "mediaSettings": {
+    "title": "Media Settings",
+    "description": "Configure file storage provider and upload limits",
+    "storageConfig": "Storage Configuration",
+    "provider": "Provider",
+    "bucketName": "Bucket Name",
+    "endpoint": "Endpoint",
+    "accessKeyId": "Access Key ID",
+    "secretAccessKey": "Secret Access Key",
+    "publicUrl": "Public URL",
+    "maxFileSizeMb": "Max File Size (MB)",
+    "saveSettings": "Save Settings",
+    "testConnection": "Test Connection",
+    "savedSuccess": "Media settings saved successfully.",
+    "failedToSave": "Failed to save settings.",
+    "connectionSuccess": "Connection test successful!",
+    "connectionFailed": "Connection test failed.",
+    "networkError": "Network error. Please try again."
+  },
+  "auditLog": {
+    "title": "Audit Log",
+    "description": "Track all super admin actions and platform changes",
+    "action": "Action",
+    "entityType": "Entity Type",
+    "admin": "Admin",
+    "ipAddress": "IP Address",
+    "timestamp": "Timestamp",
+    "searchPlaceholder": "Search by action..."
+  },
+  "impersonate": {
+    "title": "Impersonate",
+    "description": "Sign in as another user for troubleshooting"
+  },
+  "login": {
+    "title": "Super Admin",
+    "subtitle": "Sign in to the admin panel",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign In",
+    "networkError": "Network error. Please try again.",
+    "loginFailed": "Login failed"
+  }
+}

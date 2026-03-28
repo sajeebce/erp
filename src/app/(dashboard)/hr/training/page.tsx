@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatDate, formatNumber } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/formatters";
 
 interface Training {
   trainingId: string;
@@ -157,7 +158,11 @@ function getTypeVariant(type: string): "default" | "secondary" | "outline" {
   }
 }
 
-export default function TrainingPage() {
+export default async function TrainingPage() {
+  const t = await getTranslations('hr');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalTrainings = trainings.filter((t) => t.status !== "Cancelled").length;
   const totalParticipants = trainings
     .filter((t) => t.status === "Completed" || t.status === "In Progress")
@@ -170,23 +175,23 @@ export default function TrainingPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Training & Development"
-        description="Manage employee training programs and capacity building"
+        title={t('training.title')}
+        description={t('training.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Schedule Training
+          {t('training.scheduleTraining')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Trainings</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('training.totalTrainings')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalTrainings}</p>
@@ -194,23 +199,23 @@ export default function TrainingPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Participants Trained</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('training.participantsTrained')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatNumber(totalParticipants)}</p>
+            <p className="text-2xl font-bold">{formatNumber(totalParticipants, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Budget Utilized</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('training.budgetUtilized')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(budgetUtilized)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(budgetUtilized, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Upcoming</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('training.upcoming')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{upcoming}</p>
@@ -220,21 +225,21 @@ export default function TrainingPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Training Schedule</CardTitle>
+          <CardTitle>{t('training.trainingSchedule')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Training ID</TableHead>
-                <TableHead>Training Title</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Facilitator</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead className="text-right">Participants</TableHead>
-                <TableHead className="text-right">Budget</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('training.trainingId')}</TableHead>
+                <TableHead>{t('training.trainingTitle')}</TableHead>
+                <TableHead>{t('training.type')}</TableHead>
+                <TableHead>{t('training.facilitator')}</TableHead>
+                <TableHead>{t('training.date')}</TableHead>
+                <TableHead>{t('training.duration')}</TableHead>
+                <TableHead className="text-right">{t('training.participants')}</TableHead>
+                <TableHead className="text-right">{t('training.budget')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -246,10 +251,10 @@ export default function TrainingPage() {
                     <Badge variant={getTypeVariant(training.type)}>{training.type}</Badge>
                   </TableCell>
                   <TableCell>{training.facilitator}</TableCell>
-                  <TableCell>{formatDate(training.date)}</TableCell>
+                  <TableCell>{formatDate(training.date, locale)}</TableCell>
                   <TableCell>{training.duration}</TableCell>
                   <TableCell className="text-right">{training.participants}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(training.budget)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(training.budget, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(training.status)}>{training.status}</Badge>
                   </TableCell>

@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const organizationUpdateSchema = z.object({
   name: z.string().min(1).optional(),
-  nameInBangla: z.string().optional(),
+  localizedName: z.record(z.string(), z.string()).optional(),
   registrationNo: z.string().optional(),
   ngoabLicenseNo: z.string().optional(),
   mraLicenseNo: z.string().optional(),

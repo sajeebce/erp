@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Download, RefreshCw, Landmark, AlertTriangle, CheckCircle, Calendar } from "lucide-react";
-import { formatBDT, formatDate, formatNumber } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/formatters";
 
 interface BankAccount {
   id: string;
@@ -98,7 +99,10 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" |
   }
 }
 
-export default function BankReconciliationPage() {
+export default async function BankReconciliationPage() {
+  const t = await getTranslations('finance.bankReconciliation');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalBookBalance = bankAccounts.reduce((sum, a) => sum + a.bookBalance, 0);
   const totalStatementBalance = bankAccounts.reduce((sum, a) => sum + a.statementBalance, 0);
   const totalUnreconciled = bankAccounts.reduce((sum, a) => sum + a.unreconciledItems, 0);
@@ -110,42 +114,42 @@ export default function BankReconciliationPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Bank Reconciliation"
-        description="Reconcile bank statements with your book records"
+        title={t('title')}
+        description={t('description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <RefreshCw className="h-4 w-4 mr-2" />
-          Start Reconciliation
+          {t('startReconciliation')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Book Balance</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('totalBookBalance')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Landmark className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatBDT(totalBookBalance)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totalBookBalance, locale)}</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Statement Balance</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('totalStatementBalance')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalStatementBalance)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalStatementBalance, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Unreconciled Items</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('unreconciledItems')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -156,12 +160,12 @@ export default function BankReconciliationPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Last Reconciliation</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('lastReconciliation')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
-              <p className="text-2xl font-bold">{formatDate(lastReconciliation)}</p>
+              <p className="text-2xl font-bold">{formatDate(lastReconciliation, locale)}</p>
             </div>
           </CardContent>
         </Card>
@@ -169,20 +173,20 @@ export default function BankReconciliationPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Bank Account Reconciliation Status</CardTitle>
+          <CardTitle>{t('reconciliationStatus')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Account Name</TableHead>
-                <TableHead>Bank Name</TableHead>
-                <TableHead>Account No</TableHead>
-                <TableHead className="text-right">Book Balance</TableHead>
-                <TableHead className="text-right">Statement Balance</TableHead>
-                <TableHead className="text-right">Difference</TableHead>
-                <TableHead>Last Reconciled</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('accountName')}</TableHead>
+                <TableHead>{t('bankName')}</TableHead>
+                <TableHead>{t('accountNo')}</TableHead>
+                <TableHead className="text-right">{t('bookBalance')}</TableHead>
+                <TableHead className="text-right">{t('statementBalance')}</TableHead>
+                <TableHead className="text-right">{t('difference')}</TableHead>
+                <TableHead>{t('lastReconciled')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -192,19 +196,19 @@ export default function BankReconciliationPage() {
                   <TableCell className="text-sm">{account.bankName}</TableCell>
                   <TableCell className="font-mono text-sm">{account.accountNo}</TableCell>
                   <TableCell className="text-right font-mono text-sm">
-                    {formatBDT(account.bookBalance)}
+                    {formatCurrency(account.bookBalance, locale)}
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm">
-                    {formatBDT(account.statementBalance)}
+                    {formatCurrency(account.statementBalance, locale)}
                   </TableCell>
                   <TableCell
                     className={`text-right font-mono text-sm ${
                       account.difference !== 0 ? "text-destructive" : "text-green-600"
                     }`}
                   >
-                    {formatBDT(account.difference)}
+                    {formatCurrency(account.difference, locale)}
                   </TableCell>
-                  <TableCell className="text-sm">{formatDate(account.lastReconciledDate)}</TableCell>
+                  <TableCell className="text-sm">{formatDate(account.lastReconciledDate, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(account.status)}>{account.status}</Badge>
                   </TableCell>
@@ -212,20 +216,20 @@ export default function BankReconciliationPage() {
               ))}
               <TableRow className="bg-muted/50 font-semibold">
                 <TableCell colSpan={3} className="text-right font-semibold">
-                  Totals
+                  {t('totals')}
                 </TableCell>
                 <TableCell className="text-right font-mono font-semibold">
-                  {formatBDT(totalBookBalance)}
+                  {formatCurrency(totalBookBalance, locale)}
                 </TableCell>
                 <TableCell className="text-right font-mono font-semibold">
-                  {formatBDT(totalStatementBalance)}
+                  {formatCurrency(totalStatementBalance, locale)}
                 </TableCell>
                 <TableCell
                   className={`text-right font-mono font-semibold ${
                     totalBookBalance !== totalStatementBalance ? "text-destructive" : "text-green-600"
                   }`}
                 >
-                  {formatBDT(totalBookBalance - totalStatementBalance)}
+                  {formatCurrency(totalBookBalance - totalStatementBalance, locale)}
                 </TableCell>
                 <TableCell colSpan={2} />
               </TableRow>

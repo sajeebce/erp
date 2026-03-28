@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Save, Loader2, TestTube } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -57,6 +58,7 @@ const defaultSettings: MediaSettings = {
 }
 
 export default function AdminMediaSettingsPage() {
+  const t = useTranslations('admin')
   const [settings, setSettings] = useState<MediaSettings>(defaultSettings)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -91,12 +93,12 @@ export default function AdminMediaSettingsPage() {
         body: JSON.stringify(settings),
       })
       if (res.success) {
-        setMessage({ type: 'success', text: 'Media settings saved successfully.' })
+        setMessage({ type: 'success', text: t('mediaSettings.savedSuccess') })
       } else {
-        setMessage({ type: 'error', text: res.error?.message || 'Failed to save settings.' })
+        setMessage({ type: 'error', text: res.error?.message || t('mediaSettings.failedToSave') })
       }
     } catch {
-      setMessage({ type: 'error', text: 'Network error. Please try again.' })
+      setMessage({ type: 'error', text: t('mediaSettings.networkError') })
     } finally {
       setSaving(false)
     }
@@ -111,12 +113,12 @@ export default function AdminMediaSettingsPage() {
         body: JSON.stringify(settings),
       })
       if (res.success) {
-        setMessage({ type: 'success', text: 'Connection test successful!' })
+        setMessage({ type: 'success', text: t('mediaSettings.connectionSuccess') })
       } else {
-        setMessage({ type: 'error', text: res.error?.message || 'Connection test failed.' })
+        setMessage({ type: 'error', text: res.error?.message || t('mediaSettings.connectionFailed') })
       }
     } catch {
-      setMessage({ type: 'error', text: 'Network error. Please try again.' })
+      setMessage({ type: 'error', text: t('mediaSettings.networkError') })
     } finally {
       setTesting(false)
     }
@@ -125,7 +127,7 @@ export default function AdminMediaSettingsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Media Settings" description="Configure file storage provider" />
+        <PageHeader title={t('mediaSettings.title')} description={t('mediaSettings.description')} />
         <Card>
           <CardHeader><Skeleton className="h-6 w-48" /></CardHeader>
           <CardContent className="space-y-4">
@@ -143,7 +145,7 @@ export default function AdminMediaSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Media Settings" description="Configure file storage provider and upload limits" />
+      <PageHeader title={t('mediaSettings.title')} description={t('mediaSettings.description')} />
 
       {message && (
         <div className={`rounded-lg border p-3 text-sm ${
@@ -157,11 +159,11 @@ export default function AdminMediaSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Storage Configuration</CardTitle>
+          <CardTitle>{t('mediaSettings.storageConfig')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="provider">Provider</Label>
+            <Label htmlFor="provider">{t('mediaSettings.provider')}</Label>
             <Select
               value={settings.provider}
               onValueChange={(value) => setSettings(prev => ({ ...prev, provider: value }))}
@@ -180,7 +182,7 @@ export default function AdminMediaSettingsPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="bucketName">Bucket Name</Label>
+            <Label htmlFor="bucketName">{t('mediaSettings.bucketName')}</Label>
             <Input
               id="bucketName"
               placeholder="my-ngo-erp-bucket"
@@ -190,7 +192,7 @@ export default function AdminMediaSettingsPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="endpoint">Endpoint</Label>
+            <Label htmlFor="endpoint">{t('mediaSettings.endpoint')}</Label>
             <Input
               id="endpoint"
               placeholder="https://s3.amazonaws.com"
@@ -200,7 +202,7 @@ export default function AdminMediaSettingsPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="accessKeyId">Access Key ID</Label>
+            <Label htmlFor="accessKeyId">{t('mediaSettings.accessKeyId')}</Label>
             <Input
               id="accessKeyId"
               placeholder="AKIAIOSFODNN7EXAMPLE"
@@ -210,7 +212,7 @@ export default function AdminMediaSettingsPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="secretAccessKey">Secret Access Key</Label>
+            <Label htmlFor="secretAccessKey">{t('mediaSettings.secretAccessKey')}</Label>
             <Input
               id="secretAccessKey"
               type="password"
@@ -221,7 +223,7 @@ export default function AdminMediaSettingsPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="publicUrl">Public URL</Label>
+            <Label htmlFor="publicUrl">{t('mediaSettings.publicUrl')}</Label>
             <Input
               id="publicUrl"
               placeholder="https://cdn.ngoerp.com"
@@ -231,7 +233,7 @@ export default function AdminMediaSettingsPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="maxFileSizeMb">Max File Size (MB)</Label>
+            <Label htmlFor="maxFileSizeMb">{t('mediaSettings.maxFileSizeMb')}</Label>
             <Input
               id="maxFileSizeMb"
               type="number"
@@ -245,11 +247,11 @@ export default function AdminMediaSettingsPage() {
           <div className="flex items-center gap-3 pt-2">
             <Button onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Save Settings
+              {t('mediaSettings.saveSettings')}
             </Button>
             <Button variant="outline" onClick={handleTestConnection} disabled={testing}>
               {testing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TestTube className="mr-2 h-4 w-4" />}
-              Test Connection
+              {t('mediaSettings.testConnection')}
             </Button>
           </div>
         </CardContent>

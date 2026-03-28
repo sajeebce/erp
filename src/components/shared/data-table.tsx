@@ -12,6 +12,7 @@ import {
   SortingState,
   ColumnFiltersState,
 } from '@tanstack/react-table'
+import { useTranslations } from 'next-intl'
 import { ArrowUpDown, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -34,12 +35,13 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   searchKey,
-  searchPlaceholder = 'Search...',
+  searchPlaceholder,
   pageSize = 10,
   onRowClick,
   isLoading = false,
-  emptyMessage = 'No results found.',
+  emptyMessage,
 }: DataTableProps<TData, TValue>) {
+  const t = useTranslations('common')
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [searchValue, setSearchValue] = useState('')
@@ -122,7 +124,7 @@ export function DataTable<TData, TValue>({
         <div className="relative max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder={searchPlaceholder}
+            placeholder={searchPlaceholder || t('search.placeholder')}
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             className="pl-8"
@@ -173,7 +175,7 @@ export function DataTable<TData, TValue>({
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                  {emptyMessage}
+                  {emptyMessage || t('pagination.noResults')}
                 </TableCell>
               </TableRow>
             )}
@@ -183,7 +185,7 @@ export function DataTable<TData, TValue>({
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Rows per page</span>
+          <span>{t('pagination.rowsPerPage')}</span>
           <Select
             value={String(table.getState().pagination.pageSize)}
             onValueChange={(value) => table.setPageSize(Number(value))}
@@ -201,8 +203,7 @@ export function DataTable<TData, TValue>({
 
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">
-            Page {table.getState().pagination.pageIndex + 1} of{' '}
-            {table.getPageCount() || 1}
+            {t('pagination.pageOf', { current: table.getState().pagination.pageIndex + 1, total: table.getPageCount() || 1 })}
           </span>
           <Button
             variant="outline"

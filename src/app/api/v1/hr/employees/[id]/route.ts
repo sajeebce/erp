@@ -58,7 +58,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const data: Record<string, unknown> = {}
 
     if (body.fullName !== undefined) data.fullName = body.fullName.trim()
-    if (body.nameInBangla !== undefined) data.nameInBangla = body.nameInBangla || null
+    if (body.localizedName !== undefined) data.localizedName = body.localizedName || null
     if (body.fatherName !== undefined) data.fatherName = body.fatherName || null
     if (body.motherName !== undefined) data.motherName = body.motherName || null
     if (body.dateOfBirth !== undefined) data.dateOfBirth = body.dateOfBirth ? new Date(body.dateOfBirth) : null

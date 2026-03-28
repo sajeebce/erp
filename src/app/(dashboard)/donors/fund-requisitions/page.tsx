@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 interface FundRequisition {
   requisitionNo: string;
@@ -118,7 +119,11 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" |
   }
 }
 
-export default function FundRequisitionsPage() {
+export default async function FundRequisitionsPage() {
+  const t = await getTranslations('donors');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalRequested = requisitions.reduce((sum, r) => sum + r.amountRequested, 0);
   const approved = requisitions
     .filter((r) => r.status === "Approved")
@@ -131,39 +136,39 @@ export default function FundRequisitionsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Fund Requisitions"
-        description="Submit and track fund requisitions to donors"
+        title={t('fundRequisitions.title')}
+        description={t('fundRequisitions.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New Requisition
+          {t('fundRequisitions.addRequisition')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Requested</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('fundRequisitions.totalRequested')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalRequested)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalRequested, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Approved</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('fundRequisitions.approved')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(approved)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(approved, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('fundRequisitions.pending')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{pending}</p>
@@ -171,40 +176,40 @@ export default function FundRequisitionsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Disbursed</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('fundRequisitions.disbursed')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(disbursed)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(disbursed, locale)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Fund Requisitions</CardTitle>
+          <CardTitle>{t('fundRequisitions.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[140px]">Requisition No</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Grant</TableHead>
-                <TableHead className="text-right">Amount Requested</TableHead>
-                <TableHead>Purpose</TableHead>
-                <TableHead>Requested By</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[140px]">{t('fundRequisitions.requisitionNo')}</TableHead>
+                <TableHead>{t('fundRequisitions.date')}</TableHead>
+                <TableHead>{t('fundRequisitions.project')}</TableHead>
+                <TableHead>{t('fundRequisitions.grant')}</TableHead>
+                <TableHead className="text-right">{t('fundRequisitions.amountRequested')}</TableHead>
+                <TableHead>{t('fundRequisitions.purpose')}</TableHead>
+                <TableHead>{t('fundRequisitions.requestedBy')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {requisitions.map((req) => (
                 <TableRow key={req.requisitionNo}>
                   <TableCell className="font-mono text-sm">{req.requisitionNo}</TableCell>
-                  <TableCell>{formatDate(req.date)}</TableCell>
+                  <TableCell>{formatDate(req.date, locale)}</TableCell>
                   <TableCell className="font-medium">{req.project}</TableCell>
                   <TableCell className="font-mono text-sm">{req.grant}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(req.amountRequested)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(req.amountRequested, locale)}</TableCell>
                   <TableCell className="max-w-[250px] truncate text-sm">{req.purpose}</TableCell>
                   <TableCell>{req.requestedBy}</TableCell>
                   <TableCell>

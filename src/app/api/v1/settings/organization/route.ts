@@ -18,7 +18,9 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         slug: true,
-        nameInBangla: true,
+        localizedName: true,
+        defaultLanguage: true,
+        supportedLanguages: true,
         registrationNo: true,
         ngoabLicenseNo: true,
         mraLicenseNo: true,
@@ -61,7 +63,6 @@ export async function PUT(request: NextRequest) {
 
     const allowedFields = [
       'name',
-      'nameInBangla',
       'registrationNo',
       'ngoabLicenseNo',
       'mraLicenseNo',
@@ -77,6 +78,9 @@ export async function PUT(request: NextRequest) {
       'dateFormat',
       'numberFormat',
       'timezone',
+      'localizedName',
+      'defaultLanguage',
+      'supportedLanguages',
     ] as const
 
     const data: Record<string, unknown> = {}
@@ -123,7 +127,9 @@ export async function PUT(request: NextRequest) {
         id: true,
         name: true,
         slug: true,
-        nameInBangla: true,
+        localizedName: true,
+        defaultLanguage: true,
+        supportedLanguages: true,
         registrationNo: true,
         ngoabLicenseNo: true,
         mraLicenseNo: true,

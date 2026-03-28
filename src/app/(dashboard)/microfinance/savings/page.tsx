@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatDate, formatNumber } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/formatters";
 
 interface SavingsAccount {
   accountId: string;
@@ -169,7 +170,10 @@ function getSavingsTypeVariant(type: string): "default" | "secondary" | "outline
   }
 }
 
-export default function SavingsPage() {
+export default async function SavingsPage() {
+  const t = await getTranslations('microfinance');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalSavingsPortfolio = savingsAccounts.reduce((sum, a) => sum + a.balance, 0);
   const compulsorySavings = savingsAccounts
     .filter((a) => a.savingsType === "Compulsory")
@@ -182,72 +186,72 @@ export default function SavingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Savings"
-        description="Manage member savings accounts and deposits"
+        title={t('savings.title')}
+        description={t('savings.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New Account
+          {t('savings.newAccount')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Savings Portfolio</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('savings.totalSavingsPortfolio')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalSavingsPortfolio)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalSavingsPortfolio, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Compulsory Savings</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('savings.compulsorySavings')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(compulsorySavings)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(compulsorySavings, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Voluntary Savings</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('savings.voluntarySavings')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(voluntarySavings)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(voluntarySavings, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Members</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('savings.activeMembers')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatNumber(totalMembers)}</p>
+            <p className="text-2xl font-bold">{formatNumber(totalMembers, locale)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Savings Accounts</CardTitle>
+          <CardTitle>{t('savings.savingsAccounts')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Account ID</TableHead>
-                <TableHead>Member Name</TableHead>
-                <TableHead>Samity</TableHead>
-                <TableHead>Savings Type</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-                <TableHead className="text-right">Monthly Deposit</TableHead>
-                <TableHead className="text-right">Total Deposited</TableHead>
-                <TableHead className="text-right">Interest Earned</TableHead>
-                <TableHead>Last Transaction</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('savings.accountId')}</TableHead>
+                <TableHead>{t('savings.memberName')}</TableHead>
+                <TableHead>{t('savings.samity')}</TableHead>
+                <TableHead>{t('savings.savingsType')}</TableHead>
+                <TableHead className="text-right">{t('savings.balance')}</TableHead>
+                <TableHead className="text-right">{t('savings.monthlyDeposit')}</TableHead>
+                <TableHead className="text-right">{t('savings.totalDeposited')}</TableHead>
+                <TableHead className="text-right">{t('savings.interestEarned')}</TableHead>
+                <TableHead>{t('savings.lastTransaction')}</TableHead>
+                <TableHead>{t('savings.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -259,13 +263,13 @@ export default function SavingsPage() {
                   <TableCell>
                     <Badge variant={getSavingsTypeVariant(account.savingsType)}>{account.savingsType}</Badge>
                   </TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(account.balance)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(account.balance, locale)}</TableCell>
                   <TableCell className="text-right font-mono">
-                    {account.monthlyDeposit > 0 ? formatBDT(account.monthlyDeposit) : "—"}
+                    {account.monthlyDeposit > 0 ? formatCurrency(account.monthlyDeposit, locale) : "—"}
                   </TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(account.totalDeposited)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(account.interestEarned)}</TableCell>
-                  <TableCell>{formatDate(account.lastTransaction)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(account.totalDeposited, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(account.interestEarned, locale)}</TableCell>
+                  <TableCell>{formatDate(account.lastTransaction, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(account.status)}>{account.status}</Badge>
                   </TableCell>

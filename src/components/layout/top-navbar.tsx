@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -10,10 +11,13 @@ import {
 } from "@/components/ui/breadcrumb";
 import { ThemeToggle } from "./theme-toggle";
 import { NotificationPopover } from "./notification-popover";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function TopNavbar() {
+  const t = useTranslations("navigation");
+
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
       <SidebarTrigger className="-ml-1" />
@@ -21,7 +25,7 @@ export function TopNavbar() {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbPage>NGO ERP</BreadcrumbPage>
+            <BreadcrumbPage>{t("appName")}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -37,12 +41,13 @@ export function TopNavbar() {
           }}
         >
           <Search className="h-3.5 w-3.5" />
-          <span className="text-xs">Search...</span>
+          <span className="text-xs">{t("search")}</span>
           <kbd className="pointer-events-none ml-auto inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
             Ctrl+K
           </kbd>
         </Button>
         <NotificationPopover />
+        <LanguageSwitcher />
         <ThemeToggle />
       </div>
     </header>

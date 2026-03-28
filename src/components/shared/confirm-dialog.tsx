@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { AlertTriangle } from 'lucide-react'
 import {
   AlertDialog,
@@ -27,11 +28,12 @@ export function ConfirmDialog({
   trigger,
   title,
   description,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  confirmText,
+  cancelText,
   variant = 'destructive',
   onConfirm,
 }: ConfirmDialogProps) {
+  const t = useTranslations('common')
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
@@ -44,12 +46,12 @@ export function ConfirmDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{cancelText}</AlertDialogCancel>
+          <AlertDialogCancel>{cancelText || t('buttons.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             className={variant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
           >
-            {confirmText}
+            {confirmText || t('buttons.confirm')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

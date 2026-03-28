@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -135,7 +136,11 @@ function getSeverityVariant(severity: string): "default" | "secondary" | "destru
   }
 }
 
-export default function GrievancesPage() {
+export default async function GrievancesPage() {
+  const t = await getTranslations('beneficiaries');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalGrievances = grievances.length;
   const openCount = grievances.filter((g) => g.status === "Open" || g.status === "Under Investigation").length;
   const resolvedCount = grievances.filter((g) => g.status === "Resolved" || g.status === "Closed").length;
@@ -155,23 +160,23 @@ export default function GrievancesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Grievance Management"
-        description="Track and resolve beneficiary complaints and grievances"
+        title={t('grievances.title')}
+        description={t('grievances.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Log Grievance
+          {t('grievances.addGrievance')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Grievances</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('grievances.totalGrievances')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalGrievances}</p>
@@ -179,7 +184,7 @@ export default function GrievancesPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Open</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('grievances.open')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-red-600">{openCount}</p>
@@ -187,7 +192,7 @@ export default function GrievancesPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Resolved</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('grievances.resolved')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-emerald-600">{resolvedCount}</p>
@@ -195,38 +200,38 @@ export default function GrievancesPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Resolution Days</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('grievances.avgResolutionDays')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{avgResolutionDays} days</p>
+            <p className="text-2xl font-bold">{avgResolutionDays} {t('grievances.days')}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Grievance Log</CardTitle>
+          <CardTitle>{t('grievances.grievanceLog')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">Grievance ID</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Complainant</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="max-w-[250px]">Description</TableHead>
-                <TableHead>Severity</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Resolution Date</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[100px]">{t('grievances.grievanceId')}</TableHead>
+                <TableHead>{t('grievances.date')}</TableHead>
+                <TableHead>{t('grievances.complainant')}</TableHead>
+                <TableHead>{t('grievances.category')}</TableHead>
+                <TableHead className="max-w-[250px]">{t('grievances.description')}</TableHead>
+                <TableHead>{t('grievances.severity')}</TableHead>
+                <TableHead>{t('grievances.assignedTo')}</TableHead>
+                <TableHead>{t('grievances.resolutionDate')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {grievances.map((grievance) => (
                 <TableRow key={grievance.id}>
                   <TableCell className="font-mono text-sm">{grievance.id}</TableCell>
-                  <TableCell>{formatDate(grievance.date)}</TableCell>
+                  <TableCell>{formatDate(grievance.date, locale)}</TableCell>
                   <TableCell className="font-medium">{grievance.complainant}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-[10px]">
@@ -244,7 +249,7 @@ export default function GrievancesPage() {
                   <TableCell>{grievance.assignedTo}</TableCell>
                   <TableCell>
                     {grievance.resolutionDate
-                      ? formatDate(grievance.resolutionDate)
+                      ? formatDate(grievance.resolutionDate, locale)
                       : <span className="text-muted-foreground">-</span>}
                   </TableCell>
                   <TableCell>

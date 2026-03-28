@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -10,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Download, Calculator } from "lucide-react";
-import { formatBDT, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 interface DepreciationEntry {
   assetId: string;
@@ -137,7 +138,11 @@ const depreciationSchedule: DepreciationEntry[] = [
   },
 ];
 
-export default function DepreciationPage() {
+export default async function DepreciationPage() {
+  const t = await getTranslations('assets');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalOriginalCost = depreciationSchedule.reduce((sum, d) => sum + d.originalCost, 0);
   const totalAccumulated = depreciationSchedule.reduce((sum, d) => sum + d.accumulatedDepreciation, 0);
   const totalNetBook = depreciationSchedule.reduce((sum, d) => sum + d.netBookValue, 0);
@@ -146,71 +151,71 @@ export default function DepreciationPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Depreciation Schedule"
-        description="Calculate and manage asset depreciation schedules"
+        title={t('depreciation.title')}
+        description={t('depreciation.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Calculator className="h-4 w-4 mr-2" />
-          Run Depreciation
+          {t('depreciation.runDepreciation')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Original Cost</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('depreciation.totalOriginalCost')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalOriginalCost)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalOriginalCost, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Accumulated Dep.</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('depreciation.totalAccumulatedDep')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalAccumulated)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalAccumulated, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Net Book Value</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('depreciation.totalNetBookValue')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalNetBook)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalNetBook, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Current Year Dep.</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('depreciation.currentYearDep')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(currentYearDepreciation)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(currentYearDepreciation, locale)}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Depreciation Register</CardTitle>
+          <CardTitle>{t('depreciation.depreciationRegister')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Asset ID</TableHead>
-                <TableHead>Asset Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Purchase Date</TableHead>
-                <TableHead className="text-right">Original Cost</TableHead>
-                <TableHead className="text-right">Accum. Depreciation</TableHead>
-                <TableHead className="text-right">Net Book Value</TableHead>
-                <TableHead className="text-right">Annual Dep.</TableHead>
-                <TableHead className="text-right">Monthly Dep.</TableHead>
+                <TableHead>{t('depreciation.assetId')}</TableHead>
+                <TableHead>{t('depreciation.assetName')}</TableHead>
+                <TableHead>{t('depreciation.category')}</TableHead>
+                <TableHead>{t('depreciation.purchaseDate')}</TableHead>
+                <TableHead className="text-right">{t('depreciation.originalCost')}</TableHead>
+                <TableHead className="text-right">{t('depreciation.accumDepreciation')}</TableHead>
+                <TableHead className="text-right">{t('depreciation.netBookValue')}</TableHead>
+                <TableHead className="text-right">{t('depreciation.annualDepreciation')}</TableHead>
+                <TableHead className="text-right">{t('depreciation.monthlyDepreciation')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -219,12 +224,12 @@ export default function DepreciationPage() {
                   <TableCell className="font-mono text-sm">{entry.assetId}</TableCell>
                   <TableCell className="font-medium">{entry.name}</TableCell>
                   <TableCell>{entry.category}</TableCell>
-                  <TableCell>{formatDate(entry.purchaseDate)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(entry.originalCost)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(entry.accumulatedDepreciation)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(entry.netBookValue)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(entry.annualDepreciation)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(entry.monthlyDepreciation)}</TableCell>
+                  <TableCell>{formatDate(entry.purchaseDate, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(entry.originalCost, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(entry.accumulatedDepreciation, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(entry.netBookValue, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(entry.annualDepreciation, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(entry.monthlyDepreciation, locale)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

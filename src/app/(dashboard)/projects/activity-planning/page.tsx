@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatDate, formatPercent } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatPercent } from "@/lib/formatters";
 
 interface Activity {
   id: string;
@@ -171,7 +172,11 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" |
   }
 }
 
-export default function ActivityPlanningPage() {
+export default async function ActivityPlanningPage() {
+  const t = await getTranslations('projects');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalActivities = activities.length;
   const inProgress = activities.filter((a) => a.status === "In Progress").length;
   const completed = activities.filter((a) => a.status === "Completed").length;
@@ -180,23 +185,23 @@ export default function ActivityPlanningPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Activity Planning"
-        description="Plan and track project activities and work plans"
+        title={t('activities.title')}
+        description={t('activities.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          Add Activity
+          {t('activities.addActivity')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Activities</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('activities.totalActivities')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalActivities}</p>
@@ -204,7 +209,7 @@ export default function ActivityPlanningPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">In Progress</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('activities.inProgress')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{inProgress}</p>
@@ -212,7 +217,7 @@ export default function ActivityPlanningPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Completed</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('activities.completed')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{completed}</p>
@@ -220,7 +225,7 @@ export default function ActivityPlanningPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Delayed</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('activities.delayed')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-destructive">{delayed}</p>
@@ -230,21 +235,21 @@ export default function ActivityPlanningPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Activity Planning</CardTitle>
+          <CardTitle>{t('activities.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[90px]">Activity ID</TableHead>
-                <TableHead>Activity Name</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Responsible</TableHead>
-                <TableHead>Start Date</TableHead>
-                <TableHead>End Date</TableHead>
-                <TableHead className="text-right">Budget</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[140px]">% Complete</TableHead>
+                <TableHead className="w-[90px]">{t('activities.activityId')}</TableHead>
+                <TableHead>{t('activities.name')}</TableHead>
+                <TableHead>{t('activities.project')}</TableHead>
+                <TableHead>{t('activities.responsible')}</TableHead>
+                <TableHead>{t('activities.startDate')}</TableHead>
+                <TableHead>{t('activities.endDate')}</TableHead>
+                <TableHead className="text-right">{t('activities.budget')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
+                <TableHead className="w-[140px]">{t('activities.percentComplete')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -254,9 +259,9 @@ export default function ActivityPlanningPage() {
                   <TableCell className="font-medium">{activity.name}</TableCell>
                   <TableCell className="text-sm">{activity.project}</TableCell>
                   <TableCell>{activity.responsible}</TableCell>
-                  <TableCell>{formatDate(activity.startDate)}</TableCell>
-                  <TableCell>{formatDate(activity.endDate)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(activity.budget)}</TableCell>
+                  <TableCell>{formatDate(activity.startDate, locale)}</TableCell>
+                  <TableCell>{formatDate(activity.endDate, locale)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(activity.budget, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(activity.status)}>{activity.status}</Badge>
                   </TableCell>
@@ -264,7 +269,7 @@ export default function ActivityPlanningPage() {
                     <div className="flex items-center gap-2">
                       <Progress value={activity.percentComplete} className="flex-1" />
                       <span className="text-xs font-mono w-10 text-right">
-                        {formatPercent(activity.percentComplete)}
+                        {formatPercent(activity.percentComplete, locale)}
                       </span>
                     </div>
                   </TableCell>

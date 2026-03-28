@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const employeeSchema = z.object({
   fullName: z.string().min(1),
-  nameInBangla: z.string().optional(),
+  localizedName: z.record(z.string(), z.string()).optional(),
   gender: z.string().optional(),
   dateOfBirth: z.string().optional(),
   nidNumber: z.string().optional(),

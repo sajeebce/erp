@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -96,7 +97,10 @@ function getFormatVariant(format: string): "default" | "secondary" | "outline" {
   }
 }
 
-export default function HRReportsPage() {
+export default async function HRReportsPage() {
+  const t = await getTranslations('reports');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
   const totalReports = reports.length;
   const generatedThisMonth = reports.filter(
     (r) => r.lastGenerated >= "2026-01-01"
@@ -105,19 +109,19 @@ export default function HRReportsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="HR Reports"
-        description="Generate staff lists, attendance summaries, payroll reports, and tax documents"
+        title={t('hr.title')}
+        description={t('hr.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export All
+          {t('hr.exportAll')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Available Reports</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('hr.availableReports')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -128,7 +132,7 @@ export default function HRReportsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Generated This Month</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('hr.generatedThisMonth')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -141,18 +145,18 @@ export default function HRReportsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>HR Reports</CardTitle>
+          <CardTitle>{t('hr.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Report Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Period</TableHead>
-                <TableHead>Last Generated</TableHead>
-                <TableHead>Format</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t('hr.reportName')}</TableHead>
+                <TableHead>{t('hr.category')}</TableHead>
+                <TableHead>{t('hr.period')}</TableHead>
+                <TableHead>{t('hr.lastGenerated')}</TableHead>
+                <TableHead>{t('hr.format')}</TableHead>
+                <TableHead className="text-right">{t('hr.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -163,7 +167,7 @@ export default function HRReportsPage() {
                     <Badge variant="outline">{report.category}</Badge>
                   </TableCell>
                   <TableCell className="text-sm">{report.period}</TableCell>
-                  <TableCell className="text-sm">{formatDate(report.lastGenerated)}</TableCell>
+                  <TableCell className="text-sm">{formatDate(report.lastGenerated, locale)}</TableCell>
                   <TableCell>
                     <Badge variant={getFormatVariant(report.format)}>{report.format}</Badge>
                   </TableCell>
@@ -171,7 +175,7 @@ export default function HRReportsPage() {
                     <div className="flex items-center justify-end gap-1">
                       <Button variant="ghost" size="sm">
                         <Play className="h-3 w-3 mr-1" />
-                        Generate
+                        {t('hr.generate')}
                       </Button>
                       <Button variant="ghost" size="sm">
                         <FileText className="h-3 w-3" />

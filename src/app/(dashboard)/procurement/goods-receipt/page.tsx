@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -144,7 +145,11 @@ function getInspectionVariant(status: string): "default" | "secondary" | "destru
   }
 }
 
-export default function GoodsReceiptPage() {
+export default async function GoodsReceiptPage() {
+  const t = await getTranslations('procurement');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalGRNs = goodsReceipts.length;
   const pendingInspection = goodsReceipts.filter((g) => g.status === "Pending Inspection").length;
   const accepted = goodsReceipts.filter((g) => g.status === "Accepted").length;
@@ -153,23 +158,23 @@ export default function GoodsReceiptPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Goods Receipt"
-        description="Record and verify incoming goods against purchase orders"
+        title={t('goodsReceipt.title')}
+        description={t('goodsReceipt.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New GRN
+          {t('goodsReceipt.newGRN')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total GRNs</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('goodsReceipt.totalGRNs')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{totalGRNs}</p>
@@ -177,7 +182,7 @@ export default function GoodsReceiptPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Inspection</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('goodsReceipt.pendingInspection')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-amber-600">{pendingInspection}</p>
@@ -185,7 +190,7 @@ export default function GoodsReceiptPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Accepted</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('goodsReceipt.accepted')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-emerald-600">{accepted}</p>
@@ -193,7 +198,7 @@ export default function GoodsReceiptPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Rejected</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('goodsReceipt.rejected')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-red-600">{rejected}</p>
@@ -203,37 +208,37 @@ export default function GoodsReceiptPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Goods Receipt Notes</CardTitle>
+          <CardTitle>{t('goodsReceipt.goodsReceiptNotes')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[130px]">GRN No</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>PO Reference</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead className="text-right">Qty Ordered</TableHead>
-                <TableHead className="text-right">Qty Received</TableHead>
-                <TableHead>Inspection</TableHead>
-                <TableHead>Received By</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[130px]">{t('goodsReceipt.grnNo')}</TableHead>
+                <TableHead>{t('goodsReceipt.date')}</TableHead>
+                <TableHead>{t('goodsReceipt.poReference')}</TableHead>
+                <TableHead>{t('goodsReceipt.vendor')}</TableHead>
+                <TableHead>{t('goodsReceipt.items')}</TableHead>
+                <TableHead className="text-right">{t('goodsReceipt.qtyOrdered')}</TableHead>
+                <TableHead className="text-right">{t('goodsReceipt.qtyReceived')}</TableHead>
+                <TableHead>{t('goodsReceipt.inspection')}</TableHead>
+                <TableHead>{t('goodsReceipt.receivedBy')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {goodsReceipts.map((grn) => (
                 <TableRow key={grn.id}>
                   <TableCell className="font-mono text-sm">{grn.id}</TableCell>
-                  <TableCell>{formatDate(grn.date)}</TableCell>
+                  <TableCell>{formatDate(grn.date, locale)}</TableCell>
                   <TableCell className="font-mono text-sm">{grn.poReference}</TableCell>
                   <TableCell className="font-medium">{grn.vendor}</TableCell>
                   <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
                     {grn.items}
                   </TableCell>
-                  <TableCell className="text-right font-mono">{formatNumber(grn.quantityOrdered)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatNumber(grn.quantityOrdered, locale)}</TableCell>
                   <TableCell className={`text-right font-mono ${grn.quantityReceived < grn.quantityOrdered ? "text-amber-600" : ""}`}>
-                    {formatNumber(grn.quantityReceived)}
+                    {formatNumber(grn.quantityReceived, locale)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={getInspectionVariant(grn.inspectionStatus)} className="text-[10px]">

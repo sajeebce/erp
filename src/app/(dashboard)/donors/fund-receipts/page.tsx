@@ -1,3 +1,4 @@
+import { getTranslations, getLocale } from 'next-intl/server';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Download } from "lucide-react";
-import { formatBDT, formatDate, formatNumber } from "@/lib/formatters";
+import { formatCurrency, formatDate, formatNumber } from "@/lib/formatters";
 
 interface FundReceipt {
   receiptNo: string;
@@ -158,7 +159,11 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" {
   }
 }
 
-export default function FundReceiptsPage() {
+export default async function FundReceiptsPage() {
+  const t = await getTranslations('donors');
+  const tc = await getTranslations('common');
+  const locale = await getLocale();
+
   const totalReceiptsThisYear = fundReceipts.reduce((sum, r) => sum + r.bdtEquivalent, 0);
   const thisMonthReceipts = fundReceipts
     .filter((r) => r.date.startsWith("2026-02"))
@@ -169,39 +174,39 @@ export default function FundReceiptsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Fund Receipts"
-        description="Track incoming funds and donor disbursements"
+        title={t('fundReceipts.title')}
+        description={t('fundReceipts.description')}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          Export
+          {tc('buttons.export')}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          New Receipt
+          {t('fundReceipts.addReceipt')}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Receipts This Year</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('fundReceipts.totalReceiptsThisYear')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(totalReceiptsThisYear)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalReceiptsThisYear, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">This Month</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('fundReceipts.thisMonth')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatBDT(thisMonthReceipts)}</p>
+            <p className="text-2xl font-bold">{formatCurrency(thisMonthReceipts, locale)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Confirmation</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('fundReceipts.pendingConfirmation')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{pendingConfirmation}</p>
@@ -209,7 +214,7 @@ export default function FundReceiptsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">USD Receipts</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('fundReceipts.usdReceipts')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">{usdReceipts}</p>
@@ -219,33 +224,33 @@ export default function FundReceiptsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Fund Receipt Vouchers</CardTitle>
+          <CardTitle>{t('fundReceipts.fundReceiptVouchers')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[130px]">Receipt No</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Donor</TableHead>
-                <TableHead>Grant</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead>Currency</TableHead>
-                <TableHead className="text-right">Exchange Rate</TableHead>
-                <TableHead className="text-right">BDT Equivalent</TableHead>
-                <TableHead>Bank Account</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[130px]">{t('fundReceipts.receiptNo')}</TableHead>
+                <TableHead>{t('fundReceipts.date')}</TableHead>
+                <TableHead>{t('grants.donor')}</TableHead>
+                <TableHead>{t('fundReceipts.grant')}</TableHead>
+                <TableHead className="text-right">{t('fundReceipts.amount')}</TableHead>
+                <TableHead>{t('fundReceipts.currency')}</TableHead>
+                <TableHead className="text-right">{t('fundReceipts.exchangeRate')}</TableHead>
+                <TableHead className="text-right">{t('fundReceipts.bdtEquivalent')}</TableHead>
+                <TableHead>{t('fundReceipts.bankAccount')}</TableHead>
+                <TableHead>{tc('labels.status')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {fundReceipts.map((receipt) => (
                 <TableRow key={receipt.receiptNo}>
                   <TableCell className="font-mono text-sm">{receipt.receiptNo}</TableCell>
-                  <TableCell>{formatDate(receipt.date)}</TableCell>
+                  <TableCell>{formatDate(receipt.date, locale)}</TableCell>
                   <TableCell>{receipt.donor}</TableCell>
                   <TableCell>{receipt.grant}</TableCell>
                   <TableCell className="text-right font-mono">
-                    {receipt.currency === "USD" ? `$${formatNumber(receipt.amount)}` : formatBDT(receipt.amount)}
+                    {receipt.currency === "USD" ? `$${formatNumber(receipt.amount, locale)}` : formatCurrency(receipt.amount, locale)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={receipt.currency === "USD" ? "secondary" : "outline"}>
@@ -253,7 +258,7 @@ export default function FundReceiptsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right font-mono">{receipt.exchangeRate.toFixed(2)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatBDT(receipt.bdtEquivalent)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatCurrency(receipt.bdtEquivalent, locale)}</TableCell>
                   <TableCell className="text-sm">{receipt.bankAccount}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(receipt.status)}>{receipt.status}</Badge>
