@@ -116,6 +116,12 @@ curl -X POST http://localhost:3000/api/v1/settings/fiscal-years \
   -d '{"name":"FY 2025-2026","startDate":"2025-07-01","endDate":"2026-06-30"}'
 ```
 
+### Phase 2.5: Chart of Accounts (NGO standard 99 accounts with Bengali)
+
+```bash
+pnpm tsx prisma/seed-accounts.ts
+```
+
 ### Phase 3: Donors, Grants, Projects, Budgets
 
 ```bash

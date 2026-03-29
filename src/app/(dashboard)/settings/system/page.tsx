@@ -14,9 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { PageHeader } from '@/components/shared/page-header'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
@@ -364,14 +362,16 @@ export default function SystemConfigurationPage() {
                   <Input type="number" min={6} max={32} value={String(formFields.minPasswordLength ?? '')} onChange={e => setField('minPasswordLength', Number(e.target.value))} />
                 </EditRow>
                 <EditRow label={t('passwordComplexity')}>
-                  <Select value={String(formFields.passwordComplexity ?? '')} onValueChange={v => setField('passwordComplexity', v)}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="uppercase+number+special">{t('complexityHigh')}</SelectItem>
-                      <SelectItem value="uppercase+number">{t('complexityMedium')}</SelectItem>
-                      <SelectItem value="none">{t('complexityNone')}</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    id="security-password-complexity"
+                    options={[
+                      { value: 'uppercase+number+special', label: t('complexityHigh') },
+                      { value: 'uppercase+number', label: t('complexityMedium') },
+                      { value: 'none', label: t('complexityNone') },
+                    ]}
+                    value={String(formFields.passwordComplexity ?? '')}
+                    onValueChange={v => setField('passwordComplexity', v)}
+                  />
                 </EditRow>
                 <EditRow label={t('passwordExpiryDays')}>
                   <Input type="number" min={0} max={365} value={String(formFields.passwordExpiryDays ?? '')} onChange={e => setField('passwordExpiryDays', Number(e.target.value))} />
@@ -386,14 +386,16 @@ export default function SystemConfigurationPage() {
                   <Input type="number" min={5} max={480} value={String(formFields.sessionTimeoutMinutes ?? '')} onChange={e => setField('sessionTimeoutMinutes', Number(e.target.value))} />
                 </EditRow>
                 <EditRow label={t('twoFactorAuth')}>
-                  <Select value={String(formFields.twoFactorAuth ?? '')} onValueChange={v => setField('twoFactorAuth', v)}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="disabled">{t('twoFaDisabled')}</SelectItem>
-                      <SelectItem value="optional">{t('twoFaOptional')}</SelectItem>
-                      <SelectItem value="required">{t('twoFaRequired')}</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    id="security-two-factor-auth"
+                    options={[
+                      { value: 'disabled', label: t('twoFaDisabled') },
+                      { value: 'optional', label: t('twoFaOptional') },
+                      { value: 'required', label: t('twoFaRequired') },
+                    ]}
+                    value={String(formFields.twoFactorAuth ?? '')}
+                    onValueChange={v => setField('twoFactorAuth', v)}
+                  />
                 </EditRow>
                 <EditRow label={t('auditLogRetentionDays')}>
                   <Input type="number" min={30} max={3650} value={String(formFields.auditLogRetentionDays ?? '')} onChange={e => setField('auditLogRetentionDays', Number(e.target.value))} />
@@ -451,14 +453,16 @@ export default function SystemConfigurationPage() {
                   <Input type="number" value={String(formFields.smtpPort ?? '')} onChange={e => setField('smtpPort', Number(e.target.value))} />
                 </EditRow>
                 <EditRow label={t('smtpSecurity')}>
-                  <Select value={String(formFields.smtpSecurity ?? '')} onValueChange={v => setField('smtpSecurity', v)}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="STARTTLS">STARTTLS</SelectItem>
-                      <SelectItem value="SSL">SSL/TLS</SelectItem>
-                      <SelectItem value="NONE">{t('noEncryption')}</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    id="email-smtp-security"
+                    options={[
+                      { value: 'STARTTLS', label: 'STARTTLS' },
+                      { value: 'SSL', label: 'SSL/TLS' },
+                      { value: 'NONE', label: t('noEncryption') },
+                    ]}
+                    value={String(formFields.smtpSecurity ?? '')}
+                    onValueChange={v => setField('smtpSecurity', v)}
+                  />
                 </EditRow>
                 <EditRow label={t('fromAddress')}>
                   <Input type="email" value={String(formFields.fromAddress ?? '')} onChange={e => setField('fromAddress', e.target.value)} placeholder="noreply@example.com" />
@@ -569,15 +573,17 @@ export default function SystemConfigurationPage() {
                   </div>
                 </EditRow>
                 <EditRow label={t('decimalPlaces')}>
-                  <Select value={String(formFields.decimalPlaces ?? '2')} onValueChange={v => setField('decimalPlaces', Number(v))}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">0</SelectItem>
-                      <SelectItem value="2">2</SelectItem>
-                      <SelectItem value="3">3</SelectItem>
-                      <SelectItem value="4">4</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    id="defaults-decimal-places"
+                    options={[
+                      { value: '0', label: '0' },
+                      { value: '2', label: '2' },
+                      { value: '3', label: '3' },
+                      { value: '4', label: '4' },
+                    ]}
+                    value={String(formFields.decimalPlaces ?? '2')}
+                    onValueChange={v => setField('decimalPlaces', Number(v))}
+                  />
                 </EditRow>
               </div>
             ) : (

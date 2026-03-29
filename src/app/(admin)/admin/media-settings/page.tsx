@@ -9,9 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/shared/page-header'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 
 function getAdminToken(): string {
   return document.cookie
@@ -178,19 +176,12 @@ export default function AdminMediaSettingsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-2">
               <Label htmlFor="provider">{t('mediaSettings.provider')}</Label>
-              <Select
+              <SearchableSelect
+                id="provider"
+                options={PROVIDERS.map(p => ({ value: p.value, label: p.label }))}
                 value={settings.provider}
                 onValueChange={(value) => setSettings(prev => ({ ...prev, provider: value }))}
-              >
-                <SelectTrigger id="provider">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PROVIDERS.map(p => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              />
             </div>
 
             <div className="space-y-2">

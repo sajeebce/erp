@@ -10,9 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from '@/components/ui/sheet'
@@ -421,14 +419,13 @@ export default function BankCashPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>{t('accountType')} *</Label>
-                <Select value={formType} onValueChange={v => setFormType(v as AccountType)}>
-                  <SelectTrigger><SelectValue placeholder={t('selectType')} /></SelectTrigger>
-                  <SelectContent>
-                    {ACCOUNT_TYPES.map(ty => (
-                      <SelectItem key={ty} value={ty}>{t(`typeOptions.${ty}`)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="account-type"
+                  options={ACCOUNT_TYPES.map(ty => ({ value: ty, label: t(`typeOptions.${ty}`) }))}
+                  value={formType}
+                  onValueChange={v => setFormType(v as AccountType)}
+                  placeholder={t('selectType')}
+                />
               </div>
             </div>
 
@@ -473,12 +470,13 @@ export default function BankCashPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>{t('currency')}</Label>
-                <Select value={formCurrency} onValueChange={setFormCurrency}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {['BDT', 'USD', 'EUR', 'GBP'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="currency"
+                  options={['BDT', 'USD', 'EUR', 'GBP'].map(c => ({ value: c, label: c }))}
+                  value={formCurrency}
+                  onValueChange={setFormCurrency}
+                  placeholder={t('currency')}
+                />
               </div>
               {!editId && (
                 <div className="space-y-1.5">
@@ -490,17 +488,13 @@ export default function BankCashPage() {
 
             <div className="space-y-1.5">
               <Label>{t('glAccount')}</Label>
-              <Select value={formGlAccountId} onValueChange={setFormGlAccountId}>
-                <SelectTrigger><SelectValue placeholder={t('selectGlAccount')} /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none">{t('noGlAccount')}</SelectItem>
-                  {glAccounts.map(a => (
-                    <SelectItem key={a.id} value={a.id}>
-                      <span className="font-mono text-xs mr-1.5">{a.code}</span>{a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="gl-account"
+                options={[{ value: '_none', label: t('noGlAccount') }, ...glAccounts.map(a => ({ value: a.id, label: `${a.code} - ${a.name}` }))]}
+                value={formGlAccountId}
+                onValueChange={setFormGlAccountId}
+                placeholder={t('selectGlAccount')}
+              />
               <p className="text-xs text-muted-foreground">{t('glAccountHint')}</p>
             </div>
 

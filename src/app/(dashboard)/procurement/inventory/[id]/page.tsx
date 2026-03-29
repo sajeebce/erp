@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/shared/page-header'
@@ -367,18 +361,13 @@ export default function InventoryItemDetailPage() {
 
             <div className="space-y-2">
               <Label htmlFor="edit-inv-category">{t('category')}</Label>
-              <Select value={formCategory} onValueChange={setFormCategory}>
-                <SelectTrigger id="edit-inv-category" className="w-full">
-                  <SelectValue placeholder={t('selectCategory')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {INVENTORY_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {t(`itemCategories.${cat}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="edit-inv-category"
+                options={INVENTORY_CATEGORIES.map((cat) => ({ value: cat, label: t(`itemCategories.${cat}`) }))}
+                value={formCategory}
+                onValueChange={setFormCategory}
+                placeholder={t('selectCategory')}
+              />
             </div>
           </div>
 
@@ -386,18 +375,12 @@ export default function InventoryItemDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-inv-unit">{t('unit')}</Label>
-              <Select value={formUnit} onValueChange={setFormUnit}>
-                <SelectTrigger id="edit-inv-unit" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNITS.map((u) => (
-                    <SelectItem key={u} value={u}>
-                      {t(`units.${u}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="edit-inv-unit"
+                options={UNITS.map((u) => ({ value: u, label: t(`units.${u}`) }))}
+                value={formUnit}
+                onValueChange={setFormUnit}
+              />
             </div>
 
             <div className="space-y-2">
@@ -429,15 +412,15 @@ export default function InventoryItemDetailPage() {
 
             <div className="space-y-2">
               <Label htmlFor="edit-inv-active">{t('activeStatus')}</Label>
-              <Select value={formIsActive ? 'true' : 'false'} onValueChange={(v) => setFormIsActive(v === 'true')}>
-                <SelectTrigger id="edit-inv-active" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">{tc('status.ACTIVE')}</SelectItem>
-                  <SelectItem value="false">{tc('status.INACTIVE')}</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="edit-inv-active"
+                options={[
+                  { value: 'true', label: tc('status.ACTIVE') },
+                  { value: 'false', label: tc('status.INACTIVE') },
+                ]}
+                value={formIsActive ? 'true' : 'false'}
+                onValueChange={(v) => setFormIsActive(v === 'true')}
+              />
             </div>
           </div>
 

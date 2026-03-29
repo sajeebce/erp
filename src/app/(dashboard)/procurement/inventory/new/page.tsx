@@ -8,13 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { Switch } from '@/components/ui/switch'
 import { PageHeader } from '@/components/shared/page-header'
 
@@ -149,34 +143,24 @@ export default function NewInventoryItemPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="inv-category">{t('category')}</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger id="inv-category" className="w-full">
-                  <SelectValue placeholder={t('selectCategory')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {INVENTORY_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {t(`itemCategories.${cat}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="inv-category"
+                options={INVENTORY_CATEGORIES.map((cat) => ({ value: cat, label: t(`itemCategories.${cat}`) }))}
+                value={category}
+                onValueChange={setCategory}
+                placeholder={t('selectCategory')}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="inv-unit">{t('unit')} *</Label>
-              <Select value={unit} onValueChange={setUnit}>
-                <SelectTrigger id="inv-unit" className="w-full">
-                  <SelectValue placeholder={t('selectUnit')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNITS.map((u) => (
-                    <SelectItem key={u} value={u}>
-                      {t(`units.${u}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="inv-unit"
+                options={UNITS.map((u) => ({ value: u, label: t(`units.${u}`) }))}
+                value={unit}
+                onValueChange={setUnit}
+                placeholder={t('selectUnit')}
+              />
             </div>
           </div>
 
@@ -184,18 +168,13 @@ export default function NewInventoryItemPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="inv-warehouse">{t('warehouse')} *</Label>
-              <Select value={warehouseId} onValueChange={setWarehouseId}>
-                <SelectTrigger id="inv-warehouse" className="w-full">
-                  <SelectValue placeholder={t('selectWarehouse')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {warehouses.map((wh) => (
-                    <SelectItem key={wh.id} value={wh.id}>
-                      {wh.code} - {wh.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="inv-warehouse"
+                options={warehouses.map((wh) => ({ value: wh.id, label: `${wh.code} - ${wh.name}` }))}
+                value={warehouseId}
+                onValueChange={setWarehouseId}
+                placeholder={t('selectWarehouse')}
+              />
             </div>
           </div>
 

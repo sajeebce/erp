@@ -98,6 +98,34 @@ const statusStyles: Record<string, string> = {
   POOR: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
   DAMAGED: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   DISPOSED: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+
+  // Recruitment — Job Posting
+  PUBLISHED: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+
+  // Recruitment — Application Pipeline
+  APPLIED: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  SCREENED: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
+  SHORTLISTED: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
+  TECHNICAL_TEST: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  REFERENCE_CHECK: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
+  OFFER: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+  INTERVIEW: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
+  HIRED: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  WITHDRAWN: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400',
+  SCHEDULED: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+
+  // Contracts
+  EXPIRING_SOON: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  RENEWED: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+
+  // Offboarding / Grievances / Disciplinary
+  INITIATED: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  INVESTIGATING: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+  ESCALATED: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  VERBAL_WARNING: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+  WRITTEN_WARNING: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+  FINAL_WARNING: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  SUSPENSION: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 }
 
 interface StatusBadgeProps {

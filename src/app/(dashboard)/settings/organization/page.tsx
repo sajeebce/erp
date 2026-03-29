@@ -8,9 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { LocalizedNameInput } from '@/components/shared/localized-name-input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { PageHeader } from '@/components/shared/page-header'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -453,56 +451,56 @@ export default function OrganizationSettingsPage() {
           {isEditing('regional') ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <EditRow label={t('baseCurrency')}>
-                <Select value={formFields.baseCurrency as string} onValueChange={v => setField('baseCurrency', v)}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="regional-base-currency"
+                  options={CURRENCIES.map(c => ({ value: c, label: c }))}
+                  value={formFields.baseCurrency as string}
+                  onValueChange={v => setField('baseCurrency', v)}
+                />
               </EditRow>
               <EditRow label={t('fiscalYearStartMonth')}>
-                <Select value={String(formFields.fiscalYearStartMonth)} onValueChange={v => setField('fiscalYearStartMonth', Number(v))}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {MONTHS.map((m, i) => <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="regional-fiscal-year-start"
+                  options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                  value={String(formFields.fiscalYearStartMonth)}
+                  onValueChange={v => setField('fiscalYearStartMonth', Number(v))}
+                />
               </EditRow>
               <EditRow label={t('dateFormat')}>
-                <Select value={formFields.dateFormat as string} onValueChange={v => setField('dateFormat', v)}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {DATE_FORMATS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="regional-date-format"
+                  options={DATE_FORMATS.map(f => ({ value: f, label: f }))}
+                  value={formFields.dateFormat as string}
+                  onValueChange={v => setField('dateFormat', v)}
+                />
               </EditRow>
               <EditRow label={t('numberFormat')}>
-                <Select value={formFields.numberFormat as string} onValueChange={v => setField('numberFormat', v)}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="BD">BD (1,00,000)</SelectItem>
-                    <SelectItem value="US">US (100,000)</SelectItem>
-                    <SelectItem value="EU">EU (100.000)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="regional-number-format"
+                  options={[
+                    { value: 'BD', label: 'BD (1,00,000)' },
+                    { value: 'US', label: 'US (100,000)' },
+                    { value: 'EU', label: 'EU (100.000)' },
+                  ]}
+                  value={formFields.numberFormat as string}
+                  onValueChange={v => setField('numberFormat', v)}
+                />
               </EditRow>
               <EditRow label={t('timezone')}>
-                <Select value={formFields.timezone as string} onValueChange={v => setField('timezone', v)}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {TIMEZONES.map(tz => <SelectItem key={tz} value={tz}>{tz}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="regional-timezone"
+                  options={TIMEZONES.map(tz => ({ value: tz, label: tz }))}
+                  value={formFields.timezone as string}
+                  onValueChange={v => setField('timezone', v)}
+                />
               </EditRow>
               <EditRow label={t('defaultLanguage')}>
-                <Select value={formFields.defaultLanguage as string} onValueChange={v => setField('defaultLanguage', v)}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {((formFields.supportedLanguages as string[]) || org.supportedLanguages).map(code => (
-                      <SelectItem key={code} value={code}>{langLabel(code)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="regional-default-language"
+                  options={((formFields.supportedLanguages as string[]) || org.supportedLanguages).map(code => ({ value: code, label: langLabel(code) }))}
+                  value={formFields.defaultLanguage as string}
+                  onValueChange={v => setField('defaultLanguage', v)}
+                />
               </EditRow>
               <div className="md:col-span-2">
                 <EditRow label={t('supportedLanguages')}>

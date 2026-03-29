@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -434,18 +428,13 @@ export default function DonorDetailPage() {
 
             <div className="space-y-2">
               <Label htmlFor="edit-donor-type">{t('fields.type')} *</Label>
-              <Select value={formType} onValueChange={setFormType}>
-                <SelectTrigger id="edit-donor-type" className="w-full">
-                  <SelectValue placeholder={t('form.selectType')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {DONOR_TYPES.map((dt) => (
-                    <SelectItem key={dt} value={dt}>
-                      {t(`donorTypes.${dt}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="edit-donor-type"
+                options={DONOR_TYPES.map((dt) => ({ value: dt, label: t(`donorTypes.${dt}`) }))}
+                value={formType}
+                onValueChange={setFormType}
+                placeholder={t('form.selectType')}
+              />
             </div>
           </div>
 
@@ -462,17 +451,18 @@ export default function DonorDetailPage() {
 
             <div className="space-y-2">
               <Label htmlFor="edit-donor-rel-status">{t('form.relationshipStatus')}</Label>
-              <Select value={formRelationshipStatus} onValueChange={setFormRelationshipStatus}>
-                <SelectTrigger id="edit-donor-rel-status" className="w-full">
-                  <SelectValue placeholder={t('form.selectStatus')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PROSPECT">{t('form.statusOptions.PROSPECT')}</SelectItem>
-                  <SelectItem value="ACTIVE">{tc('status.ACTIVE')}</SelectItem>
-                  <SelectItem value="INACTIVE">{tc('status.INACTIVE')}</SelectItem>
-                  <SelectItem value="LAPSED">{t('form.statusOptions.LAPSED')}</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="edit-donor-rel-status"
+                options={[
+                  { value: 'PROSPECT', label: t('form.statusOptions.PROSPECT') },
+                  { value: 'ACTIVE', label: tc('status.ACTIVE') },
+                  { value: 'INACTIVE', label: tc('status.INACTIVE') },
+                  { value: 'LAPSED', label: t('form.statusOptions.LAPSED') },
+                ]}
+                value={formRelationshipStatus}
+                onValueChange={setFormRelationshipStatus}
+                placeholder={t('form.selectStatus')}
+              />
             </div>
           </div>
 

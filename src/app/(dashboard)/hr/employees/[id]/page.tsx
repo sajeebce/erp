@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
@@ -345,42 +339,42 @@ export default function EmployeeDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-dept">{t('fields.department')}</Label>
-                <Select value={departmentId} onValueChange={setDepartmentId}>
-                  <SelectTrigger id="edit-dept" className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {departments.map((d) => (<SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="edit-dept"
+                  options={departments.map((d) => ({ value: d.id, label: d.name }))}
+                  value={departmentId}
+                  onValueChange={setDepartmentId}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-desig">{t('fields.designation')}</Label>
-                <Select value={designationId} onValueChange={setDesignationId}>
-                  <SelectTrigger id="edit-desig" className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {designations.map((d) => (<SelectItem key={d.id} value={d.id}>{d.title}</SelectItem>))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="edit-desig"
+                  options={designations.map((d) => ({ value: d.id, label: d.title }))}
+                  value={designationId}
+                  onValueChange={setDesignationId}
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-type">{t('fields.employmentType')}</Label>
-                <Select value={employmentType} onValueChange={setEmploymentType}>
-                  <SelectTrigger id="edit-type" className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {EMPLOYMENT_TYPES.map((et) => (<SelectItem key={et} value={et}>{tc(`employmentTypes.${et}`)}</SelectItem>))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="edit-type"
+                  options={EMPLOYMENT_TYPES.map((et) => ({ value: et, label: tc(`employmentTypes.${et}`) }))}
+                  value={employmentType}
+                  onValueChange={setEmploymentType}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-status">{tc('labels.status')}</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger id="edit-status" className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {STATUSES.map((s) => (<SelectItem key={s} value={s}>{tc(`status.${s}`)}</SelectItem>))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="edit-status"
+                  options={STATUSES.map((s) => ({ value: s, label: tc(`status.${s}`) }))}
+                  value={status}
+                  onValueChange={setStatus}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-salary">{t('fields.basicSalary')}</Label>

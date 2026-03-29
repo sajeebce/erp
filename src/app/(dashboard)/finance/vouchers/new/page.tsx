@@ -10,13 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { PageHeader } from '@/components/shared/page-header'
 
 const VOUCHER_TYPES = ['DEBIT', 'RECEIPT', 'CASH', 'BANK', 'JOURNAL', 'CONTRA'] as const
@@ -172,18 +166,13 @@ export default function NewVoucherPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="voucher-type">{t('voucherType')} *</Label>
-              <Select value={type} onValueChange={(v) => setType(v as VoucherType)}>
-                <SelectTrigger id="voucher-type" className="w-full">
-                  <SelectValue placeholder={t('selectType')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {VOUCHER_TYPES.map((vt) => (
-                    <SelectItem key={vt} value={vt}>
-                      {tt(vt)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="voucher-type"
+                options={VOUCHER_TYPES.map((vt) => ({ value: vt, label: tt(vt) }))}
+                value={type}
+                onValueChange={(v) => setType(v as VoucherType)}
+                placeholder={t('selectType')}
+              />
             </div>
 
             <div className="space-y-2">
@@ -243,18 +232,13 @@ export default function NewVoucherPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="voucher-bank-account">{t('bankAccount')}</Label>
-                <Select value={bankAccountId} onValueChange={setBankAccountId}>
-                  <SelectTrigger id="voucher-bank-account" className="w-full">
-                    <SelectValue placeholder={t('selectBankAccount')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {bankAccounts.map((ba) => (
-                      <SelectItem key={ba.id} value={ba.id}>
-                        {ba.accountName}{ba.bankName ? ` - ${ba.bankName}` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="voucher-bank-account"
+                  options={bankAccounts.map((ba) => ({ value: ba.id, label: `${ba.accountName}${ba.bankName ? ` - ${ba.bankName}` : ''}` }))}
+                  value={bankAccountId}
+                  onValueChange={setBankAccountId}
+                  placeholder={t('selectBankAccount')}
+                />
               </div>
 
               {showCheque && (
@@ -286,36 +270,24 @@ export default function NewVoucherPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="voucher-project">{t('project')}</Label>
-              <Select value={projectId} onValueChange={(v) => setProjectId(v === '_none' ? '' : v)}>
-                <SelectTrigger id="voucher-project" className="w-full">
-                  <SelectValue placeholder={t('selectProject')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none" className="text-muted-foreground">{t('noProject')}</SelectItem>
-                  {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.code ? `${p.code} - ` : ''}{p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="voucher-project"
+                options={[{ value: '_none', label: t('noProject') }, ...projects.map((p) => ({ value: p.id, label: `${p.code ? `${p.code} - ` : ''}${p.name}` }))]}
+                value={projectId}
+                onValueChange={(v) => setProjectId(v === '_none' ? '' : v)}
+                placeholder={t('selectProject')}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="voucher-grant">{t('grant')}</Label>
-              <Select value={grantId} onValueChange={(v) => setGrantId(v === '_none' ? '' : v)}>
-                <SelectTrigger id="voucher-grant" className="w-full">
-                  <SelectValue placeholder={t('selectGrant')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none" className="text-muted-foreground">{t('noGrant')}</SelectItem>
-                  {grants.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.code ? `${g.code} - ` : ''}{g.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="voucher-grant"
+                options={[{ value: '_none', label: t('noGrant') }, ...grants.map((g) => ({ value: g.id, label: `${g.code ? `${g.code} - ` : ''}${g.name}` }))]}
+                value={grantId}
+                onValueChange={(v) => setGrantId(v === '_none' ? '' : v)}
+                placeholder={t('selectGrant')}
+              />
             </div>
           </div>
 

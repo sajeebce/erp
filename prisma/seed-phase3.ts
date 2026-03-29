@@ -128,12 +128,19 @@ async function main() {
       data: {
         organizationId: org.id,
         projectNo: 'PRJ-2026-001',
-        name: 'WASH Phase-3 Sylhet',
-        description: 'Water, Sanitation & Hygiene program in Sylhet division',
+        name: 'Clean Water for Turkana',
+        description: 'Water, Sanitation & Hygiene program providing safe water access to 5,000 households in Turkana County through borehole drilling, water point rehabilitation, and community hygiene promotion.',
+        projectType: 'DEVELOPMENT',
+        sector: 'WASH',
         startDate: new Date('2025-07-01'),
         endDate: new Date('2027-06-30'),
-        totalBudget: 15000000,
-        location: 'Sylhet',
+        totalBudget: 2500000,
+        amountSpent: 875000,
+        currency: 'USD',
+        country: 'Kenya',
+        region: 'East Africa',
+        location: 'Turkana County',
+        implementingPartner: 'Kenya Red Cross Society',
         status: 'ACTIVE',
         progress: 35,
       },
@@ -142,12 +149,19 @@ async function main() {
       data: {
         organizationId: org.id,
         projectNo: 'PRJ-2026-002',
-        name: 'Education Enhancement Dhaka',
-        description: 'Primary education quality improvement in Dhaka slums',
+        name: 'Girls Education Initiative',
+        description: 'Primary and secondary education quality improvement for girls in refugee-hosting communities. Teacher training, learning materials, school construction, and WASH facilities in schools.',
+        projectType: 'DEVELOPMENT',
+        sector: 'EDUCATION',
         startDate: new Date('2025-10-01'),
         endDate: new Date('2027-09-30'),
-        totalBudget: 8500000,
-        location: 'Dhaka',
+        totalBudget: 1800000,
+        amountSpent: 360000,
+        currency: 'USD',
+        country: 'Jordan',
+        region: 'Middle East',
+        location: 'Azraq & Zaatari Camps',
+        implementingPartner: 'Jordan Education Fund',
         status: 'ACTIVE',
         progress: 20,
       },
@@ -156,12 +170,19 @@ async function main() {
       data: {
         organizationId: org.id,
         projectNo: 'PRJ-2026-003',
-        name: 'Climate Adaptation Barishal',
-        description: 'Community resilience building in flood-prone Barishal',
+        name: 'Climate Resilience Nepal',
+        description: 'Community-based disaster risk reduction and climate adaptation in flood-prone districts. Early warning systems, climate-smart agriculture, and community resilience training.',
+        projectType: 'DEVELOPMENT',
+        sector: 'CLIMATE_ADAPTATION',
         startDate: new Date('2026-01-01'),
         endDate: new Date('2028-12-31'),
-        totalBudget: 12000000,
-        location: 'Barishal',
+        totalBudget: 3200000,
+        amountSpent: 320000,
+        currency: 'USD',
+        country: 'Nepal',
+        region: 'South Asia',
+        location: 'Terai Plains, Chitwan & Nawalparasi',
+        implementingPartner: 'Nepal Climate Alliance',
         status: 'ACTIVE',
         progress: 10,
       },
@@ -170,23 +191,71 @@ async function main() {
       data: {
         organizationId: org.id,
         projectNo: 'PRJ-2026-004',
-        name: 'Food Security EU',
-        description: 'Sustainable agriculture and food security program',
+        name: 'Food Security Sahel',
+        description: 'Sustainable agriculture, nutrition, and food security program targeting smallholder farmers in the Sahel region. Includes drought-resistant seed distribution, irrigation, and market linkages.',
+        projectType: 'HUMANITARIAN',
+        sector: 'FOOD_SECURITY',
         startDate: new Date('2026-07-01'),
         endDate: new Date('2029-06-30'),
-        totalBudget: 20000000,
-        location: 'Rangpur',
+        totalBudget: 5000000,
+        currency: 'EUR',
+        country: 'Niger',
+        region: 'West Africa',
+        location: 'Maradi & Zinder Regions',
         status: 'PIPELINE',
         progress: 0,
+      },
+    }),
+    prisma.project.create({
+      data: {
+        organizationId: org.id,
+        projectNo: 'PRJ-2026-005',
+        name: 'Emergency Health Response — Cox\'s Bazar',
+        description: 'Emergency primary healthcare, nutrition screening, and mental health support for displaced populations. Mobile health clinics and community health worker training.',
+        projectType: 'EMERGENCY_RESPONSE',
+        sector: 'HEALTH',
+        startDate: new Date('2025-03-01'),
+        endDate: new Date('2026-08-31'),
+        totalBudget: 1500000,
+        amountSpent: 1050000,
+        currency: 'USD',
+        country: 'Bangladesh',
+        region: 'South Asia',
+        location: 'Cox\'s Bazar, Ukhiya & Teknaf',
+        implementingPartner: 'Médecins Sans Frontières',
+        status: 'ACTIVE',
+        progress: 70,
+      },
+    }),
+    prisma.project.create({
+      data: {
+        organizationId: org.id,
+        projectNo: 'PRJ-2026-006',
+        name: 'Women\'s Livelihoods Uganda',
+        description: 'Economic empowerment of women through skills training, microenterprise development, savings groups, and market access in Northern Uganda refugee settlements.',
+        projectType: 'CAPACITY_BUILDING',
+        sector: 'LIVELIHOODS',
+        startDate: new Date('2025-01-01'),
+        endDate: new Date('2027-12-31'),
+        totalBudget: 2200000,
+        amountSpent: 880000,
+        currency: 'USD',
+        country: 'Uganda',
+        region: 'East Africa',
+        location: 'Bidi Bidi & Rhino Camp, West Nile',
+        implementingPartner: 'BRAC Uganda',
+        status: 'ACTIVE',
+        progress: 40,
       },
     }),
   ])
   console.log(`✓ ${projects.length} Projects created`)
 
   // Update project number sequence
-  await prisma.numberSequence.update({
+  await prisma.numberSequence.upsert({
     where: { organizationId_entity: { organizationId: org.id, entity: 'project' } },
-    data: { currentValue: 4 },
+    update: { currentValue: 6 },
+    create: { organizationId: org.id, entity: 'project', prefix: 'PRJ-', currentValue: 6, padLength: 4 },
   })
 
   // ─── 4. Grants (linking donors → projects) ───
@@ -252,9 +321,10 @@ async function main() {
   console.log(`✓ ${grants.length} Grants created`)
 
   // Update grant sequence
-  await prisma.numberSequence.update({
+  await prisma.numberSequence.upsert({
     where: { organizationId_entity: { organizationId: org.id, entity: 'grant' } },
-    data: { currentValue: 4 },
+    update: { currentValue: 4 },
+    create: { organizationId: org.id, entity: 'grant', prefix: 'GR-', currentValue: 4, padLength: 4 },
   })
 
   // ─── 5. Budgets for WASH project (International-Grade) ───
@@ -459,9 +529,10 @@ async function main() {
   console.log('✓ Education Budget created (BUD-2026-0002) with 4 lines, 7% ICR')
 
   // Update number sequence
-  await prisma.numberSequence.update({
+  await prisma.numberSequence.upsert({
     where: { organizationId_entity: { organizationId: org.id, entity: 'budget' } },
-    data: { currentValue: 2 },
+    update: { currentValue: 2 },
+    create: { organizationId: org.id, entity: 'budget', prefix: 'BUD-', currentValue: 2, padLength: 4 },
   })
 
   // ─── 6. Bank Account ───
@@ -518,9 +589,10 @@ async function main() {
   console.log('✓ 2 Fund Receipts created (BDT 70,00,000 total)')
 
   // Update sequences
-  await prisma.numberSequence.update({
+  await prisma.numberSequence.upsert({
     where: { organizationId_entity: { organizationId: org.id, entity: 'fund_receipt' } },
-    data: { currentValue: 2 },
+    update: { currentValue: 2 },
+    create: { organizationId: org.id, entity: 'fund_receipt', prefix: 'FR-', currentValue: 2, padLength: 4 },
   })
 
   // Update donor totalFunded

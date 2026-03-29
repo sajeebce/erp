@@ -36,66 +36,32 @@
 
 | # | Section | Lines | Description |
 |---|---------|-------|-------------|
-| **1** | **Architecture & Design Principles** | **101–398** | |
-| 1.1 | API-Centric Design | 103–111 | REST-first, integration, webhooks, export |
-| 1.2 | API Response Format | 112–135 | Standard success/error JSON structure |
-| 1.3 | SaaS Multi-Tenancy | 136–211 | Shared DB, tenant isolation, domain routing, onboarding, global vs scoped tables |
-| 1.4 | Authentication & Authorization | 212–266 | JWT structure, auth flow, RBAC helpers |
-| 1.4.1 | Subscription Guard | 267–292 | Plan-based access control (active/trial/past-due/cancelled) |
-| 1.4.2 | Impersonation | 293–306 | Super admin → tenant user impersonation |
-| 1.5 | Core Design Rules | 307–325 | Coding conventions, soft-delete, audit trail |
-| 1.5.1 | File Storage (Adapter Pattern) | 326–360 | Local ↔ R2 storage abstraction |
-| 1.5.2 | Payment Gateway (Factory Pattern) | 361–385 | bKash, Nagad, Stripe, bank API integration |
-| 1.6 | Deployment (VPS Direct) | 386–398 | Production deployment strategy |
-| **2** | **Folder Structure** | **399–881** | Complete `src/` directory tree with file descriptions |
-| **3** | **Menu Structure** | **882–896** | Sidebar navigation hierarchy |
-| **4** | **Database Schema (Prisma 7.x)** | **897–4051** | |
-| 4.1 | Enums | 899–1386 | All enum definitions |
-| 4.2 | Auth & Organization Models | 1387–1878 | User, Role, Permission, Organization, Subscription, SuperAdmin, etc. |
-| 4.3 | Finance & Accounting Models | 1879–2085 | Account, JournalEntry, Voucher, FundReceipt, BankAccount (+ glAccountId FK), BankReconciliation |
-| 4.4 | Budget Management Models | 2086–2212 | Budget, BudgetLine, BudgetRevision |
-| 4.5 | Donor & Grant Management Models | 2213–2373 | Donor, Grant, FundRequisition, DonorReport |
-| 4.6 | Project Management Models | 2374–2552 | Project, Activity, Milestone, Logframe, TimeEntry |
-| 4.7 | Beneficiary Management Models | 2553–2697 | Beneficiary, Enrollment, ServiceDelivery, ImpactAssessment, Grievance |
-| 4.8 | Procurement & Inventory Models | 2698–3020 | Vendor, Requisition, PurchaseOrder, GoodsReceipt, Inventory, Warehouse |
-| 4.9 | Fixed Asset Models | 3021–3169 | Asset, AssetCategory, Depreciation, Disposal, Transfer, Maintenance |
-| 4.10 | Human Resources Models | 3170–3538 | Employee, Attendance, Leave, Payroll, Performance, Training, Onboarding |
-| 4.11 | Microfinance Models | 3539–3799 | Samity, LoanProduct, LoanApplication, LoanAccount, Savings, Collection |
-| 4.12 | System Models | 3800–4051 | AuditLog, Notification, Webhook, SystemSetting, BackupLog, Workflow, Attachment |
-| **5** | **Inter-Module Data Flow** | **4053–4165** | |
-| 5.1 | Master Relationship Map | 4055–4119 | Module dependency diagram |
-| 5.2 | Cross-Module Impact Analysis | 4120–4143 | What happens when data changes in one module (✅ status column added) |
-| 5.3 | Cascade Rules | 4144–4165 | Delete/archive behavior across modules |
-| **6** | **API Routes & CRUD Operations** | **4166–4529** | |
-| 6.1 | Common Query Parameters | 4168–4187 | Pagination, sorting, filtering, search |
-| 6.2 | Module-wise API Endpoints | 4188–4529 | All 220+ endpoints by module (incl. CSV import, auto-match, attachments) |
-| **7** | **Implementation Phases** | **4530–4851** | |
-| | Phase 1: Foundation & SaaS Core (Wk 1–4) | 4532–4615 | Auth, multi-tenancy, super admin, subscription |
-| | Phase 2: Core Finance (Wk 4–6) ✅ | 4616–4640 | Chart of Accounts, Journal Entries, Vouchers |
-| | Phase 3: Budget & Donor (Wk 7–9) ✅ | 4641–4663 | Budgets, Donors, Grants, Fund Receipts |
-| | Phase 4: Project & Beneficiary (Wk 10–12) ✅ | 4664–4689 | Projects, Activities, Beneficiaries |
-| | Phase 5: Operations (Wk 13–16) ✅ | 4690–4752 | Procurement, Assets, HR, Microfinance |
-| | Phase 6: Reports & Dashboard (Wk 23–25) ✅ | 4753–4779 | Reports, Analytics, Dashboard widgets |
-| | Phase 7: UI Pages ✅ | 4780–4811 | All CRUD UI pages across modules |
-| | Remaining (Deferred) | 4812–4825 | Webhooks, advanced features |
-| 7.1 | Cron Jobs | 4826–4851 | Scheduled tasks (token cleanup, depreciation, etc.) |
-| **8** | **Testing Guidelines** | **4852–5144** | |
-| 8.1 | Testing Strategy | 4854–4861 | Approach overview |
-| 8.2 | Module-wise Testing | 4862–5062 | Per-module test cases and seed data |
-| 8.3 | Integration Test Scenarios | 5063–5144 | Cross-module end-to-end test flows |
-| — | **Verification Checklist** | **5145–5174** | Pre-launch validation checklist |
-| — | **Critical Fixes (Post-Audit)** | **5175–5264** | Fix 1–9: journal auto-create, missing indexes, file upload, etc. |
-| — | **Important Features (Post-Fixes)** | **5265–5279** | International-grade enhancements |
-| — | **New Dependencies** | **5280–5311** | Required npm packages (auth, storage, validation, etc.) |
-| **9** | **Internationalization (i18n)** | **5312–5421** | |
-| 9.1 | Architecture | 5314–5323 | next-intl setup, cookie-based locale |
-| 9.2 | Supported Locales | 5324–5330 | EN (default), BN |
-| 9.3 | Message File Structure | 5331–5348 | JSON namespace per module |
-| 9.4 | Key Files | 5349–5360 | Config, request handler, middleware |
-| 9.5 | Locale Resolution Priority | 5361–5368 | Cookie → org setting → browser |
-| 9.6 | Usage Patterns | 5369–5400 | Server/Client component usage examples |
-| 9.7 | Database Fields | 5401–5410 | Bilingual name storage pattern |
-| 9.8 | API Endpoints | 5411–5421 | Language preference API |
+| **1** | **Architecture & Design Principles** | **68–365** | |
+| **2** | **Folder Structure** | **366–850** | Complete src/ directory tree |
+| **3** | **Menu Structure** | **851–865** | Sidebar navigation hierarchy |
+| **4** | **Database Schema (Prisma 7.x)** | **866–4148** | |
+| 4.1–4.12 | All Models | 868–4148 | Enums, Auth, Finance, Budget, Donor, Project, Beneficiary, Procurement, Asset, HR, Microfinance, System |
+| **5** | **Inter-Module Data Flow** | **4149–4261** | Module dependency, cross-module impact, cascade rules |
+| **6** | **API Routes & CRUD Operations** | **4262–4635** | 220+ endpoints by module |
+| **7** | **Implementation Phases** | **4636–7084** | |
+| | Phase 1: Foundation & SaaS Core | 4638–4721 | Auth, multi-tenancy, super admin, subscription |
+| | Phase 2: Core Finance ✅ | 4722–4746 | Chart of Accounts, Journal Entries, Vouchers |
+| | Phase 3: Budget & Donor ✅ | 4747–4769 | Budgets, Donors, Grants, Fund Receipts |
+| | Phase 4: Project & Beneficiary ✅ | 4770–4813 | Projects, Activities, Beneficiaries + 4b: Intl upgrade (type, sector, indicators, risks) |
+| | Phase 5: Operations ✅ | 4814–4876 | Procurement, Assets, HR, Microfinance |
+| | Phase 6: Reports & Dashboard ✅ | 4877–4903 | Reports, Analytics, Dashboard widgets |
+| | Phase 7: UI Pages ✅ | 4904–4935 | All CRUD UI pages across modules |
+| | Remaining (Deferred) | 4936–4947 | Webhooks, advanced features |
+| | **Phase 8: HR & Payroll Intl Upgrade ✅** | 4948–5653 | Recruitment/ATS, Contracts, Offboarding, Holidays, Grievance, Analytics |
+| | **Phase 9: Budget Intl Upgrade** | 5654–6051 | Phasing, Commitment, Budget Check, Interactive Pages, Burn Rate, Templates, NICRA |
+| | **Phase 10: Cross-Module Integration** | 6052–7084 | Procurement encumbrance, Payroll→Budget, Dashboard KPIs, Grant→Budget, NGOAB |
+| 7.1 | Cron Jobs | 7085–7110 | Scheduled tasks (token cleanup, depreciation, etc.) |
+| **8** | **Testing Guidelines** | **7111–7403** | Testing strategy, module-wise tests, integration scenarios |
+| — | **Verification Checklist** | **7404–7433** | Pre-launch validation checklist |
+| — | **Critical Fixes (Post-Audit)** | **7434–7523** | Fix 1–9: journal auto-create, indexes, file upload |
+| — | **Important Features** | **7524–7538** | International-grade enhancements |
+| — | **New Dependencies** | **7539–7570** | Required npm packages |
+| **9** | **Internationalization (i18n)** | **7571–7680** | next-intl, EN + BN, message files, locale resolution, API endpoints |
 
 ---
 
@@ -481,6 +447,8 @@ ngo-erp/
 │   │   │   │   ├── activity-planning/page.tsx
 │   │   │   │   ├── milestones/page.tsx
 │   │   │   │   ├── logframe/page.tsx
+│   │   │   │   ├── indicators/page.tsx   # NEW: Results framework indicators
+│   │   │   │   ├── risks/page.tsx        # NEW: Risk register
 │   │   │   │   └── closeout/page.tsx
 │   │   │   ├── beneficiaries/
 │   │   │   │   ├── page.tsx            # Beneficiary Registry
@@ -882,12 +850,12 @@ ngo-erp/
 
 ## 3. Menu Structure
 
-4 groups, 12 modules, 76 menu items. No changes from existing navigation.
+4 groups, 12 modules, 78 menu items.
 
 | Group | Color | Modules |
 |-------|-------|---------|
 | **CORE** | Blue | Dashboard (3), Finance & Accounting (6), Budget Management (5) |
-| **PROGRAMS** | Green | Donor & Grant (6), Project Management (6), Beneficiary Management (5) |
+| **PROGRAMS** | Green | Donor & Grant (6), Project Management (8), Beneficiary Management (5) |
 | **OPERATIONS** | Amber | Procurement & Supply Chain (8), Fixed Assets (6), Human Resources (8), Microfinance (8) |
 | **SYSTEM** | Slate | Reports & Analytics (8), Settings & Administration (7) |
 
@@ -1054,6 +1022,75 @@ enum CloseoutItemStatus {
   NOT_STARTED
   IN_PROGRESS
   COMPLETED
+}
+
+enum ProjectType {
+  HUMANITARIAN
+  DEVELOPMENT
+  ADVOCACY
+  CAPACITY_BUILDING
+  RESEARCH
+  EMERGENCY_RESPONSE
+  CORE_OPERATIONS
+  MULTI_COUNTRY
+}
+
+enum ProjectSector {
+  WASH
+  EDUCATION
+  HEALTH
+  LIVELIHOODS
+  FOOD_SECURITY
+  PROTECTION
+  SHELTER
+  NUTRITION
+  AGRICULTURE
+  CLIMATE_ADAPTATION
+  GOVERNANCE
+  GENDER_EQUALITY
+  DISASTER_RISK_REDUCTION
+  MULTI_SECTOR
+  OTHER
+}
+
+enum RiskLikelihood {
+  VERY_LOW
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum RiskImpact {
+  NEGLIGIBLE
+  MINOR
+  MODERATE
+  MAJOR
+  CRITICAL
+}
+
+enum RiskCategory {
+  FINANCIAL
+  OPERATIONAL
+  SECURITY
+  POLITICAL
+  ENVIRONMENTAL
+  REPUTATIONAL
+  COMPLIANCE
+  TECHNICAL
+}
+
+enum IndicatorType {
+  QUANTITATIVE
+  QUALITATIVE
+}
+
+enum IndicatorFrequency {
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUALLY
+  ANNUALLY
+  END_OF_PROJECT
 }
 
 enum BeneficiaryStatus {
@@ -2383,12 +2420,18 @@ model Project {
   projectNo       String
   name            String
   description     String?
+  projectType     ProjectType   @default(DEVELOPMENT)    // ← NEW: humanitarian, development, etc.
+  sector          ProjectSector @default(OTHER)           // ← NEW: WASH, education, health, etc.
   donorId         String?       @db.Uuid
   startDate       DateTime?
   endDate         DateTime?
   totalBudget     Decimal       @default(0) @db.Decimal(18, 2)
   amountSpent     Decimal       @default(0) @db.Decimal(18, 2)
-  location        String?       // District/Division
+  currency        String        @default("USD")           // ← NEW: multi-currency
+  country         String?                                 // ← NEW: e.g. "Kenya"
+  region          String?                                 // ← NEW: e.g. "East Africa"
+  location        String?                                 // specific location
+  implementingPartner String?                             // ← NEW: partner org
   status          ProjectStatus @default(PIPELINE)
   progress        Int           @default(0) // 0-100
   managerId       String?       @db.Uuid // Project Manager (Employee)
@@ -2406,6 +2449,8 @@ model Project {
   closeout        ProjectCloseout?
   teamMembers     ProjectTeamMember[]
   documents       ProjectDocument[]
+  indicators      ProjectIndicator[]    // ← NEW
+  risks           ProjectRisk[]         // ← NEW
   vouchers        Voucher[]
   journalEntries  JournalEntry[]
   fundRequisitions FundRequisition[]
@@ -2420,6 +2465,8 @@ model Project {
   @@index([organizationId])
   @@index([status])
   @@index([donorId])
+  @@index([projectType])
+  @@index([sector])
 }
 
 model ProjectTeamMember {
@@ -2546,6 +2593,55 @@ model ProjectDocument {
   createdAt   DateTime @default(now())
 
   project     Project  @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+}
+
+// ── NEW: Results Framework Indicators ──
+
+model ProjectIndicator {
+  id              String             @id @default(uuid()) @db.Uuid
+  projectId       String             @db.Uuid
+  name            String
+  description     String?
+  type            IndicatorType      @default(QUANTITATIVE)
+  unit            String?            // e.g., "households", "percentage", "people"
+  baselineValue   Decimal?           @db.Decimal(18, 2)
+  baselineDate    DateTime?
+  targetValue     Decimal?           @db.Decimal(18, 2)
+  currentValue    Decimal?           @db.Decimal(18, 2)
+  frequency       IndicatorFrequency @default(QUARTERLY)
+  dataSource      String?
+  responsible     String?
+  disaggregation  String?            // e.g., "gender, age, disability"
+  sortOrder       Int                @default(0)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  project         Project            @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+}
+
+// ── NEW: Risk Register ──
+
+model ProjectRisk {
+  id              String         @id @default(uuid()) @db.Uuid
+  projectId       String         @db.Uuid
+  title           String
+  description     String?
+  category        RiskCategory   @default(OPERATIONAL)
+  likelihood      RiskLikelihood @default(MEDIUM)
+  impact          RiskImpact     @default(MODERATE)
+  riskScore       Int            @default(0) // computed: likelihood × impact (1-25)
+  mitigation      String?        // Mitigation strategy
+  owner           String?        // Person responsible
+  status          String         @default("OPEN") // OPEN, MITIGATED, CLOSED, MATERIALIZED
+  reviewDate      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  project         Project        @relation(fields: [projectId], references: [id])
 
   @@index([projectId])
 }
@@ -4315,12 +4411,14 @@ GET /api/v1/{resource}?page=1&limit=20&sort=createdAt&order=desc&search=keyword&
 |--------|----------|-------------|------------|
 | GET | `/api/v1/projects` | List projects | projects.read.projects |
 | POST | `/api/v1/projects` | Create project | projects.create.projects |
-| GET | `/api/v1/projects/:id` | Get project detail | projects.read.projects |
-| PUT | `/api/v1/projects/:id` | Update project | projects.update.projects |
-| GET | `/api/v1/projects/dashboard` | Aggregate project analytics | projects.read.projects |
+| GET | `/api/v1/projects/:id` | Get project detail (with grants, team, counts) | projects.read.projects |
+| PUT | `/api/v1/projects/:id` | Update project (all fields incl. type, sector, country) | projects.update.projects |
+| DELETE | `/api/v1/projects/:id` | Soft-delete project (PIPELINE only) | projects.delete.projects |
+| GET | `/api/v1/projects/dashboard` | Aggregate project analytics (real data) | projects.read.projects |
 | GET/POST | `/api/v1/projects/:id/team` | Manage team | projects.update.projects |
 | GET | `/api/v1/projects/activities` | List activities (filter by project) | projects.read.activities |
 | POST | `/api/v1/projects/activities` | Create activity | projects.create.activities |
+| GET | `/api/v1/projects/activities/:id` | Get activity detail | projects.read.activities |
 | PUT | `/api/v1/projects/activities/:id` | Update activity/progress | projects.update.activities |
 | GET | `/api/v1/projects/milestones` | List milestones | projects.read.milestones |
 | POST | `/api/v1/projects/milestones` | Create milestone | projects.create.milestones |
@@ -4328,8 +4426,16 @@ GET /api/v1/{resource}?page=1&limit=20&sort=createdAt&order=desc&search=keyword&
 | GET | `/api/v1/projects/logframe` | List logframe entries | projects.read.logframe |
 | POST | `/api/v1/projects/logframe` | Create logframe entry | projects.create.logframe |
 | PUT | `/api/v1/projects/logframe/:id` | Update entry | projects.update.logframe |
+| GET | `/api/v1/projects/indicators` | List project indicators (results framework) | projects.read.indicators |
+| POST | `/api/v1/projects/indicators` | Create indicator (baseline, target, current) | projects.create.indicators |
+| PUT | `/api/v1/projects/indicators/:id` | Update indicator values | projects.update.indicators |
+| DELETE | `/api/v1/projects/indicators/:id` | Delete indicator | projects.delete.indicators |
+| GET | `/api/v1/projects/risks` | List project risks (sorted by score) | projects.read.risks |
+| POST | `/api/v1/projects/risks` | Create risk (auto-compute riskScore) | projects.create.risks |
+| PUT | `/api/v1/projects/risks/:id` | Update risk (re-compute score) | projects.update.risks |
+| DELETE | `/api/v1/projects/risks/:id` | Delete risk | projects.delete.risks |
 | GET | `/api/v1/projects/closeout` | List closeouts | projects.read.closeout |
-| POST | `/api/v1/projects/closeout` | Create closeout | projects.create.closeout |
+| POST | `/api/v1/projects/closeout` | Create closeout (8 default checklist items) | projects.create.closeout |
 | PUT | `/api/v1/projects/closeout/:id` | Update closeout items | projects.update.closeout |
 
 #### Beneficiary APIs
@@ -4668,24 +4774,42 @@ GET /api/v1/{resource}?page=1&limit=20&sort=createdAt&order=desc&search=keyword&
 2. ✅ completed ✅ tested — Project Dashboard (portfolio analytics, burnRate, activityCompletion)
 3. ✅ completed ✅ tested — Activity Planning (WBS, sub-activities, auto-complete on 100% progress)
 4. ✅ completed ✅ tested — Milestone Tracking (auto-actualDate on ACHIEVED)
-5. ✅ completed — LogFrame (4-level hierarchy: Goal→Purpose→Output→Activity)
-6. ✅ completed — Project Closeout (8 default checklist items, auto-progress calculation)
+5. ✅ completed ✅ tested — LogFrame (4-level hierarchy: Goal→Purpose→Output→Activity, full CRUD UI)
+6. ✅ completed ✅ tested — Project Closeout (8 default checklist items, auto-progress calculation, full CRUD UI)
 7. ✅ completed ✅ tested — Beneficiary Registry (NID uniqueness, district filter)
 8. ✅ completed ✅ tested — Program Enrollment (duplicate check, graduated/dropout tracking)
 9. ✅ completed ✅ tested — Service Delivery tracking (5 types, quantity/value)
 10. ✅ completed ✅ tested — Impact Assessment (baseline→target→current, auto achievementPct)
 11. ✅ completed ✅ tested — Grievance Management (auto-resolutionDate on RESOLVED)
 
-> **Seed data (Phase 4):** 6 Activities, 4 Milestones, 8 Beneficiaries, 7 Enrollments, 5 Services, 4 Indicators, 3 Assessments, 2 Grievances
+#### Phase 4b: Project Management — International-Grade Upgrade (2026-03-30) ✅ completed ✅ tested
+
+12. ✅ completed ✅ tested — Project model intl fields (projectType, sector, currency, country, region, implementingPartner)
+13. ✅ completed ✅ tested — 7 new enums (ProjectType, ProjectSector, RiskLikelihood, RiskImpact, RiskCategory, IndicatorType, IndicatorFrequency)
+14. ✅ completed ✅ tested — ProjectIndicator model (results framework: baseline→target→current, frequency, disaggregation)
+15. ✅ completed ✅ tested — ProjectRisk model (risk register: category, likelihood×impact=score, mitigation, owner)
+16. ✅ completed ✅ tested — DELETE project API (soft-delete, PIPELINE only)
+17. ✅ completed ✅ tested — Indicators CRUD API (GET/POST/PUT/DELETE)
+18. ✅ completed ✅ tested — Risks CRUD API (GET/POST/PUT/DELETE, auto-compute riskScore)
+19. ✅ completed ✅ tested — Enhanced Dashboard API (real data: per-project burnRate, activityCompletion, milestones, team count)
+20. ✅ completed ✅ tested — 9 UI pages rebuilt/created: List, Create, Detail, Dashboard, Activities, Milestones, LogFrame, Indicators (new), Risks (new), Closeout — all with full CRUD dialogs
+21. ✅ completed ✅ tested — International seed data: 6 projects across Kenya, Jordan, Nepal, Niger, Bangladesh, Uganda (multi-currency USD/EUR)
+22. ✅ completed ✅ tested — Sidebar nav updated: 8 sub-pages (added Indicators & Results, Risk Register)
+23. ✅ completed ✅ tested — Full EN + BN translations for all new features (types, sectors, risk categories, indicator labels)
+
+> **Seed data (Phase 4):** 6 International Projects, 6 Activities, 4 Milestones, 5 Project Indicators, 6 Project Risks, 6 LogFrame Entries, 8 Beneficiaries, 7 Enrollments, 5 Services, 4 Impact Indicators, 3 Assessments, 2 Grievances
 >
-> **End-to-end tests passed (2026-03-25):**
-> - ✅ 4 Projects listed (3 ACTIVE, 1 PIPELINE) with progress tracking
-> - ✅ WASH Activities: 4 items (1 COMPLETED at 100%, 2 IN_PROGRESS, 1 PLANNED)
-> - ✅ WASH Milestones: 3 items (1 ACHIEVED with actualDate, 2 ON_TRACK)
-> - ✅ 8 Beneficiaries (5 in Sylhet district filter)
-> - ✅ 7 Enrollments across 3 projects (6 ACTIVE, 1 GRADUATED)
-> - ✅ Impact: Safe Water 57.5% achieved, School Enrollment 42.9%, Hygiene 48.9%
-> - ✅ 2 Grievances (1 RESOLVED, 1 OPEN with HIGH severity)
+> **End-to-end tests passed (2026-03-30):**
+> - ✅ 6 Projects listed (5 ACTIVE, 1 PIPELINE) — multi-country (Kenya, Jordan, Nepal, Niger, Bangladesh, Uganda)
+> - ✅ Dashboard: Active:5, Pipeline:1, Budget:$16.2M, Spent:$3.49M, Avg:29%, Activities:6 (done:1, delayed:1)
+> - ✅ WASH Activities: 4 items (1 COMPLETED 100%, 2 IN_PROGRESS, 1 PLANNED) with actualCost tracking
+> - ✅ WASH Milestones: 3 items (1 ACHIEVED with actualDate 2026-01-28, 2 ON_TRACK)
+> - ✅ WASH Indicators: 3 items (HH safe water B:1200→T:5000→C:2875, Hygiene B:30→T:85→C:52, Water quality B:45→T:95→C:78)
+> - ✅ WASH Risks: 3 items (Drought Score:16 OPEN, Supply chain Score:9 MITIGATED, Community resistance Score:8 OPEN)
+> - ✅ WASH LogFrame: 6 entries (1 GOAL, 1 PURPOSE, 2 OUTPUT, 2 ACTIVITY)
+> - ✅ Project Detail: type, sector, currency, country, region, partner, grants, team counts
+> - ✅ All 9 pages render 200 OK: list, new, dashboard, activities, milestones, logframe, indicators, risks, closeout
+> - ✅ 8 Beneficiaries, 7 Enrollments, 5 Services, 3 Impact Assessments, 2 Grievances
 
 ### Phase 5: Operations (Week 13-16) ✅ completed ✅ tested
 **Priority: Supporting operations — Procurement, Assets, HR, Microfinance (merged Phases 5-7)**
@@ -4820,6 +4944,2141 @@ GET /api/v1/{resource}?page=1&limit=20&sort=createdAt&order=desc&search=keyword&
 7. Email notification system
 8. PDF report generation
 9. i18n (Bangla/English)
+
+### Phase 8: HR & Payroll — International-Grade Upgrade ✅ completed ✅ seeded
+
+> **Priority: Transform basic HR into a world-class NGO HR & Payroll system**
+> **Benchmarks: BambooHR, SAP SuccessFactors, OrangeHRM, Odoo HR, Unit4 ERP for nonprofits**
+> **Built:** 12 Prisma models, 37 API routes (34 auth + 3 public), 22 UI pages, full i18n (EN+BN), seed data
+
+#### 8.1 Recruitment & Talent Acquisition (ATS) ✅ completed
+
+**New Prisma Models:**
+
+```prisma
+// ─── recruitment.prisma ───
+
+enum JobPostingStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  CANCELLED
+  ON_HOLD
+}
+
+enum ApplicationStatus {
+  APPLIED
+  SCREENED
+  SHORTLISTED
+  TECHNICAL_TEST
+  INTERVIEW
+  REFERENCE_CHECK
+  OFFER
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model JobPosting {
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String           @db.Uuid
+  postingNo       String           @unique // auto: "JOB-001"
+  title           String
+  slug            String           @unique // URL-friendly: "senior-program-officer-dhaka"
+  departmentId    String           @db.Uuid
+  designationId   String?          @db.Uuid
+  reportingToId   String?          @db.Uuid // Hiring manager
+  employmentType  EmploymentType   @default(FULL_TIME)
+  location        String           // Duty station
+  isRemote        Boolean          @default(false)
+  vacancies       Int              @default(1)
+
+  // Compensation
+  salaryMin       Decimal?         @db.Decimal(18, 2)
+  salaryMax       Decimal?         @db.Decimal(18, 2)
+  currency        String           @default("BDT")
+  showSalary      Boolean          @default(false) // Show salary range publicly
+
+  // Description
+  description     String           // Rich text - job overview
+  responsibilities String          // Rich text - key responsibilities
+  qualifications  String           // Rich text - required qualifications
+  preferredSkills String?          // Rich text - nice-to-have
+  benefits        String?          // Rich text - benefits/perks
+
+  // Requirements (structured for auto-scoring)
+  minEducation    String?          // "Masters", "Bachelors", etc.
+  minExperience   Int?             // Minimum years of experience
+  requiredSkills  Json?            // ["project-management", "M&E", "report-writing"]
+  requiredLanguages Json?          // [{"language": "English", "level": "Fluent"}, {"language": "Bangla", "level": "Native"}]
+  certifications  Json?            // ["PMP", "CPA"] - required certifications
+
+  // Funding
+  projectId       String?          @db.Uuid // Donor-funded position
+  grantId         String?          @db.Uuid // Linked grant
+
+  // Dates
+  publishedAt     DateTime?
+  applicationDeadline DateTime
+  expectedStartDate DateTime?
+
+  // Settings
+  status          JobPostingStatus @default(DRAFT)
+  isInternal      Boolean          @default(false) // Internal-only posting
+  allowInternalApplicants Boolean  @default(true)
+  requireCoverLetter Boolean      @default(false)
+  customQuestions  Json?            // [{question, type: "text"|"select"|"yesno", required, options}]
+
+  createdById     String           @db.Uuid
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  department      Department       @relation(fields: [departmentId], references: [id])
+  applications    JobApplication[]
+
+  @@unique([organizationId, postingNo])
+  @@index([organizationId])
+  @@index([status])
+  @@index([slug])
+  @@index([applicationDeadline])
+}
+
+model JobApplication {
+  id              String            @id @default(uuid()) @db.Uuid
+  applicationNo   String            @unique // auto: "APP-001"
+  jobPostingId    String            @db.Uuid
+  organizationId  String            @db.Uuid
+
+  // Applicant info (external applicants don't have Employee record)
+  applicantName   String
+  applicantEmail  String
+  applicantPhone  String?
+  applicantAddress String?
+
+  // Internal applicant
+  isInternal      Boolean           @default(false)
+  employeeId      String?           @db.Uuid // If internal applicant
+
+  // CV & Documents
+  cvFilePath      String?           // Uploaded CV/resume
+  coverLetterPath String?           // Uploaded cover letter
+  additionalDocs  Json?             // [{name, filePath}]
+
+  // Parsed CV data (AI-extracted)
+  parsedEducation Json?             // [{degree, institution, year, field}]
+  parsedExperience Json?            // [{title, organization, startDate, endDate, description}]
+  parsedSkills    Json?             // ["skill1", "skill2"]
+  parsedLanguages Json?             // [{language, level}]
+  parsedCertifications Json?        // ["cert1", "cert2"]
+  totalExperienceYears Decimal?     @db.Decimal(4, 1)
+
+  // Custom question responses
+  customResponses Json?             // [{questionId, answer}]
+
+  // Scoring
+  autoScore       Decimal?          @db.Decimal(5, 2) // 0-100 auto-calculated score
+  manualScore     Decimal?          @db.Decimal(5, 2) // HR manual score
+  finalScore      Decimal?          @db.Decimal(5, 2) // Weighted final score
+  scoreBreakdown  Json?             // {education: 25, experience: 30, skills: 20, languages: 15, certifications: 10}
+
+  // Pipeline
+  status          ApplicationStatus @default(APPLIED)
+  stage           String            @default("APPLIED") // Current pipeline stage
+  rejectionReason String?
+  notes           String?           // Internal notes
+
+  // Offer
+  offeredSalary   Decimal?          @db.Decimal(18, 2)
+  offerLetterPath String?
+  offerAcceptedAt DateTime?
+  offerDeclinedAt DateTime?
+
+  appliedAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  jobPosting      JobPosting        @relation(fields: [jobPostingId], references: [id])
+  interviews      Interview[]
+  evaluations     ApplicationEvaluation[]
+
+  @@unique([jobPostingId, applicantEmail]) // One application per email per job
+  @@index([organizationId])
+  @@index([jobPostingId])
+  @@index([status])
+  @@index([autoScore])
+}
+
+model Interview {
+  id              String          @id @default(uuid()) @db.Uuid
+  applicationId   String          @db.Uuid
+  interviewType   String          // "PHONE_SCREEN", "TECHNICAL", "HR", "PANEL", "FINAL"
+  scheduledAt     DateTime
+  durationMinutes Int             @default(60)
+  location        String?         // Physical location or video link
+  isVirtual       Boolean         @default(false)
+  meetingLink     String?         // Zoom/Teams link
+
+  status          InterviewStatus @default(SCHEDULED)
+  interviewerNotes String?
+  overallRating   Decimal?        @db.Decimal(3, 1) // 1.0-5.0
+  recommendation  String?         // "STRONG_YES", "YES", "MAYBE", "NO", "STRONG_NO"
+  completedAt     DateTime?
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  application     JobApplication  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  panelMembers    InterviewPanel[]
+
+  @@index([applicationId])
+  @@index([scheduledAt])
+}
+
+model InterviewPanel {
+  id            String    @id @default(uuid()) @db.Uuid
+  interviewId   String    @db.Uuid
+  interviewerId String    @db.Uuid // Employee ID
+  role          String    // "LEAD", "TECHNICAL", "HR", "OBSERVER"
+  score         Decimal?  @db.Decimal(3, 1)
+  feedback      String?
+  submittedAt   DateTime?
+
+  interview     Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  @@unique([interviewId, interviewerId])
+  @@index([interviewId])
+}
+
+model ApplicationEvaluation {
+  id            String    @id @default(uuid()) @db.Uuid
+  applicationId String    @db.Uuid
+  evaluatorId   String    @db.Uuid // Employee ID
+  criteria      String    // "technical_skills", "communication", "experience_fit", "cultural_fit"
+  score         Decimal   @db.Decimal(3, 1) // 1.0-5.0
+  comments      String?
+  createdAt     DateTime  @default(now())
+
+  application   JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, evaluatorId, criteria])
+  @@index([applicationId])
+}
+```
+
+**API Endpoints (Recruitment — 18 APIs):**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/recruitment/jobs` | List job postings (filter: status, department, type) |
+| POST | `/api/v1/hr/recruitment/jobs` | Create job posting (auto postingNo, slug generation) |
+| GET | `/api/v1/hr/recruitment/jobs/:id` | Job posting detail |
+| PATCH | `/api/v1/hr/recruitment/jobs/:id` | Update job posting |
+| POST | `/api/v1/hr/recruitment/jobs/:id/publish` | Publish job (set status=PUBLISHED, publishedAt=now) |
+| POST | `/api/v1/hr/recruitment/jobs/:id/close` | Close job posting |
+| GET | `/api/v1/hr/recruitment/jobs/:id/applications` | List applications for a job (sort by score) |
+| POST | `/api/v1/hr/recruitment/applications` | Submit application (internal) |
+| GET | `/api/v1/hr/recruitment/applications/:id` | Application detail with parsed CV data |
+| PATCH | `/api/v1/hr/recruitment/applications/:id` | Update application (status, notes, score) |
+| POST | `/api/v1/hr/recruitment/applications/:id/score` | Auto-score application against job requirements |
+| POST | `/api/v1/hr/recruitment/applications/:id/advance` | Advance to next pipeline stage |
+| POST | `/api/v1/hr/recruitment/applications/:id/reject` | Reject application with reason |
+| POST | `/api/v1/hr/recruitment/applications/:id/offer` | Generate offer for applicant |
+| GET | `/api/v1/hr/recruitment/interviews` | List interviews (filter: date range, status) |
+| POST | `/api/v1/hr/recruitment/interviews` | Schedule interview |
+| PATCH | `/api/v1/hr/recruitment/interviews/:id` | Update interview (score, notes, status) |
+| GET | `/api/v1/hr/recruitment/analytics` | Recruitment analytics (time-to-hire, source, pipeline funnel) |
+
+**Public Career Page (No Auth Required):**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/careers/:orgSlug` | Public career page — lists all PUBLISHED jobs for org |
+| GET | `/careers/:orgSlug/:jobSlug` | Public job detail with apply button |
+| POST | `/api/v1/public/careers/:orgSlug/:jobSlug/apply` | Public application submission (with CV upload) |
+
+**UI Pages:**
+
+| Page | Route | Description |
+|------|-------|-------------|
+| Job Postings List | `/hr/recruitment` | All job postings with status filter, pipeline stats |
+| Create Job Posting | `/hr/recruitment/new` | Form: title, description, requirements, scoring criteria |
+| Job Posting Detail | `/hr/recruitment/:id` | View posting with application pipeline Kanban board |
+| Application Detail | `/hr/recruitment/applications/:id` | Applicant profile, CV viewer, score breakdown, interview history |
+| Interview Calendar | `/hr/recruitment/interviews` | Calendar view of scheduled interviews |
+| Recruitment Dashboard | `/hr/recruitment/dashboard` | Analytics: time-to-fill, pipeline funnel, source effectiveness |
+| Public Career Page | `/careers/:orgSlug` | Branded career portal (public, no auth) |
+| Public Job Detail | `/careers/:orgSlug/:jobSlug` | Job detail + application form (public) |
+
+#### 8.2 Contract Management ✅ completed
+
+**New Prisma Models:**
+
+```prisma
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  EXPIRING_SOON // Auto-set when within 30 days of end
+  EXPIRED
+  RENEWED
+  TERMINATED
+}
+
+model EmployeeContract {
+  id              String         @id @default(uuid()) @db.Uuid
+  organizationId  String         @db.Uuid
+  contractNo      String         @unique // auto: "CTR-001"
+  employeeId      String         @db.Uuid
+  contractType    EmploymentType // FULL_TIME, CONTRACT, CONSULTANT, INTERN, VOLUNTEER
+  title           String         // "Senior Program Officer - Contract Extension"
+  startDate       DateTime
+  endDate         DateTime?      // Null for permanent
+  probationEndDate DateTime?
+
+  // Compensation
+  basicSalary     Decimal        @db.Decimal(18, 2)
+  currency        String         @default("BDT")
+  salaryComponents Json?         // [{component, amount, isPercentage}]
+
+  // Funding
+  projectId       String?        @db.Uuid
+  grantId         String?        @db.Uuid
+  costCenter      String?
+
+  // Documents
+  contractFilePath String?       // Uploaded signed contract
+  amendments      Json?          // [{date, description, filePath}]
+
+  // Renewal
+  isRenewable     Boolean        @default(true)
+  renewalNotice   Int            @default(30) // Days before end to notify
+  previousContractId String?     @db.Uuid // Chain of renewals
+
+  // Termination
+  terminatedAt    DateTime?
+  terminationReason String?
+  noticePeriodDays Int           @default(30)
+
+  status          ContractStatus @default(DRAFT)
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  employee        Employee       @relation(fields: [employeeId], references: [id])
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([endDate])
+}
+```
+
+**API Endpoints (Contract — 8 APIs):**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/contracts` | List contracts (filter: status, expiring-soon, employee) |
+| POST | `/api/v1/hr/contracts` | Create contract |
+| GET | `/api/v1/hr/contracts/:id` | Contract detail |
+| PATCH | `/api/v1/hr/contracts/:id` | Update contract |
+| POST | `/api/v1/hr/contracts/:id/renew` | Renew contract (creates new, links previous) |
+| POST | `/api/v1/hr/contracts/:id/terminate` | Terminate contract |
+| GET | `/api/v1/hr/contracts/expiring` | Contracts expiring within N days |
+| GET | `/api/v1/hr/contracts/employee/:employeeId` | Contract history for employee |
+
+**UI Pages:**
+
+| Page | Route | Description |
+|------|-------|-------------|
+| Contracts List | `/hr/contracts` | All contracts with expiry alerts, status filter |
+| Contract Detail | `/hr/contracts/:id` | Full contract view, amendment history, renewal chain |
+| Create/Renew Contract | `/hr/contracts/new` | Contract form with salary components |
+
+#### 8.3 Offboarding & Exit Management ✅ completed
+
+**New Prisma Models:**
+
+```prisma
+enum OffboardingStatus {
+  INITIATED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum SeparationType {
+  RESIGNATION
+  TERMINATION
+  END_OF_CONTRACT
+  RETIREMENT
+  REDUNDANCY
+  MUTUAL_SEPARATION
+  DEATH_IN_SERVICE
+}
+
+model Offboarding {
+  id              String             @id @default(uuid()) @db.Uuid
+  organizationId  String             @db.Uuid
+  offboardingNo   String             @unique // auto: "EXIT-001"
+  employeeId      String             @db.Uuid
+  separationType  SeparationType
+  initiatedDate   DateTime           @default(now())
+  lastWorkingDay  DateTime
+  noticeDate      DateTime?          // When notice was given
+  noticePeriodDays Int               @default(30)
+
+  // Exit Interview
+  exitInterviewDate DateTime?
+  exitInterviewerId String?          @db.Uuid
+  exitInterviewNotes String?
+  exitReason      String?            // Primary reason for leaving
+  wouldRehire     Boolean?
+
+  // Final Settlement
+  unusedLeaveDays Decimal?           @db.Decimal(5, 1)
+  leaveEncashment Decimal?           @db.Decimal(18, 2)
+  gratuity        Decimal?           @db.Decimal(18, 2)
+  otherPayments   Decimal?           @db.Decimal(18, 2)
+  deductions      Decimal?           @db.Decimal(18, 2) // Advances, loans, etc.
+  finalSettlement Decimal?           @db.Decimal(18, 2) // Net amount
+  settlementPaidAt DateTime?
+
+  // Certificate
+  experienceCertPath String?         // Generated experience certificate
+
+  status          OffboardingStatus  @default(INITIATED)
+  completedAt     DateTime?
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  employee        Employee           @relation(fields: [employeeId], references: [id])
+  tasks           OffboardingTask[]
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+model OffboardingTask {
+  id              String    @id @default(uuid()) @db.Uuid
+  offboardingId   String    @db.Uuid
+  taskName        String    // "Return Laptop", "Revoke Email Access", "Return ID Badge", etc.
+  category        String    // "IT", "FINANCE", "HR", "ADMIN", "SECURITY"
+  assignedToId    String?   @db.Uuid
+  isCompleted     Boolean   @default(false)
+  completedAt     DateTime?
+  completedById   String?   @db.Uuid
+  notes           String?
+  sortOrder       Int       @default(0)
+
+  offboarding     Offboarding @relation(fields: [offboardingId], references: [id], onDelete: Cascade)
+
+  @@index([offboardingId])
+}
+```
+
+**API Endpoints (Offboarding — 8 APIs):**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/offboarding` | List offboarding cases |
+| POST | `/api/v1/hr/offboarding` | Initiate offboarding (auto-creates checklist tasks) |
+| GET | `/api/v1/hr/offboarding/:id` | Offboarding detail with task progress |
+| PATCH | `/api/v1/hr/offboarding/:id` | Update offboarding (exit interview, settlement) |
+| POST | `/api/v1/hr/offboarding/:id/complete` | Complete offboarding → mark employee RESIGNED/TERMINATED |
+| PATCH | `/api/v1/hr/offboarding/:id/tasks/:taskId` | Update task completion |
+| POST | `/api/v1/hr/offboarding/:id/settlement` | Calculate final settlement |
+| POST | `/api/v1/hr/offboarding/:id/certificate` | Generate experience certificate |
+
+**UI Pages:**
+
+| Page | Route | Description |
+|------|-------|-------------|
+| Offboarding List | `/hr/offboarding` | Active/completed offboardings |
+| Offboarding Detail | `/hr/offboarding/:id` | Task checklist, exit interview, settlement calc |
+| Initiate Offboarding | `/hr/offboarding/new` | Form: employee, separation type, last working day |
+
+#### 8.4 Holiday Calendar ✅ completed
+
+**New Prisma Models:**
+
+```prisma
+model HolidayCalendar {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @db.Uuid
+  name            String    // "Bangladesh 2026", "Nepal Office 2026"
+  year            Int
+  isDefault       Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  holidays        Holiday[]
+
+  @@unique([organizationId, name, year])
+  @@index([organizationId])
+}
+
+model Holiday {
+  id              String          @id @default(uuid()) @db.Uuid
+  calendarId      String          @db.Uuid
+  name            String          // "Eid ul-Fitr", "Victory Day", etc.
+  localizedName   Json?           // {"bn": "ঈদুল ফিতর"}
+  date            DateTime
+  endDate         DateTime?       // Multi-day holidays
+  type            String          // "PUBLIC", "ORGANIZATIONAL", "RESTRICTED", "OPTIONAL"
+  isRecurring     Boolean         @default(false)
+  description     String?
+
+  calendar        HolidayCalendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+
+  @@index([calendarId])
+  @@index([date])
+}
+```
+
+**API Endpoints (Holiday Calendar — 6 APIs):**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/holiday-calendars` | List calendars |
+| POST | `/api/v1/hr/holiday-calendars` | Create calendar |
+| GET | `/api/v1/hr/holiday-calendars/:id` | Calendar with holidays |
+| POST | `/api/v1/hr/holiday-calendars/:id/holidays` | Add holiday to calendar |
+| PATCH | `/api/v1/hr/holiday-calendars/:id/holidays/:holidayId` | Update holiday |
+| DELETE | `/api/v1/hr/holiday-calendars/:id/holidays/:holidayId` | Remove holiday |
+
+**UI Pages:**
+
+| Page | Route | Description |
+|------|-------|-------------|
+| Holiday Calendars | `/hr/holidays` | Calendar view with all holidays, year selector |
+| Manage Calendar | `/hr/holidays/:id` | Add/edit/remove holidays for a calendar |
+
+#### 8.5 Grievance & Disciplinary Management ✅ completed
+
+**New Prisma Models:**
+
+```prisma
+enum GrievanceStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+  ESCALATED
+}
+
+enum DisciplinaryAction {
+  VERBAL_WARNING
+  WRITTEN_WARNING
+  FINAL_WARNING
+  SUSPENSION
+  TERMINATION
+}
+
+model EmployeeGrievance {
+  id              String          @id @default(uuid()) @db.Uuid
+  organizationId  String          @db.Uuid
+  grievanceNo     String          @unique // auto: "GRV-001"
+  employeeId      String?         @db.Uuid // Null if anonymous
+  isAnonymous     Boolean         @default(false)
+  category        String          // "HARASSMENT", "DISCRIMINATION", "SAFETY", "POLICY_VIOLATION", "INTERPERSONAL", "PSEA", "OTHER"
+  subject         String
+  description     String
+  evidencePaths   Json?           // [{name, filePath}]
+
+  // Investigation
+  assignedToId    String?         @db.Uuid // Investigating officer
+  investigationNotes String?
+  resolution      String?
+  resolutionDate  DateTime?
+
+  // Escalation
+  escalatedToId   String?         @db.Uuid
+  escalationReason String?
+
+  severity        String          @default("MEDIUM") // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  status          GrievanceStatus @default(SUBMITTED)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+model DisciplinaryCase {
+  id              String             @id @default(uuid()) @db.Uuid
+  organizationId  String             @db.Uuid
+  caseNo          String             @unique // auto: "DISC-001"
+  employeeId      String             @db.Uuid
+  action          DisciplinaryAction
+  reason          String
+  description     String
+  evidencePaths   Json?              // [{name, filePath}]
+
+  // Dates
+  incidentDate    DateTime
+  actionDate      DateTime
+  expiryDate      DateTime?          // Warning expiry
+
+  // Suspension details
+  suspensionStart DateTime?
+  suspensionEnd   DateTime?
+  withPay         Boolean            @default(true)
+
+  // Appeal
+  appealFiled     Boolean            @default(false)
+  appealDate      DateTime?
+  appealOutcome   String?            // "UPHELD", "REDUCED", "OVERTURNED"
+
+  issuedById      String             @db.Uuid
+  acknowledgedAt  DateTime?          // Employee acknowledged
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([organizationId])
+  @@index([employeeId])
+}
+```
+
+**API Endpoints (Grievance & Disciplinary — 10 APIs):**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/grievances` | List grievances |
+| POST | `/api/v1/hr/grievances` | Submit grievance (with anonymous option) |
+| GET | `/api/v1/hr/grievances/:id` | Grievance detail |
+| PATCH | `/api/v1/hr/grievances/:id` | Update grievance (assign, investigate, resolve) |
+| POST | `/api/v1/hr/grievances/:id/escalate` | Escalate grievance |
+| GET | `/api/v1/hr/disciplinary` | List disciplinary cases |
+| POST | `/api/v1/hr/disciplinary` | Create disciplinary case |
+| GET | `/api/v1/hr/disciplinary/:id` | Case detail |
+| PATCH | `/api/v1/hr/disciplinary/:id` | Update case |
+| POST | `/api/v1/hr/disciplinary/:id/appeal` | File appeal |
+
+**UI Pages:**
+
+| Page | Route | Description |
+|------|-------|-------------|
+| Grievances List | `/hr/grievances` | All grievances with severity/status filter |
+| Submit Grievance | `/hr/grievances/new` | Grievance form with anonymous option |
+| Grievance Detail | `/hr/grievances/:id` | Investigation timeline, resolution |
+| Disciplinary Cases | `/hr/disciplinary` | All disciplinary cases |
+| Create Disciplinary | `/hr/disciplinary/new` | Form: employee, action, evidence |
+| Case Detail | `/hr/disciplinary/:id` | Case details, appeal history |
+
+#### 8.6 HR Analytics Dashboard ✅ completed
+
+**API Endpoints (Analytics — 4 APIs):**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/analytics/overview` | KPIs: headcount, turnover, avg tenure, gender ratio, dept distribution |
+| GET | `/api/v1/hr/analytics/recruitment` | Recruitment funnel, time-to-hire, cost-per-hire, source effectiveness |
+| GET | `/api/v1/hr/analytics/workforce` | Workforce composition by type, department, gender, age band, tenure |
+| GET | `/api/v1/hr/analytics/attrition` | Attrition trends, reasons, voluntary vs involuntary, by department |
+
+**UI Pages:**
+
+| Page | Route | Description |
+|------|-------|-------------|
+| HR Analytics | `/hr/analytics` | Full analytics dashboard with charts: headcount trends, turnover rate, gender diversity pie, department breakdown, recruitment pipeline funnel, leave utilization, training hours/employee |
+
+#### 8.7 Enhanced Existing Features
+
+**Salary Structure Enhancements:**
+- Salary grade/step matrix (UN-style)
+- Multi-component salary definition per employee
+- Salary revision history with effective dates
+- Donor/project cost allocation per salary component
+
+**Payroll Enhancements:**
+- Payslip PDF generation with detailed breakdown
+- Bank transfer file generation (CSV/BACS format)
+- Payroll variance report (month-over-month)
+- Donor-wise payroll cost report
+
+**Leave Enhancements:**
+- Team leave calendar (visual calendar view)
+- Leave conflict detection (minimum coverage rules)
+- Half-day leave support
+- Document attachment for sick leave
+
+**Performance Enhancements:**
+- Competency framework with weighted criteria
+- 360-degree feedback collection
+- PIP (Performance Improvement Plan) workflow
+- Goal setting and tracking (OKR framework)
+
+#### 8.8 Summary — Phase 8 Totals
+
+| Sub-module | New Models | New APIs | New Pages |
+|------------|-----------|----------|-----------|
+| Recruitment & ATS | 5 | 18 + 3 public | 8 (incl. 2 public) |
+| Contract Management | 1 | 8 | 3 |
+| Offboarding | 2 | 8 | 3 |
+| Holiday Calendar | 2 | 6 | 2 |
+| Grievance & Disciplinary | 2 | 10 | 6 |
+| HR Analytics | — | 4 | 1 |
+| **TOTAL** | **12** | **57** | **23** |
+
+**Updated Navigation (sidebar):**
+```
+HR & Payroll
+├── Employee Directory     (existing)
+├── Recruitment            ★ NEW
+├── Onboarding             (existing)
+├── Contracts              ★ NEW
+├── Attendance             (existing)
+├── Leave Management       (existing)
+├── Holiday Calendar       ★ NEW
+├── Payroll                (existing)
+├── Performance            (existing)
+├── Training               (existing)
+├── Offboarding            ★ NEW
+├── Grievances             ★ NEW
+├── Org Chart              (existing)
+├── HR Analytics           ★ NEW
+```
+
+### Phase 9: Budget Management — International-Grade Upgrade
+
+> **Priority: Transform basic budget into a world-class NGO financial planning & control system**
+> **Benchmarks: SAP for Nonprofits, Sage Intacct Nonprofits, Unit4 ERP, NetSuite SocialImpact, Blackbaud Financial Edge NXT**
+> **Compliance: USAID 2 CFR 200, EU FPA, DFID/FCDO, UNICEF HACT, Bangladesh NGOAB FD-6**
+
+#### 9.0 Immediate Fixes (Pre-requisites)
+
+1. ⏳ — Fix sidebar navigation: `/budget/create` → `/budget/new`
+2. ⏳ — Ensure seed data pipeline works: seed-finance → seed-phase3 → seed-budget
+3. ⏳ — Add loading states + error display on `/budget/new` dropdown fetches
+4. ⏳ — Replace static pages (budget-vs-actual, revision, cost-allocation) with interactive API-driven pages
+
+#### 9.1 Budget Phasing & Period Distribution
+
+**New Prisma Models:**
+
+```prisma
+// ─── budget.prisma (additions) ───
+
+model BudgetPeriodAllocation {
+  id             String       @id @default(uuid()) @db.Uuid
+  budgetLineId   String       @db.Uuid
+  fiscalPeriodId String       @db.Uuid
+  amount         Decimal      @db.Decimal(18, 2)
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  budgetLine     BudgetLine   @relation(fields: [budgetLineId], references: [id], onDelete: Cascade)
+  fiscalPeriod   FiscalPeriod @relation(fields: [fiscalPeriodId], references: [id])
+
+  @@unique([budgetLineId, fiscalPeriodId])
+  @@index([budgetLineId])
+  @@index([fiscalPeriodId])
+}
+```
+
+**Features:**
+- Distribute each budget line across fiscal periods (months/quarters)
+- Auto-spread options: equal distribution, front-loaded, back-loaded, custom
+- Period allocation grid UI (Excel-like) with inline editing
+- Validation: sum of period allocations = budget line total
+- Cash flow forecast based on phased budget
+- Compare phased budget vs actual spend per period
+
+**API Endpoints:**
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/budget/:id/phasing` | Get period allocations for all lines |
+| PUT | `/api/v1/budget/:id/phasing` | Save/update period allocations (bulk) |
+| POST | `/api/v1/budget/:id/phasing/auto-spread` | Auto-distribute by method (equal/front/back) |
+
+**UI Page:** `/budget/[id]/phasing` — Period allocation grid with spreadsheet-style editing
+
+#### 9.2 Commitment / Encumbrance Tracking
+
+**New Prisma Models:**
+
+```prisma
+model BudgetCommitment {
+  id             String             @id @default(uuid()) @db.Uuid
+  budgetId       String             @db.Uuid
+  budgetLineId   String?            @db.Uuid
+  sourceType     CommitmentSource   // PR, PO, CONTRACT
+  sourceId       String             @db.Uuid
+  sourceRef      String             // PR-2026-001, PO-2026-001
+  amount         Decimal            @db.Decimal(18, 2)
+  committedDate  DateTime
+  releasedDate   DateTime?
+  releasedAmount Decimal?           @db.Decimal(18, 2)
+  status         CommitmentStatus   @default(COMMITTED)
+  notes          String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  budget         Budget             @relation(fields: [budgetId], references: [id])
+  budgetLine     BudgetLine?        @relation(fields: [budgetLineId], references: [id])
+
+  @@index([budgetId])
+  @@index([sourceType, sourceId])
+  @@index([status])
+}
+
+enum CommitmentSource {
+  PURCHASE_REQUISITION
+  PURCHASE_ORDER
+  CONTRACT
+}
+
+enum CommitmentStatus {
+  COMMITTED    // Reserved, not yet spent
+  PARTIALLY_RELEASED  // Some amount converted to actual
+  RELEASED     // Fully converted to actual expense
+  CANCELLED    // PR/PO cancelled, budget released
+}
+```
+
+**Cross-Module Integration:**
+- **Procurement PR approval** → creates BudgetCommitment (COMMITTED)
+- **PO creation from PR** → updates commitment source to PO
+- **Voucher approval** → releases commitment (COMMITTED → RELEASED), creates actual
+- **PR/PO cancellation** → cancels commitment (budget released back)
+
+**Budget Available Balance Formula:**
+```
+Available = Budget Total - Committed - Actual Spent
+```
+
+**API Endpoints:**
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/budget/:id/commitments` | List all commitments for a budget |
+| GET | `/api/v1/budget/:id/available` | Get available balance (total - committed - actual) |
+
+**UI:** Commitment column added to Budget vs Actual page, commitment drill-down on click
+
+#### 9.3 Budget Check Enforcement at Transaction Level
+
+**Enhancement to existing APIs (no new models):**
+
+**Where budget checks are enforced:**
+| Transaction | Check Point | Hard/Soft | Action |
+|-------------|-------------|-----------|--------|
+| Purchase Requisition (POST) | On creation | Hard stop | Reject if insufficient budget |
+| Purchase Order (POST) | On creation from PR | Hard stop | Re-validate budget availability |
+| Voucher Approval (POST) | On approve | Configurable | Warn or reject based on org setting |
+| Journal Entry (POST) | On posting | Soft warning | Flag over-budget, allow with override |
+| Payroll Approval (POST) | On approve | Soft warning | Flag if salary exceeds personnel budget |
+
+**New System Setting:**
+```
+budget_check_mode: 'HARD' | 'SOFT' | 'OFF'
+  - HARD: Reject transactions exceeding budget
+  - SOFT: Allow with warning + audit log
+  - OFF: No budget check (for non-grant funded operations)
+```
+
+**Cross-Module Changes:**
+- `POST /api/v1/procurement/requisitions` — already has budget check, enhance with commitment
+- `POST /api/v1/finance/vouchers/:id/approve` — add budget line-level check before approval
+- `POST /api/v1/hr/payroll/runs/:id/approve` — add personnel budget check
+- `POST /api/v1/finance/journal-entries` — add budget warning on project-tagged entries
+
+#### 9.4 Interactive Budget vs Actual Page
+
+**Replace static page with full API-driven interactive page**
+
+**Features:**
+- Select budget from dropdown (or navigate from budget detail)
+- Filter by: period, category, account, status
+- Table columns: Budget Line | Category | Budgeted | Committed | Actual | Available | Variance | Utilization %
+- Color-coded rows: green (< 80%), yellow (80-95%), red (> 95%), dark red (> 100%)
+- Drill-down: click any actual/committed amount → see individual transactions
+- Chart: stacked bar chart (budgeted vs committed vs actual) per category
+- Period comparison: side-by-side monthly/quarterly breakdown
+- Export: CSV + Print
+
+**API Enhancement:**
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/budget/:id/vs-actual` | Enhanced: includes commitments, period breakdown, drill-down links |
+| GET | `/api/v1/budget/:id/vs-actual/transactions` | Drill-down: list transactions for a budget line |
+
+**UI Page:** `/budget/budget-vs-actual` — Full interactive page (replaces static demo)
+
+#### 9.5 Interactive Budget Revision Page
+
+**Replace static page with full API-driven interactive page**
+
+**Features:**
+- List all revisions for the organization (filterable by budget, status, date)
+- Create new revision: select budget → shows current lines → edit amounts → provide justification per line
+- Revision comparison: side-by-side original vs proposed with change % highlighted
+- Approval workflow: Submit → Review → Approve/Reject with comments
+- Cumulative revision history: Original → Rev 1 → Rev 2 → Current
+- Impact analysis: show how revision affects ICR, cost share, donor amount
+- Auto-check: does reallocation exceed donor flexibility rules (configurable % threshold)
+
+**API Enhancement:**
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/budget/revisions` | List revisions (already exists, enhance filters) |
+| POST | `/api/v1/budget/revisions` | Create revision (already exists) |
+| GET | `/api/v1/budget/revisions/:id` | Get revision detail with line changes |
+| PUT | `/api/v1/budget/revisions/:id` | Update draft revision |
+| POST | `/api/v1/budget/revisions/:id/approve` | Approve (already exists, add comments) |
+| POST | `/api/v1/budget/revisions/:id/reject` | Reject with reason |
+
+**UI Page:** `/budget/revision` — Full interactive page (replaces static demo)
+
+#### 9.6 Interactive Cost Allocation Page
+
+**Replace static page with full API-driven interactive page**
+
+**Features:**
+- List all allocation rules with status (active/inactive)
+- Create rule: name, description, total amount, frequency (monthly/quarterly/annually)
+- Allocation entries: distribute across projects by percentage (must total 100%)
+- Apply allocation: select period → generates journal entries for allocated amounts
+- History: view past allocations with JE references
+- Integration: allocated amounts show in Budget vs Actual as indirect costs
+
+**API Enhancement:**
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/budget/cost-allocation` | List rules (already exists) |
+| POST | `/api/v1/budget/cost-allocation` | Create rule (already exists) |
+| GET | `/api/v1/budget/cost-allocation/:id` | Get rule detail with entries |
+| PUT | `/api/v1/budget/cost-allocation/:id` | Update rule |
+| DELETE | `/api/v1/budget/cost-allocation/:id` | Deactivate rule |
+| POST | `/api/v1/budget/cost-allocation/:id/apply` | Apply for period (already exists, enhance with JE generation) |
+| GET | `/api/v1/budget/cost-allocation/:id/history` | View past allocations |
+
+**UI Page:** `/budget/cost-allocation` — Full interactive page (replaces static demo)
+
+#### 9.7 Burn Rate Analysis & Forecasting
+
+**Features:**
+- Monthly burn rate: actual spend / months elapsed
+- Projected burn rate: remaining budget / remaining months
+- Runway calculation: at current burn rate, when will budget be exhausted?
+- Underspend detection: if utilization < expected % for elapsed time, flag
+- Trend chart: monthly spend over time with trendline
+- Forecast: projected final cost (Estimate at Completion — EAC)
+- Comparison: planned phased budget vs actual cumulative spend (S-curve)
+
+**API Endpoints:**
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/budget/:id/burn-rate` | Monthly/cumulative burn rate analysis |
+| GET | `/api/v1/budget/:id/forecast` | Projected spend, EAC, runway |
+
+**UI Page:** Section within Budget detail page + standalone `/budget/analytics` dashboard
+
+#### 9.8 Budget Cloning & Templates
+
+**Features:**
+- Clone budget: copy from existing budget → new budget with same structure, reset amounts
+- Clone with escalation: apply % increase to all lines (e.g., 5% salary increase Year 2)
+- Donor templates: pre-configured budget categories per donor format
+  - USAID: Object Class Categories (Personnel, Fringe, Travel, Equipment, Supplies, Contractual, Other, IDC)
+  - EU: Annex III format (Human Resources, Travel, Equipment, Local Office, Other Costs, Other Services)
+  - DFID: Logframe-linked categories
+  - Generic: Standard NGO format (Personnel, Operations, Equipment, Travel, Training, Admin, M&E)
+- Template management: create/edit/delete templates
+
+**API Endpoints:**
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/v1/budget/:id/clone` | Clone budget with optional escalation |
+| GET | `/api/v1/budget/templates` | List available templates |
+| POST | `/api/v1/budget/templates` | Create template |
+| GET | `/api/v1/budget/templates/:id` | Get template detail |
+| PUT | `/api/v1/budget/templates/:id` | Update template |
+| DELETE | `/api/v1/budget/templates/:id` | Delete template |
+| POST | `/api/v1/budget/from-template` | Create budget from template |
+
+**New Prisma Model:**
+```prisma
+model BudgetTemplate {
+  id             String              @id @default(uuid()) @db.Uuid
+  name           String
+  description    String?
+  donorFormat    String?             // USAID, EU, DFID, GENERIC
+  categories     Json                // Array of {category, subCategories[], defaultAccountCode}
+  includeICR     Boolean             @default(false)
+  defaultICRRate Decimal?            @db.Decimal(5, 2)
+  defaultICRBase IndirectCostBase?
+  isGlobal       Boolean             @default(false) // System-wide vs org-specific
+  organizationId String?             @db.Uuid
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  organization   Organization?       @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+}
+```
+
+#### 9.9 Budget Alerts & Notifications
+
+**Features:**
+- Configurable thresholds per budget: alert at 75%, 90%, 100% utilization
+- Alert types: in-app notification + email (when email system implemented)
+- Alert recipients: budget creator, project manager, finance admin
+- Auto-check: daily cron job scans all ACTIVE budgets
+- Line-level alerts: individual budget lines exceeding threshold
+- Underspend alerts: utilization below expected % for elapsed time period
+
+**Cross-Module:**
+- Voucher approval → check budget utilization → trigger alert if threshold crossed
+- Budget vs Actual page → visual indicators for alert status
+
+**Cron Job:**
+```
+budget-threshold-alert: Daily 09:00 — Check all ACTIVE budgets against thresholds
+```
+
+#### 9.10 Enhanced NICRA Management
+
+**Enhancement to existing fields:**
+- Provisional vs final NICRA rate tracking per fiscal year
+- MTDC base exclusion rules: auto-exclude equipment > $5,000, subawards > $25,000
+- De minimis 10% option (2 CFR 200.414(f)) as alternative to negotiated NICRA
+- ICR true-up calculation at year-end (provisional rate vs final rate)
+- Fringe benefit rate as separate pool (optional)
+
+**API Endpoints:**
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/budget/nicra` | Get org's NICRA settings |
+| PUT | `/api/v1/budget/nicra` | Update NICRA rates (provisional/final) |
+| GET | `/api/v1/budget/:id/icr-analysis` | ICR calculation detail with MTDC exclusions |
+
+#### 9.11 Cross-Module Integration Fixes
+
+**9.11.1 Procurement → Budget (Encumbrance)**
+- `POST /api/v1/procurement/requisitions/[id]/approve` — create BudgetCommitment on approval
+- `POST /api/v1/procurement/purchase-orders` — update commitment source PR → PO
+- `DELETE/CANCEL /api/v1/procurement/requisitions/[id]` — release commitment
+
+**9.11.2 Finance → Budget (Line-Level Actuals)**
+- `POST /api/v1/finance/vouchers/[id]/approve` — match expense to budget line by accountId + projectId
+- `GET /api/v1/budget/[id]/vs-actual` — include commitment column, period breakdown
+
+**9.11.3 HR/Payroll → Budget (Personnel Cost Tracking)**
+- `POST /api/v1/hr/payroll/runs/[id]/approve` — allocate salary to project based on employee LoE
+- Personnel budget lines → compare with actual payroll charges per project
+
+**9.11.4 Dashboard → Budget**
+- Dashboard KPIs use Budget records (not just Project.totalBudget)
+- Add budget utilization chart to dashboard
+- Add over-budget project alerts
+
+**9.11.5 Grant Lifecycle → Budget**
+- Grant CLOSEOUT → auto-transition linked budgets to CLOSED
+- Grant IMPLEMENTATION → enable budget activation
+- Grant freeze → budget freeze
+
+**9.11.6 Project ↔ Budget Reconciliation**
+- Auto-sync: Project.totalBudget = sum(APPROVED/ACTIVE Budget.totalAmount)
+- Prevent budget total exceeding project total (configurable)
+
+#### 9.12 Budget Export & Reporting
+
+**Features:**
+- Export budget to Excel (internal format + donor-specific templates)
+- Export Budget vs Actual to Excel/CSV
+- Print-optimized budget summary (A4 portrait/landscape)
+- Donor financial report generation:
+  - USAID SF-425 format
+  - EU Annex VI format
+  - Generic donor report
+- NGOAB FD-6 budget section auto-generation
+- Cost share / matching report (required vs actual by period)
+
+**API Endpoints:**
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/budget/:id/export` | Export budget (format=xlsx\|csv\|pdf) |
+| GET | `/api/v1/budget/:id/donor-report` | Generate donor-specific financial report |
+| GET | `/api/v1/budget/:id/cost-share-report` | Cost share verification report |
+
+#### 9.13 Updated Navigation
+
+```
+📊 BUDGET MANAGEMENT
+├── Budget List        (/budget)
+├── Create Budget      (/budget/new)          ★ FIX: was /budget/create
+├── Budget vs Actual   (/budget/budget-vs-actual)  ★ INTERACTIVE
+├── Budget Revision    (/budget/revision)      ★ INTERACTIVE
+├── Cost Allocation    (/budget/cost-allocation)   ★ INTERACTIVE
+├── Budget Analytics   (/budget/analytics)     ★ NEW — burn rate, forecasting
+├── Budget Templates   (/budget/templates)     ★ NEW — donor format templates
+```
+
+#### 9.14 Implementation Order
+
+| Step | Task | Dependencies | Cross-Module Impact |
+|------|------|-------------|---------------------|
+| 9.0 | Immediate fixes (nav, seed, loading states) | None | Navigation, seed data |
+| 9.1 | Budget phasing + period allocation | FiscalPeriod model exists | None |
+| 9.2 | Commitment/encumbrance model | None | Procurement (PR approve) |
+| 9.3 | Budget check enforcement | 9.2 | Procurement, Finance, HR |
+| 9.4 | Interactive Budget vs Actual page | 9.2 | Finance JE data |
+| 9.5 | Interactive Budget Revision page | None | Budget status workflow |
+| 9.6 | Interactive Cost Allocation page | None | Finance JE generation |
+| 9.7 | Burn rate & forecasting | 9.1, 9.4 | Dashboard |
+| 9.8 | Budget cloning & templates | None | None |
+| 9.9 | Budget alerts | 9.3 | Notification system |
+| 9.10 | Enhanced NICRA | None | Finance reporting |
+| 9.11 | Cross-module integration | 9.2, 9.3 | Procurement, Finance, HR, Dashboard, Grants |
+| 9.12 | Export & reporting | 9.4 | NGOAB reports |
+| 9.13 | Navigation update | All above | Sidebar |
+
+> **Seed data (Phase 9):** 3 budgets with period allocations, 5 commitments (2 from PR, 2 from PO, 1 from contract), 2 budget revisions (1 approved, 1 draft), 3 cost allocation rules, 2 budget templates (USAID, EU)
+
+### Phase 10: Cross-Module Integration (Week 30-36)
+
+> **Priority: Wire up the 12 modules into a cohesive, fully integrated ERP where actions in one module automatically propagate to all relevant modules**
+> **Benchmarks: Oracle ERP Cloud Budgetary Control & Encumbrance Accounting, SAP S/4HANA Budget Control, Sage Intacct Nonprofit Grant Lifecycle, Unit4 ERP for NGOs, NetSuite SocialImpact**
+> **Compliance: USAID 2 CFR 200, NGOAB FD-6/FD-2/FD-3, Bangladesh FDRA 1978, EU FPA Annex III/VI**
+
+Phase 9 defined the budget models and cross-module integration _points_ (9.2 commitments, 9.3 budget checks, 9.11 integration stubs). Phase 10 **implements all cross-module wiring end-to-end** with full API logic, UI changes, dashboard integration, NGOAB compliance reports, and automated tests.
+
+---
+
+#### 10.1 Procurement --> Budget Encumbrance (Full Implementation)
+
+**Context:** Oracle ERP Cloud creates encumbrances at each stage of the procure-to-pay lifecycle: requisition creates a pre-encumbrance, PO creates an encumbrance, and invoice/payment relieves it. We adopt this three-stage model adapted for NGO procurement.
+
+**New Prisma Model Additions (budget.prisma):**
+
+```prisma
+// Add to BudgetLine model
+model BudgetLine {
+  // ... existing fields ...
+  commitments    BudgetCommitment[]
+}
+
+// Enhance BudgetCommitment (defined in Phase 9.2, add missing fields)
+model BudgetCommitment {
+  id                 String             @id @default(uuid()) @db.Uuid
+  organizationId     String             @db.Uuid
+  budgetId           String             @db.Uuid
+  budgetLineId       String?            @db.Uuid
+  sourceType         CommitmentSource   // PURCHASE_REQUISITION, PURCHASE_ORDER, CONTRACT
+  sourceId           String             @db.Uuid
+  sourceRef          String             // PR-2026-001, PO-2026-001
+  description        String?
+  amount             Decimal            @db.Decimal(18, 2)
+  releasedAmount     Decimal            @default(0) @db.Decimal(18, 2)
+  committedDate      DateTime
+  releasedDate       DateTime?
+  status             CommitmentStatus   @default(COMMITTED)
+  // Lifecycle tracking
+  parentCommitmentId String?            @db.Uuid  // PR commitment → PO commitment chain
+  voucherIds         Json?              // Array of voucher IDs that released portions
+  notes              String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  organization       Organization       @relation(fields: [organizationId], references: [id])
+  budget             Budget             @relation(fields: [budgetId], references: [id])
+  budgetLine         BudgetLine?        @relation(fields: [budgetLineId], references: [id])
+  parentCommitment   BudgetCommitment?  @relation("CommitmentChain", fields: [parentCommitmentId], references: [id])
+  childCommitments   BudgetCommitment[] @relation("CommitmentChain")
+
+  @@index([organizationId])
+  @@index([budgetId])
+  @@index([budgetLineId])
+  @@index([sourceType, sourceId])
+  @@index([status])
+}
+```
+
+**Procurement Model Changes (procurement.prisma):**
+
+```prisma
+// Add to PurchaseRequisition
+model PurchaseRequisition {
+  // ... existing fields ...
+  budgetId          String?    @db.Uuid   // Linked budget
+  budgetLineId      String?    @db.Uuid   // Specific budget line (optional)
+  budgetCheckResult Json?                  // {available, committed, actual, sufficient}
+
+  @@index([budgetId])
+}
+
+// Add to PurchaseRequisitionLine
+model PurchaseRequisitionLine {
+  // ... existing fields ...
+  accountId         String?    @db.Uuid   // GL account for budget line matching
+}
+
+// Add to PurchaseOrder
+model PurchaseOrder {
+  // ... existing fields ...
+  projectId         String?    @db.Uuid   // Inherit from PR
+  budgetId          String?    @db.Uuid   // Inherit from PR
+
+  project           Project?   @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+  @@index([budgetId])
+}
+```
+
+**Encumbrance Lifecycle:**
+
+```
+Stage 1: PR Approved
+  └─ budgetCheckAvailability(budgetId, amount)
+  └─ If HARD mode: reject if available < amount
+  └─ createCommitment(sourceType=PURCHASE_REQUISITION, status=COMMITTED)
+  └─ Available balance reduced by committed amount
+
+Stage 2: PO Created from PR
+  └─ Original PR commitment → status=RELEASED
+  └─ New PO commitment created (sourceType=PURCHASE_ORDER, parentCommitmentId=PR commitment)
+  └─ If PO amount differs from PR, available balance adjusted
+
+Stage 3: Voucher Approved (Payment)
+  └─ PO commitment → partialRelease(voucherAmount)
+  └─ When releasedAmount >= amount → status=RELEASED
+  └─ Actual expense recorded in JE lines (tagged to budgetLineId via accountId+projectId)
+
+Stage 4: PR/PO Cancelled
+  └─ commitment.status → CANCELLED
+  └─ Available balance restored
+```
+
+**Budget Available Balance Formula:**
+```
+Available = BudgetLine.totalAmount - sum(COMMITTED commitments) - sum(actual JE debits for accountId+projectId)
+```
+
+**New/Modified API Endpoints:**
+
+| Method | Endpoint | Purpose | Status |
+|--------|----------|---------|--------|
+| GET | `/api/v1/budget/:id/available` | Get available balance per line (total - committed - actual) | New |
+| GET | `/api/v1/budget/:id/commitments` | List all commitments for a budget with status filter | New |
+| GET | `/api/v1/budget/:id/commitments/:commitmentId` | Commitment detail with lifecycle chain | New |
+| POST | `/api/v1/budget/check-availability` | Pre-check: `{budgetId, budgetLineId?, amount}` → `{sufficient, available, committed, actual}` | New |
+| PUT | `/api/v1/procurement/requisitions/:id/approve` | **Modify**: After approval, call `createBudgetCommitment()` | Modify |
+| POST | `/api/v1/procurement/orders` | **Modify**: When creating PO from PR, transfer commitment | Modify |
+| PUT | `/api/v1/finance/vouchers/:id/approve` | **Modify**: On payment voucher for PO, release commitment | Modify |
+| DELETE | `/api/v1/procurement/requisitions/:id` | **Modify**: On PR cancellation, cancel linked commitment | Modify |
+| DELETE | `/api/v1/procurement/orders/:id` | **Modify**: On PO cancellation, cancel linked commitment | Modify |
+
+**UI Changes:**
+
+| Page | Change |
+|------|--------|
+| `/procurement/requisitions` (create/edit form) | Add budget selector dropdown; show available balance in real-time as user enters amounts; red warning if amount exceeds available; block submit if budget_check_mode=HARD |
+| `/procurement/requisitions` (list) | Add "Budget Status" column (indicator: green checkmark if within budget, red X if over) |
+| `/procurement/orders` (create from PR) | Show commitment transfer summary: "PR commitment of X will transfer to PO" |
+| `/budget/budget-vs-actual` | Add "Committed" column between Budgeted and Actual; formula: Available = Budgeted - Committed - Actual; color code committed amounts in blue |
+| `/budget/[id]` (detail page) | Add "Commitments" tab showing all active/released commitments with drill-down to source PR/PO |
+
+**Shared Library — `lib/budget-check.ts`:**
+
+```typescript
+// Core functions used across modules
+export async function checkBudgetAvailability(params: {
+  budgetId: string;
+  budgetLineId?: string;
+  amount: Decimal;
+  organizationId: string;
+}): Promise<BudgetCheckResult>
+
+export async function createBudgetCommitment(params: {
+  organizationId: string;
+  budgetId: string;
+  budgetLineId?: string;
+  sourceType: CommitmentSource;
+  sourceId: string;
+  sourceRef: string;
+  amount: Decimal;
+  description?: string;
+}): Promise<BudgetCommitment>
+
+export async function releaseCommitment(params: {
+  commitmentId: string;
+  releaseAmount: Decimal;
+  voucherId?: string;
+}): Promise<BudgetCommitment>
+
+export async function transferCommitment(params: {
+  fromCommitmentId: string;
+  newSourceType: CommitmentSource;
+  newSourceId: string;
+  newSourceRef: string;
+  newAmount?: Decimal; // If PO amount differs from PR
+}): Promise<BudgetCommitment>
+
+export async function cancelCommitment(commitmentId: string): Promise<void>
+```
+
+---
+
+#### 10.2 HR/Payroll --> Budget Personnel Cost Tracking
+
+**Context:** Nonprofit ERPs like Sage Intacct and Workday link grant data to payroll, time collection, and other cost-related business areas. Personnel costs are typically 60-70% of NGO budgets. The system must track employee level-of-effort (LoE) per project and allocate salary costs to project budgets accordingly.
+
+**Existing Model (already in schema):**
+- `EmployeeProjectAllocation` — has `employeeId`, `projectId`, `percentage`, `startDate`, `endDate`, `isActive`
+- `PayrollEntry` — has per-employee salary breakdown
+- `PayrollRun` — has `journalEntryId` for auto-generated JE
+
+**New Prisma Model:**
+
+```prisma
+// Track payroll charges per project per employee per payroll run
+model PayrollBudgetAllocation {
+  id              String      @id @default(uuid()) @db.Uuid
+  organizationId  String      @db.Uuid
+  payrollRunId    String      @db.Uuid
+  payrollEntryId  String      @db.Uuid
+  employeeId      String      @db.Uuid
+  projectId       String      @db.Uuid
+  budgetId        String?     @db.Uuid
+  budgetLineId    String?     @db.Uuid
+  allocationPct   Decimal     @db.Decimal(5, 2)  // % of salary charged to this project
+  grossAmount     Decimal     @db.Decimal(18, 2)  // Gross salary portion
+  netAmount       Decimal     @db.Decimal(18, 2)  // Net salary portion (after deductions)
+  fringeAmount    Decimal     @default(0) @db.Decimal(18, 2)  // Benefits/fringe portion
+  totalCharge     Decimal     @db.Decimal(18, 2)  // gross + fringe
+  period          String      // "2026-03" (YYYY-MM)
+  createdAt       DateTime    @default(now())
+
+  payrollRun      PayrollRun  @relation(fields: [payrollRunId], references: [id])
+  payrollEntry    PayrollEntry @relation(fields: [payrollEntryId], references: [id])
+  project         Project     @relation(fields: [projectId], references: [id])
+  budget          Budget?     @relation(fields: [budgetId], references: [id])
+  budgetLine      BudgetLine? @relation(fields: [budgetLineId], references: [id])
+
+  @@unique([payrollEntryId, projectId])
+  @@index([organizationId])
+  @@index([payrollRunId])
+  @@index([projectId])
+  @@index([budgetId])
+  @@index([period])
+}
+```
+
+**Payroll Approval --> Budget Charge Flow:**
+
+```
+1. PayrollRun is PROCESSED (entries calculated)
+2. Before approval, system calculates budget impact:
+   For each PayrollEntry:
+     a. Lookup EmployeeProjectAllocation records (active, date-overlapping)
+     b. For each allocation:
+        - grossPortion = entry.grossSalary * (allocation.percentage / 100)
+        - fringePortion = (entry.pfDeduction + entry.medicalAllowance) * (allocation.percentage / 100)
+        - totalCharge = grossPortion + fringePortion
+     c. Find matching BudgetLine: category="Personnel" AND budget.projectId = allocation.projectId
+     d. checkBudgetAvailability(budgetId, budgetLineId, totalCharge)
+3. Show budget impact summary on approval screen
+4. On approval:
+   a. Create PayrollBudgetAllocation records
+   b. Auto-generated JE lines tagged with projectId (already exists)
+   c. Budget line actuals updated via JE line → accountId + projectId matching
+5. Budget vs Actual → Personnel lines show actual payroll charges
+```
+
+**New/Modified API Endpoints:**
+
+| Method | Endpoint | Purpose | Status |
+|--------|----------|---------|--------|
+| GET | `/api/v1/hr/employees/:id/project-allocations` | Get employee's project allocation history | New |
+| POST | `/api/v1/hr/employees/:id/project-allocations` | Create/update project allocation (validate total <= 100%) | New |
+| PUT | `/api/v1/hr/employees/:id/project-allocations/:allocId` | Update allocation percentage/dates | New |
+| DELETE | `/api/v1/hr/employees/:id/project-allocations/:allocId` | Deactivate allocation | New |
+| GET | `/api/v1/hr/payroll/runs/:id/budget-impact` | Preview budget impact before approval | New |
+| PUT | `/api/v1/hr/payroll/runs/:id/approve` | **Modify**: Create PayrollBudgetAllocation records, check personnel budget | Modify |
+| GET | `/api/v1/budget/:id/personnel-summary` | Personnel budget vs actual summary (by employee, by period) | New |
+| GET | `/api/v1/projects/:id/personnel-costs` | Project-level personnel cost breakdown (by employee, by month) | New |
+
+**UI Changes:**
+
+| Page | Change |
+|------|--------|
+| `/hr/employees/[id]` (detail page) | Add "Project Allocations" tab — table of project assignments with % allocation, date range, status; inline edit; validation: total active % <= 100% |
+| `/hr/employees/new` and `/hr/employees/[id]/edit` | Add "Project Allocation" section in form with multi-row project + percentage input |
+| `/hr/payroll/runs/[id]` (detail/approve page) | Add "Budget Impact" panel before approve button — table: Employee | Project | Budget | Allocated % | Gross Charge | Budget Available | Status (green/yellow/red) |
+| `/budget/budget-vs-actual` | Personnel category lines show drill-down to individual employee charges when clicked |
+| `/projects/[id]` (detail page) | Add "Personnel Costs" tab — monthly breakdown of salary charges by employee with LoE % |
+
+**New Page:**
+
+| Path | Description |
+|------|-------------|
+| `/hr/project-allocations` | Organization-wide employee project allocation matrix — rows=employees, columns=projects, cells=% allocation. Filter by department, project, status. Export CSV. |
+
+---
+
+#### 10.3 Dashboard --> Budget KPIs
+
+**Context:** Nonprofit dashboards must connect spending data to budget data so leaders see cost per impact achieved, not just raw numbers. Key KPIs include budget utilization rate by program, burn rate, runway, and over-budget alerts.
+
+**Current Dashboard State:**
+- KPIs: Total Fund Received, Fund Utilized, Active Projects, Active Beneficiaries, Pending Actions
+- Charts: Monthly income/expense, top donors, project progress, beneficiary trend
+- Missing: All budget-related KPIs
+
+**New Dashboard KPI Cards:**
+
+| KPI | Source | Calculation |
+|-----|--------|-------------|
+| Total Budget (All Active) | `Budget WHERE status=ACTIVE` | `sum(totalAmount)` |
+| Budget Utilization Rate | Budget + JE actuals | `(totalActual / totalBudget) * 100%` |
+| Total Committed | BudgetCommitment WHERE status=COMMITTED | `sum(amount - releasedAmount)` |
+| Budget Burn Rate | Monthly actuals trend | `avgMonthlySpend = totalActual / monthsElapsed` |
+| Projected Runway | Burn rate + remaining | `remainingBudget / avgMonthlySpend` (months) |
+| Over-Budget Projects | Budget lines where actual > budgeted | Count of projects with any line > 100% |
+
+**New Dashboard Widgets:**
+
+| Widget | Type | Description |
+|--------|------|-------------|
+| Budget Utilization Gauge | Gauge chart (Recharts) | Overall utilization % with color zones: green 0-75%, yellow 75-90%, red 90-100%, dark red >100% |
+| Budget vs Actual Mini-Chart | Stacked bar chart | Top 5 active budgets: budgeted (gray) vs committed (blue) vs actual (green/red) |
+| Burn Rate Trend | Line chart | Monthly actual spend for last 6 months with projected trendline |
+| Over-Budget Alerts | Alert list | List of budget lines exceeding threshold with project name, budget name, utilization %, link to budget detail |
+| Grant Budget Status | Table | Active grants with columns: Grant | Budget | Utilized % | Remaining | Status indicator |
+
+**New/Modified API Endpoints:**
+
+| Method | Endpoint | Purpose | Status |
+|--------|----------|---------|--------|
+| GET | `/api/v1/dashboard` | **Modify**: Add budget KPIs to existing response | Modify |
+| GET | `/api/v1/dashboard/budget-kpis` | Dedicated budget KPI endpoint (for lazy loading) | New |
+| GET | `/api/v1/dashboard/budget-chart` | Budget vs actual chart data for top N budgets | New |
+| GET | `/api/v1/dashboard/burn-rate` | Monthly burn rate trend (last 6-12 months) | New |
+| GET | `/api/v1/dashboard/budget-alerts` | Over-budget and under-spend alerts | New |
+
+**UI Changes:**
+
+| Page | Change |
+|------|--------|
+| `/dashboard` | Add second row of KPI cards (Budget Utilization, Committed, Burn Rate, Runway) below existing row |
+| `/dashboard` | Add Budget vs Actual mini-chart widget in charts section |
+| `/dashboard` | Add "Budget Alerts" widget — collapsible alert panel showing over-budget warnings with links |
+| `/dashboard` | Add Burn Rate trend line chart |
+
+---
+
+#### 10.4 Grant Lifecycle --> Budget Freeze/Close
+
+**Context:** Sage Intacct manages grants through the entire lifecycle from application to closeout, automatically controlling what financial operations are permitted at each stage. When a grant enters closeout, all linked budgets should be frozen to prevent new charges.
+
+**Existing State:**
+- `Grant.lifecycleStage` enum: `IDENTIFICATION | PROPOSAL | NEGOTIATION | AGREEMENT | IMPLEMENTATION | CLOSEOUT`
+- `Grant.status` enum: `PIPELINE | PROPOSAL | NEGOTIATION | ACTIVE | SUSPENDED | COMPLETED | CLOSED`
+- `Budget.status` enum: `DRAFT | SUBMITTED | APPROVED | ACTIVE | CLOSED | REVISED`
+- Grant lifecycle API exists at `PUT /api/v1/donors/grants/:id/lifecycle`
+
+**New Enum Values (base.prisma):**
+
+```prisma
+enum BudgetStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  ACTIVE
+  FROZEN       // NEW — No new transactions allowed, existing commitments honored
+  CLOSED
+  REVISED
+}
+```
+
+**Grant --> Budget Lifecycle Mapping:**
+
+| Grant Lifecycle Change | Budget Action | Automatic |
+|----------------------|---------------|-----------|
+| `AGREEMENT` → `IMPLEMENTATION` | Linked budgets eligible for ACTIVE status | Manual activation |
+| `IMPLEMENTATION` → `CLOSEOUT` | All linked ACTIVE budgets → `FROZEN` | **Automatic** |
+| Grant `status` → `SUSPENDED` | All linked ACTIVE budgets → `FROZEN` | **Automatic** |
+| Grant `status` → `ACTIVE` (unsuspend) | All linked FROZEN budgets → `ACTIVE` | **Automatic** |
+| Grant `status` → `CLOSED` | All linked budgets → `CLOSED` | **Automatic** |
+| Grant `status` → `COMPLETED` | All linked budgets → `CLOSED`, generate final report | **Automatic** |
+
+**FROZEN Budget Rules:**
+- No new Purchase Requisitions against this budget
+- No new Vouchers against this budget
+- No new Payroll charges against this budget
+- Existing COMMITTED encumbrances remain (can be released/cancelled)
+- Budget vs Actual read access continues
+- Budget revision NOT allowed
+- Manual override: Finance Admin can unfreeze with audit trail
+
+**New/Modified API Endpoints:**
+
+| Method | Endpoint | Purpose | Status |
+|--------|----------|---------|--------|
+| PUT | `/api/v1/donors/grants/:id/lifecycle` | **Modify**: On CLOSEOUT, auto-freeze linked budgets; on CLOSED, auto-close budgets | Modify |
+| PUT | `/api/v1/donors/grants/:id` | **Modify**: On status=SUSPENDED, freeze budgets; on status=ACTIVE, unfreeze | Modify |
+| POST | `/api/v1/budget/:id/freeze` | Manual freeze with reason (Finance Admin only) | New |
+| POST | `/api/v1/budget/:id/unfreeze` | Manual unfreeze with reason (Finance Admin only) | New |
+| GET | `/api/v1/donors/grants/:id/budget-summary` | Grant-level budget summary: total budgeted, committed, actual, available across all linked budgets | New |
+
+**UI Changes:**
+
+| Page | Change |
+|------|--------|
+| `/donors/grants/[id]` (detail page) | Add "Budget Status" section — table of linked budgets with status badges (ACTIVE=green, FROZEN=blue/ice, CLOSED=gray); total budget summary; link to each budget detail |
+| `/donors/grants/[id]` (detail page) | Lifecycle stage change modal shows warning: "Changing to CLOSEOUT will freeze X linked budgets" with confirmation |
+| `/donors/grant-lifecycle` | Add "Budget Impact" column showing count of affected budgets per grant |
+| `/budget` (list page) | FROZEN budgets show ice/snowflake icon with tooltip "Frozen due to grant closeout/suspension" |
+| `/budget/[id]` (detail page) | Frozen banner: "This budget is frozen. Grant [GrantNo] is in CLOSEOUT stage. No new transactions allowed." with unfreeze button for Finance Admin |
+
+---
+
+#### 10.5 Project <--> Budget Reconciliation
+
+**Context:** Project.totalBudget must always reflect the sum of linked active budgets. This prevents data drift where project and budget records disagree.
+
+**Reconciliation Rules:**
+
+```
+Rule 1: Project.totalBudget = sum(Budget.totalAmount WHERE projectId=X AND status IN (APPROVED, ACTIVE))
+Rule 2: Budget creation validates: sum(existing budgets) + new budget <= Project.totalBudget (if ceiling enforced)
+Rule 3: Budget revision auto-updates Project.totalBudget
+Rule 4: Project detail page shows budget breakdown
+```
+
+**System Setting:**
+```
+project_budget_ceiling_mode: 'ENFORCE' | 'WARN' | 'OFF'
+  - ENFORCE: Budget total cannot exceed project total (reject)
+  - WARN: Allow with warning + audit log
+  - OFF: No validation
+```
+
+**New/Modified API Endpoints:**
+
+| Method | Endpoint | Purpose | Status |
+|--------|----------|---------|--------|
+| POST | `/api/v1/budget` | **Modify**: After budget creation with status APPROVED/ACTIVE, auto-update Project.totalBudget | Modify |
+| PUT | `/api/v1/budget/:id` | **Modify**: On budget amount change, re-sync Project.totalBudget | Modify |
+| PUT | `/api/v1/budget/:id/status` | **Modify**: On status change to ACTIVE/CLOSED, re-sync Project.totalBudget | Modify |
+| POST | `/api/v1/budget/revisions/:id/approve` | **Modify**: On revision approval, update budget totals and re-sync Project.totalBudget | Modify |
+| GET | `/api/v1/projects/:id/budget-breakdown` | Budget breakdown: list of budgets, per-budget amount, combined totals, variance from Project.totalBudget | New |
+| POST | `/api/v1/projects/reconcile-budgets` | Batch reconciliation: scan all active projects, detect mismatches, auto-fix | New |
+
+**Shared Library — `lib/project-budget-sync.ts`:**
+
+```typescript
+export async function syncProjectBudgetTotal(projectId: string): Promise<{
+  previousTotal: Decimal;
+  newTotal: Decimal;
+  budgetCount: number;
+}>
+
+export async function validateBudgetAgainstProject(params: {
+  projectId: string;
+  newBudgetAmount: Decimal;
+  excludeBudgetId?: string; // For edits, exclude self
+}): Promise<{ allowed: boolean; currentTotal: Decimal; projectCeiling: Decimal; }>
+```
+
+**UI Changes:**
+
+| Page | Change |
+|------|--------|
+| `/projects/[id]` (detail page) | Add "Budget Breakdown" section — table of linked budgets: Budget Name | Grant | Status | Amount | Utilization % | quick-link to budget detail. Summary row: Total Budgeted | Total Committed | Total Actual | Total Available |
+| `/budget/new` | After selecting project, show: "Project total budget: X | Already budgeted: Y | Remaining: Z". If project_budget_ceiling_mode=ENFORCE, cap max amount at Z |
+| `/projects/dashboard` | Add budget column to project listing with utilization mini-bar |
+
+---
+
+#### 10.6 Finance --> Budget Line-Level Tracking
+
+**Context:** Voucher approval must map expenses to specific budget lines. Oracle ERP accomplishes this through dimension tagging on every transaction (account + project + fund). We use `accountId + projectId` as the composite key to match JE lines to budget lines.
+
+**Matching Logic:**
+
+```
+When a JournalEntryLine is posted (via voucher approval or direct JE posting):
+  1. If JELine has accountId AND journalEntry has projectId:
+     a. Find BudgetLine WHERE budgetLine.accountId = JELine.accountId
+        AND budgetLine.budget.projectId = JE.projectId
+        AND budgetLine.budget.status IN (ACTIVE)
+     b. If found: this JELine contributes to that budget line's actual spend
+     c. If not found: JELine is "unbudgeted" (flagged in Budget vs Actual as "Unallocated")
+  2. Budget vs Actual API aggregates actuals from matched JE lines
+```
+
+**New Field on JournalEntryLine (finance.prisma):**
+
+```prisma
+model JournalEntryLine {
+  // ... existing fields ...
+  budgetLineId    String?      @db.Uuid  // Auto-matched or manually tagged
+  budgetLine      BudgetLine?  @relation(fields: [budgetLineId], references: [id])
+
+  @@index([budgetLineId])
+}
+```
+
+**New/Modified API Endpoints:**
+
+| Method | Endpoint | Purpose | Status |
+|--------|----------|---------|--------|
+| PUT | `/api/v1/finance/vouchers/:id/approve` | **Modify**: On approval, auto-match each JE line to budget line by accountId + projectId. Set `budgetLineId` on JELine. Log warning if no match found. | Modify |
+| POST | `/api/v1/finance/journal-entries` | **Modify**: On project-tagged JE creation, attempt budget line matching. Show soft warning if over budget (when budget_check_mode=SOFT). | Modify |
+| GET | `/api/v1/budget/:id/vs-actual` | **Modify**: Compute actuals from `JournalEntryLine WHERE budgetLineId=X AND journalEntry.status=APPROVED`. Include unmatched line totals. | Modify |
+| GET | `/api/v1/budget/:id/vs-actual/transactions` | Drill-down: list individual JE lines matched to a specific budget line | New |
+| GET | `/api/v1/budget/:id/unmatched-transactions` | List JE lines for this budget's project that could not be matched to any budget line | New |
+| POST | `/api/v1/budget/:id/rematch-transactions` | Re-run matching algorithm for all JE lines in budget period (admin utility) | New |
+
+**UI Changes:**
+
+| Page | Change |
+|------|--------|
+| `/budget/budget-vs-actual` | Click on any "Actual" amount cell → slide-over panel showing individual JE lines (date, voucher no, description, amount). Click JE line → navigate to voucher/JE detail. |
+| `/budget/budget-vs-actual` | "Unmatched" row at bottom: total of JE lines tagged to this project but not matching any budget line. Click to see list. |
+| `/finance/vouchers/[id]` (detail page) | Show "Budget Line" tag on each voucher line item (auto-matched). Badge: "Matched to BUD-2026-001 / Personnel" |
+| `/finance/journal-entries` (create form) | When project is selected, show budget status tooltip next to amount field |
+
+---
+
+#### 10.7 NGOAB Compliance Reports
+
+**Context:** Bangladesh NGOs receiving foreign donations must submit reports to NGOAB in prescribed formats. Key forms: FD-6 (project proposal with budget), FD-2 (request for next fund installment with expenditure statement), FD-3 (annual statement of foreign donations received and spent). The system auto-generates these from existing budget and financial data.
+
+**NGOAB FD-6 Budget Categories:**
+
+The FD-6 budget section follows a prescribed format with these standard categories:
+1. Personnel (Foreign Nationals, Bangladeshi Nationals — salary, benefits, allowances)
+2. Travel (International, Local)
+3. Equipment & Materials (Office Equipment, Vehicles, Machinery)
+4. Civil Construction / Infrastructure
+5. Training, Seminars, Workshops & Conferences
+6. Operational Costs (Office Rent, Utilities, Communication)
+7. Monitoring & Evaluation
+8. Administrative Overhead (capped at 7.5% or as approved)
+9. Contingency
+10. Others
+
+**NGOAB FD-2 Expenditure Statement Sections:**
+1. Organization Details (name, registration no, FD-1 reference)
+2. Project Details (name, approval date, FD-6 reference)
+3. Fund Receipt Summary (date, amount, exchange rate, bank)
+4. Budget vs Expenditure Comparison (NGOAB category-wise)
+5. Personnel Expenditure Detail (by nationality, by position)
+6. Remaining Balance and Justification for Next Installment
+
+**New Prisma Model:**
+
+```prisma
+model NgoabReport {
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String           @db.Uuid
+  reportType      NgoabReportType  // FD6_BUDGET, FD2_EXPENDITURE, FD3_ANNUAL, COST_SHARE
+  grantId         String           @db.Uuid
+  projectId       String           @db.Uuid
+  budgetId        String?          @db.Uuid
+  periodStart     DateTime?
+  periodEnd       DateTime?
+  generatedData   Json             // Full report data (structured for template rendering)
+  status          ApprovalStatus   @default(DRAFT)
+  generatedById   String           @db.Uuid
+  approvedById    String?          @db.Uuid
+  approvedAt      DateTime?
+  submittedAt     DateTime?
+  ngoabRef        String?          // NGOAB acknowledgment reference
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  grant           Grant            @relation(fields: [grantId], references: [id])
+  project         Project          @relation(fields: [projectId], references: [id])
+  budget          Budget?          @relation(fields: [budgetId], references: [id])
+
+  @@index([organizationId])
+  @@index([grantId])
+  @@index([reportType])
+  @@index([status])
+}
+
+enum NgoabReportType {
+  FD6_BUDGET             // Project proposal budget
+  FD2_EXPENDITURE        // Expenditure statement for next installment
+  FD3_ANNUAL             // Annual foreign donation statement
+  COST_SHARE             // Cost share/matching verification
+}
+
+// Mapping table: BudgetLine categories → NGOAB FD-6 categories
+model NgoabCategoryMapping {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @db.Uuid
+  budgetCategory  String   // Internal category (e.g., "Personnel", "Operations")
+  budgetSubCategory String? // Internal sub-category
+  ngoabCategory   String   // NGOAB FD-6 category name
+  ngoabCategoryNo Int      // NGOAB category number (1-10)
+  sortOrder       Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  @@unique([organizationId, budgetCategory, budgetSubCategory])
+  @@index([organizationId])
+}
+```
+
+**New API Endpoints:**
+
+| Method | Endpoint | Purpose | Status |
+|--------|----------|---------|--------|
+| GET | `/api/v1/reports/ngoab/fd6/:grantId` | Generate FD-6 budget section from budget data (auto-maps categories) | New |
+| GET | `/api/v1/reports/ngoab/fd2/:grantId` | Generate FD-2 expenditure statement (budget vs actual by NGOAB categories) | New |
+| GET | `/api/v1/reports/ngoab/fd3/:grantId` | Generate FD-3 annual statement (fund receipts + expenditure) | New |
+| GET | `/api/v1/reports/ngoab/cost-share/:budgetId` | Cost share verification report (required vs actual matching) | New |
+| POST | `/api/v1/reports/ngoab` | Save generated report as NgoabReport record | New |
+| GET | `/api/v1/reports/ngoab` | List NGOAB reports (filter by type, grant, status) | New |
+| GET | `/api/v1/reports/ngoab/:id` | Get report detail | New |
+| PUT | `/api/v1/reports/ngoab/:id/approve` | Approve report for submission | New |
+| GET | `/api/v1/settings/ngoab-category-mapping` | Get category mappings | New |
+| PUT | `/api/v1/settings/ngoab-category-mapping` | Update category mappings (bulk) | New |
+
+**UI Pages:**
+
+| Path | Description |
+|------|-------------|
+| `/reports/ngoab` | NGOAB Reports hub — cards for each report type (FD-6, FD-2, FD-3, Cost Share). Click to generate. List of previously generated reports with status. |
+| `/reports/ngoab/generate` | Report generation wizard: Step 1 — Select report type + grant + period; Step 2 — Preview generated data (editable before save); Step 3 — Save/Approve/Export |
+| `/reports/ngoab/[id]` | Report detail — full report view with print-optimized layout matching NGOAB prescribed format. Actions: Edit, Approve, Export (PDF/Excel), Mark Submitted |
+| `/settings/ngoab-mapping` | NGOAB Category Mapping — table: Internal Budget Category → NGOAB Category. Drag-and-drop reorder. Bulk edit. |
+
+**Report Templates:**
+
+The FD-6 budget export produces a table with columns:
+```
+| Sl. | Head of Expenditure | Year 1 (BDT) | Year 2 (BDT) | ... | Total (BDT) | Total (USD) |
+```
+
+The FD-2 expenditure export produces:
+```
+| Sl. | Head of Expenditure | Approved Budget | Previous Expenditure | Current Period | Cumulative | Balance |
+```
+
+---
+
+#### 10.8 Implementation Order & Dependencies
+
+| Step | Task | Dependencies | Cross-Module Impact | Estimated Effort |
+|------|------|-------------|---------------------|-----------------|
+| **10.1a** | `lib/budget-check.ts` — shared budget checking library | Phase 9.2 (BudgetCommitment model) | Foundation for all integration | 1 day |
+| **10.1b** | Budget availability & commitment APIs | 10.1a | Budget module | 1 day |
+| **10.1c** | PR approve → create commitment | 10.1a, 10.1b | Procurement | 1 day |
+| **10.1d** | PO create → transfer commitment | 10.1c | Procurement | 0.5 day |
+| **10.1e** | Voucher approve → release commitment | 10.1a | Finance | 1 day |
+| **10.1f** | PR/PO cancel → cancel commitment | 10.1c | Procurement | 0.5 day |
+| **10.1g** | Procurement UI (budget selector, availability display) | 10.1b | Procurement pages | 1 day |
+| **10.1h** | Budget vs Actual — committed column | 10.1b | Budget pages | 0.5 day |
+| **10.2a** | Employee project allocation CRUD APIs | None | HR module | 1 day |
+| **10.2b** | Employee project allocation UI (employee detail tab) | 10.2a | HR pages | 1 day |
+| **10.2c** | PayrollBudgetAllocation model + payroll approval integration | 10.2a | HR + Budget | 1.5 days |
+| **10.2d** | Payroll budget impact preview API + UI | 10.2c | HR payroll pages | 1 day |
+| **10.2e** | Personnel cost summary APIs + project detail UI | 10.2c | Project + Budget pages | 1 day |
+| **10.2f** | Organization-wide project allocation matrix page | 10.2a | New HR page | 1 day |
+| **10.3a** | Dashboard budget KPI APIs | 10.1b | Dashboard API | 1 day |
+| **10.3b** | Dashboard budget widgets UI | 10.3a | Dashboard page | 1.5 days |
+| **10.3c** | Dashboard budget alerts widget | 10.3a, Phase 9.9 | Dashboard page | 0.5 day |
+| **10.4a** | Grant lifecycle → budget freeze/close logic | None | Donor + Budget | 1 day |
+| **10.4b** | Budget freeze/unfreeze APIs | 10.4a | Budget module | 0.5 day |
+| **10.4c** | Grant detail → budget summary UI | 10.4a | Donor pages | 1 day |
+| **10.4d** | Budget frozen state UI (banners, icons, form disabling) | 10.4b | Budget pages | 0.5 day |
+| **10.5a** | Project-budget sync library + APIs | None | Project + Budget | 1 day |
+| **10.5b** | Budget creation → project ceiling validation | 10.5a | Budget create page | 0.5 day |
+| **10.5c** | Project detail → budget breakdown UI | 10.5a | Project pages | 1 day |
+| **10.5d** | Batch reconciliation API | 10.5a | Admin utility | 0.5 day |
+| **10.6a** | JE line → budget line matching logic | 10.1a | Finance + Budget | 1 day |
+| **10.6b** | Voucher approve → auto-tag budget line | 10.6a | Finance API | 0.5 day |
+| **10.6c** | Budget vs Actual → transaction drill-down | 10.6a | Budget pages | 1 day |
+| **10.6d** | Unmatched transactions UI | 10.6c | Budget pages | 0.5 day |
+| **10.7a** | NGOAB category mapping model + settings API | None | Settings | 0.5 day |
+| **10.7b** | FD-6 budget report generation API | 10.7a | Reports | 1.5 days |
+| **10.7c** | FD-2 expenditure report generation API | 10.7a, 10.6a | Reports | 1.5 days |
+| **10.7d** | FD-3 annual statement API | 10.7a | Reports | 1 day |
+| **10.7e** | Cost share verification report API | 10.7a | Reports | 0.5 day |
+| **10.7f** | NGOAB reports UI (hub + generation wizard + detail view) | 10.7b, 10.7c, 10.7d | New pages | 2 days |
+| **10.7g** | NGOAB category mapping settings UI | 10.7a | Settings page | 0.5 day |
+
+**Total estimated effort: ~30 days (6 weeks at 5 days/week)**
+
+**Recommended parallel tracks:**
+- **Track A (Budget Core):** 10.1a → 10.1b → 10.1c → 10.1d → 10.1e → 10.1f → 10.6a → 10.6b
+- **Track B (HR/Payroll):** 10.2a → 10.2b → 10.2c → 10.2d → 10.2e → 10.2f
+- **Track C (Grant/Project):** 10.4a → 10.4b → 10.5a → 10.5b → 10.5c → 10.5d
+- **Track D (Dashboard):** 10.3a → 10.3b → 10.3c (after Track A reaches 10.1b)
+- **Track E (NGOAB):** 10.7a → 10.7b → 10.7c → 10.7d → 10.7e → 10.7f → 10.7g (after Track A reaches 10.6a)
+- **Track F (UI Polish):** 10.1g → 10.1h → 10.4c → 10.4d → 10.6c → 10.6d (after respective APIs)
+
+---
+
+#### 10.9 i18n Keys
+
+**New message keys to add across `src/messages/{en,bn}/` files:**
+
+**`budget.json` additions:**
+```json
+{
+  "committed": "Committed",
+  "available": "Available",
+  "frozen": "Frozen",
+  "frozenBanner": "This budget is frozen. No new transactions are allowed.",
+  "frozenReason": "Frozen due to grant {grantNo} entering {stage} stage.",
+  "unfreezeButton": "Unfreeze Budget",
+  "freezeButton": "Freeze Budget",
+  "freezeConfirm": "Are you sure you want to freeze this budget? No new transactions will be allowed.",
+  "unfreezeConfirm": "Are you sure you want to unfreeze this budget? New transactions will be allowed.",
+  "commitments": "Commitments",
+  "commitmentSource": "Source",
+  "commitmentAmount": "Committed Amount",
+  "commitmentReleased": "Released Amount",
+  "commitmentStatus": "Commitment Status",
+  "budgetCheck": "Budget Check",
+  "budgetCheckPassed": "Budget available: sufficient funds",
+  "budgetCheckFailed": "Insufficient budget. Available: {available}, Required: {required}",
+  "budgetCheckWarning": "Budget will be {percent}% utilized after this transaction",
+  "budgetAvailable": "Available Balance",
+  "budgetUtilization": "Budget Utilization",
+  "burnRate": "Burn Rate",
+  "projectedRunway": "Projected Runway",
+  "monthsRemaining": "{count} months remaining",
+  "overBudget": "Over Budget",
+  "underSpend": "Under Spend",
+  "unmatchedTransactions": "Unmatched Transactions",
+  "personnelSummary": "Personnel Cost Summary",
+  "budgetBreakdown": "Budget Breakdown",
+  "reconcile": "Reconcile with Project",
+  "reconciledSuccess": "Project budget reconciled successfully",
+  "ceilingExceeded": "Budget total exceeds project ceiling by {amount}",
+  "lineActuals": "Line-Level Actuals",
+  "drillDown": "View Transactions",
+  "matchedTo": "Matched to {budgetLineDescription}"
+}
+```
+
+**`hr.json` additions:**
+```json
+{
+  "projectAllocations": "Project Allocations",
+  "allocationPercent": "Allocation %",
+  "totalAllocation": "Total Allocation",
+  "allocationExceeds": "Total allocation cannot exceed 100%",
+  "addAllocation": "Add Project Allocation",
+  "noAllocations": "No project allocations configured",
+  "budgetImpact": "Budget Impact",
+  "budgetImpactPreview": "Payroll Budget Impact Preview",
+  "personnelCharge": "Personnel Charge",
+  "grossCharge": "Gross Charge to Project",
+  "fringeCharge": "Fringe Charge",
+  "allocationMatrix": "Project Allocation Matrix",
+  "unallocated": "Unallocated"
+}
+```
+
+**`dashboard.json` additions:**
+```json
+{
+  "totalBudget": "Total Active Budget",
+  "budgetUtilization": "Budget Utilization",
+  "totalCommitted": "Total Committed",
+  "burnRate": "Monthly Burn Rate",
+  "projectedRunway": "Projected Runway",
+  "overBudgetProjects": "Over-Budget Projects",
+  "budgetVsActualChart": "Budget vs Actual",
+  "burnRateTrend": "Burn Rate Trend",
+  "budgetAlerts": "Budget Alerts",
+  "grantBudgetStatus": "Grant Budget Status",
+  "noAlerts": "All budgets within threshold"
+}
+```
+
+**`donors.json` additions:**
+```json
+{
+  "budgetStatus": "Budget Status",
+  "budgetSummary": "Budget Summary",
+  "linkedBudgets": "Linked Budgets",
+  "freezeWarning": "Changing to {stage} will freeze {count} linked budget(s)",
+  "grantBudgetTotal": "Total Budgeted (All Linked)",
+  "grantBudgetActual": "Total Actual Spend",
+  "grantBudgetAvailable": "Total Available"
+}
+```
+
+**`procurement.json` additions:**
+```json
+{
+  "budgetSelector": "Select Budget",
+  "budgetAvailability": "Budget Availability",
+  "budgetLine": "Budget Line",
+  "insufficientBudget": "Insufficient budget for this requisition",
+  "commitmentCreated": "Budget commitment created",
+  "commitmentTransferred": "Commitment transferred from PR to PO",
+  "commitmentReleased": "Budget commitment released"
+}
+```
+
+**`reports.json` additions:**
+```json
+{
+  "ngoabReports": "NGOAB Reports",
+  "fd6Budget": "FD-6 Project Budget",
+  "fd6Description": "Auto-generate FD-6 budget section from budget data",
+  "fd2Expenditure": "FD-2 Expenditure Statement",
+  "fd2Description": "Budget vs actual expenditure by NGOAB categories for fund installment request",
+  "fd3Annual": "FD-3 Annual Statement",
+  "fd3Description": "Annual statement of foreign donations received and spent",
+  "costShareReport": "Cost Share Verification",
+  "costShareDescription": "Verify required vs actual matching/cost-share contributions",
+  "ngoabCategoryMapping": "NGOAB Category Mapping",
+  "headOfExpenditure": "Head of Expenditure",
+  "approvedBudget": "Approved Budget",
+  "previousExpenditure": "Previous Expenditure",
+  "currentPeriod": "Current Period Expenditure",
+  "cumulativeExpenditure": "Cumulative Expenditure",
+  "generateReport": "Generate Report",
+  "reportGenerated": "Report generated successfully",
+  "markSubmitted": "Mark as Submitted to NGOAB"
+}
+```
+
+**`settings.json` additions:**
+```json
+{
+  "budgetCheckMode": "Budget Check Mode",
+  "budgetCheckModeHard": "Hard — Reject transactions exceeding budget",
+  "budgetCheckModeSoft": "Soft — Allow with warning and audit log",
+  "budgetCheckModeOff": "Off — No budget checking",
+  "projectBudgetCeiling": "Project Budget Ceiling",
+  "projectBudgetCeilingEnforce": "Enforce — Budget total cannot exceed project total",
+  "projectBudgetCeilingWarn": "Warn — Allow with warning",
+  "projectBudgetCeilingOff": "Off — No ceiling validation",
+  "ngoabSettings": "NGOAB Settings",
+  "ngoabRegistrationNo": "NGOAB Registration No",
+  "ngoabFd1Reference": "FD-1 Reference No"
+}
+```
+
+---
+
+#### 10.10 Testing Scenarios
+
+**10.10.1 Procurement --> Budget Encumbrance Tests**
+
+| Test Case | Input | Expected | Cross-Module Impact |
+|-----------|-------|----------|---------------------|
+| PR approval creates commitment | Approve PR with budgetId, amount=50000 | BudgetCommitment created (status=COMMITTED, amount=50000). Budget available reduced by 50000. | Budget: available balance changes |
+| PR approval blocked (HARD mode) | PR amount=100000, budget available=80000, mode=HARD | 400 error: "Insufficient budget" | None (rejected) |
+| PR approval warned (SOFT mode) | PR amount=100000, budget available=80000, mode=SOFT | PR approved + commitment created + audit log warning | Budget: commitment created |
+| PO from PR transfers commitment | Create PO from approved PR | PR commitment → RELEASED. New PO commitment created with parentCommitmentId. | Budget: same available |
+| PO amount differs from PR | PO amount=45000, PR commitment=50000 | PR commitment RELEASED. PO commitment=45000. Available increases by 5000. | Budget: available adjusted |
+| Voucher releases commitment | Approve payment voucher for PO | PO commitment.releasedAmount += voucher amount. If fully released → status=RELEASED. | Budget: committed decreases, actual increases (net zero on available) |
+| Partial payment | Voucher=30000 on PO commitment=50000 | commitment.releasedAmount=30000, status=PARTIALLY_RELEASED | Budget: committed-30K, actual+30K |
+| PR cancelled | Cancel PR with active commitment | Commitment status=CANCELLED. Budget available restored. | Budget: available increases |
+| PO cancelled after partial payment | Cancel PO, releasedAmount=30000, amount=50000 | Commitment CANCELLED. Remaining 20000 released back. Actual 30000 stays. | Budget: committed decreases |
+
+**10.10.2 HR/Payroll --> Budget Tests**
+
+| Test Case | Input | Expected | Cross-Module Impact |
+|-----------|-------|----------|---------------------|
+| Employee allocation total validation | Set 60% Project A + 50% Project B | 400 error: "Total allocation exceeds 100%" | None |
+| Valid allocation | 60% Project A + 40% Project B | Two EmployeeProjectAllocation records created | None |
+| Payroll budget impact preview | GET payroll budget-impact for run with 3 employees, mixed allocations | Returns per-employee, per-project charge breakdown with budget availability | None (read-only) |
+| Payroll approval creates allocations | Approve payroll run with allocated employees | PayrollBudgetAllocation records created. JE lines tagged with projectId. | Budget: actuals increase in personnel lines |
+| Personnel budget warning | Employee salary charge exceeds personnel budget line | Warning in budget impact preview (yellow). If HARD mode, approval blocked. | Budget: potential block |
+| Unallocated employee | Employee has no project allocation | Salary charged to core/unrestricted budget (if exists) or flagged as "unallocated" | Budget: core budget charged |
+
+**10.10.3 Dashboard --> Budget KPI Tests**
+
+| Test Case | Input | Expected | Cross-Module Impact |
+|-----------|-------|----------|---------------------|
+| Budget utilization KPI | 3 active budgets: 100K each, actuals 30K+50K+80K | Utilization: 53.3% (160K/300K). Over-budget count: 0 (none over 100%) | None (read) |
+| Burn rate calculation | 6 months elapsed, 160K actual | Burn rate: 26.7K/month. Runway: (300K-160K)/26.7K = 5.2 months | None (read) |
+| Over-budget alert | Budget line at 105% utilization | Appears in budget alerts widget with red indicator | None (read) |
+| Dashboard with no budgets | New org, no budgets created | Budget KPI cards show "N/A" or "0", no errors | None |
+
+**10.10.4 Grant Lifecycle --> Budget Freeze Tests**
+
+| Test Case | Input | Expected | Cross-Module Impact |
+|-----------|-------|----------|---------------------|
+| Grant closeout freezes budgets | Grant lifecycle → CLOSEOUT, 2 linked ACTIVE budgets | Both budgets → FROZEN. Audit log entries. | Budget: status change |
+| PR against frozen budget | Create PR with budgetId pointing to FROZEN budget | 400 error: "Budget is frozen" | Procurement: blocked |
+| Voucher against frozen budget | Approve voucher tagged to frozen budget's project | 400 error: "Budget is frozen for this project" | Finance: blocked |
+| Grant unsuspend unfreezes | Grant status ACTIVE after SUSPENDED | Linked FROZEN budgets → ACTIVE | Budget: status restored |
+| Grant close closes budgets | Grant status → CLOSED | All linked budgets → CLOSED (permanent) | Budget: closed |
+| Manual unfreeze | Finance Admin unfreezes budget | Budget FROZEN → ACTIVE + audit log with reason | Budget: status change |
+
+**10.10.5 Project <--> Budget Reconciliation Tests**
+
+| Test Case | Input | Expected | Cross-Module Impact |
+|-----------|-------|----------|---------------------|
+| Budget creation syncs project | Create budget (amount=50000) for project (totalBudget=0) | After budget ACTIVE, Project.totalBudget = 50000 | Project: totalBudget updated |
+| Multiple budgets sync | Project has budget A=50K (active) + budget B=30K (active) | Project.totalBudget = 80000 | Project: totalBudget updated |
+| Budget exceeds ceiling (ENFORCE) | Project.totalBudget=100K, existing budget=80K, new budget=30K | 400 error: "Budget total 110K exceeds project ceiling 100K" | None (rejected) |
+| Revision syncs project | Budget revision changes 50K → 60K, approved | Project.totalBudget increases by 10K | Project: totalBudget updated |
+| Batch reconciliation | 3 projects with stale totalBudget | All 3 recalculated. Returns mismatch report. | Project: totalBudget fixed |
+
+**10.10.6 Finance --> Budget Line Tracking Tests**
+
+| Test Case | Input | Expected | Cross-Module Impact |
+|-----------|-------|----------|---------------------|
+| Voucher approval auto-matches | Voucher JE has line: accountId=4100, projectId=P1. Budget has line: accountId=4100, projectId=P1 | JELine.budgetLineId set. Budget vs Actual shows actual. | Budget: actuals tracked |
+| No matching budget line | JE line has accountId=9999, no budget line exists | JELine.budgetLineId=null. Appears in "unmatched" list. | Budget: unmatched flagged |
+| Drill-down shows transactions | Click actual amount in Budget vs Actual | Shows list of JE lines with date, voucher no, description, amount | None (read) |
+| Rematch after budget creation | Budget created after transactions posted | Run rematch → previously unmatched lines now matched | Budget: actuals populated |
+
+**10.10.7 NGOAB Report Tests**
+
+| Test Case | Input | Expected | Cross-Module Impact |
+|-----------|-------|----------|---------------------|
+| FD-6 generation | Select grant with 1 active budget, 15 budget lines | FD-6 table generated: 10 NGOAB categories, year-wise breakdown, totals match budget total | None (report) |
+| FD-2 generation | Grant with 6 months of expenditure data | FD-2 table: approved budget, previous expenditure, current period, cumulative, balance per NGOAB category | None (report) |
+| Category mapping | Budget category "Personnel" → NGOAB "1. Personnel (Bangladeshi)" | Mapping applied during FD-6/FD-2 generation | None (config) |
+| Overhead cap check | Admin overhead = 10% of total (NGOAB cap = 7.5%) | Warning: "Administrative overhead exceeds NGOAB cap of 7.5%" | None (report) |
+| Cost share verification | Budget requires 20% cost share. Actual cost share = 15%. | Report shows shortfall of 5% with line-by-line detail. | None (report) |
+
+---
+
+#### 10.11 New System Settings
+
+| Setting Key | Type | Default | Description |
+|-------------|------|---------|-------------|
+| `budget_check_mode` | Enum | `SOFT` | HARD (reject) / SOFT (warn) / OFF for budget enforcement |
+| `project_budget_ceiling_mode` | Enum | `WARN` | ENFORCE / WARN / OFF for project-level budget ceiling |
+| `payroll_budget_check` | Boolean | `true` | Enable/disable payroll → budget check on approval |
+| `auto_freeze_on_grant_closeout` | Boolean | `true` | Auto-freeze budgets when grant enters CLOSEOUT |
+| `auto_sync_project_budget` | Boolean | `true` | Auto-sync Project.totalBudget when budget changes |
+| `ngoab_registration_no` | String | `null` | Organization's NGOAB registration number (for reports) |
+| `ngoab_overhead_cap_percent` | Decimal | `7.50` | NGOAB administrative overhead cap (%) |
+| `commitment_auto_cancel_days` | Int | `90` | Auto-cancel uncommitted PR commitments after N days |
+
+---
+
+#### 10.12 Seed Data (Phase 10)
+
+```
+- 5 BudgetCommitment records:
+  - 2 from approved PRs (status=COMMITTED)
+  - 2 from POs created from PRs (status=COMMITTED, parentCommitmentId links to PR commitment which is RELEASED)
+  - 1 from contract (status=PARTIALLY_RELEASED, releasedAmount > 0)
+- 3 EmployeeProjectAllocation records:
+  - Employee 1: 60% Project A + 40% Project B
+  - Employee 2: 100% Project A
+  - Employee 3: 50% Project C + 50% unallocated (core)
+- 2 PayrollBudgetAllocation records (from approved payroll run)
+- 1 NgoabReport (FD-6, status=APPROVED)
+- 1 NgoabReport (FD-2, status=DRAFT)
+- NgoabCategoryMapping: 10 rows mapping standard NGO categories to NGOAB FD-6 categories
+- System settings: budget_check_mode=SOFT, project_budget_ceiling_mode=WARN, all auto flags=true
+- 1 Grant in CLOSEOUT stage with 1 FROZEN budget (to demonstrate lifecycle integration)
+```
+
+---
+
+#### 10.13 Updated Navigation
+
+```
+Existing pages with cross-module additions (no new sidebar items for 10.1-10.6):
+
+📊 BUDGET MANAGEMENT
+├── Budget List        (/budget)              — FROZEN status icon added
+├── Budget vs Actual   (/budget/budget-vs-actual)  — Committed column + drill-down
+├── [Budget Detail]    (/budget/[id])         — Commitments tab, freeze banner
+
+👥 HR & PAYROLL
+├── [Employee Detail]  (/hr/employees/[id])   — Project Allocations tab
+├── Project Allocations (/hr/project-allocations)  ★ NEW PAGE
+├── [Payroll Detail]   (/hr/payroll/runs/[id])     — Budget Impact panel
+
+🏢 PROCUREMENT
+├── Requisitions       (/procurement/requisitions)  — Budget selector + availability
+
+💰 DONORS & GRANTS
+├── [Grant Detail]     (/donors/grants/[id])  — Budget Status section
+
+📋 PROJECTS
+├── [Project Detail]   (/projects/[id])       — Budget Breakdown + Personnel Costs tabs
+
+📊 REPORTS
+├── NGOAB Reports      (/reports/ngoab)       ★ NEW PAGE
+├── NGOAB Generate     (/reports/ngoab/generate)   ★ NEW PAGE
+├── NGOAB Detail       (/reports/ngoab/[id])       ★ NEW PAGE
+
+⚙️ SETTINGS
+├── NGOAB Mapping      (/settings/ngoab-mapping)   ★ NEW PAGE
+```
+
+---
+
+#### 10.14 Cron Job Additions
+
+| Cron Job | Schedule | Description |
+|----------|----------|-------------|
+| `commitment-auto-cancel` | Daily 07:00 | Cancel BudgetCommitment records where sourceType=PURCHASE_REQUISITION AND status=COMMITTED AND createdAt > commitment_auto_cancel_days ago AND linked PR has no PO |
+| `project-budget-reconcile` | Weekly Mon 06:00 | Scan all active projects, detect Project.totalBudget != sum(active Budget.totalAmount), auto-fix and log discrepancies |
+
+---
+
+> **Seed data (Phase 10):** 5 commitments (2 PR, 2 PO, 1 contract), 3 employee project allocations, 2 payroll budget allocations, 2 NGOAB reports (1 FD-6 approved, 1 FD-2 draft), 10 category mappings, 1 frozen budget with closeout grant, system settings configured
+
+---
+
+That is the complete Phase 10 section. Here is a summary of what it covers:
+
+**7 integration areas across 12 sections (10.1-10.14):**
+
+1. **Procurement --> Budget Encumbrance (10.1):** Three-stage commitment lifecycle (PR→PO→Payment), shared `lib/budget-check.ts`, 9 API endpoints (3 new, 6 modified), 5 UI changes.
+
+2. **HR/Payroll --> Budget Personnel Tracking (10.2):** Employee project allocation CRUD, payroll budget impact preview, `PayrollBudgetAllocation` model, 8 API endpoints (6 new, 2 modified), 6 UI changes, 1 new page.
+
+3. **Dashboard --> Budget KPIs (10.3):** 6 new KPI cards, 5 new widgets (gauge, bar, line, alerts, table), 5 API endpoints (1 modified, 4 new), 4 UI changes.
+
+4. **Grant Lifecycle --> Budget Freeze (10.4):** New FROZEN budget status, auto-freeze on grant closeout/suspension, manual freeze/unfreeze, 5 API endpoints (2 modified, 3 new), 5 UI changes.
+
+5. **Project <--> Budget Reconciliation (10.5):** Auto-sync Project.totalBudget, ceiling validation, batch reconciliation, 6 API endpoints (4 modified, 2 new), 3 UI changes.
+
+6. **Finance --> Budget Line-Level Tracking (10.6):** Auto-match JE lines to budget lines via accountId+projectId, unmatched transaction detection, drill-down, 6 API endpoints (2 modified, 4 new), 4 UI changes.
+
+7. **NGOAB Compliance (10.7):** FD-6, FD-2, FD-3 auto-generation, category mapping, `NgoabReport` + `NgoabCategoryMapping` models, 10 API endpoints (all new), 4 new pages.
+
+**Total: ~45 new/modified API endpoints, 5 new pages, ~30 UI modifications, 3 new Prisma models, 2 new cron jobs, ~30 days estimated effort.**
+
+Sources:
+- [Oracle Budgetary Control and Encumbrance Accounting](https://docs.oracle.com/en/cloud/saas/project-management/25d/oapjc/how-can-i-perform-budgetary-control-and-encumbrance-accounting.html)
+- [Oracle Work with Commitments and Encumbrances](https://docs.oracle.com/cd/E26228_01/doc.93/e21561/ww_commit_encum.htm)
+- [Oracle Budgetary Control Data Sheet](https://www.oracle.com/a/ocom/docs/applications/erp/oracle-budgetary-control-and-encumbrance-accounting-ds.pdf)
+- [JD Edwards Commitment Processing](https://docs.oracle.com/en/applications/jd-edwards/supply-management/9.2/eoapr/understanding-commitment-processing.html)
+- [Sage Intacct Nonprofit Fund Accounting](https://www.sage.com/en-us/industry/nonprofit/)
+- [Sage Intacct Grant Tracking](https://www.sage.com/en-us/sage-business-cloud/intacct/product-capabilities/extended-capabilities/grants-tracking-billing/)
+- [Nonprofit Payroll Guide - Araize](https://araize.com/nonprofit-payroll-guide/)
+- [True Program Costs Allocation Template](https://nonprofitfinancials.org/resources/true-program-costs-program-budget-and-allocation-template-and-resource/)
+- [Workday Nonprofit Solutions](https://www.workday.com/en-us/solutions/industries/nonprofit.html)
+- [NGOAB FD-6 Form](https://ngoab.portal.gov.bd/sites/default/files/files/ngoab.portal.gov.bd/forms/d9baae9f_273a_44f9_af3c_a55a73041859/FORM%20FD-6.pdf)
+- [NGOAB FD-6/FD-7/FC-1 Process Map](https://rohingyaresponse.org/wp-content/uploads/2023/06/Access_Process-Map_NGOAB_FD6_FD7_FC1.pdf)
+- [NGOAB Note on FD Forms](https://accountsworks.wordpress.com/2015/04/05/note-on-fd/)
+- [Nonprofit Dashboard KPIs - SoPact](https://www.sopact.com/use-case/nonprofit-dashboard)
+- [Grant Management Dashboard KPIs](https://www.inetsoft.com/business/bi/kpis-in-grant-management-dashboards/)
+- [Nonprofit Financial Metrics](https://www.ensync-corp.com/blog/financial-metrics-for-nonprofits)
 
 ---
 

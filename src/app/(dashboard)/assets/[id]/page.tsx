@@ -10,13 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -608,31 +602,25 @@ export default function AssetDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-asset-condition">{t('fields.condition')}</Label>
-              <Select value={formCondition} onValueChange={setFormCondition}>
-                <SelectTrigger id="edit-asset-condition" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CONDITIONS.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {tc(`status.${c}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="edit-asset-condition"
+                options={CONDITIONS.map((c) => ({ value: c, label: tc(`status.${c}`) }))}
+                value={formCondition}
+                onValueChange={setFormCondition}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="edit-asset-active">{t('activeStatus')}</Label>
-              <Select value={formIsActive ? 'true' : 'false'} onValueChange={(v) => setFormIsActive(v === 'true')}>
-                <SelectTrigger id="edit-asset-active" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">{tc('status.ACTIVE')}</SelectItem>
-                  <SelectItem value="false">{tc('status.INACTIVE')}</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="edit-asset-active"
+                options={[
+                  { value: 'true', label: tc('status.ACTIVE') },
+                  { value: 'false', label: tc('status.INACTIVE') },
+                ]}
+                value={formIsActive ? 'true' : 'false'}
+                onValueChange={(v) => setFormIsActive(v === 'true')}
+              />
             </div>
           </div>
 
@@ -640,34 +628,24 @@ export default function AssetDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit-asset-warehouse">{t('warehouse')}</Label>
-              <Select value={formWarehouseId} onValueChange={setFormWarehouseId}>
-                <SelectTrigger id="edit-asset-warehouse" className="w-full">
-                  <SelectValue placeholder={t('selectWarehouse')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {warehouses.map((wh) => (
-                    <SelectItem key={wh.id} value={wh.id}>
-                      {wh.code} - {wh.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="edit-asset-warehouse"
+                options={warehouses.map((wh) => ({ value: wh.id, label: `${wh.code} - ${wh.name}` }))}
+                value={formWarehouseId}
+                onValueChange={setFormWarehouseId}
+                placeholder={t('selectWarehouse')}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="edit-asset-project">{t('project')}</Label>
-              <Select value={formProjectId} onValueChange={setFormProjectId}>
-                <SelectTrigger id="edit-asset-project" className="w-full">
-                  <SelectValue placeholder={t('selectProject')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.projectNo} - {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="edit-asset-project"
+                options={projects.map((p) => ({ value: p.id, label: `${p.projectNo} - ${p.name}` }))}
+                value={formProjectId}
+                onValueChange={setFormProjectId}
+                placeholder={t('selectProject')}
+              />
             </div>
           </div>
 

@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -522,16 +516,12 @@ export default function GrantDetailPage() {
 
             <div className="space-y-2">
               <Label htmlFor="edit-grant-status">{t('grants.status')}</Label>
-              <Select value={formStatus} onValueChange={setFormStatus}>
-                <SelectTrigger id="edit-grant-status" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {GRANT_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>{tc(`status.${s}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="edit-grant-status"
+                options={GRANT_STATUSES.map((s) => ({ value: s, label: tc(`status.${s}`) }))}
+                value={formStatus}
+                onValueChange={setFormStatus}
+              />
             </div>
           </div>
 
@@ -552,17 +542,13 @@ export default function GrantDetailPage() {
 
             <div className="space-y-2">
               <Label htmlFor="edit-grant-project">{t('grants.project')}</Label>
-              <Select value={formProjectId} onValueChange={setFormProjectId}>
-                <SelectTrigger id="edit-grant-project" className="w-full">
-                  <SelectValue placeholder={t('grantForm.selectProject')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">{t('grantForm.noProject')}</SelectItem>
-                  {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="edit-grant-project"
+                options={[{ value: '_none', label: t('grantForm.noProject') }, ...projects.map((p) => ({ value: p.id, label: p.name }))]}
+                value={formProjectId || '_none'}
+                onValueChange={(v) => setFormProjectId(v === '_none' ? '' : v)}
+                placeholder={t('grantForm.selectProject')}
+              />
             </div>
           </div>
 

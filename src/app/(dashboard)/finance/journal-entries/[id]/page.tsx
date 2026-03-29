@@ -17,13 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import {
   Table,
   TableBody,
@@ -484,66 +478,46 @@ export default function JournalEntryDetailPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="edit-fiscalYear">{t('fiscalYear')}</Label>
-                <Select value={fiscalYearId} onValueChange={setFiscalYearId}>
-                  <SelectTrigger id="edit-fiscalYear">
-                    <SelectValue placeholder={t('selectFiscalYear')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fiscalYears.map((fy) => (
-                      <SelectItem key={fy.id} value={fy.id}>
-                        {fy.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="edit-fiscalYear"
+                  options={fiscalYears.map((fy) => ({ value: fy.id, label: fy.name }))}
+                  value={fiscalYearId}
+                  onValueChange={setFiscalYearId}
+                  placeholder={t('selectFiscalYear')}
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="edit-currency">{t('currency')}</Label>
-                <Select value={currencyCode} onValueChange={setCurrencyCode}>
-                  <SelectTrigger id="edit-currency">
-                    <SelectValue placeholder={t('selectCurrency')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CURRENCIES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="edit-currency"
+                  options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+                  value={currencyCode}
+                  onValueChange={setCurrencyCode}
+                  placeholder={t('selectCurrency')}
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="edit-project">{t('project')}</Label>
-                <Select value={projectId} onValueChange={setProjectId}>
-                  <SelectTrigger id="edit-project">
-                    <SelectValue placeholder={t('selectProject')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.code ? `${p.code} - ${p.name}` : p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="edit-project"
+                  options={projects.map((p) => ({ value: p.id, label: p.code ? `${p.code} - ${p.name}` : p.name }))}
+                  value={projectId}
+                  onValueChange={setProjectId}
+                  placeholder={t('selectProject')}
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="edit-grant">{t('grant')}</Label>
-                <Select value={grantId} onValueChange={setGrantId}>
-                  <SelectTrigger id="edit-grant">
-                    <SelectValue placeholder={t('selectGrant')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {grants.map((g) => (
-                      <SelectItem key={g.id} value={g.id}>
-                        {g.code ? `${g.code} - ${g.name}` : g.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="edit-grant"
+                  options={grants.map((g) => ({ value: g.id, label: g.code ? `${g.code} - ${g.name}` : g.name }))}
+                  value={grantId}
+                  onValueChange={setGrantId}
+                  placeholder={t('selectGrant')}
+                />
               </div>
 
               <div className="space-y-2 sm:col-span-2 lg:col-span-3">
@@ -586,23 +560,15 @@ export default function JournalEntryDetailPage() {
                   {lines.map((line) => (
                     <TableRow key={line.id}>
                       <TableCell>
-                        <Select
+                        <SearchableSelect
+                          id={`account-${line.id}`}
+                          options={accounts.map((acc) => ({ value: acc.id, label: `${acc.code} - ${acc.name}` }))}
                           value={line.accountId}
                           onValueChange={(val) =>
                             updateLine(line.id, 'accountId', val)
                           }
-                        >
-                          <SelectTrigger aria-label={t('selectAccount')}>
-                            <SelectValue placeholder={t('selectAccount')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {accounts.map((acc) => (
-                              <SelectItem key={acc.id} value={acc.id}>
-                                {acc.code} - {acc.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          placeholder={t('selectAccount')}
+                        />
                       </TableCell>
                       <TableCell>
                         <Input

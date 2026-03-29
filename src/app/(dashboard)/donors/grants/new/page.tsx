@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { PageHeader } from '@/components/shared/page-header'
 
 interface Donor {
@@ -141,16 +135,13 @@ export default function NewGrantPage() {
 
             <div className="space-y-2">
               <Label htmlFor="grant-donor">{t('grants.donor')} *</Label>
-              <Select value={donorId} onValueChange={setDonorId}>
-                <SelectTrigger id="grant-donor" className="w-full">
-                  <SelectValue placeholder={t('grantForm.selectDonor')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {donors.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="grant-donor"
+                options={donors.map((d) => ({ value: d.id, label: d.name }))}
+                value={donorId}
+                onValueChange={setDonorId}
+                placeholder={t('grantForm.selectDonor')}
+              />
             </div>
           </div>
 
@@ -171,17 +162,17 @@ export default function NewGrantPage() {
 
             <div className="space-y-2">
               <Label htmlFor="grant-currency">{t('grants.currency')}</Label>
-              <Select value={currencyCode} onValueChange={setCurrencyCode}>
-                <SelectTrigger id="grant-currency" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BDT">BDT</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="GBP">GBP</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="grant-currency"
+                options={[
+                  { value: 'BDT', label: 'BDT' },
+                  { value: 'USD', label: 'USD' },
+                  { value: 'EUR', label: 'EUR' },
+                  { value: 'GBP', label: 'GBP' },
+                ]}
+                value={currencyCode}
+                onValueChange={setCurrencyCode}
+              />
             </div>
           </div>
 

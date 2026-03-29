@@ -10,13 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -351,18 +345,13 @@ export default function VendorDetailPage() {
 
             <div className="space-y-2">
               <Label htmlFor="edit-vendor-category">{t('category')}</Label>
-              <Select value={formCategory} onValueChange={setFormCategory}>
-                <SelectTrigger id="edit-vendor-category" className="w-full">
-                  <SelectValue placeholder={t('selectCategory')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {VENDOR_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {t(`categories.${cat}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="edit-vendor-category"
+                options={VENDOR_CATEGORIES.map((cat) => ({ value: cat, label: t(`categories.${cat}`) }))}
+                value={formCategory}
+                onValueChange={setFormCategory}
+                placeholder={t('selectCategory')}
+              />
             </div>
           </div>
 
@@ -422,28 +411,28 @@ export default function VendorDetailPage() {
 
             <div className="space-y-2">
               <Label htmlFor="edit-vendor-approved">{t('approved')}</Label>
-              <Select value={formIsApproved ? 'true' : 'false'} onValueChange={(v) => setFormIsApproved(v === 'true')}>
-                <SelectTrigger id="edit-vendor-approved" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">{tc('labels.yes')}</SelectItem>
-                  <SelectItem value="false">{tc('labels.no')}</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="edit-vendor-approved"
+                options={[
+                  { value: 'true', label: tc('labels.yes') },
+                  { value: 'false', label: tc('labels.no') },
+                ]}
+                value={formIsApproved ? 'true' : 'false'}
+                onValueChange={(v) => setFormIsApproved(v === 'true')}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="edit-vendor-active">{t('activeStatus')}</Label>
-              <Select value={formIsActive ? 'true' : 'false'} onValueChange={(v) => setFormIsActive(v === 'true')}>
-                <SelectTrigger id="edit-vendor-active" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">{tc('status.ACTIVE')}</SelectItem>
-                  <SelectItem value="false">{tc('status.INACTIVE')}</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="edit-vendor-active"
+                options={[
+                  { value: 'true', label: tc('status.ACTIVE') },
+                  { value: 'false', label: tc('status.INACTIVE') },
+                ]}
+                value={formIsActive ? 'true' : 'false'}
+                onValueChange={(v) => setFormIsActive(v === 'true')}
+              />
             </div>
           </div>
 

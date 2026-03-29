@@ -12,6 +12,10 @@ import {
 } from '@/lib/api-response'
 import { Prisma } from '@prisma/client'
 
+const VALID_STATUSES = ['PIPELINE', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CLOSED', 'CANCELLED']
+const VALID_TYPES = ['HUMANITARIAN', 'DEVELOPMENT', 'ADVOCACY', 'CAPACITY_BUILDING', 'RESEARCH', 'EMERGENCY_RESPONSE', 'CORE_OPERATIONS', 'MULTI_COUNTRY']
+const VALID_SECTORS = ['WASH', 'EDUCATION', 'HEALTH', 'LIVELIHOODS', 'FOOD_SECURITY', 'PROTECTION', 'SHELTER', 'NUTRITION', 'AGRICULTURE', 'CLIMATE_ADAPTATION', 'GOVERNANCE', 'GENDER_EQUALITY', 'DISASTER_RISK_REDUCTION', 'MULTI_SECTOR', 'OTHER']
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuthFromRequest(request)
@@ -32,19 +36,19 @@ export async function GET(request: NextRequest) {
     }
 
     const status = url.searchParams.get('status')
-    if (status) {
-      where.status = status
-    }
+    if (status) where.status = status
+
+    const projectType = url.searchParams.get('projectType')
+    if (projectType) where.projectType = projectType
+
+    const sector = url.searchParams.get('sector')
+    if (sector) where.sector = sector
 
     const donorId = url.searchParams.get('donorId')
-    if (donorId) {
-      where.donorId = donorId
-    }
+    if (donorId) where.donorId = donorId
 
-    const location = url.searchParams.get('location')
-    if (location) {
-      where.location = { contains: location, mode: 'insensitive' }
-    }
+    const country = url.searchParams.get('country')
+    if (country) where.country = { contains: country, mode: 'insensitive' }
 
     const [projects, total] = await Promise.all([
       prisma.project.findMany({
@@ -54,12 +58,18 @@ export async function GET(request: NextRequest) {
           projectNo: true,
           name: true,
           description: true,
+          projectType: true,
+          sector: true,
           donorId: true,
           startDate: true,
           endDate: true,
           totalBudget: true,
           amountSpent: true,
+          currency: true,
+          country: true,
+          region: true,
           location: true,
+          implementingPartner: true,
           status: true,
           progress: true,
           managerId: true,
@@ -79,6 +89,9 @@ export async function GET(request: NextRequest) {
             select: {
               teamMembers: { where: { isActive: true } },
               activities: true,
+              milestones: true,
+              indicators: true,
+              risks: true,
             },
           },
         },
@@ -103,40 +116,46 @@ export async function POST(request: NextRequest) {
     const {
       name,
       description,
+      projectType,
+      sector,
       donorId,
       startDate,
       endDate,
       totalBudget,
+      currency,
+      country,
+      region,
       location,
+      implementingPartner,
       status,
+      managerId,
     } = body
 
     if (!name) {
       return apiBadRequest('name is required')
     }
 
-    const validStatuses = ['PIPELINE', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CLOSED', 'CANCELLED']
     const projectStatus = status || 'PIPELINE'
-    if (!validStatuses.includes(projectStatus)) {
-      return apiBadRequest(`status must be one of: ${validStatuses.join(', ')}`)
+    if (!VALID_STATUSES.includes(projectStatus)) {
+      return apiBadRequest(`status must be one of: ${VALID_STATUSES.join(', ')}`)
     }
 
-    // Validate donor belongs to org if provided
+    if (projectType && !VALID_TYPES.includes(projectType)) {
+      return apiBadRequest(`projectType must be one of: ${VALID_TYPES.join(', ')}`)
+    }
+
+    if (sector && !VALID_SECTORS.includes(sector)) {
+      return apiBadRequest(`sector must be one of: ${VALID_SECTORS.join(', ')}`)
+    }
+
     if (donorId) {
       const donor = await prisma.donor.findFirst({
-        where: {
-          id: donorId,
-          organizationId: auth.organizationId,
-          deletedAt: null,
-        },
+        where: { id: donorId, organizationId: auth.organizationId, deletedAt: null },
         select: { id: true },
       })
-      if (!donor) {
-        return apiBadRequest('Donor not found in this organization')
-      }
+      if (!donor) return apiBadRequest('Donor not found in this organization')
     }
 
-    // Auto-generate project number
     const projectNo = await generateNextNumber(auth.organizationId, 'project')
 
     const project = await prisma.project.create({
@@ -145,29 +164,19 @@ export async function POST(request: NextRequest) {
         projectNo,
         name: name.trim(),
         description: description || null,
+        projectType: projectType || 'DEVELOPMENT',
+        sector: sector || 'OTHER',
         donorId: donorId || null,
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
         totalBudget: totalBudget ? new Prisma.Decimal(totalBudget) : new Prisma.Decimal(0),
+        currency: currency || 'USD',
+        country: country || null,
+        region: region || null,
         location: location || null,
+        implementingPartner: implementingPartner || null,
         status: projectStatus,
-      },
-      select: {
-        id: true,
-        projectNo: true,
-        name: true,
-        description: true,
-        donorId: true,
-        startDate: true,
-        endDate: true,
-        totalBudget: true,
-        amountSpent: true,
-        location: true,
-        status: true,
-        progress: true,
-        managerId: true,
-        createdAt: true,
-        updatedAt: true,
+        managerId: managerId || null,
       },
     })
 
@@ -180,7 +189,7 @@ export async function POST(request: NextRequest) {
       resource: 'project',
       resourceId: project.id,
       description: `Created project "${name}" (${projectNo})`,
-      newValues: { name, projectNo, status: projectStatus, totalBudget },
+      newValues: { name, projectNo, status: projectStatus, totalBudget, projectType, sector },
       ...auditCtx,
     })
 

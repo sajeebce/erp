@@ -10,9 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
@@ -569,16 +567,13 @@ export default function BankReconciliationPage() {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>{t('bankAccount')}</Label>
-              <Select value={bankAccountId} onValueChange={(v) => { setBankAccountId(v); setError('') }}>
-                <SelectTrigger className="w-full"><SelectValue placeholder={t('selectBankAccount')} /></SelectTrigger>
-                <SelectContent>
-                  {bankAccounts.map(ba => (
-                    <SelectItem key={ba.id} value={ba.id}>
-                      {ba.accountName}{ba.bankName ? ` — ${ba.bankName}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="bank-account"
+                options={bankAccounts.map(ba => ({ value: ba.id, label: `${ba.accountName}${ba.bankName ? ` — ${ba.bankName}` : ''}` }))}
+                value={bankAccountId}
+                onValueChange={(v) => { setBankAccountId(v); setError('') }}
+                placeholder={t('selectBankAccount')}
+              />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
               <div className="space-y-1.5">

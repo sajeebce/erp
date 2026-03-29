@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { PageHeader } from '@/components/shared/page-header'
 
 interface Employee {
@@ -152,34 +146,24 @@ export default function NewLeavePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="leave-employee">{t('leave.employee')} *</Label>
-              <Select value={employeeId} onValueChange={setEmployeeId}>
-                <SelectTrigger id="leave-employee" className="w-full">
-                  <SelectValue placeholder={t('leaveForm.selectEmployee')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {employees.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.fullName} ({e.employeeNo})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="leave-employee"
+                options={employees.map((e) => ({ value: e.id, label: `${e.fullName} (${e.employeeNo})` }))}
+                value={employeeId}
+                onValueChange={setEmployeeId}
+                placeholder={t('leaveForm.selectEmployee')}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="leave-type">{t('leave.leaveType')} *</Label>
-              <Select value={leaveTypeId} onValueChange={setLeaveTypeId}>
-                <SelectTrigger id="leave-type" className="w-full">
-                  <SelectValue placeholder={t('leaveForm.selectLeaveType')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {leaveTypes.map((lt) => (
-                    <SelectItem key={lt.id} value={lt.id}>
-                      {lt.name} ({lt.daysPerYear} {t('leave.days')}/{t('leaveForm.year')})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="leave-type"
+                options={leaveTypes.map((lt) => ({ value: lt.id, label: `${lt.name} (${lt.daysPerYear} ${t('leave.days')}/${t('leaveForm.year')})` }))}
+                value={leaveTypeId}
+                onValueChange={setLeaveTypeId}
+                placeholder={t('leaveForm.selectLeaveType')}
+              />
             </div>
           </div>
 

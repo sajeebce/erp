@@ -1,232 +1,482 @@
-import { getTranslations, getLocale } from 'next-intl/server';
-import { PageHeader } from "@/components/shared/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
+import { Plus, Loader2, Pencil } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Plus, Download } from "lucide-react";
-import { formatDate } from "@/lib/formatters";
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog'
+import { SearchableSelect } from '@/components/shared/searchable-select'
+import { StatusBadge } from '@/components/shared/status-badge'
+import { PageHeader } from '@/components/shared/page-header'
+import { useFormatters } from '@/hooks/use-formatters'
+
+const MILESTONE_STATUSES = ['ON_TRACK', 'ACHIEVED', 'AT_RISK', 'OVERDUE', 'CANCELLED'] as const
+
+interface Project {
+  id: string
+  name: string
+  projectNo: string
+}
 
 interface Milestone {
-  id: string;
-  milestone: string;
-  project: string;
-  targetDate: string;
-  actualDate: string | null;
-  deliverable: string;
-  status: "Achieved" | "On Track" | "At Risk" | "Overdue";
+  id: string
+  milestoneNo?: string
+  description: string
+  projectId: string
+  project?: { id: string; name: string; projectNo: string }
+  targetDate: string
+  actualDate: string | null
+  deliverable: string | null
+  status: string
+  notes: string | null
 }
 
-const milestones: Milestone[] = [
-  {
-    id: "MS-001",
-    milestone: "Baseline survey completed",
-    project: "WASH Phase-3 - Sylhet",
-    targetDate: "2024-06-30",
-    actualDate: "2024-06-15",
-    deliverable: "Baseline survey report with WASH coverage data",
-    status: "Achieved",
-  },
-  {
-    id: "MS-002",
-    milestone: "100 tube wells installed",
-    project: "WASH Phase-3 - Sylhet",
-    targetDate: "2026-03-31",
-    actualDate: null,
-    deliverable: "Installation completion certificates & GPS mapping",
-    status: "On Track",
-  },
-  {
-    id: "MS-003",
-    milestone: "Teacher training Phase 1 complete",
-    project: "Primary Education Enhancement",
-    targetDate: "2025-12-31",
-    actualDate: "2025-12-28",
-    deliverable: "Training completion report for 500 teachers",
-    status: "Achieved",
-  },
-  {
-    id: "MS-004",
-    milestone: "Learning outcome assessment - midline",
-    project: "Primary Education Enhancement",
-    targetDate: "2026-06-30",
-    actualDate: null,
-    deliverable: "Midline assessment report with student scores",
-    status: "On Track",
-  },
-  {
-    id: "MS-005",
-    milestone: "Community health worker recruitment",
-    project: "Maternal & Child Health",
-    targetDate: "2025-09-30",
-    actualDate: "2025-10-15",
-    deliverable: "150 CHWs recruited & onboarded across 5 upazilas",
-    status: "Achieved",
-  },
-  {
-    id: "MS-006",
-    milestone: "ANC service coverage - 60%",
-    project: "Maternal & Child Health",
-    targetDate: "2026-03-31",
-    actualDate: null,
-    deliverable: "Coverage report showing 60% ANC in target areas",
-    status: "At Risk",
-  },
-  {
-    id: "MS-007",
-    milestone: "Climate vulnerability assessment",
-    project: "Climate Adaptation Fund",
-    targetDate: "2025-06-30",
-    actualDate: "2025-07-10",
-    deliverable: "Vulnerability assessment for 3 coastal districts",
-    status: "Achieved",
-  },
-  {
-    id: "MS-008",
-    milestone: "Vocational center operational - Gazipur",
-    project: "Youth Employment Initiative",
-    targetDate: "2026-01-31",
-    actualDate: null,
-    deliverable: "Center inauguration & first batch enrollment",
-    status: "Overdue",
-  },
-  {
-    id: "MS-009",
-    milestone: "Flood-resilient housing - 20 units",
-    project: "Climate Adaptation Fund",
-    targetDate: "2026-03-15",
-    actualDate: null,
-    deliverable: "Construction completion & beneficiary handover",
-    status: "At Risk",
-  },
-  {
-    id: "MS-010",
-    milestone: "MIS platform deployment",
-    project: "Microfinance Capacity Building",
-    targetDate: "2026-02-28",
-    actualDate: null,
-    deliverable: "Go-live of integrated MIS for all branch offices",
-    status: "Overdue",
-  },
-];
+function toDateInput(val: string | null | undefined): string {
+  if (!val) return ''
+  return new Date(val).toISOString().split('T')[0]
+}
 
-function getStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
-  switch (status) {
-    case "Achieved": return "default";
-    case "On Track": return "secondary";
-    case "At Risk": return "outline";
-    case "Overdue": return "destructive";
-    default: return "outline";
+export default function MilestonesPage() {
+  const t = useTranslations('projects')
+  const tc = useTranslations('common')
+  const { formatDate } = useFormatters()
+
+  // Data
+  const [projects, setProjects] = useState<Project[]>([])
+  const [milestones, setMilestones] = useState<Milestone[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  // Filters
+  const [filterProjectId, setFilterProjectId] = useState('')
+
+  // Add dialog
+  const [addOpen, setAddOpen] = useState(false)
+  const [addDescription, setAddDescription] = useState('')
+  const [addProjectId, setAddProjectId] = useState('')
+  const [addTargetDate, setAddTargetDate] = useState('')
+  const [addDeliverable, setAddDeliverable] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  // Edit dialog
+  const [editOpen, setEditOpen] = useState(false)
+  const [editId, setEditId] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editTargetDate, setEditTargetDate] = useState('')
+  const [editActualDate, setEditActualDate] = useState('')
+  const [editDeliverable, setEditDeliverable] = useState('')
+  const [editStatus, setEditStatus] = useState('')
+  const [editNotes, setEditNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    fetchProjects()
+  }, [])
+
+  useEffect(() => {
+    fetchMilestones()
+  }, [filterProjectId])
+
+  async function fetchProjects() {
+    try {
+      const res = await fetch('/api/v1/projects?limit=100')
+      const json = await res.json()
+      if (res.ok && json.success) {
+        setProjects(json.data || [])
+      }
+    } catch {
+      // silent
+    }
   }
-}
 
-export default async function ProjectMilestonesPage() {
-  const t = await getTranslations('projects');
-  const tc = await getTranslations('common');
-  const locale = await getLocale();
+  async function fetchMilestones() {
+    setLoading(true)
+    setError('')
+    try {
+      const params = new URLSearchParams()
+      if (filterProjectId) params.set('projectId', filterProjectId)
+      const res = await fetch(`/api/v1/projects/milestones?${params}`)
+      const json = await res.json()
+      if (res.ok && json.success) {
+        setMilestones(json.data || [])
+      } else {
+        setError(json.error || tc('errors.loadFailed'))
+      }
+    } catch {
+      setError(tc('errors.loadFailed'))
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const totalMilestones = milestones.length;
-  const achieved = milestones.filter((m) => m.status === "Achieved").length;
-  const onTrack = milestones.filter((m) => m.status === "On Track").length;
-  const atRisk = milestones.filter((m) => m.status === "At Risk" || m.status === "Overdue").length;
+  function openAdd() {
+    setAddDescription('')
+    setAddProjectId(filterProjectId)
+    setAddTargetDate('')
+    setAddDeliverable('')
+    setError('')
+    setAddOpen(true)
+  }
+
+  async function handleAdd() {
+    if (!addDescription.trim() || !addTargetDate) {
+      setError(tc('errors.requiredFields'))
+      return
+    }
+
+    setAdding(true)
+    setError('')
+    try {
+      const res = await fetch('/api/v1/projects/milestones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: addDescription.trim(),
+          projectId: addProjectId || undefined,
+          targetDate: addTargetDate,
+          deliverable: addDeliverable.trim() || null,
+        }),
+      })
+      const json = await res.json()
+      if (res.ok && json.success) {
+        setAddOpen(false)
+        fetchMilestones()
+      } else {
+        setError(json.error || tc('errors.saveFailed'))
+      }
+    } catch {
+      setError(tc('errors.saveFailed'))
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  function openEdit(m: Milestone) {
+    setEditId(m.id)
+    setEditDescription(m.description)
+    setEditTargetDate(toDateInput(m.targetDate))
+    setEditActualDate(toDateInput(m.actualDate))
+    setEditDeliverable(m.deliverable || '')
+    setEditStatus(m.status)
+    setEditNotes(m.notes || '')
+    setError('')
+    setEditOpen(true)
+  }
+
+  async function handleEdit() {
+    if (!editDescription.trim() || !editTargetDate) {
+      setError(tc('errors.requiredFields'))
+      return
+    }
+
+    setSaving(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/v1/projects/milestones/${editId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: editDescription.trim(),
+          targetDate: editTargetDate,
+          actualDate: editActualDate || null,
+          deliverable: editDeliverable.trim() || null,
+          status: editStatus,
+          notes: editNotes.trim() || null,
+        }),
+      })
+      const json = await res.json()
+      if (res.ok && json.success) {
+        setEditOpen(false)
+        fetchMilestones()
+      } else {
+        setError(json.error || tc('errors.saveFailed'))
+      }
+    } catch {
+      setError(tc('errors.saveFailed'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Summary stats
+  const total = milestones.length
+  const achieved = milestones.filter((m) => m.status === 'ACHIEVED').length
+  const onTrack = milestones.filter((m) => m.status === 'ON_TRACK').length
+  const atRiskOverdue = milestones.filter((m) => m.status === 'AT_RISK' || m.status === 'OVERDUE').length
+
+  const projectOptions = projects.map((p) => ({
+    value: p.id,
+    label: `${p.projectNo} — ${p.name}`,
+  }))
+
+  const statusOptions = MILESTONE_STATUSES.map((s) => ({
+    value: s,
+    label: tc(`status.${s}`),
+  }))
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={t('milestones.title')}
-        description={t('milestones.description')}
-      >
-        <Button variant="outline" size="sm">
-          <Download className="h-4 w-4 mr-2" />
-          {tc('buttons.export')}
-        </Button>
-        <Button size="sm">
+      <PageHeader title={t('milestones.title')} description={t('milestones.description')}>
+        <Button size="sm" onClick={openAdd}>
           <Plus className="h-4 w-4 mr-2" />
           {t('milestones.addMilestone')}
         </Button>
       </PageHeader>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Project filter */}
+      <div className="flex items-center gap-4">
+        <div className="w-full max-w-sm">
+          <SearchableSelect
+            options={[{ value: '', label: tc('filters.all') }, ...projectOptions]}
+            value={filterProjectId}
+            onValueChange={setFilterProjectId}
+            placeholder={t('milestones.selectProject')}
+          />
+        </div>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('milestones.totalMilestones')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{totalMilestones}</p>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{t('milestones.totalMilestones')}</p>
+            <p className="text-2xl font-bold">{total}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('milestones.achieved')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{achieved}</p>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{t('milestones.achieved')}</p>
+            <p className="text-2xl font-bold text-emerald-600">{achieved}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('milestones.onTrack')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{onTrack}</p>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{t('milestones.onTrack')}</p>
+            <p className="text-2xl font-bold text-blue-600">{onTrack}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('milestones.atRiskOverdue')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-destructive">{atRisk}</p>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{t('milestones.atRiskOverdue')}</p>
+            <p className="text-2xl font-bold text-amber-600">{atRiskOverdue}</p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Error */}
+      {error && !addOpen && !editOpen && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      {/* Table */}
       <Card>
         <CardHeader>
           <CardTitle>{t('milestones.title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[80px]">{t('milestones.id')}</TableHead>
-                <TableHead>{t('milestones.milestone')}</TableHead>
-                <TableHead>{t('milestones.project')}</TableHead>
-                <TableHead>{t('milestones.targetDate')}</TableHead>
-                <TableHead>{t('milestones.actualDate')}</TableHead>
-                <TableHead>{t('milestones.deliverable')}</TableHead>
-                <TableHead>{tc('labels.status')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {milestones.map((ms) => (
-                <TableRow key={ms.id}>
-                  <TableCell className="font-mono text-sm">{ms.id}</TableCell>
-                  <TableCell className="font-medium">{ms.milestone}</TableCell>
-                  <TableCell className="text-sm">{ms.project}</TableCell>
-                  <TableCell>{formatDate(ms.targetDate, locale)}</TableCell>
-                  <TableCell>
-                    {ms.actualDate ? formatDate(ms.actualDate, locale) : (
-                      <span className="text-muted-foreground">--</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="max-w-[250px] text-sm">{ms.deliverable}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusVariant(ms.status)}>{ms.status}</Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {loading ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : milestones.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground">
+              {t('milestones.noMilestones')}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-muted-foreground">
+                    <th className="text-left py-2 pr-4">#</th>
+                    <th className="text-left py-2 pr-4">{t('milestones.name')}</th>
+                    <th className="text-left py-2 pr-4">{t('milestones.project')}</th>
+                    <th className="text-left py-2 pr-4">{t('milestones.targetDate')}</th>
+                    <th className="text-left py-2 pr-4">{t('milestones.actualDate')}</th>
+                    <th className="text-left py-2 pr-4">{t('milestones.deliverable')}</th>
+                    <th className="text-left py-2 pr-4">{t('milestones.status')}</th>
+                    <th className="text-left py-2">{tc('labels.actions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {milestones.map((m, idx) => (
+                    <tr
+                      key={m.id}
+                      className="border-b last:border-0 hover:bg-muted/50 cursor-pointer"
+                      onClick={() => openEdit(m)}
+                    >
+                      <td className="py-2 pr-4 font-mono text-xs text-muted-foreground">{idx + 1}</td>
+                      <td className="py-2 pr-4 font-medium max-w-60 truncate">{m.description}</td>
+                      <td className="py-2 pr-4 text-muted-foreground">{m.project?.name || '-'}</td>
+                      <td className="py-2 pr-4 font-mono text-xs">{formatDate(m.targetDate)}</td>
+                      <td className="py-2 pr-4 font-mono text-xs">{m.actualDate ? formatDate(m.actualDate) : '-'}</td>
+                      <td className="py-2 pr-4 max-w-50 truncate">{m.deliverable || '-'}</td>
+                      <td className="py-2 pr-4"><StatusBadge status={m.status} /></td>
+                      <td className="py-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); openEdit(m) }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Add Milestone Dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('milestones.addMilestone')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {error && addOpen && (
+              <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="add-description">{t('milestones.name')} *</Label>
+              <Textarea
+                id="add-description"
+                value={addDescription}
+                onChange={(e) => setAddDescription(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-project">{t('milestones.project')}</Label>
+              <SearchableSelect
+                id="add-project"
+                options={projectOptions}
+                value={addProjectId}
+                onValueChange={setAddProjectId}
+                placeholder={t('milestones.selectProject')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-target-date">{t('milestones.targetDate')} *</Label>
+              <Input
+                id="add-target-date"
+                type="date"
+                value={addTargetDate}
+                onChange={(e) => setAddTargetDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-deliverable">{t('milestones.deliverable')}</Label>
+              <Input
+                id="add-deliverable"
+                value={addDeliverable}
+                onChange={(e) => setAddDeliverable(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)} disabled={adding}>
+              {tc('buttons.cancel')}
+            </Button>
+            <Button onClick={handleAdd} disabled={adding}>
+              {adding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {tc('buttons.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Milestone Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('milestones.editMilestone')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {error && editOpen && (
+              <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">{t('milestones.name')} *</Label>
+              <Textarea
+                id="edit-description"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-target-date">{t('milestones.targetDate')} *</Label>
+                <Input
+                  id="edit-target-date"
+                  type="date"
+                  value={editTargetDate}
+                  onChange={(e) => setEditTargetDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-actual-date">{t('milestones.actualDate')}</Label>
+                <Input
+                  id="edit-actual-date"
+                  type="date"
+                  value={editActualDate}
+                  onChange={(e) => setEditActualDate(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-deliverable">{t('milestones.deliverable')}</Label>
+              <Input
+                id="edit-deliverable"
+                value={editDeliverable}
+                onChange={(e) => setEditDeliverable(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-status">{t('milestones.status')}</Label>
+              <SearchableSelect
+                id="edit-status"
+                options={statusOptions}
+                value={editStatus}
+                onValueChange={setEditStatus}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-notes">{t('milestones.notes')}</Label>
+              <Textarea
+                id="edit-notes"
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>
+              {tc('buttons.cancel')}
+            </Button>
+            <Button onClick={handleEdit} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {tc('buttons.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-  );
+  )
 }

@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { PageHeader } from '@/components/shared/page-header'
 
 const MEETING_DAYS = ['SATURDAY', 'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'] as const
@@ -130,18 +124,13 @@ export default function NewSamityPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="samity-branch">{t('samity.branch')} *</Label>
-              <Select value={branchId} onValueChange={setBranchId}>
-                <SelectTrigger id="samity-branch" className="w-full">
-                  <SelectValue placeholder={t('samityForm.selectBranch')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {branches.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name} ({b.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="samity-branch"
+                options={branches.map((b) => ({ value: b.id, label: `${b.name} (${b.code})` }))}
+                value={branchId}
+                onValueChange={setBranchId}
+                placeholder={t('samityForm.selectBranch')}
+              />
             </div>
           </div>
 
@@ -158,18 +147,13 @@ export default function NewSamityPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="samity-meeting-day">{t('samity.meetingDay')} *</Label>
-              <Select value={meetingDay} onValueChange={setMeetingDay}>
-                <SelectTrigger id="samity-meeting-day" className="w-full">
-                  <SelectValue placeholder={t('samityForm.selectMeetingDay')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {MEETING_DAYS.map((day) => (
-                    <SelectItem key={day} value={day}>
-                      {t(`samityForm.days.${day}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="samity-meeting-day"
+                options={MEETING_DAYS.map((day) => ({ value: day, label: t(`samityForm.days.${day}`) }))}
+                value={meetingDay}
+                onValueChange={setMeetingDay}
+                placeholder={t('samityForm.selectMeetingDay')}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="samity-meeting-time">{t('samityForm.meetingTime')}</Label>

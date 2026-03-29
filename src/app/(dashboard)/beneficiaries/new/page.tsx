@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { PageHeader } from '@/components/shared/page-header'
 
 const GENDERS = ['MALE', 'FEMALE', 'OTHER'] as const
@@ -146,18 +140,13 @@ export default function NewBeneficiaryPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="ben-gender">{t('fields.gender')}</Label>
-              <Select value={gender} onValueChange={setGender}>
-                <SelectTrigger id="ben-gender" className="w-full">
-                  <SelectValue placeholder={t('form.selectGender')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {GENDERS.map((g) => (
-                    <SelectItem key={g} value={g}>
-                      {t(`genders.${g}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="ben-gender"
+                options={GENDERS.map((g) => ({ value: g, label: t(`genders.${g}`) }))}
+                value={gender}
+                onValueChange={setGender}
+                placeholder={t('form.selectGender')}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="ben-dob">{t('fields.dateOfBirth')}</Label>

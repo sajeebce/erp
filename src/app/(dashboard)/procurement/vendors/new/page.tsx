@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { PageHeader } from '@/components/shared/page-header'
 
 const VENDOR_CATEGORIES = ['SUPPLIER', 'CONTRACTOR', 'CONSULTANT', 'SERVICE_PROVIDER'] as const
@@ -119,18 +113,13 @@ export default function NewVendorPage() {
 
             <div className="space-y-2">
               <Label htmlFor="vendor-category">{t('category')}</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger id="vendor-category" className="w-full">
-                  <SelectValue placeholder={t('selectCategory')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {VENDOR_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {t(`categories.${cat}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="vendor-category"
+                options={VENDOR_CATEGORIES.map((cat) => ({ value: cat, label: t(`categories.${cat}`) }))}
+                value={category}
+                onValueChange={setCategory}
+                placeholder={t('selectCategory')}
+              />
             </div>
           </div>
 

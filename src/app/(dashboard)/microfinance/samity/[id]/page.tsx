@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
@@ -291,24 +285,24 @@ export default function SamityDetailPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-status">{tc('labels.status')}</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger id="edit-status" className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {STATUSES.map((s) => (<SelectItem key={s} value={s}>{tc(`status.${s}`)}</SelectItem>))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="edit-status"
+                  options={STATUSES.map((s) => ({ value: s, label: tc(`status.${s}`) }))}
+                  value={status}
+                  onValueChange={setStatus}
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-meeting-day">{t('samity.meetingDay')}</Label>
-                <Select value={meetingDay} onValueChange={setMeetingDay}>
-                  <SelectTrigger id="edit-meeting-day" className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {MEETING_DAYS.map((day) => (<SelectItem key={day} value={day}>{t(`samityForm.days.${day}`)}</SelectItem>))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="edit-meeting-day"
+                  options={MEETING_DAYS.map((day) => ({ value: day, label: t(`samityForm.days.${day}`) }))}
+                  value={meetingDay}
+                  onValueChange={setMeetingDay}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-meeting-time">{t('samityForm.meetingTime')}</Label>

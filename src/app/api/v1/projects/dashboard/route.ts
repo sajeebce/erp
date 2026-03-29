@@ -15,75 +15,95 @@ export async function GET(request: NextRequest) {
       deletedAt: null,
     }
 
-    // Aggregate project stats
-    const [totalProjects, activeProjects, projectAggregates] = await Promise.all([
+    const [totalProjects, activeProjects, pipelineProjects, completedProjects, projectAggregates, teamMemberCount] = await Promise.all([
       prisma.project.count({ where }),
       prisma.project.count({ where: { ...where, status: 'ACTIVE' } }),
+      prisma.project.count({ where: { ...where, status: 'PIPELINE' } }),
+      prisma.project.count({ where: { ...where, status: 'COMPLETED' } }),
       prisma.project.aggregate({
         where,
         _avg: { progress: true },
         _sum: { totalBudget: true, amountSpent: true },
       }),
+      prisma.projectTeamMember.count({
+        where: { isActive: true, project: { organizationId: auth.organizationId, deletedAt: null } },
+      }),
     ])
 
-    // Get per-project performance data
+    // Activity stats across all projects
+    const [totalActivities, completedActivitiesTotal, delayedActivitiesTotal] = await Promise.all([
+      prisma.activity.count({ where: { project: { organizationId: auth.organizationId, deletedAt: null } } }),
+      prisma.activity.count({ where: { status: 'COMPLETED', project: { organizationId: auth.organizationId, deletedAt: null } } }),
+      prisma.activity.count({ where: { status: 'DELAYED', project: { organizationId: auth.organizationId, deletedAt: null } } }),
+    ])
+
+    // Per-project performance
     const projects = await prisma.project.findMany({
       where,
       select: {
         id: true,
         projectNo: true,
         name: true,
+        projectType: true,
+        sector: true,
         status: true,
         totalBudget: true,
         amountSpent: true,
+        currency: true,
+        country: true,
         progress: true,
         startDate: true,
         endDate: true,
         _count: {
           select: {
             activities: true,
+            milestones: true,
+            teamMembers: { where: { isActive: true } },
+            indicators: true,
+            risks: true,
           },
         },
       },
       orderBy: { createdAt: 'desc' },
     })
 
-    // Calculate performance metrics for each project
     const projectPerformance = await Promise.all(
       projects.map(async (project) => {
         const totalBudget = Number(project.totalBudget)
         const amountSpent = Number(project.amountSpent)
+        const burnRate = totalBudget > 0 ? Math.round((amountSpent / totalBudget) * 10000) / 100 : 0
 
-        // Calculate burn rate (spent / budget * 100)
-        const burnRate = totalBudget > 0
-          ? Math.round((amountSpent / totalBudget) * 10000) / 100
-          : 0
-
-        // Calculate activity completion
         const completedActivities = await prisma.activity.count({
-          where: {
-            projectId: project.id,
-            status: 'COMPLETED',
-          },
+          where: { projectId: project.id, status: 'COMPLETED' },
         })
+        const totalActs = project._count.activities
+        const activityCompletion = totalActs > 0 ? Math.round((completedActivities / totalActs) * 10000) / 100 : 0
 
-        const totalActivities = project._count.activities
-        const activityCompletion = totalActivities > 0
-          ? Math.round((completedActivities / totalActivities) * 10000) / 100
-          : 0
+        const achievedMilestones = await prisma.milestone.count({
+          where: { projectId: project.id, status: 'ACHIEVED' },
+        })
 
         return {
           id: project.id,
           projectNo: project.projectNo,
           name: project.name,
+          projectType: project.projectType,
+          sector: project.sector,
           status: project.status,
           totalBudget,
           amountSpent,
+          currency: project.currency,
+          country: project.country,
           progress: project.progress,
           burnRate,
-          totalActivities,
+          totalActivities: totalActs,
           completedActivities,
           activityCompletion,
+          totalMilestones: project._count.milestones,
+          achievedMilestones,
+          teamMembers: project._count.teamMembers,
+          indicators: project._count.indicators,
+          risks: project._count.risks,
           startDate: project.startDate,
           endDate: project.endDate,
         }
@@ -93,9 +113,15 @@ export async function GET(request: NextRequest) {
     return apiSuccess({
       totalProjects,
       activeProjects,
+      pipelineProjects,
+      completedProjects,
       averageProgress: Math.round(projectAggregates._avg.progress ?? 0),
       totalBudget: Number(projectAggregates._sum.totalBudget ?? 0),
       totalSpent: Number(projectAggregates._sum.amountSpent ?? 0),
+      teamMembers: teamMemberCount,
+      totalActivities,
+      completedActivities: completedActivitiesTotal,
+      delayedActivities: delayedActivitiesTotal,
       projectPerformance,
     })
   } catch (error) {

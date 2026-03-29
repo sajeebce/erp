@@ -54,6 +54,7 @@ model Organization {
   systemConfigs      SystemConfig[]
   vouchers           Voucher[]
   fundReceipts       FundReceipt[]
+  jobPostings        JobPosting[]
 
   @@index([slug])
 }

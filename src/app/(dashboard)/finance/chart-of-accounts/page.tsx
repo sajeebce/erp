@@ -9,9 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from '@/components/ui/sheet'
@@ -402,16 +400,13 @@ function AccountSheet({
                 {isEdit ? (
                   <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm">{type}</div>
                 ) : (
-                  <Select value={type} onValueChange={(val) => handleTypeChange(val as AccountType)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t('selectType')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ACCOUNT_TYPES.map(t => (
-                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    id="account-type"
+                    options={ACCOUNT_TYPES.map(t => ({ value: t.value, label: t.label }))}
+                    value={type}
+                    onValueChange={(val) => handleTypeChange(val as AccountType)}
+                    placeholder={t('selectType')}
+                  />
                 )}
               </div>
               <div className="space-y-1.5">
@@ -437,20 +432,13 @@ function AccountSheet({
                 </div>
               ) : (
                 <>
-                  <Select value={parentId} onValueChange={handleParentChange}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t('noneRootLevel')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="_none">{t('noneRootLevel')}</SelectItem>
-                      {filteredGroups.map(g => (
-                        <SelectItem key={g.id} value={g.id}>
-                          <span className="font-mono text-xs text-muted-foreground mr-1.5">{g.code}</span>
-                          {g.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    id="parent-account"
+                    options={[{ value: '_none', label: t('noneRootLevel') }, ...filteredGroups.map(g => ({ value: g.id, label: `${g.code} - ${g.name}` }))]}
+                    value={parentId}
+                    onValueChange={handleParentChange}
+                    placeholder={t('noneRootLevel')}
+                  />
                   {type && filteredGroups.length === 0 && (
                     <p className="text-xs text-muted-foreground">{t('noGroupOfType', { type })}</p>
                   )}

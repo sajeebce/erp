@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { PageHeader } from '@/components/shared/page-header'
 
 const DONOR_TYPES = [
@@ -132,18 +126,13 @@ export default function NewDonorPage() {
 
             <div className="space-y-2">
               <Label htmlFor="donor-type">{t('fields.type')} *</Label>
-              <Select value={type} onValueChange={setType}>
-                <SelectTrigger id="donor-type" className="w-full">
-                  <SelectValue placeholder={t('form.selectType')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {DONOR_TYPES.map((dt) => (
-                    <SelectItem key={dt} value={dt}>
-                      {t(`donorTypes.${dt}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="donor-type"
+                options={DONOR_TYPES.map((dt) => ({ value: dt, label: t(`donorTypes.${dt}`) }))}
+                value={type}
+                onValueChange={setType}
+                placeholder={t('form.selectType')}
+              />
             </div>
           </div>
 

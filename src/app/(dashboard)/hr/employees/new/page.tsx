@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { PageHeader } from '@/components/shared/page-header'
 
 const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'CONSULTANT', 'INTERN', 'VOLUNTEER'] as const
@@ -211,29 +205,23 @@ export default function NewEmployeePage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="emp-gender">{t('form.gender')}</Label>
-              <Select value={gender} onValueChange={setGender}>
-                <SelectTrigger id="emp-gender" className="w-full">
-                  <SelectValue placeholder={t('form.selectGender')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {GENDERS.map((g) => (
-                    <SelectItem key={g} value={g}>{t(`form.genders.${g}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="emp-gender"
+                options={GENDERS.map((g) => ({ value: g, label: t(`form.genders.${g}`) }))}
+                value={gender}
+                onValueChange={setGender}
+                placeholder={t('form.selectGender')}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="emp-marital">{t('form.maritalStatus')}</Label>
-              <Select value={maritalStatus} onValueChange={setMaritalStatus}>
-                <SelectTrigger id="emp-marital" className="w-full">
-                  <SelectValue placeholder={t('form.selectMaritalStatus')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {MARITAL_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>{t(`form.maritalStatuses.${s}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="emp-marital"
+                options={MARITAL_STATUSES.map((s) => ({ value: s, label: t(`form.maritalStatuses.${s}`) }))}
+                value={maritalStatus}
+                onValueChange={setMaritalStatus}
+                placeholder={t('form.selectMaritalStatus')}
+              />
             </div>
           </div>
 
@@ -256,45 +244,35 @@ export default function NewEmployeePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="emp-dept">{t('fields.department')} *</Label>
-              <Select value={departmentId} onValueChange={setDepartmentId}>
-                <SelectTrigger id="emp-dept" className="w-full">
-                  <SelectValue placeholder={t('form.selectDepartment')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="emp-dept"
+                options={departments.map((d) => ({ value: d.id, label: d.name }))}
+                value={departmentId}
+                onValueChange={setDepartmentId}
+                placeholder={t('form.selectDepartment')}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="emp-desig">{t('fields.designation')} *</Label>
-              <Select value={designationId} onValueChange={setDesignationId}>
-                <SelectTrigger id="emp-desig" className="w-full">
-                  <SelectValue placeholder={t('form.selectDesignation')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {designations.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>{d.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="emp-desig"
+                options={designations.map((d) => ({ value: d.id, label: d.title }))}
+                value={designationId}
+                onValueChange={setDesignationId}
+                placeholder={t('form.selectDesignation')}
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="emp-type">{t('fields.employmentType')} *</Label>
-              <Select value={employmentType} onValueChange={setEmploymentType}>
-                <SelectTrigger id="emp-type" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {EMPLOYMENT_TYPES.map((et) => (
-                    <SelectItem key={et} value={et}>{tc(`employmentTypes.${et}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="emp-type"
+                options={EMPLOYMENT_TYPES.map((et) => ({ value: et, label: tc(`employmentTypes.${et}`) }))}
+                value={employmentType}
+                onValueChange={setEmploymentType}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="emp-joining">{t('fields.joiningDate')} *</Label>

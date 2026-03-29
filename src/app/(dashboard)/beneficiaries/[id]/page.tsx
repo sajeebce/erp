@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
@@ -310,16 +304,13 @@ export default function BeneficiaryDetailPage({ params }: { params: Promise<{ id
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-gender">{t('fields.gender')}</Label>
-                  <Select value={editGender} onValueChange={setEditGender}>
-                    <SelectTrigger id="edit-gender" className="w-full">
-                      <SelectValue placeholder={t('form.selectGender')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {GENDERS.map((g) => (
-                        <SelectItem key={g} value={g}>{t(`genders.${g}`)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    id="edit-gender"
+                    options={GENDERS.map((g) => ({ value: g, label: t(`genders.${g}`) }))}
+                    value={editGender}
+                    onValueChange={setEditGender}
+                    placeholder={t('form.selectGender')}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-dob">{t('fields.dateOfBirth')}</Label>
@@ -342,17 +333,17 @@ export default function BeneficiaryDetailPage({ params }: { params: Promise<{ id
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-status">{tc('labels.status')}</Label>
-                <Select value={editStatus} onValueChange={setEditStatus}>
-                  <SelectTrigger id="edit-status" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ACTIVE">{tc('status.ACTIVE')}</SelectItem>
-                    <SelectItem value="INACTIVE">{tc('status.INACTIVE')}</SelectItem>
-                    <SelectItem value="GRADUATED">{tc('status.GRADUATED')}</SelectItem>
-                    <SelectItem value="DROPPED_OUT">{tc('status.DROPPED_OUT')}</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="edit-status"
+                  options={[
+                    { value: 'ACTIVE', label: tc('status.ACTIVE') },
+                    { value: 'INACTIVE', label: tc('status.INACTIVE') },
+                    { value: 'GRADUATED', label: tc('status.GRADUATED') },
+                    { value: 'DROPPED_OUT', label: tc('status.DROPPED_OUT') },
+                  ]}
+                  value={editStatus}
+                  onValueChange={setEditStatus}
+                />
               </div>
             </div>
           ) : (

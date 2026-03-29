@@ -19,49 +19,81 @@ async function main() {
   if (!org) throw new Error('Org not found')
 
   const projects = await prisma.project.findMany({ where: { organizationId: org.id }, orderBy: { projectNo: 'asc' } })
-  const washProject = projects.find(p => p.name.includes('WASH'))!
-  const eduProject = projects.find(p => p.name.includes('Education'))!
+  const washProject = projects.find(p => p.name.includes('Clean Water'))!
+  const eduProject = projects.find(p => p.name.includes('Girls Education'))!
   const climateProject = projects.find(p => p.name.includes('Climate'))!
 
-  // ─── 1. Activities for WASH project ───
+  // ─── 1. Activities ───
   const activities = await Promise.all([
     prisma.activity.create({
-      data: { activityNo: `${washProject.projectNo}-A001`, name: 'Install 50 tubewells in Sylhet Sadar', projectId: washProject.id, startDate: new Date('2025-10-01'), endDate: new Date('2026-03-31'), budget: 1500000, progress: 72, status: 'IN_PROGRESS' },
+      data: { activityNo: `${washProject.projectNo}-A001`, name: 'Drill 30 boreholes in Turkana South', projectId: washProject.id, startDate: new Date('2025-10-01'), endDate: new Date('2026-03-31'), budget: 450000, actualCost: 324000, progress: 72, status: 'IN_PROGRESS' },
     }),
     prisma.activity.create({
-      data: { activityNo: `${washProject.projectNo}-A002`, name: 'Conduct 20 hygiene awareness sessions', projectId: washProject.id, startDate: new Date('2025-09-01'), endDate: new Date('2026-06-30'), budget: 500000, progress: 40, status: 'IN_PROGRESS' },
+      data: { activityNo: `${washProject.projectNo}-A002`, name: 'Community hygiene promotion campaigns', projectId: washProject.id, startDate: new Date('2025-09-01'), endDate: new Date('2026-06-30'), budget: 80000, actualCost: 32000, progress: 40, status: 'IN_PROGRESS' },
     }),
     prisma.activity.create({
-      data: { activityNo: `${washProject.projectNo}-A003`, name: 'Water quality testing in 5 upazilas', projectId: washProject.id, startDate: new Date('2026-01-01'), endDate: new Date('2026-05-31'), budget: 300000, progress: 15, status: 'PLANNED' },
+      data: { activityNo: `${washProject.projectNo}-A003`, name: 'Water quality testing & monitoring', projectId: washProject.id, startDate: new Date('2026-01-01'), endDate: new Date('2026-05-31'), budget: 45000, progress: 15, status: 'PLANNED' },
     }),
     prisma.activity.create({
-      data: { activityNo: `${washProject.projectNo}-A004`, name: 'Community WASH committee formation', projectId: washProject.id, startDate: new Date('2025-08-01'), endDate: new Date('2025-12-31'), budget: 200000, progress: 100, status: 'COMPLETED' },
+      data: { activityNo: `${washProject.projectNo}-A004`, name: 'Establish community water committees', projectId: washProject.id, startDate: new Date('2025-08-01'), endDate: new Date('2025-12-31'), budget: 25000, actualCost: 23500, progress: 100, status: 'COMPLETED' },
     }),
     prisma.activity.create({
-      data: { activityNo: `${eduProject.projectNo}-A001`, name: 'Teacher training program (50 sessions)', projectId: eduProject.id, startDate: new Date('2026-01-01'), endDate: new Date('2026-06-30'), budget: 750000, progress: 30, status: 'IN_PROGRESS' },
+      data: { activityNo: `${eduProject.projectNo}-A001`, name: 'Teacher training (200 teachers, 3-day residential)', projectId: eduProject.id, startDate: new Date('2026-01-01'), endDate: new Date('2026-06-30'), budget: 120000, actualCost: 36000, progress: 30, status: 'IN_PROGRESS' },
     }),
     prisma.activity.create({
-      data: { activityNo: `${eduProject.projectNo}-A002`, name: 'Distribute textbooks to 5000 students', projectId: eduProject.id, startDate: new Date('2026-02-01'), endDate: new Date('2026-04-30'), budget: 1200000, progress: 0, status: 'DELAYED' },
+      data: { activityNo: `${eduProject.projectNo}-A002`, name: 'Distribute learning kits to 5,000 girls', projectId: eduProject.id, startDate: new Date('2026-02-01'), endDate: new Date('2026-04-30'), budget: 175000, progress: 0, status: 'DELAYED' },
     }),
   ])
   console.log(`✓ ${activities.length} Activities created`)
 
-  // ─── 2. Milestones for WASH project ───
+  // ─── 2. Milestones ───
   const milestones = await Promise.all([
     prisma.milestone.create({
-      data: { milestoneNo: `${washProject.projectNo}-M01`, description: 'Complete 25 tubewell installations', projectId: washProject.id, targetDate: new Date('2026-01-31'), actualDate: new Date('2026-01-28'), status: 'ACHIEVED', deliverable: 'Installation completion report' },
+      data: { milestoneNo: `${washProject.projectNo}-M01`, description: 'Complete 15 borehole installations', projectId: washProject.id, targetDate: new Date('2026-01-31'), actualDate: new Date('2026-01-28'), status: 'ACHIEVED', deliverable: 'Installation completion report with GPS coordinates' },
     }),
     prisma.milestone.create({
-      data: { milestoneNo: `${washProject.projectNo}-M02`, description: 'Complete all 50 tubewells', projectId: washProject.id, targetDate: new Date('2026-03-31'), status: 'ON_TRACK', deliverable: 'Final installation report + GPS coordinates' },
+      data: { milestoneNo: `${washProject.projectNo}-M02`, description: 'Complete all 30 boreholes', projectId: washProject.id, targetDate: new Date('2026-03-31'), status: 'ON_TRACK', deliverable: 'Final installation report + water quality test results' },
     }),
     prisma.milestone.create({
-      data: { milestoneNo: `${washProject.projectNo}-M03`, description: 'Submit mid-term evaluation report', projectId: washProject.id, targetDate: new Date('2026-06-30'), status: 'ON_TRACK', deliverable: 'Mid-term evaluation report to USAID' },
+      data: { milestoneNo: `${washProject.projectNo}-M03`, description: 'Submit mid-term evaluation to USAID', projectId: washProject.id, targetDate: new Date('2026-06-30'), status: 'ON_TRACK', deliverable: 'Mid-term evaluation report' },
     }),
     prisma.milestone.create({
       data: { milestoneNo: `${eduProject.projectNo}-M01`, description: 'Complete teacher training Phase 1', projectId: eduProject.id, targetDate: new Date('2026-03-31'), status: 'AT_RISK', deliverable: 'Training completion certificates' },
     }),
   ])
   console.log(`✓ ${milestones.length} Milestones created`)
+
+  // ─── 2b. Project Indicators ───
+  const projIndicators = await Promise.all([
+    prisma.projectIndicator.create({ data: { projectId: washProject.id, name: 'Households with access to safe water', type: 'QUANTITATIVE', unit: 'households', baselineValue: 1200, baselineDate: new Date('2025-06-01'), targetValue: 5000, currentValue: 2875, frequency: 'QUARTERLY', dataSource: 'Household survey', responsible: 'M&E Officer', disaggregation: 'gender, disability', sortOrder: 1 } }),
+    prisma.projectIndicator.create({ data: { projectId: washProject.id, name: 'Hygiene practice adoption rate', type: 'QUANTITATIVE', unit: 'percentage', baselineValue: 30, baselineDate: new Date('2025-06-01'), targetValue: 85, currentValue: 52, frequency: 'SEMI_ANNUALLY', dataSource: 'KAP survey', responsible: 'Community Health Worker', sortOrder: 2 } }),
+    prisma.projectIndicator.create({ data: { projectId: washProject.id, name: 'Water quality compliance rate', type: 'QUANTITATIVE', unit: 'percentage', baselineValue: 45, targetValue: 95, currentValue: 78, frequency: 'QUARTERLY', dataSource: 'Lab testing', sortOrder: 3 } }),
+    prisma.projectIndicator.create({ data: { projectId: eduProject.id, name: 'Girls enrollment rate', type: 'QUANTITATIVE', unit: 'percentage', baselineValue: 62, baselineDate: new Date('2025-09-01'), targetValue: 90, currentValue: 74, frequency: 'ANNUALLY', dataSource: 'School records', responsible: 'Education Specialist', disaggregation: 'age group', sortOrder: 1 } }),
+    prisma.projectIndicator.create({ data: { projectId: eduProject.id, name: 'Teacher competency improvement', type: 'QUALITATIVE', unit: 'score (1-5)', baselineValue: 2.1, targetValue: 4.0, currentValue: 3.2, frequency: 'SEMI_ANNUALLY', dataSource: 'Classroom observation', sortOrder: 2 } }),
+  ])
+  console.log(`✓ ${projIndicators.length} Project Indicators created`)
+
+  // ─── 2c. Project Risks ───
+  const projRisks = await Promise.all([
+    prisma.projectRisk.create({ data: { projectId: washProject.id, title: 'Drought reduces water table levels', category: 'ENVIRONMENTAL', likelihood: 'HIGH', impact: 'MAJOR', riskScore: 16, mitigation: 'Pre-drilling hydrogeological survey; deeper boreholes in vulnerable areas', owner: 'Lead Hydrogeologist', status: 'OPEN', reviewDate: new Date('2026-06-01') } }),
+    prisma.projectRisk.create({ data: { projectId: washProject.id, title: 'Supply chain delays for borehole equipment', category: 'OPERATIONAL', likelihood: 'MEDIUM', impact: 'MODERATE', riskScore: 9, mitigation: 'Maintain 30-day buffer stock; identify alternative suppliers', owner: 'Procurement Manager', status: 'MITIGATED' } }),
+    prisma.projectRisk.create({ data: { projectId: washProject.id, title: 'Community resistance to user fee model', category: 'POLITICAL', likelihood: 'LOW', impact: 'MAJOR', riskScore: 8, mitigation: 'Community engagement sessions; subsidized fee structure for vulnerable households', owner: 'Community Liaison', status: 'OPEN' } }),
+    prisma.projectRisk.create({ data: { projectId: eduProject.id, title: 'Security incidents in refugee camps', category: 'SECURITY', likelihood: 'MEDIUM', impact: 'CRITICAL', riskScore: 15, mitigation: 'Security assessment protocol; coordination with UNHCR security; alternative delivery modes', owner: 'Security Focal Point', status: 'OPEN', reviewDate: new Date('2026-04-01') } }),
+    prisma.projectRisk.create({ data: { projectId: eduProject.id, title: 'Teacher attrition in camp schools', category: 'OPERATIONAL', likelihood: 'HIGH', impact: 'MODERATE', riskScore: 12, mitigation: 'Competitive incentive packages; backup teacher pool; online training modules', owner: 'HR Coordinator', status: 'OPEN' } }),
+    prisma.projectRisk.create({ data: { projectId: climateProject.id, title: 'Monsoon flooding disrupts implementation', category: 'ENVIRONMENTAL', likelihood: 'VERY_HIGH', impact: 'MAJOR', riskScore: 20, mitigation: 'Seasonal activity planning; flood-resilient infrastructure designs; contingency budget 10%', owner: 'Project Director', status: 'OPEN', reviewDate: new Date('2026-05-01') } }),
+  ])
+  console.log(`✓ ${projRisks.length} Project Risks created`)
+
+  // ─── 2d. LogFrame entries for WASH ───
+  const logEntries = await Promise.all([
+    prisma.logFrameEntry.create({ data: { projectId: washProject.id, level: 'GOAL', narrative: 'Improved health outcomes and reduced waterborne diseases in Turkana County', indicators: 'Diarrheal disease incidence reduced by 40%', meansOfVerification: 'County health records, baseline vs endline survey', assumptions: 'Health facilities maintain service quality', sortOrder: 1 } }),
+    prisma.logFrameEntry.create({ data: { projectId: washProject.id, level: 'PURPOSE', narrative: 'Increased access to safe, sustainable water and sanitation services for 5,000 households', indicators: '5,000 HH with access to improved water source within 500m', meansOfVerification: 'Household survey, GPS mapping', assumptions: 'Community maintains water points post-project', sortOrder: 2 } }),
+    prisma.logFrameEntry.create({ data: { projectId: washProject.id, level: 'OUTPUT', narrative: '30 boreholes drilled and operational', indicators: '30 boreholes with water quality meeting WHO standards', meansOfVerification: 'Installation reports, water quality test certificates', assumptions: 'Groundwater available at drillable depths', sortOrder: 3 } }),
+    prisma.logFrameEntry.create({ data: { projectId: washProject.id, level: 'OUTPUT', narrative: '100 community WASH committees established and trained', indicators: '100 committees with trained members meeting monthly', meansOfVerification: 'Training records, meeting minutes', assumptions: 'Community leaders willing to participate', sortOrder: 4 } }),
+    prisma.logFrameEntry.create({ data: { projectId: washProject.id, level: 'ACTIVITY', narrative: 'Conduct hydrogeological surveys and drill boreholes', indicators: 'Survey reports, drilling logs', meansOfVerification: 'Contractor reports, site inspection', assumptions: 'Drilling equipment available', sortOrder: 5 } }),
+    prisma.logFrameEntry.create({ data: { projectId: washProject.id, level: 'ACTIVITY', narrative: 'Train community health workers in hygiene promotion', indicators: '200 CHWs trained', meansOfVerification: 'Training attendance, post-test scores', assumptions: 'CHWs available and willing', sortOrder: 6 } }),
+  ])
+  console.log(`✓ ${logEntries.length} LogFrame entries created`)
 
   // ─── 3. Beneficiaries ───
   const bens = await Promise.all([
@@ -76,10 +108,11 @@ async function main() {
   ])
   console.log(`✓ ${bens.length} Beneficiaries created`)
 
-  // Update sequence
-  await prisma.numberSequence.update({
+  // Update sequence (upsert in case it doesn't exist)
+  await prisma.numberSequence.upsert({
     where: { organizationId_entity: { organizationId: org.id, entity: 'beneficiary' } },
-    data: { currentValue: 8 },
+    update: { currentValue: 8 },
+    create: { organizationId: org.id, entity: 'beneficiary', prefix: 'BEN', separator: '-', padLength: 3, currentValue: 8, includeYear: true },
   })
 
   // ─── 4. Enrollments ───
@@ -127,8 +160,8 @@ async function main() {
   console.log('✓ 2 Grievances created')
 
   // Update sequences
-  await prisma.numberSequence.update({ where: { organizationId_entity: { organizationId: org.id, entity: 'enrollment' } }, data: { currentValue: 7 } })
-  await prisma.numberSequence.update({ where: { organizationId_entity: { organizationId: org.id, entity: 'grievance' } }, data: { currentValue: 2 } })
+  await prisma.numberSequence.upsert({ where: { organizationId_entity: { organizationId: org.id, entity: 'enrollment' } }, update: { currentValue: 7 }, create: { organizationId: org.id, entity: 'enrollment', prefix: 'ENR', separator: '-', padLength: 3, currentValue: 7, includeYear: true } })
+  await prisma.numberSequence.upsert({ where: { organizationId_entity: { organizationId: org.id, entity: 'grievance' } }, update: { currentValue: 2 }, create: { organizationId: org.id, entity: 'grievance', prefix: 'GRV', separator: '-', padLength: 3, currentValue: 2, includeYear: true } })
 
   console.log('\n✅ Phase 4 seeding complete!')
   console.log('   6 Activities, 4 Milestones, 8 Beneficiaries, 7 Enrollments, 5 Services, 4 Indicators, 3 Assessments, 2 Grievances')

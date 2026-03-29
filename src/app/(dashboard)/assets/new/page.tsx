@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { PageHeader } from '@/components/shared/page-header'
 
 const CONDITIONS = ['NEW', 'GOOD', 'FAIR', 'POOR'] as const
@@ -176,18 +170,13 @@ export default function NewAssetPage() {
 
             <div className="space-y-2">
               <Label htmlFor="asset-category">{t('fields.category')} *</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger id="asset-category" className="w-full">
-                  <SelectValue placeholder={t('selectCategory')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.code} - {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="asset-category"
+                options={categories.map((cat) => ({ value: cat.id, label: `${cat.code} - ${cat.name}` }))}
+                value={categoryId}
+                onValueChange={setCategoryId}
+                placeholder={t('selectCategory')}
+              />
             </div>
           </div>
 
@@ -243,34 +232,23 @@ export default function NewAssetPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="asset-condition">{t('fields.condition')}</Label>
-              <Select value={condition} onValueChange={setCondition}>
-                <SelectTrigger id="asset-condition" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CONDITIONS.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {tc(`status.${c}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="asset-condition"
+                options={CONDITIONS.map((c) => ({ value: c, label: tc(`status.${c}`) }))}
+                value={condition}
+                onValueChange={setCondition}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="asset-warehouse">{t('warehouse')}</Label>
-              <Select value={warehouseId} onValueChange={setWarehouseId}>
-                <SelectTrigger id="asset-warehouse" className="w-full">
-                  <SelectValue placeholder={t('selectWarehouse')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {warehouses.map((wh) => (
-                    <SelectItem key={wh.id} value={wh.id}>
-                      {wh.code} - {wh.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="asset-warehouse"
+                options={warehouses.map((wh) => ({ value: wh.id, label: `${wh.code} - ${wh.name}` }))}
+                value={warehouseId}
+                onValueChange={setWarehouseId}
+                placeholder={t('selectWarehouse')}
+              />
             </div>
           </div>
 
@@ -278,18 +256,13 @@ export default function NewAssetPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="asset-project">{t('project')}</Label>
-              <Select value={projectId} onValueChange={setProjectId}>
-                <SelectTrigger id="asset-project" className="w-full">
-                  <SelectValue placeholder={t('selectProject')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.projectNo} - {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="asset-project"
+                options={projects.map((p) => ({ value: p.id, label: `${p.projectNo} - ${p.name}` }))}
+                value={projectId}
+                onValueChange={setProjectId}
+                placeholder={t('selectProject')}
+              />
             </div>
 
             <div className="space-y-2">

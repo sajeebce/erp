@@ -13,13 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import {
   Collapsible,
   CollapsibleContent,
@@ -185,27 +179,45 @@ export default function NewBudgetPage() {
   const [grants, setGrants] = useState<Grant[]>([])
   const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [loadingData, setLoadingData] = useState(true)
+  const [loadErrors, setLoadErrors] = useState<string[]>([])
 
   useEffect(() => {
-    fetch('/api/v1/projects?limit=200')
-      .then(res => res.json())
-      .then(json => { if (json.success) setProjects(json.data) })
-      .catch(() => {})
+    const errors: string[] = []
+    let completed = 0
+    const total = 4
 
-    fetch('/api/v1/donors/grants?limit=200')
-      .then(res => res.json())
-      .then(json => { if (json.success) setGrants(json.data) })
-      .catch(() => {})
+    function checkDone() {
+      completed++
+      if (completed === total) {
+        setLoadErrors(errors)
+        setLoadingData(false)
+      }
+    }
 
-    fetch('/api/v1/settings/fiscal-years?limit=50')
-      .then(res => res.json())
-      .then(json => { if (json.success) setFiscalYears(json.data) })
-      .catch(() => {})
+    const fetchWithAuth = (url: string, label: string) =>
+      fetch(url)
+        .then(res => {
+          if (res.status === 401) { errors.push(`${label} (${t('form.loginRequired')})`); return null }
+          return res.json()
+        })
+        .then(json => {
+          if (!json) return
+          if (json.success) return json.data
+          errors.push(label)
+          return []
+        })
+        .catch(() => { errors.push(label); return [] })
 
-    fetch('/api/v1/finance/accounts?isGroup=false&limit=500')
-      .then(res => res.json())
-      .then(json => { if (json.success) setAccounts(json.data) })
-      .catch(() => {})
+    Promise.all([
+      fetchWithAuth('/api/v1/projects?limit=200', 'Projects').then(d => d && setProjects(d)),
+      fetchWithAuth('/api/v1/donors/grants?limit=200', 'Grants').then(d => d && setGrants(d)),
+      fetchWithAuth('/api/v1/settings/fiscal-years?limit=50', 'Fiscal Years').then(d => d && setFiscalYears(d)),
+      fetchWithAuth('/api/v1/finance/accounts?isGroup=false&limit=500', 'Accounts').then(d => d && setAccounts(d)),
+    ]).finally(() => {
+      setLoadErrors(errors)
+      setLoadingData(false)
+    })
   }, [])
 
   // Auto-fill dates when fiscal year is selected
@@ -404,6 +416,22 @@ export default function NewBudgetPage() {
         </div>
       )}
 
+      {loadErrors.length > 0 && (
+        <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-200">
+          {loadErrors.join(', ')} {t('form.checkSeedData')}
+        </div>
+      )}
+
+      {loadingData ? (
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+            <span className="text-muted-foreground">{tc('status.loading')}</span>
+          </CardContent>
+        </Card>
+      ) : (
+      <>
+
       {/* ──── Section 1: Budget Identification ──── */}
       <Card>
         <CardHeader>
@@ -429,18 +457,12 @@ export default function NewBudgetPage() {
 
             <div className="space-y-2">
               <Label htmlFor="budget-type">{t('budgetType.label')}</Label>
-              <Select value={budgetType} onValueChange={setBudgetType}>
-                <SelectTrigger id="budget-type" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BUDGET_TYPES.map((bt) => (
-                    <SelectItem key={bt.value} value={bt.value}>
-                      {t(bt.label)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="budget-type"
+                options={BUDGET_TYPES.map((bt) => ({ value: bt.value, label: t(bt.label) }))}
+                value={budgetType}
+                onValueChange={setBudgetType}
+              />
             </div>
           </div>
 
@@ -448,32 +470,24 @@ export default function NewBudgetPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="budget-project">{t('project')} *</Label>
-              <Select value={projectId} onValueChange={setProjectId}>
-                <SelectTrigger id="budget-project" className="w-full">
-                  <SelectValue placeholder={t('form.selectProject')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="budget-project"
+                options={projects.map((p) => ({ value: p.id, label: p.name }))}
+                value={projectId}
+                onValueChange={setProjectId}
+                placeholder={t('form.selectProject')}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="budget-grant">{t('grant')}</Label>
-              <Select value={grantId} onValueChange={setGrantId}>
-                <SelectTrigger id="budget-grant" className="w-full">
-                  <SelectValue placeholder={t('form.selectGrant')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {grants.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.grantNo} - {g.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="budget-grant"
+                options={grants.map((g) => ({ value: g.id, label: `${g.grantNo} - ${g.title}` }))}
+                value={grantId}
+                onValueChange={setGrantId}
+                placeholder={t('form.selectGrant')}
+              />
             </div>
           </div>
 
@@ -481,32 +495,23 @@ export default function NewBudgetPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="budget-fiscal-year">{t('form.fiscalYear')} *</Label>
-              <Select value={fiscalYearId} onValueChange={setFiscalYearId}>
-                <SelectTrigger id="budget-fiscal-year" className="w-full">
-                  <SelectValue placeholder={t('form.selectFiscalYear')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {fiscalYears.map((fy) => (
-                    <SelectItem key={fy.id} value={fy.id}>{fy.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="budget-fiscal-year"
+                options={fiscalYears.map((fy) => ({ value: fy.id, label: fy.name }))}
+                value={fiscalYearId}
+                onValueChange={setFiscalYearId}
+                placeholder={t('form.selectFiscalYear')}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="budget-period-type">{t('periodType.label')}</Label>
-              <Select value={periodType} onValueChange={setPeriodType}>
-                <SelectTrigger id="budget-period-type" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PERIOD_TYPES.map((pt) => (
-                    <SelectItem key={pt.value} value={pt.value}>
-                      {t(pt.label)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="budget-period-type"
+                options={PERIOD_TYPES.map((pt) => ({ value: pt.value, label: t(pt.label) }))}
+                value={periodType}
+                onValueChange={setPeriodType}
+              />
             </div>
           </div>
 
@@ -537,17 +542,17 @@ export default function NewBudgetPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="budget-currency">{t('form.currency')}</Label>
-              <Select value={currencyCode} onValueChange={setCurrencyCode}>
-                <SelectTrigger id="budget-currency" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BDT">BDT - Bangladeshi Taka</SelectItem>
-                  <SelectItem value="USD">USD - US Dollar</SelectItem>
-                  <SelectItem value="EUR">EUR - Euro</SelectItem>
-                  <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="budget-currency"
+                options={[
+                  { value: 'BDT', label: 'BDT - Bangladeshi Taka' },
+                  { value: 'USD', label: 'USD - US Dollar' },
+                  { value: 'EUR', label: 'EUR - Euro' },
+                  { value: 'GBP', label: 'GBP - British Pound' },
+                ]}
+                value={currencyCode}
+                onValueChange={setCurrencyCode}
+              />
             </div>
 
             {currencyCode !== 'BDT' && (
@@ -619,18 +624,13 @@ export default function NewBudgetPage() {
 
                 <div className="space-y-2">
                   <Label>{t('indirectCost.base')}</Label>
-                  <Select value={indirectCostBase} onValueChange={setIndirectCostBase}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t('indirectCost.basePlaceholder')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ICR_BASES.map((base) => (
-                        <SelectItem key={base.value} value={base.value}>
-                          {t(base.label)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    id="budget-icr-base"
+                    options={ICR_BASES.map((base) => ({ value: base.value, label: t(base.label) }))}
+                    value={indirectCostBase}
+                    onValueChange={setIndirectCostBase}
+                    placeholder={t('indirectCost.basePlaceholder')}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -811,50 +811,35 @@ export default function NewBudgetPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>{t('form.account')} *</Label>
-                  <Select value={line.accountId} onValueChange={(v) => updateLine(index, 'accountId', v)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t('form.selectAccount')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.code} - {a.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    id={`line-${index}-account`}
+                    options={accounts.map((a) => ({ value: a.id, label: `${a.code} - ${a.name}` }))}
+                    value={line.accountId}
+                    onValueChange={(v) => updateLine(index, 'accountId', v)}
+                    placeholder={t('form.selectAccount')}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>{t('form.category')} *</Label>
-                  <Select value={line.category} onValueChange={(v) => updateLine(index, 'category', v)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t('form.selectCategory')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map((cat) => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    id={`line-${index}-category`}
+                    options={CATEGORIES.map((cat) => ({ value: cat, label: cat }))}
+                    value={line.category}
+                    onValueChange={(v) => updateLine(index, 'category', v)}
+                    placeholder={t('form.selectCategory')}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>{t('form.subCategory')}</Label>
-                  <Select
+                  <SearchableSelect
+                    id={`line-${index}-subcategory`}
+                    options={(SUB_CATEGORIES[line.category] || []).map((sub) => ({ value: sub, label: sub }))}
                     value={line.subCategory}
                     onValueChange={(v) => updateLine(index, 'subCategory', v)}
-                    disabled={!line.category}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t('form.selectSubCategory')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(SUB_CATEGORIES[line.category] || []).map((sub) => (
-                        <SelectItem key={sub} value={sub}>{sub}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder={t('form.selectSubCategory')}
+                  />
                 </div>
               </div>
 
@@ -872,20 +857,21 @@ export default function NewBudgetPage() {
               <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 <div className="space-y-2">
                   <Label>{t('form.unit')}</Label>
-                  <Select value={line.unit} onValueChange={(v) => updateLine(index, 'unit', v)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t('form.unitPlaceholder')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Month">Month</SelectItem>
-                      <SelectItem value="Day">Day</SelectItem>
-                      <SelectItem value="Person">Person</SelectItem>
-                      <SelectItem value="Trip">Trip</SelectItem>
-                      <SelectItem value="Unit">Unit</SelectItem>
-                      <SelectItem value="Lot">Lot</SelectItem>
-                      <SelectItem value="Lump Sum">Lump Sum</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    id={`line-${index}-unit`}
+                    options={[
+                      { value: 'Month', label: 'Month' },
+                      { value: 'Day', label: 'Day' },
+                      { value: 'Person', label: 'Person' },
+                      { value: 'Trip', label: 'Trip' },
+                      { value: 'Unit', label: 'Unit' },
+                      { value: 'Lot', label: 'Lot' },
+                      { value: 'Lump Sum', label: 'Lump Sum' },
+                    ]}
+                    value={line.unit}
+                    onValueChange={(v) => updateLine(index, 'unit', v)}
+                    placeholder={t('form.unitPlaceholder')}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -1124,6 +1110,8 @@ export default function NewBudgetPage() {
           </Button>
         </CardFooter>
       </Card>
+      </>
+      )}
     </div>
   )
 }

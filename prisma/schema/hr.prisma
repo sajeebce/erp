@@ -21,6 +21,7 @@ model Department {
   children     Department[] @relation("DepartmentHierarchy")
   employees    Employee[]
   users        User[]
+  jobPostings  JobPosting[]
 
   @@unique([organizationId, name])
   @@unique([organizationId, code])
@@ -95,6 +96,8 @@ model Employee {
   trainingParticipations TrainingParticipant[]
   projectTeams           ProjectTeamMember[]
   projectAllocations     EmployeeProjectAllocation[]
+  contracts              EmployeeContract[]
+  offboardings           Offboarding[]
 
   @@unique([organizationId, employeeNo])
   @@index([organizationId])
@@ -366,4 +369,408 @@ model TrainingParticipant {
 
   @@unique([trainingId, employeeId])
   @@index([trainingId])
+}
+
+// ═══════════════════════════════════════════
+// Phase 8: HR International-Grade Upgrade
+// Recruitment, Contracts, Offboarding,
+// Holidays, Grievance & Disciplinary
+// ═══════════════════════════════════════════
+
+// ─── Recruitment & ATS ───
+
+model JobPosting {
+  id                  String           @id @default(uuid()) @db.Uuid
+  organizationId      String           @db.Uuid
+  postingNo           String           @unique
+  title               String
+  slug                String           @unique
+  departmentId        String           @db.Uuid
+  designationId       String?          @db.Uuid
+  hiringManagerId     String?          @db.Uuid  // Employee FK — plain String
+  employmentType      EmploymentType   @default(FULL_TIME)
+  location            String
+  isRemote            Boolean          @default(false)
+  vacancies           Int              @default(1)
+
+  // Compensation
+  salaryMin           Decimal?         @db.Decimal(18, 2)
+  salaryMax           Decimal?         @db.Decimal(18, 2)
+  currency            String           @default("BDT")
+  showSalary          Boolean          @default(false)
+
+  // Description (rich text)
+  description         String
+  responsibilities    String
+  qualifications      String
+  preferredSkills     String?
+  benefits            String?
+
+  // Structured requirements for auto-scoring
+  minEducation        String?          // "Masters", "Bachelors", etc.
+  minExperience       Int?             // Minimum years of experience
+  requiredSkills      Json?            // ["project-management", "M&E"]
+  requiredLanguages   Json?            // [{"language": "English", "level": "Fluent"}]
+  requiredCertifications Json?         // ["PMP", "CPA"]
+
+  // Funding link
+  projectId           String?          @db.Uuid
+  grantId             String?          @db.Uuid
+
+  // Dates
+  publishedAt         DateTime?
+  applicationDeadline DateTime
+  expectedStartDate   DateTime?
+
+  // Settings
+  status              JobPostingStatus @default(DRAFT)
+  isInternal          Boolean          @default(false)
+  allowInternalApplicants Boolean      @default(true)
+  requireCoverLetter  Boolean          @default(false)
+  customQuestions      Json?           // [{question, type, required, options}]
+
+  createdById         String           @db.Uuid
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  organization        Organization     @relation(fields: [organizationId], references: [id])
+  department          Department       @relation(fields: [departmentId], references: [id])
+  applications        JobApplication[]
+
+  @@unique([organizationId, postingNo])
+  @@index([organizationId])
+  @@index([status])
+  @@index([slug])
+  @@index([applicationDeadline])
+}
+
+model JobApplication {
+  id                   String            @id @default(uuid()) @db.Uuid
+  applicationNo        String            @unique
+  jobPostingId         String            @db.Uuid
+  organizationId       String            @db.Uuid
+
+  // Applicant info
+  applicantName        String
+  applicantEmail       String
+  applicantPhone       String?
+  applicantAddress     String?
+
+  // Internal applicant
+  isInternal           Boolean           @default(false)
+  employeeId           String?           @db.Uuid
+
+  // CV & Documents
+  cvFilePath           String?
+  coverLetterPath      String?
+  additionalDocs       Json?             // [{name, filePath}]
+
+  // Parsed CV data (extracted)
+  parsedEducation      Json?             // [{degree, institution, year, field}]
+  parsedExperience     Json?             // [{title, org, startDate, endDate}]
+  parsedSkills         Json?             // ["skill1", "skill2"]
+  parsedLanguages      Json?             // [{language, level}]
+  parsedCertifications Json?             // ["cert1", "cert2"]
+  totalExperienceYears Decimal?          @db.Decimal(4, 1)
+
+  // Custom question responses
+  customResponses      Json?             // [{questionId, answer}]
+
+  // Scoring
+  autoScore            Decimal?          @db.Decimal(5, 2) // 0-100
+  manualScore          Decimal?          @db.Decimal(5, 2)
+  finalScore           Decimal?          @db.Decimal(5, 2)
+  scoreBreakdown       Json?             // {education: 25, experience: 30, ...}
+
+  // Pipeline
+  status               ApplicationStatus @default(APPLIED)
+  rejectionReason      String?
+  notes                String?
+
+  // Offer
+  offeredSalary        Decimal?          @db.Decimal(18, 2)
+  offerLetterPath      String?
+  offerAcceptedAt      DateTime?
+  offerDeclinedAt      DateTime?
+
+  appliedAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  jobPosting           JobPosting        @relation(fields: [jobPostingId], references: [id])
+  interviews           Interview[]
+  evaluations          ApplicationEvaluation[]
+
+  @@unique([jobPostingId, applicantEmail])
+  @@index([organizationId])
+  @@index([jobPostingId])
+  @@index([status])
+  @@index([autoScore])
+}
+
+model Interview {
+  id               String          @id @default(uuid()) @db.Uuid
+  applicationId    String          @db.Uuid
+  interviewType    String          // "PHONE_SCREEN", "TECHNICAL", "HR", "PANEL", "FINAL"
+  scheduledAt      DateTime
+  durationMinutes  Int             @default(60)
+  location         String?
+  isVirtual        Boolean         @default(false)
+  meetingLink      String?
+
+  status           InterviewStatus @default(SCHEDULED)
+  interviewerNotes String?
+  overallRating    Decimal?        @db.Decimal(3, 1) // 1.0-5.0
+  recommendation   String?         // "STRONG_YES", "YES", "MAYBE", "NO", "STRONG_NO"
+  completedAt      DateTime?
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  application      JobApplication  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  panelMembers     InterviewPanel[]
+
+  @@index([applicationId])
+  @@index([scheduledAt])
+}
+
+model InterviewPanel {
+  id            String    @id @default(uuid()) @db.Uuid
+  interviewId   String    @db.Uuid
+  interviewerId String    @db.Uuid  // Employee FK — plain String
+  role          String    // "LEAD", "TECHNICAL", "HR", "OBSERVER"
+  score         Decimal?  @db.Decimal(3, 1)
+  feedback      String?
+  submittedAt   DateTime?
+
+  interview     Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  @@unique([interviewId, interviewerId])
+  @@index([interviewId])
+}
+
+model ApplicationEvaluation {
+  id            String         @id @default(uuid()) @db.Uuid
+  applicationId String         @db.Uuid
+  evaluatorId   String         @db.Uuid  // Employee FK — plain String
+  criteria      String         // "technical_skills", "communication", etc.
+  score         Decimal        @db.Decimal(3, 1) // 1.0-5.0
+  comments      String?
+  createdAt     DateTime       @default(now())
+
+  application   JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, evaluatorId, criteria])
+  @@index([applicationId])
+}
+
+// ─── Contract Management ───
+
+model EmployeeContract {
+  id                 String                @id @default(uuid()) @db.Uuid
+  organizationId     String                @db.Uuid
+  contractNo         String                @unique
+  employeeId         String                @db.Uuid
+  contractType       EmploymentType
+  title              String
+  startDate          DateTime
+  endDate            DateTime?
+  probationEndDate   DateTime?
+
+  // Compensation
+  basicSalary        Decimal               @db.Decimal(18, 2)
+  currency           String                @default("BDT")
+  salaryComponents   Json?                 // [{component, amount, isPercentage}]
+
+  // Funding
+  projectId          String?               @db.Uuid
+  grantId            String?               @db.Uuid
+  costCenter         String?
+
+  // Documents
+  contractFilePath   String?
+  amendments         Json?                 // [{date, description, filePath}]
+
+  // Renewal
+  isRenewable        Boolean               @default(true)
+  renewalNoticeDays  Int                   @default(30)
+  previousContractId String?               @db.Uuid
+
+  // Termination
+  terminatedAt       DateTime?
+  terminationReason  String?
+  noticePeriodDays   Int                   @default(30)
+
+  status             EmployeeContractStatus @default(DRAFT)
+  notes              String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  employee           Employee              @relation(fields: [employeeId], references: [id])
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([endDate])
+}
+
+// ─── Offboarding & Exit ───
+
+model Offboarding {
+  id                 String            @id @default(uuid()) @db.Uuid
+  organizationId     String            @db.Uuid
+  offboardingNo      String            @unique
+  employeeId         String            @db.Uuid
+  separationType     SeparationType
+  initiatedDate      DateTime          @default(now())
+  lastWorkingDay     DateTime
+  noticeDate         DateTime?
+  noticePeriodDays   Int               @default(30)
+
+  // Exit Interview
+  exitInterviewDate  DateTime?
+  exitInterviewerId  String?           @db.Uuid
+  exitInterviewNotes String?
+  exitReason         String?
+  wouldRehire        Boolean?
+
+  // Final Settlement
+  unusedLeaveDays    Decimal?          @db.Decimal(5, 1)
+  leaveEncashment    Decimal?          @db.Decimal(18, 2)
+  gratuity           Decimal?          @db.Decimal(18, 2)
+  otherPayments      Decimal?          @db.Decimal(18, 2)
+  deductions         Decimal?          @db.Decimal(18, 2)
+  finalSettlement    Decimal?          @db.Decimal(18, 2)
+  settlementPaidAt   DateTime?
+
+  experienceCertPath String?
+
+  status             OffboardingStatus @default(INITIATED)
+  completedAt        DateTime?
+  notes              String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  employee           Employee          @relation(fields: [employeeId], references: [id])
+  tasks              OffboardingTask[]
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+model OffboardingTask {
+  id              String       @id @default(uuid()) @db.Uuid
+  offboardingId   String       @db.Uuid
+  taskName        String
+  category        String       // "IT", "FINANCE", "HR", "ADMIN", "SECURITY"
+  assignedToId    String?      @db.Uuid
+  isCompleted     Boolean      @default(false)
+  completedAt     DateTime?
+  completedById   String?      @db.Uuid
+  notes           String?
+  sortOrder       Int          @default(0)
+
+  offboarding     Offboarding  @relation(fields: [offboardingId], references: [id], onDelete: Cascade)
+
+  @@index([offboardingId])
+}
+
+// ─── Holiday Calendar ───
+
+model HolidayCalendar {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @db.Uuid
+  name            String
+  year            Int
+  isDefault       Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  holidays        Holiday[]
+
+  @@unique([organizationId, name, year])
+  @@index([organizationId])
+}
+
+model Holiday {
+  id              String          @id @default(uuid()) @db.Uuid
+  calendarId      String          @db.Uuid
+  name            String
+  localizedName   Json?           // {"bn": "ঈদুল ফিতর"}
+  date            DateTime
+  endDate         DateTime?
+  type            String          // "PUBLIC", "ORGANIZATIONAL", "RESTRICTED", "OPTIONAL"
+  isRecurring     Boolean         @default(false)
+  description     String?
+
+  calendar        HolidayCalendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+
+  @@index([calendarId])
+  @@index([date])
+}
+
+// ─── Grievance & Disciplinary ───
+
+model EmployeeGrievance {
+  id                 String                 @id @default(uuid()) @db.Uuid
+  organizationId     String                 @db.Uuid
+  grievanceNo        String                 @unique
+  employeeId         String?                @db.Uuid // Null if anonymous
+  isAnonymous        Boolean                @default(false)
+  category           String                 // "HARASSMENT", "DISCRIMINATION", "SAFETY", "POLICY_VIOLATION", "PSEA", "OTHER"
+  subject            String
+  description        String
+  evidencePaths      Json?                  // [{name, filePath}]
+
+  // Investigation
+  assignedToId       String?                @db.Uuid
+  investigationNotes String?
+  resolution         String?
+  resolutionDate     DateTime?
+
+  // Escalation
+  escalatedToId      String?                @db.Uuid
+  escalationReason   String?
+
+  severity           String                 @default("MEDIUM") // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+  status             EmployeeGrievanceStatus @default(SUBMITTED)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+model DisciplinaryCase {
+  id               String             @id @default(uuid()) @db.Uuid
+  organizationId   String             @db.Uuid
+  caseNo           String             @unique
+  employeeId       String             @db.Uuid
+  action           DisciplinaryAction
+  reason           String
+  description      String
+  evidencePaths    Json?              // [{name, filePath}]
+
+  incidentDate     DateTime
+  actionDate       DateTime
+  expiryDate       DateTime?
+
+  suspensionStart  DateTime?
+  suspensionEnd    DateTime?
+  withPay          Boolean            @default(true)
+
+  appealFiled      Boolean            @default(false)
+  appealDate       DateTime?
+  appealOutcome    String?            // "UPHELD", "REDUCED", "OVERTURNED"
+
+  issuedById       String             @db.Uuid
+  acknowledgedAt   DateTime?
+  notes            String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([organizationId])
+  @@index([employeeId])
 }

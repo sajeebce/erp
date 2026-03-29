@@ -9,19 +9,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
 import { FileUpload } from '@/components/shared/file-upload'
 
 const PROJECT_STATUSES = ['PIPELINE', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CLOSED', 'CANCELLED'] as const
+const PROJECT_TYPES = ['HUMANITARIAN', 'DEVELOPMENT', 'ADVOCACY', 'CAPACITY_BUILDING', 'RESEARCH', 'EMERGENCY_RESPONSE', 'CORE_OPERATIONS', 'MULTI_COUNTRY'] as const
+const PROJECT_SECTORS = ['WASH', 'EDUCATION', 'HEALTH', 'LIVELIHOODS', 'FOOD_SECURITY', 'PROTECTION', 'SHELTER', 'NUTRITION', 'AGRICULTURE', 'CLIMATE_ADAPTATION', 'GOVERNANCE', 'GENDER_EQUALITY', 'DISASTER_RISK_REDUCTION', 'MULTI_SECTOR', 'OTHER'] as const
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD', 'JPY', 'SEK', 'NOK', 'DKK', 'BDT', 'INR', 'KES', 'NGN', 'ZAR', 'ETB', 'UGX', 'TZS', 'NPR', 'PKR', 'MMK', 'THB', 'PHP', 'IDR'] as const
 
 interface Grant {
   id: string
@@ -48,12 +45,25 @@ interface TeamMember {
   }
 }
 
+interface Employee {
+  id: string
+  fullName: string
+  designation: { id: string; title: string } | null
+}
+
 interface Project {
   id: string
   projectNo: string
   name: string
   description: string | null
+  projectType: string | null
+  sector: string | null
+  currency: string | null
+  country: string | null
+  region: string | null
+  implementingPartner: string | null
   donorId: string | null
+  managerId: string | null
   startDate: string | null
   endDate: string | null
   totalBudget: string | number
@@ -61,7 +71,6 @@ interface Project {
   location: string | null
   status: string
   progress: number
-  managerId: string | null
   createdAt: string
   updatedAt: string
   grants: Grant[]
@@ -70,6 +79,10 @@ interface Project {
     activities: number
     milestones: number
     budgets: number
+    indicators: number
+    risks: number
+    logFrameEntries: number
+    documents: number
   }
   budgetSummary: {
     totalBudgeted: number
@@ -95,10 +108,18 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [employees, setEmployees] = useState<Employee[]>([])
 
   // Edit form state
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [editProjectType, setEditProjectType] = useState('')
+  const [editSector, setEditSector] = useState('')
+  const [editCurrency, setEditCurrency] = useState('')
+  const [editCountry, setEditCountry] = useState('')
+  const [editRegion, setEditRegion] = useState('')
+  const [editImplementingPartner, setEditImplementingPartner] = useState('')
+  const [editManagerId, setEditManagerId] = useState('')
   const [editStartDate, setEditStartDate] = useState('')
   const [editEndDate, setEditEndDate] = useState('')
   const [editTotalBudget, setEditTotalBudget] = useState('')
@@ -128,10 +149,27 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
+  async function fetchEmployees() {
+    try {
+      const res = await fetch('/api/v1/hr/employees?limit=100')
+      const json = await res.json()
+      if (json.success) setEmployees(json.data)
+    } catch {
+      // silent fail for employee list
+    }
+  }
+
   function startEditing() {
     if (!project) return
     setEditName(project.name)
     setEditDescription(project.description || '')
+    setEditProjectType(project.projectType || '')
+    setEditSector(project.sector || '')
+    setEditCurrency(project.currency || '')
+    setEditCountry(project.country || '')
+    setEditRegion(project.region || '')
+    setEditImplementingPartner(project.implementingPartner || '')
+    setEditManagerId(project.managerId || '')
     setEditStartDate(toDateInput(project.startDate))
     setEditEndDate(toDateInput(project.endDate))
     setEditTotalBudget(String(project.totalBudget))
@@ -139,6 +177,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     setEditStatus(project.status)
     setEditProgress(String(project.progress))
     setEditing(true)
+    fetchEmployees()
   }
 
   function cancelEditing() {
@@ -158,6 +197,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     const payload: Record<string, unknown> = {
       name: editName.trim(),
       description: editDescription.trim() || null,
+      projectType: editProjectType || null,
+      sector: editSector || null,
+      currency: editCurrency || null,
+      country: editCountry.trim() || null,
+      region: editRegion.trim() || null,
+      implementingPartner: editImplementingPartner.trim() || null,
+      managerId: editManagerId || null,
       startDate: editStartDate || null,
       endDate: editEndDate || null,
       totalBudget: Number(editTotalBudget) || 0,
@@ -297,16 +343,32 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-status">{t('fields.status')}</Label>
-                  <Select value={editStatus} onValueChange={setEditStatus}>
-                    <SelectTrigger id="edit-status" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PROJECT_STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>{tc(`status.${s}`)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    id="edit-status"
+                    options={PROJECT_STATUSES.map((s) => ({ value: s, label: tc(`status.${s}`) }))}
+                    value={editStatus}
+                    onValueChange={setEditStatus}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-project-type">{t('fields.projectType')}</Label>
+                  <SearchableSelect
+                    id="edit-project-type"
+                    options={PROJECT_TYPES.map((pt) => ({ value: pt, label: t(`types.${pt}`) }))}
+                    value={editProjectType}
+                    onValueChange={setEditProjectType}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-sector">{t('fields.sector')}</Label>
+                  <SearchableSelect
+                    id="edit-sector"
+                    options={PROJECT_SECTORS.map((s) => ({ value: s, label: t(`sectors.${s}`) }))}
+                    value={editSector}
+                    onValueChange={setEditSector}
+                  />
                 </div>
               </div>
               <div className="space-y-2">
@@ -329,12 +391,50 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   <Input id="edit-budget" type="number" min="0" step="0.01" value={editTotalBudget} onChange={(e) => setEditTotalBudget(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-location">{t('fields.location')}</Label>
-                  <Input id="edit-location" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} />
+                  <Label htmlFor="edit-currency">{t('fields.currency')}</Label>
+                  <SearchableSelect
+                    id="edit-currency"
+                    options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+                    value={editCurrency}
+                    onValueChange={setEditCurrency}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-progress">{t('fields.progress')} (%)</Label>
                   <Input id="edit-progress" type="number" min="0" max="100" value={editProgress} onChange={(e) => setEditProgress(e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-country">{t('fields.country')}</Label>
+                  <Input id="edit-country" value={editCountry} onChange={(e) => setEditCountry(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-region">{t('fields.region')}</Label>
+                  <Input id="edit-region" value={editRegion} onChange={(e) => setEditRegion(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-location">{t('fields.location')}</Label>
+                  <Input id="edit-location" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-implementing-partner">{t('fields.implementingPartner')}</Label>
+                  <Input id="edit-implementing-partner" value={editImplementingPartner} onChange={(e) => setEditImplementingPartner(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-manager">{t('fields.managerId')}</Label>
+                  <SearchableSelect
+                    id="edit-manager"
+                    options={employees.map((emp) => ({
+                      value: emp.id,
+                      label: emp.fullName,
+                      description: emp.designation?.title,
+                    }))}
+                    value={editManagerId}
+                    onValueChange={setEditManagerId}
+                  />
                 </div>
               </div>
             </div>
@@ -345,8 +445,28 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 <p className="font-medium">{project.name}</p>
               </div>
               <div>
+                <p className="text-sm text-muted-foreground">{t('fields.projectType')}</p>
+                <p className="font-medium">{project.projectType ? t(`types.${project.projectType}`) : '-'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{t('fields.sector')}</p>
+                <p className="font-medium">{project.sector ? t(`sectors.${project.sector}`) : '-'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{t('fields.country')}</p>
+                <p className="font-medium">{project.country || '-'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{t('fields.region')}</p>
+                <p className="font-medium">{project.region || '-'}</p>
+              </div>
+              <div>
                 <p className="text-sm text-muted-foreground">{t('fields.location')}</p>
                 <p className="font-medium">{project.location || '-'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{t('fields.implementingPartner')}</p>
+                <p className="font-medium">{project.implementingPartner || '-'}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">{t('fields.progress')}</p>
@@ -356,6 +476,10 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                   </div>
                   <span className="text-sm font-mono">{project.progress}%</span>
                 </div>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{t('fields.currency')}</p>
+                <p className="font-medium">{project.currency || '-'}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">{t('fields.startDate')}</p>
@@ -393,7 +517,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       </Card>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{t('detail.activities')}</p>
@@ -410,6 +534,30 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">{t('detail.budgetLines')}</p>
             <p className="text-2xl font-bold">{project._count.budgets}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{t('detail.indicators')}</p>
+            <p className="text-2xl font-bold">{project._count.indicators}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{t('detail.risks')}</p>
+            <p className="text-2xl font-bold">{project._count.risks}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{t('detail.logFrameEntries')}</p>
+            <p className="text-2xl font-bold">{project._count.logFrameEntries}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">{t('detail.documents')}</p>
+            <p className="text-2xl font-bold">{project._count.documents}</p>
           </CardContent>
         </Card>
       </div>
@@ -449,13 +597,6 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         </Card>
       )}
 
-      {/* File Attachments */}
-      <Card>
-        <CardContent className="pt-6">
-          <FileUpload entityType="project" entityId={id} module="projects" readOnly={['COMPLETED', 'CLOSED', 'CANCELLED'].includes(project.status)} />
-        </CardContent>
-      </Card>
-
       {/* Team Members */}
       {project.teamMembers.length > 0 && (
         <Card>
@@ -488,6 +629,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </CardContent>
         </Card>
       )}
+
+      {/* File Attachments */}
+      <Card>
+        <CardContent className="pt-6">
+          <FileUpload entityType="project" entityId={id} module="projects" readOnly={['COMPLETED', 'CLOSED', 'CANCELLED'].includes(project.status)} />
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -11,13 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatusBadge } from '@/components/shared/status-badge'
@@ -803,32 +797,24 @@ export default function BudgetDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>{t('form.account')} *</Label>
-                  <Select value={line.accountId} onValueChange={(v) => updateLine(index, 'accountId', v)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t('form.selectAccount')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.code} - {a.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    id={`edit-line-${index}-account`}
+                    options={accounts.map((a) => ({ value: a.id, label: `${a.code} - ${a.name}` }))}
+                    value={line.accountId}
+                    onValueChange={(v) => updateLine(index, 'accountId', v)}
+                    placeholder={t('form.selectAccount')}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>{t('form.category')} *</Label>
-                  <Select value={line.category} onValueChange={(v) => updateLine(index, 'category', v)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={t('form.selectCategory')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map((cat) => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    id={`edit-line-${index}-category`}
+                    options={CATEGORIES.map((cat) => ({ value: cat, label: cat }))}
+                    value={line.category}
+                    onValueChange={(v) => updateLine(index, 'category', v)}
+                    placeholder={t('form.selectCategory')}
+                  />
                 </div>
 
                 <div className="space-y-2">

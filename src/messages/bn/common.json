@@ -96,7 +96,25 @@
     "POOR": "দুর্বল",
     "DAMAGED": "ক্ষতিগ্রস্ত",
     "DISPOSED": "নিষ্পত্তিকৃত",
-    "LOCKED": "লক করা"
+    "LOCKED": "লক করা",
+    "PUBLISHED": "প্রকাশিত",
+    "APPLIED": "আবেদনকৃত",
+    "SCREENED": "স্ক্রিনকৃত",
+    "SHORTLISTED": "শর্টলিস্টকৃত",
+    "TECHNICAL_TEST": "কারিগরি পরীক্ষা",
+    "REFERENCE_CHECK": "রেফারেন্স যাচাই",
+    "OFFER": "অফার",
+    "HIRED": "নিয়োগকৃত",
+    "WITHDRAWN": "প্রত্যাহারকৃত",
+    "EXPIRING_SOON": "শীঘ্রই মেয়াদ শেষ",
+    "RENEWED": "নবায়নকৃত",
+    "INITIATED": "শুরু করা হয়েছে",
+    "INVESTIGATING": "তদন্তাধীন",
+    "ESCALATED": "উচ্চপর্যায়ে প্রেরিত",
+    "VERBAL_WARNING": "মৌখিক সতর্কতা",
+    "WRITTEN_WARNING": "লিখিত সতর্কতা",
+    "FINAL_WARNING": "চূড়ান্ত সতর্কতা",
+    "SUSPENSION": "স্থগিত"
   },
   "pagination": {
     "rowsPerPage": "প্রতি পৃষ্ঠায় সারি",
@@ -143,6 +161,11 @@
     "noData": "কোনো তথ্য নেই",
     "comingSoon": "শীঘ্রই আসছে",
     "comingSoonDesc": "এই মডিউলটি বর্তমানে উন্নয়নাধীন।"
+  },
+  "combobox": {
+    "select": "নির্বাচন করুন...",
+    "search": "অনুসন্ধান...",
+    "noResults": "কোনো ফলাফল পাওয়া যায়নি।"
   },
   "accountTypes": {
     "ASSET": "সম্পদ",

@@ -8,10 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { Switch } from '@/components/ui/switch'
 import { PageHeader } from '@/components/shared/page-header'
 import { ReportViewer } from '@/components/shared/report-viewer'
@@ -359,35 +356,28 @@ export default function ReportDetailPage() {
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs">{t('fiscalYear')}</Label>
-              <Select value={fiscalYearId} onValueChange={(v) => {
-                setFiscalYearId(v)
-                const fy = fiscalYears.find(f => f.id === v)
-                if (fy) { setStartDate(fy.startDate.split('T')[0]); setEndDate(fy.endDate.split('T')[0]) }
-              }}>
-                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {fiscalYears.map(fy => (
-                    <SelectItem key={fy.id} value={fy.id}>
-                      {fy.name} {fy.isCurrent && <Badge variant="secondary" className="ml-1 text-[10px]">Current</Badge>}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="fiscal-year"
+                options={fiscalYears.map(fy => ({ value: fy.id, label: `${fy.name}${fy.isCurrent ? ' (Current)' : ''}` }))}
+                value={fiscalYearId}
+                onValueChange={(v) => {
+                  setFiscalYearId(v)
+                  const fy = fiscalYears.find(f => f.id === v)
+                  if (fy) { setStartDate(fy.startDate.split('T')[0]); setEndDate(fy.endDate.split('T')[0]) }
+                }}
+                placeholder={t('fiscalYear')}
+              />
             </div>
             {type === 'ledger' && accounts.length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs">{tr('account')}</Label>
-                <Select value={accountId} onValueChange={setAccountId}>
-                  <SelectTrigger className="w-56"><SelectValue placeholder={tr('allAccounts')} /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_all">{tr('allAccounts')}</SelectItem>
-                    {accounts.map(a => (
-                      <SelectItem key={a.id} value={a.id}>
-                        <span className="font-mono text-xs mr-1.5">{a.code}</span>{a.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  id="ledger-account"
+                  options={[{ value: '_all', label: tr('allAccounts') }, ...accounts.map(a => ({ value: a.id, label: `${a.code} - ${a.name}` }))]}
+                  value={accountId}
+                  onValueChange={setAccountId}
+                  placeholder={tr('allAccounts')}
+                />
               </div>
             )}
             <div className="space-y-1.5">

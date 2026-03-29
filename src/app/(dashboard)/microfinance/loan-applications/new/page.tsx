@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
 
@@ -174,34 +168,24 @@ export default function NewLoanApplicationPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="loan-member">{t('loanApplications.member')} *</Label>
-              <Select value={memberId} onValueChange={setMemberId}>
-                <SelectTrigger id="loan-member" className="w-full">
-                  <SelectValue placeholder={t('loanForm.selectMember')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {members.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.beneficiary?.name || m.memberNo} ({m.memberNo})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="loan-member"
+                options={members.map((m) => ({ value: m.id, label: `${m.beneficiary?.name || m.memberNo} (${m.memberNo})` }))}
+                value={memberId}
+                onValueChange={setMemberId}
+                placeholder={t('loanForm.selectMember')}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="loan-product">{t('loanApplications.product')} *</Label>
-              <Select value={productId} onValueChange={setProductId}>
-                <SelectTrigger id="loan-product" className="w-full">
-                  <SelectValue placeholder={t('loanForm.selectProduct')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name} ({p.productCode})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="loan-product"
+                options={products.map((p) => ({ value: p.id, label: `${p.name} (${p.productCode})` }))}
+                value={productId}
+                onValueChange={setProductId}
+                placeholder={t('loanForm.selectProduct')}
+              />
             </div>
           </div>
 

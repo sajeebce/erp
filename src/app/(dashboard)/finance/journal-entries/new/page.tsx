@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import {
   Table,
   TableBody,
@@ -317,68 +311,46 @@ export default function NewJournalEntryPage() {
 
             <div className="space-y-2">
               <Label htmlFor="fiscalYear">{t('fiscalYear')}</Label>
-              <Select value={fiscalYearId} onValueChange={setFiscalYearId}>
-                <SelectTrigger id="fiscalYear">
-                  <SelectValue placeholder={t('selectFiscalYear')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {fiscalYears.map((fy) => (
-                    <SelectItem key={fy.id} value={fy.id}>
-                      {fy.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="fiscalYear"
+                options={fiscalYears.map((fy) => ({ value: fy.id, label: fy.name }))}
+                value={fiscalYearId}
+                onValueChange={setFiscalYearId}
+                placeholder={t('selectFiscalYear')}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="currency">{t('currency')}</Label>
-              <Select value={currencyCode} onValueChange={setCurrencyCode}>
-                <SelectTrigger id="currency">
-                  <SelectValue placeholder={t('selectCurrency')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {CURRENCIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="currency"
+                options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+                value={currencyCode}
+                onValueChange={setCurrencyCode}
+                placeholder={t('selectCurrency')}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="project">{t('project')}</Label>
-              <Select value={projectId} onValueChange={(v) => setProjectId(v === '_none' ? '' : v)}>
-                <SelectTrigger id="project">
-                  <SelectValue placeholder={t('selectProject')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none" className="text-muted-foreground">{t('noProject')}</SelectItem>
-                  {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.code ? `${p.code} - ${p.name}` : p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="project"
+                options={[{ value: '_none', label: t('noProject') }, ...projects.map((p) => ({ value: p.id, label: p.code ? `${p.code} - ${p.name}` : p.name }))]}
+                value={projectId}
+                onValueChange={(v) => setProjectId(v === '_none' ? '' : v)}
+                placeholder={t('selectProject')}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="grant">{t('grant')}</Label>
-              <Select value={grantId} onValueChange={(v) => setGrantId(v === '_none' ? '' : v)}>
-                <SelectTrigger id="grant">
-                  <SelectValue placeholder={t('selectGrant')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_none" className="text-muted-foreground">{t('noGrant')}</SelectItem>
-                  {grants.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.code ? `${g.code} - ${g.name}` : g.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="grant"
+                options={[{ value: '_none', label: t('noGrant') }, ...grants.map((g) => ({ value: g.id, label: g.code ? `${g.code} - ${g.name}` : g.name }))]}
+                value={grantId}
+                onValueChange={(v) => setGrantId(v === '_none' ? '' : v)}
+                placeholder={t('selectGrant')}
+              />
             </div>
 
             <div className="space-y-2 sm:col-span-2 lg:col-span-3">
@@ -422,23 +394,15 @@ export default function NewJournalEntryPage() {
                 {lines.map((line) => (
                   <TableRow key={line.id}>
                     <TableCell>
-                      <Select
+                      <SearchableSelect
+                        id={`account-${line.id}`}
+                        options={accounts.map((acc) => ({ value: acc.id, label: `${acc.code} - ${acc.name}` }))}
                         value={line.accountId}
                         onValueChange={(val) =>
                           updateLine(line.id, 'accountId', val)
                         }
-                      >
-                        <SelectTrigger aria-label={t('selectAccount')}>
-                          <SelectValue placeholder={t('selectAccount')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {accounts.map((acc) => (
-                            <SelectItem key={acc.id} value={acc.id}>
-                              {acc.code} - {acc.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder={t('selectAccount')}
+                      />
                     </TableCell>
                     <TableCell>
                       <Input
