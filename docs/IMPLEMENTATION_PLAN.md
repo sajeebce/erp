@@ -7,17 +7,92 @@
 
 ---
 
-## Table of Contents
+> **MAINTENANCE RULE:** When any section is added, removed, or significantly edited in this document,
+> the **Section Index (Line Ranges)** table below MUST be updated to reflect the new line numbers.
+> Also update **Quick Reference — Key Rules** if a new architectural rule or convention is introduced.
 
-1. [Architecture & Design Principles](#1-architecture--design-principles)
-2. [Folder Structure](#2-folder-structure)
-3. [Menu Structure](#3-menu-structure)
-4. [Database Schema (Prisma 7.x)](#4-database-schema-prisma-7x)
-5. [Inter-Module Data Flow & Relationships](#5-inter-module-data-flow--relationships)
-6. [API Routes & CRUD Operations](#6-api-routes--crud-operations)
-7. [Implementation Phases](#7-implementation-phases)
-8. [Testing Guidelines](#8-testing-guidelines)
-9. [Internationalization (i18n)](#9-internationalization-i18n)
+---
+
+## Quick Reference — Key Rules
+
+1. **SaaS Multi-Tenant** — Every data table has `organizationId` (except global tables listed in §1.3). All queries filter by it.
+2. **API-First** — Build REST API first, then UI consumes it. Response format: `{ success, data, meta?, error? }` (§1.2).
+3. **Auth** — Custom JWT with `jose` (not NextAuth). Access token 15min, Refresh token 7 days in DB. RBAC on every endpoint (§1.4).
+4. **Subscription Guard** — Write ops check plan status: ACTIVE/TRIAL=full, PAST_DUE=read-only, CANCELLED/SUSPENDED=blocked (§1.4.1).
+5. **File Storage** — Adapter pattern (local disk → Cloudflare R2). Keys: `{orgId}/{module}/{year}/{month}/{uuid}-{filename}` (§1.5.1).
+6. **i18n** — `next-intl` with EN + BN. Messages in `src/messages/{locale}/`. Locale from cookie → org setting → browser (§9).
+7. **Server Components default** — Only add `'use client'` when strictly needed. Use `use cache` (not deprecated `unstable_cache`).
+8. **Cascade rules** — Soft-delete parents, restrict if children exist, archive completed projects (§5.3).
+9. **All file uploads go to Cloudflare R2** — Every module that handles file uploads (documents, receipts, photos, attachments) MUST use the centralized storage adapter. Never store files on local disk in production. Storage config is managed by Super Admin via `MediaSetting` table; tenants see read-only storage info in System Settings. Key format: `{orgId}/{module}/{year}/{month}/{uuid}-{filename}`.
+
+---
+
+## Section Index (Line Ranges)
+
+> **How to use:** Find your topic below, then read only the listed line range.
+
+| # | Section | Lines | Description |
+|---|---------|-------|-------------|
+| **1** | **Architecture & Design Principles** | **24–321** | |
+| 1.1 | API-Centric Design | 26–34 | REST-first, integration, webhooks, export |
+| 1.2 | API Response Format | 35–58 | Standard success/error JSON structure |
+| 1.3 | SaaS Multi-Tenancy | 59–134 | Shared DB, tenant isolation, domain routing, onboarding, global vs scoped tables |
+| 1.4 | Authentication & Authorization | 135–189 | JWT structure, auth flow, RBAC helpers |
+| 1.4.1 | Subscription Guard | 190–215 | Plan-based access control (active/trial/past-due/cancelled) |
+| 1.4.2 | Impersonation | 216–229 | Super admin → tenant user impersonation |
+| 1.5 | Core Design Rules | 230–248 | Coding conventions, soft-delete, audit trail |
+| 1.5.1 | File Storage (Adapter Pattern) | 249–283 | Local ↔ R2 storage abstraction |
+| 1.5.2 | Payment Gateway (Factory Pattern) | 284–308 | bKash, Nagad, Stripe, bank API integration |
+| 1.6 | Deployment (VPS Direct) | 309–321 | Production deployment strategy |
+| **2** | **Folder Structure** | **322–804** | Complete `src/` directory tree with file descriptions |
+| **3** | **Menu Structure** | **805–819** | Sidebar navigation hierarchy |
+| **4** | **Database Schema (Prisma 7.x)** | **820–3974** | |
+| 4.1 | Enums | 822–1309 | All enum definitions |
+| 4.2 | Auth & Organization Models | 1310–1801 | User, Role, Permission, Organization, Subscription, SuperAdmin, etc. |
+| 4.3 | Finance & Accounting Models | 1802–2008 | Account, JournalEntry, Voucher, FundReceipt, BankReconciliation |
+| 4.4 | Budget Management Models | 2009–2135 | Budget, BudgetLine, BudgetRevision |
+| 4.5 | Donor & Grant Management Models | 2136–2296 | Donor, Grant, FundRequisition, DonorReport |
+| 4.6 | Project Management Models | 2297–2475 | Project, Activity, Milestone, Logframe, TimeEntry |
+| 4.7 | Beneficiary Management Models | 2476–2620 | Beneficiary, Enrollment, ServiceDelivery, ImpactAssessment, Grievance |
+| 4.8 | Procurement & Inventory Models | 2621–2943 | Vendor, Requisition, PurchaseOrder, GoodsReceipt, Inventory, Warehouse |
+| 4.9 | Fixed Asset Models | 2944–3092 | Asset, AssetCategory, Depreciation, Disposal, Transfer, Maintenance |
+| 4.10 | Human Resources Models | 3093–3461 | Employee, Attendance, Leave, Payroll, Performance, Training, Onboarding |
+| 4.11 | Microfinance Models | 3462–3722 | Samity, LoanProduct, LoanApplication, LoanAccount, Savings, Collection |
+| 4.12 | System Models | 3723–3974 | AuditLog, Notification, Webhook, SystemSetting, BackupLog, Workflow |
+| **5** | **Inter-Module Data Flow** | **3975–4087** | |
+| 5.1 | Master Relationship Map | 3977–4041 | Module dependency diagram |
+| 5.2 | Cross-Module Impact Analysis | 4042–4065 | What happens when data changes in one module |
+| 5.3 | Cascade Rules | 4066–4087 | Delete/archive behavior across modules |
+| **6** | **API Routes & CRUD Operations** | **4088–4444** | |
+| 6.1 | Common Query Parameters | 4090–4109 | Pagination, sorting, filtering, search |
+| 6.2 | Module-wise API Endpoints | 4110–4444 | All 220+ endpoints by module |
+| **7** | **Implementation Phases** | **4445–4766** | |
+| | Phase 1: Foundation & SaaS Core (Wk 1–4) | 4447–4530 | Auth, multi-tenancy, super admin, subscription |
+| | Phase 2: Core Finance (Wk 4–6) ✅ | 4531–4555 | Chart of Accounts, Journal Entries, Vouchers |
+| | Phase 3: Budget & Donor (Wk 7–9) ✅ | 4556–4578 | Budgets, Donors, Grants, Fund Receipts |
+| | Phase 4: Project & Beneficiary (Wk 10–12) ✅ | 4579–4604 | Projects, Activities, Beneficiaries |
+| | Phase 5: Operations (Wk 13–16) ✅ | 4605–4667 | Procurement, Assets, HR, Microfinance |
+| | Phase 6: Reports & Dashboard (Wk 23–25) ✅ | 4668–4694 | Reports, Analytics, Dashboard widgets |
+| | Phase 7: UI Pages ✅ | 4695–4726 | All CRUD UI pages across modules |
+| | Remaining (Deferred) | 4727–4740 | Webhooks, advanced features |
+| 7.1 | Cron Jobs | 4741–4766 | Scheduled tasks (token cleanup, depreciation, etc.) |
+| **8** | **Testing Guidelines** | **4767–5059** | |
+| 8.1 | Testing Strategy | 4769–4776 | Approach overview |
+| 8.2 | Module-wise Testing | 4777–4977 | Per-module test cases and seed data |
+| 8.3 | Integration Test Scenarios | 4978–5059 | Cross-module end-to-end test flows |
+| — | **Verification Checklist** | **5060–5089** | Pre-launch validation checklist |
+| — | **Critical Fixes (Post-Audit)** | **5090–5179** | Fix 1–9: journal auto-create, missing indexes, file upload, etc. |
+| — | **Important Features (Post-Fixes)** | **5180–5194** | International-grade enhancements |
+| — | **New Dependencies** | **5195–5226** | Required npm packages (auth, storage, validation, etc.) |
+| **9** | **Internationalization (i18n)** | **5227–5336** | |
+| 9.1 | Architecture | 5229–5238 | next-intl setup, cookie-based locale |
+| 9.2 | Supported Locales | 5239–5245 | EN (default), BN |
+| 9.3 | Message File Structure | 5246–5263 | JSON namespace per module |
+| 9.4 | Key Files | 5264–5275 | Config, request handler, middleware |
+| 9.5 | Locale Resolution Priority | 5276–5283 | Cookie → org setting → browser |
+| 9.6 | Usage Patterns | 5284–5315 | Server/Client component usage examples |
+| 9.7 | Database Fields | 5316–5325 | Bilingual name storage pattern |
+| 9.8 | API Endpoints | 5326–5336 | Language preference API |
 
 ---
 

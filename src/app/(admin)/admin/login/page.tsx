@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Shield, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Shield, Eye, EyeOff, Loader2, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -65,6 +65,22 @@ export default function AdminLoginPage() {
 
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          <button
+            type="button"
+            onClick={() => {
+              setEmail('admin@ngoerp.com')
+              setPassword('SuperAdmin@2026')
+              setError('')
+            }}
+            className="w-full flex items-center justify-between rounded-lg border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-sm transition-colors hover:bg-primary/10 hover:border-primary/60"
+          >
+            <div className="flex flex-col items-start gap-0.5">
+              <span className="font-medium text-foreground">{t('login.demoAccount')}</span>
+              <span className="text-xs text-muted-foreground">{t('login.demoDesc')}</span>
+            </div>
+            <Copy className="h-4 w-4 text-primary shrink-0" />
+          </button>
+
           {error && (
             <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
               {error}

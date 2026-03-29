@@ -64,22 +64,27 @@
     "searchPlaceholder": "Search by slug..."
   },
   "mediaSettings": {
-    "title": "Media Settings",
-    "description": "Configure file storage provider and upload limits",
-    "storageConfig": "Storage Configuration",
-    "provider": "Provider",
+    "title": "Media & Storage",
+    "description": "Configure cloud storage provider for all tenant file uploads",
+    "storageConfig": "Cloud Storage Configuration",
+    "provider": "Storage Provider",
     "bucketName": "Bucket Name",
-    "endpoint": "Endpoint",
+    "region": "Region",
+    "endpoint": "S3-Compatible Endpoint",
     "accessKeyId": "Access Key ID",
     "secretAccessKey": "Secret Access Key",
-    "publicUrl": "Public URL",
-    "maxFileSizeMb": "Max File Size (MB)",
+    "publicUrl": "Public URL (CDN)",
+    "publicUrlHint": "Optional. Custom domain for public file access (e.g., Cloudflare custom domain)",
+    "maxFileSizeMb": "Max File Size",
+    "allowedMimeTypes": "Allowed File Types",
+    "mimeTypesHint": "Comma-separated MIME types. Use wildcard for groups (e.g., image/*)",
+    "r2RegionHint": "Cloudflare R2 uses \"auto\" region — leave as default",
     "saveSettings": "Save Settings",
     "testConnection": "Test Connection",
-    "savedSuccess": "Media settings saved successfully.",
+    "savedSuccess": "Storage settings saved successfully.",
     "failedToSave": "Failed to save settings.",
-    "connectionSuccess": "Connection test successful!",
-    "connectionFailed": "Connection test failed.",
+    "connectionSuccess": "Connection test successful! Bucket is accessible.",
+    "connectionFailed": "Connection test failed. Check credentials and endpoint.",
     "networkError": "Network error. Please try again."
   },
   "auditLog": {
@@ -103,6 +108,8 @@
     "password": "Password",
     "signIn": "Sign In",
     "networkError": "Network error. Please try again.",
-    "loginFailed": "Login failed"
+    "loginFailed": "Login failed",
+    "demoAccount": "Demo Super Admin",
+    "demoDesc": "Click to fill demo credentials"
   }
 }

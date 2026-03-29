@@ -39,7 +39,19 @@
     "bankCashAccount": "Bank / Cash Account",
     "bankCashAccountDesc": "Mark if this maps to a bank or cash account",
     "networkError": "Network error. Please try again.",
-    "failedToCreate": "Failed to create account"
+    "failedToCreate": "Failed to create account",
+    "failedToUpdate": "Failed to update account",
+    "editAccount": "Edit Account",
+    "editAccountDesc": "Update account details. Code, type, and parent cannot be changed.",
+    "codeNotEditable": "Account code cannot be changed after creation",
+    "typeNotEditable": "Account type and nature cannot be changed after creation",
+    "activeStatus": "Active",
+    "activeStatusDesc": "Deactivate to hide from dropdowns and prevent new transactions",
+    "hasTransactionsWarning": "This account has transactions. Deactivating will prevent new entries but preserve history.",
+    "totalDebit": "Total Debit",
+    "totalCredit": "Total Credit",
+    "balance": "Balance",
+    "descriptionPlaceholder": "Account purpose or notes (optional)"
   },
   "journalEntries": {
     "title": "Journal Entries",
