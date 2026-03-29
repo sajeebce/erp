@@ -1,14 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { ArrowLeft, Loader2, Plus, Trash2 } from 'lucide-react'
+import {
+  ArrowLeft, Loader2, Plus, Trash2, ChevronDown, ChevronUp,
+  Calculator, FileText, Shield, DollarSign, Info,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Switch } from '@/components/ui/switch'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -16,6 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
+import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
 
@@ -33,6 +44,8 @@ interface Grant {
 interface FiscalYear {
   id: string
   name: string
+  startDate: string
+  endDate: string
 }
 
 interface Account {
@@ -44,11 +57,17 @@ interface Account {
 interface BudgetLine {
   accountId: string
   category: string
+  subCategory: string
   description: string
   unit: string
   quantity: string
   unitCost: string
   totalAmount: string
+  levelOfEffort: string
+  duration: string
+  donorShare: string
+  costShare: string
+  narrative: string
   notes: string
 }
 
@@ -63,15 +82,53 @@ const CATEGORIES = [
   'Contingency',
 ] as const
 
+const SUB_CATEGORIES: Record<string, string[]> = {
+  Personnel: ['International Staff', 'National Staff', 'Consultants', 'Volunteers', 'Fringe Benefits'],
+  Operations: ['Office Supplies', 'Communications', 'Utilities', 'Insurance', 'Bank Charges'],
+  Equipment: ['IT Equipment', 'Field Equipment', 'Vehicles', 'Furniture'],
+  Travel: ['International Travel', 'Domestic Travel', 'Per Diem', 'Ground Transport'],
+  Training: ['Workshops', 'Materials', 'Venue & Catering', 'Facilitators'],
+  Admin: ['Office Rent', 'Audit Fees', 'Legal Services', 'Publications'],
+  'M&E': ['Surveys', 'Evaluations', 'Data Collection', 'Reporting'],
+  Contingency: ['General Contingency'],
+}
+
+const BUDGET_TYPES = [
+  { value: 'PROJECT', label: 'budgetType.PROJECT' },
+  { value: 'CORE', label: 'budgetType.CORE' },
+  { value: 'PROGRAM', label: 'budgetType.PROGRAM' },
+  { value: 'OPERATIONAL', label: 'budgetType.OPERATIONAL' },
+  { value: 'PROPOSAL', label: 'budgetType.PROPOSAL' },
+] as const
+
+const PERIOD_TYPES = [
+  { value: 'MONTHLY', label: 'periodType.MONTHLY' },
+  { value: 'QUARTERLY', label: 'periodType.QUARTERLY' },
+  { value: 'SEMI_ANNUAL', label: 'periodType.SEMI_ANNUAL' },
+  { value: 'ANNUAL', label: 'periodType.ANNUAL' },
+] as const
+
+const ICR_BASES = [
+  { value: 'TOTAL_DIRECT', label: 'indirectCost.TOTAL_DIRECT' },
+  { value: 'MTDC', label: 'indirectCost.MTDC' },
+  { value: 'PERSONNEL', label: 'indirectCost.PERSONNEL' },
+] as const
+
 function emptyLine(): BudgetLine {
   return {
     accountId: '',
     category: '',
+    subCategory: '',
     description: '',
     unit: '',
     quantity: '1',
     unitCost: '0',
     totalAmount: '0',
+    levelOfEffort: '',
+    duration: '',
+    donorShare: '',
+    costShare: '',
+    narrative: '',
     notes: '',
   }
 }
@@ -85,15 +142,43 @@ export default function NewBudgetPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  // Form state
+  // Section 1: Budget Header
   const [name, setName] = useState('')
+  const [budgetType, setBudgetType] = useState('PROJECT')
   const [projectId, setProjectId] = useState('')
   const [grantId, setGrantId] = useState('')
   const [fiscalYearId, setFiscalYearId] = useState('')
-  const [totalAmount, setTotalAmount] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [periodType, setPeriodType] = useState('ANNUAL')
   const [currencyCode, setCurrencyCode] = useState('BDT')
+  const [exchangeRate, setExchangeRate] = useState('')
   const [notes, setNotes] = useState('')
+
+  // Section 2: ICR (Indirect Cost Rate)
+  const [indirectCostRate, setIndirectCostRate] = useState('')
+  const [indirectCostBase, setIndirectCostBase] = useState('')
+
+  // Section 3: Cost Sharing
+  const [costShareRequired, setCostShareRequired] = useState(false)
+  const [costSharePercent, setCostSharePercent] = useState('')
+
+  // Section 4: Controls
+  const [budgetCeiling, setBudgetCeiling] = useState('')
+  const [varianceThreshold, setVarianceThreshold] = useState('10')
+
+  // Section 5: Narratives
+  const [narrative, setNarrative] = useState('')
+  const [assumptions, setAssumptions] = useState('')
+
+  // Section 6: Budget Lines
   const [lines, setLines] = useState<BudgetLine[]>([emptyLine()])
+
+  // Collapsible sections
+  const [icrOpen, setIcrOpen] = useState(false)
+  const [costShareOpen, setCostShareOpen] = useState(false)
+  const [controlsOpen, setControlsOpen] = useState(false)
+  const [narrativesOpen, setNarrativesOpen] = useState(false)
 
   // Lookup data
   const [projects, setProjects] = useState<Project[]>([])
@@ -112,27 +197,58 @@ export default function NewBudgetPage() {
       .then(json => { if (json.success) setGrants(json.data) })
       .catch(() => {})
 
-    fetch('/api/v1/finance/fiscal-years?limit=50')
+    fetch('/api/v1/settings/fiscal-years?limit=50')
       .then(res => res.json())
       .then(json => { if (json.success) setFiscalYears(json.data) })
       .catch(() => {})
 
-    fetch('/api/v1/finance/chart-of-accounts?limit=500')
+    fetch('/api/v1/finance/accounts?isGroup=false&limit=500')
       .then(res => res.json())
       .then(json => { if (json.success) setAccounts(json.data) })
       .catch(() => {})
   }, [])
 
+  // Auto-fill dates when fiscal year is selected
+  useEffect(() => {
+    if (fiscalYearId) {
+      const fy = fiscalYears.find(f => f.id === fiscalYearId)
+      if (fy && !startDate && !endDate) {
+        setStartDate(fy.startDate.split('T')[0])
+        setEndDate(fy.endDate.split('T')[0])
+      }
+    }
+  }, [fiscalYearId, fiscalYears, startDate, endDate])
+
   function updateLine(index: number, field: keyof BudgetLine, value: string) {
     setLines(prev => {
       const updated = [...prev]
       updated[index] = { ...updated[index], [field]: value }
-      // Auto-calculate totalAmount when quantity or unitCost changes
-      if (field === 'quantity' || field === 'unitCost') {
-        const qty = parseFloat(field === 'quantity' ? value : updated[index].quantity) || 0
-        const cost = parseFloat(field === 'unitCost' ? value : updated[index].unitCost) || 0
-        updated[index].totalAmount = String(Math.round(qty * cost * 100) / 100)
+
+      // Auto-calculate totalAmount
+      if (field === 'quantity' || field === 'unitCost' || field === 'levelOfEffort' || field === 'duration') {
+        const qty = parseFloat(updated[index].quantity) || 1
+        const cost = parseFloat(updated[index].unitCost) || 0
+        const loe = parseFloat(updated[index].levelOfEffort) || 100
+        const dur = parseFloat(updated[index].duration) || 1
+
+        // For personnel: unitCost × quantity × (LoE/100) × duration
+        // For others: unitCost × quantity
+        let total: number
+        if (updated[index].category === 'Personnel' && updated[index].levelOfEffort) {
+          total = cost * qty * (loe / 100) * dur
+        } else if (updated[index].duration && parseFloat(updated[index].duration) > 0) {
+          total = cost * qty * dur
+        } else {
+          total = cost * qty
+        }
+        updated[index].totalAmount = String(Math.round(total * 100) / 100)
       }
+
+      // Reset sub-category when category changes
+      if (field === 'category') {
+        updated[index].subCategory = ''
+      }
+
       return updated
     })
   }
@@ -146,16 +262,48 @@ export default function NewBudgetPage() {
     setLines(prev => prev.filter((_, i) => i !== index))
   }
 
-  const lineTotal = lines.reduce((sum, l) => sum + (parseFloat(l.totalAmount) || 0), 0)
+  // Calculations
+  const lineTotal = useMemo(() =>
+    lines.reduce((sum, l) => sum + (parseFloat(l.totalAmount) || 0), 0),
+    [lines]
+  )
+
+  const personnelTotal = useMemo(() =>
+    lines
+      .filter(l => l.category === 'Personnel')
+      .reduce((sum, l) => sum + (parseFloat(l.totalAmount) || 0), 0),
+    [lines]
+  )
+
+  const icrRate = parseFloat(indirectCostRate) || 0
+  const icrAmount = useMemo(() => {
+    if (icrRate <= 0) return 0
+    const base = indirectCostBase === 'PERSONNEL' ? personnelTotal : lineTotal
+    return Math.round(base * (icrRate / 100) * 100) / 100
+  }, [icrRate, indirectCostBase, lineTotal, personnelTotal])
+
+  const totalProjectCost = lineTotal + icrAmount
+
+  const costSharePct = parseFloat(costSharePercent) || 0
+  const costShareAmt = costShareRequired && costSharePct > 0
+    ? Math.round(totalProjectCost * (costSharePct / 100) * 100) / 100
+    : 0
+  const donorAmt = costShareRequired ? totalProjectCost - costShareAmt : totalProjectCost
+
+  // Category summary
+  const categorySummary = useMemo(() => {
+    const summary: Record<string, number> = {}
+    for (const line of lines) {
+      if (line.category) {
+        summary[line.category] = (summary[line.category] || 0) + (parseFloat(line.totalAmount) || 0)
+      }
+    }
+    return summary
+  }, [lines])
 
   function validate(): boolean {
     if (!name.trim() || !projectId || !fiscalYearId) {
       setError(t('form.requiredFields'))
-      return false
-    }
-    const amt = parseFloat(totalAmount)
-    if (!totalAmount || isNaN(amt) || amt <= 0) {
-      setError(t('form.amountMustBePositive'))
       return false
     }
     for (let i = 0; i < lines.length; i++) {
@@ -169,8 +317,8 @@ export default function NewBudgetPage() {
         return false
       }
     }
-    if (Math.abs(lineTotal - amt) > 0.01) {
-      setError(t('form.lineTotalMismatch'))
+    if (budgetCeiling && totalProjectCost > parseFloat(budgetCeiling)) {
+      setError(`Total (${formatCurrency(totalProjectCost)}) exceeds budget ceiling (${formatCurrency(parseFloat(budgetCeiling))})`)
       return false
     }
     setError('')
@@ -185,20 +333,39 @@ export default function NewBudgetPage() {
 
     const payload = {
       name: name.trim(),
+      budgetType,
       projectId,
       grantId: grantId || undefined,
       fiscalYearId,
-      totalAmount: parseFloat(totalAmount),
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      periodType,
+      totalAmount: totalProjectCost,
       currencyCode,
+      exchangeRate: exchangeRate ? parseFloat(exchangeRate) : undefined,
+      indirectCostRate: icrRate > 0 ? icrRate : undefined,
+      indirectCostBase: icrRate > 0 ? (indirectCostBase || 'TOTAL_DIRECT') : undefined,
+      costShareRequired,
+      costSharePercent: costShareRequired ? costSharePct : undefined,
+      budgetCeiling: budgetCeiling ? parseFloat(budgetCeiling) : undefined,
+      varianceThreshold: parseFloat(varianceThreshold) || 10,
+      narrative: narrative.trim() || undefined,
+      assumptions: assumptions.trim() || undefined,
       notes: notes.trim() || undefined,
       lines: lines.map(l => ({
         accountId: l.accountId,
         category: l.category,
+        subCategory: l.subCategory || undefined,
         description: l.description.trim(),
         unit: l.unit || undefined,
         quantity: parseFloat(l.quantity) || 1,
         unitCost: parseFloat(l.unitCost) || 0,
         totalAmount: parseFloat(l.totalAmount),
+        levelOfEffort: l.levelOfEffort ? parseFloat(l.levelOfEffort) : undefined,
+        duration: l.duration ? parseInt(l.duration) : undefined,
+        donorShare: l.donorShare ? parseFloat(l.donorShare) : undefined,
+        costShare: l.costShare ? parseFloat(l.costShare) : undefined,
+        narrative: l.narrative.trim() || undefined,
         notes: l.notes.trim() || undefined,
       })),
     }
@@ -231,18 +398,23 @@ export default function NewBudgetPage() {
         </Button>
       </PageHeader>
 
+      {error && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      {/* ──── Section 1: Budget Identification ──── */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('form.budgetDetails')}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            {t('form.budgetDetails')}
+          </CardTitle>
+          <CardDescription>{t('form.createDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {error && (
-            <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-
-          {/* Row 1: Name + Project */}
+          {/* Row 1: Name + Budget Type */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="budget-name">{t('name')} *</Label>
@@ -256,6 +428,25 @@ export default function NewBudgetPage() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="budget-type">{t('budgetType.label')}</Label>
+              <Select value={budgetType} onValueChange={setBudgetType}>
+                <SelectTrigger id="budget-type" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUDGET_TYPES.map((bt) => (
+                    <SelectItem key={bt.value} value={bt.value}>
+                      {t(bt.label)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Row 2: Project + Grant */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="budget-project">{t('project')} *</Label>
               <Select value={projectId} onValueChange={setProjectId}>
                 <SelectTrigger id="budget-project" className="w-full">
@@ -268,10 +459,7 @@ export default function NewBudgetPage() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          {/* Row 2: Grant + Fiscal Year */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="budget-grant">{t('grant')}</Label>
               <Select value={grantId} onValueChange={setGrantId}>
@@ -287,7 +475,10 @@ export default function NewBudgetPage() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
 
+          {/* Row 3: Fiscal Year + Period Type */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="budget-fiscal-year">{t('form.fiscalYear')} *</Label>
               <Select value={fiscalYearId} onValueChange={setFiscalYearId}>
@@ -301,23 +492,49 @@ export default function NewBudgetPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="budget-period-type">{t('periodType.label')}</Label>
+              <Select value={periodType} onValueChange={setPeriodType}>
+                <SelectTrigger id="budget-period-type" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PERIOD_TYPES.map((pt) => (
+                    <SelectItem key={pt.value} value={pt.value}>
+                      {t(pt.label)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {/* Row 3: Total Amount + Currency */}
+          {/* Row 4: Start Date + End Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="budget-total">{t('totalAmount')} *</Label>
+              <Label htmlFor="budget-start-date">{t('form.startDate')}</Label>
               <Input
-                id="budget-total"
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={totalAmount}
-                onChange={(e) => setTotalAmount(e.target.value)}
-                required
+                id="budget-start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="budget-end-date">{t('form.endDate')}</Label>
+              <Input
+                id="budget-end-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Row 5: Currency + Exchange Rate */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="budget-currency">{t('form.currency')}</Label>
               <Select value={currencyCode} onValueChange={setCurrencyCode}>
@@ -325,13 +542,28 @@ export default function NewBudgetPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="BDT">BDT</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="GBP">GBP</SelectItem>
+                  <SelectItem value="BDT">BDT - Bangladeshi Taka</SelectItem>
+                  <SelectItem value="USD">USD - US Dollar</SelectItem>
+                  <SelectItem value="EUR">EUR - Euro</SelectItem>
+                  <SelectItem value="GBP">GBP - British Pound</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {currencyCode !== 'BDT' && (
+              <div className="space-y-2">
+                <Label htmlFor="budget-exchange-rate">{t('form.exchangeRate')}</Label>
+                <Input
+                  id="budget-exchange-rate"
+                  type="number"
+                  min="0"
+                  step="0.0001"
+                  value={exchangeRate}
+                  onChange={(e) => setExchangeRate(e.target.value)}
+                  placeholder={t('form.exchangeRatePlaceholder')}
+                />
+              </div>
+            )}
           </div>
 
           {/* Notes */}
@@ -341,13 +573,213 @@ export default function NewBudgetPage() {
               id="budget-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              rows={3}
+              rows={2}
             />
           </div>
         </CardContent>
       </Card>
 
-      {/* Budget Lines */}
+      {/* ──── Section 2: ICR (Collapsible) ──── */}
+      <Collapsible open={icrOpen} onOpenChange={setIcrOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calculator className="h-5 w-5" />
+                  <div>
+                    <CardTitle className="text-base">{t('indirectCost.title')}</CardTitle>
+                    <CardDescription className="text-xs">{t('indirectCost.description')}</CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {icrRate > 0 && (
+                    <Badge variant="secondary">{icrRate}% = {formatCurrency(icrAmount)}</Badge>
+                  )}
+                  {icrOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </div>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>{t('indirectCost.rate')}</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={indirectCostRate}
+                    onChange={(e) => setIndirectCostRate(e.target.value)}
+                    placeholder={t('indirectCost.ratePlaceholder')}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{t('indirectCost.base')}</Label>
+                  <Select value={indirectCostBase} onValueChange={setIndirectCostBase}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={t('indirectCost.basePlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ICR_BASES.map((base) => (
+                        <SelectItem key={base.value} value={base.value}>
+                          {t(base.label)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{t('indirectCost.amount')}</Label>
+                  <Input
+                    type="text"
+                    value={formatCurrency(icrAmount)}
+                    disabled
+                    className="bg-muted font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 p-3 rounded-md">
+                <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                <p>
+                  USAID: Negotiated Indirect Cost Rate Agreement (NICRA). EU: flat 7% of eligible direct costs.
+                  ICR is calculated on the selected base and added to the total project cost.
+                </p>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* ──── Section 3: Cost Sharing (Collapsible) ──── */}
+      <Collapsible open={costShareOpen} onOpenChange={setCostShareOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  <div>
+                    <CardTitle className="text-base">{t('costShare.title')}</CardTitle>
+                    <CardDescription className="text-xs">{t('costShare.description')}</CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {costShareRequired && (
+                    <Badge variant="secondary">{costSharePct}% match</Badge>
+                  )}
+                  {costShareOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </div>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={costShareRequired}
+                  onCheckedChange={setCostShareRequired}
+                  id="cost-share-toggle"
+                />
+                <Label htmlFor="cost-share-toggle">{t('costShare.required')}</Label>
+              </div>
+
+              {costShareRequired && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>{t('costShare.percent')}</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={costSharePercent}
+                      onChange={(e) => setCostSharePercent(e.target.value)}
+                      placeholder={t('costShare.percentPlaceholder')}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{t('costShare.amount')}</Label>
+                    <Input
+                      type="text"
+                      value={formatCurrency(costShareAmt)}
+                      disabled
+                      className="bg-muted font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{t('costShare.donorAmount')}</Label>
+                    <Input
+                      type="text"
+                      value={formatCurrency(donorAmt)}
+                      disabled
+                      className="bg-muted font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* ──── Section 4: Budget Controls (Collapsible) ──── */}
+      <Collapsible open={controlsOpen} onOpenChange={setControlsOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  <div>
+                    <CardTitle className="text-base">{t('controls.title')}</CardTitle>
+                  </div>
+                </div>
+                {controlsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{t('controls.ceiling')}</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={budgetCeiling}
+                    onChange={(e) => setBudgetCeiling(e.target.value)}
+                    placeholder={t('controls.ceilingPlaceholder')}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{t('controls.varianceThreshold')}</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    value={varianceThreshold}
+                    onChange={(e) => setVarianceThreshold(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">{t('controls.varianceDescription')}</p>
+                </div>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* ──── Section 5: Budget Lines ──── */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -364,6 +796,9 @@ export default function NewBudgetPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">
                   {t('form.lineNumber', { number: index + 1 })}
+                  {line.category && (
+                    <Badge variant="outline" className="ml-2">{line.category}</Badge>
+                  )}
                 </span>
                 {lines.length > 1 && (
                   <Button variant="ghost" size="sm" onClick={() => removeLine(index)}>
@@ -372,6 +807,7 @@ export default function NewBudgetPage() {
                 )}
               </div>
 
+              {/* Row 1: Account + Category + Sub-Category */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>{t('form.account')} *</Label>
@@ -404,23 +840,52 @@ export default function NewBudgetPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>{t('form.description')} *</Label>
-                  <Input
-                    value={line.description}
-                    onChange={(e) => updateLine(index, 'description', e.target.value)}
-                    placeholder={t('form.descriptionPlaceholder')}
-                  />
+                  <Label>{t('form.subCategory')}</Label>
+                  <Select
+                    value={line.subCategory}
+                    onValueChange={(v) => updateLine(index, 'subCategory', v)}
+                    disabled={!line.category}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={t('form.selectSubCategory')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(SUB_CATEGORIES[line.category] || []).map((sub) => (
+                        <SelectItem key={sub} value={sub}>{sub}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {/* Row 2: Description */}
+              <div className="space-y-2">
+                <Label>{t('form.description')} *</Label>
+                <Input
+                  value={line.description}
+                  onChange={(e) => updateLine(index, 'description', e.target.value)}
+                  placeholder={t('form.descriptionPlaceholder')}
+                />
+              </div>
+
+              {/* Row 3: Unit + Qty + Unit Cost + LoE + Duration + Total */}
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 <div className="space-y-2">
                   <Label>{t('form.unit')}</Label>
-                  <Input
-                    value={line.unit}
-                    onChange={(e) => updateLine(index, 'unit', e.target.value)}
-                    placeholder={t('form.unitPlaceholder')}
-                  />
+                  <Select value={line.unit} onValueChange={(v) => updateLine(index, 'unit', v)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder={t('form.unitPlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Month">Month</SelectItem>
+                      <SelectItem value="Day">Day</SelectItem>
+                      <SelectItem value="Person">Person</SelectItem>
+                      <SelectItem value="Trip">Trip</SelectItem>
+                      <SelectItem value="Unit">Unit</SelectItem>
+                      <SelectItem value="Lot">Lot</SelectItem>
+                      <SelectItem value="Lump Sum">Lump Sum</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -445,6 +910,33 @@ export default function NewBudgetPage() {
                   />
                 </div>
 
+                {line.category === 'Personnel' && (
+                  <div className="space-y-2">
+                    <Label>{t('form.levelOfEffort')}</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={line.levelOfEffort}
+                      onChange={(e) => updateLine(index, 'levelOfEffort', e.target.value)}
+                      placeholder={t('form.levelOfEffortPlaceholder')}
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label>{t('form.duration')}</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={line.duration}
+                    onChange={(e) => updateLine(index, 'duration', e.target.value)}
+                    placeholder={t('form.durationPlaceholder')}
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <Label>{t('form.lineTotal')}</Label>
                   <Input
@@ -453,32 +945,169 @@ export default function NewBudgetPage() {
                     step="0.01"
                     value={line.totalAmount}
                     onChange={(e) => updateLine(index, 'totalAmount', e.target.value)}
+                    className="font-mono font-medium"
                   />
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label>{t('form.lineNotes')}</Label>
-                  <Input
-                    value={line.notes}
-                    onChange={(e) => updateLine(index, 'notes', e.target.value)}
-                  />
+              {/* Row 4: Cost share (if enabled) + Narrative (collapsible) */}
+              {(costShareRequired || line.narrative) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {costShareRequired && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>{t('form.donorShare')}</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={line.donorShare}
+                          onChange={(e) => updateLine(index, 'donorShare', e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>{t('form.costShareLine')}</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={line.costShare}
+                          onChange={(e) => updateLine(index, 'costShare', e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
+              )}
+
+              {/* Line Narrative */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">{t('form.lineNarrative')}</Label>
+                <Textarea
+                  value={line.narrative}
+                  onChange={(e) => updateLine(index, 'narrative', e.target.value)}
+                  placeholder={t('form.lineNarrativePlaceholder')}
+                  rows={2}
+                  className="text-sm"
+                />
               </div>
             </div>
           ))}
 
+          {/* Category Summary */}
+          {Object.keys(categorySummary).length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <span className="text-sm font-medium text-muted-foreground">Category Breakdown</span>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {Object.entries(categorySummary).map(([cat, amt]) => (
+                    <div key={cat} className="flex justify-between items-center bg-muted/50 rounded-md px-3 py-2">
+                      <span className="text-sm">{cat}</span>
+                      <span className="text-sm font-mono font-medium">{formatCurrency(amt)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Line total summary */}
-          <div className="flex items-center justify-between border-t pt-4">
+          <Separator />
+          <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">{t('form.lineSum')}</span>
             <span className="text-lg font-bold font-mono">{formatCurrency(lineTotal)}</span>
           </div>
-          {totalAmount && Math.abs(lineTotal - parseFloat(totalAmount)) > 0.01 && (
-            <div className="text-sm text-destructive">
-              {t('form.lineTotalMismatch')}
-            </div>
-          )}
         </CardContent>
+      </Card>
 
+      {/* ──── Section 6: Budget Narratives (Collapsible) ──── */}
+      <Collapsible open={narrativesOpen} onOpenChange={setNarrativesOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  <div>
+                    <CardTitle className="text-base">{t('narratives.title')}</CardTitle>
+                    <CardDescription className="text-xs">{t('narratives.description')}</CardDescription>
+                  </div>
+                </div>
+                {narrativesOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>{t('narratives.narrative')}</Label>
+                <Textarea
+                  value={narrative}
+                  onChange={(e) => setNarrative(e.target.value)}
+                  placeholder={t('narratives.narrativePlaceholder')}
+                  rows={5}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('narratives.assumptions')}</Label>
+                <Textarea
+                  value={assumptions}
+                  onChange={(e) => setAssumptions(e.target.value)}
+                  placeholder={t('narratives.assumptionsPlaceholder')}
+                  rows={4}
+                />
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* ──── Section 7: Budget Summary ──── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('summary.title')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <SummaryRow label={t('summary.directCosts')} value={lineTotal} formatCurrency={formatCurrency} />
+            {icrAmount > 0 && (
+              <SummaryRow
+                label={`${t('summary.indirectCosts')} (${icrRate}%)`}
+                value={icrAmount}
+                formatCurrency={formatCurrency}
+              />
+            )}
+            <Separator />
+            <SummaryRow
+              label={t('summary.totalProjectCost')}
+              value={totalProjectCost}
+              formatCurrency={formatCurrency}
+              bold
+            />
+            {costShareRequired && costShareAmt > 0 && (
+              <>
+                <SummaryRow
+                  label={t('summary.donorContribution')}
+                  value={donorAmt}
+                  formatCurrency={formatCurrency}
+                />
+                <SummaryRow
+                  label={`${t('summary.costShareMatch')} (${costSharePct}%)`}
+                  value={costShareAmt}
+                  formatCurrency={formatCurrency}
+                />
+                <Separator />
+                <SummaryRow
+                  label={t('summary.totalFunding')}
+                  value={totalProjectCost}
+                  formatCurrency={formatCurrency}
+                  bold
+                />
+              </>
+            )}
+          </div>
+        </CardContent>
         <CardFooter className="flex justify-end gap-3">
           <Button variant="outline" onClick={() => router.push('/budget')} disabled={saving}>
             {tc('buttons.cancel')}
@@ -495,6 +1124,25 @@ export default function NewBudgetPage() {
           </Button>
         </CardFooter>
       </Card>
+    </div>
+  )
+}
+
+function SummaryRow({
+  label,
+  value,
+  formatCurrency: fmt,
+  bold,
+}: {
+  label: string
+  value: number
+  formatCurrency: (v: number) => string
+  bold?: boolean
+}) {
+  return (
+    <div className={`flex items-center justify-between ${bold ? 'font-semibold text-base' : 'text-sm'}`}>
+      <span className={bold ? '' : 'text-muted-foreground'}>{label}</span>
+      <span className="font-mono">{fmt(value)}</span>
     </div>
   )
 }

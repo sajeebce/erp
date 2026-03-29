@@ -10,6 +10,7 @@ import {
   parsePaginationParams,
 } from '@/lib/api-response'
 import { Prisma } from '@prisma/client'
+import { generateNextNumber } from '@/lib/number-sequence'
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
+        { budgetCode: { contains: search, mode: 'insensitive' } },
       ]
     }
 
@@ -44,6 +46,11 @@ export async function GET(request: NextRequest) {
       where.status = status
     }
 
+    const budgetType = url.searchParams.get('budgetType')
+    if (budgetType) {
+      where.budgetType = budgetType
+    }
+
     const fiscalYearId = url.searchParams.get('fiscalYearId')
     if (fiscalYearId) {
       where.fiscalYearId = fiscalYearId
@@ -54,13 +61,26 @@ export async function GET(request: NextRequest) {
         where,
         select: {
           id: true,
+          budgetCode: true,
           name: true,
+          budgetType: true,
           projectId: true,
           grantId: true,
           fiscalYearId: true,
+          startDate: true,
+          endDate: true,
+          periodType: true,
           totalAmount: true,
           currencyCode: true,
           status: true,
+          version: true,
+          indirectCostRate: true,
+          indirectCostAmount: true,
+          costShareRequired: true,
+          costShareAmount: true,
+          donorAmount: true,
+          budgetCeiling: true,
+          varianceThreshold: true,
           approvedById: true,
           approvedAt: true,
           notes: true,
@@ -131,11 +151,24 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       name,
+      budgetType,
       projectId,
       grantId,
       fiscalYearId,
+      startDate,
+      endDate,
+      periodType,
       totalAmount,
       currencyCode,
+      exchangeRate,
+      indirectCostRate,
+      indirectCostBase,
+      costShareRequired,
+      costSharePercent,
+      budgetCeiling,
+      varianceThreshold,
+      narrative,
+      assumptions,
       notes,
       lines,
     } = body
@@ -161,15 +194,46 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate sum of line totalAmounts equals budget totalAmount
+    // Calculate ICR amount if rate is provided
+    let calculatedICR: number | null = null
+    if (indirectCostRate && indirectCostRate > 0) {
+      const lineTotal = lines.reduce(
+        (sum: number, l: { totalAmount: number; category?: string }) => sum + Number(l.totalAmount),
+        0
+      )
+
+      if (indirectCostBase === 'PERSONNEL') {
+        const personnelTotal = lines
+          .filter((l: { category?: string }) => l.category === 'Personnel')
+          .reduce((sum: number, l: { totalAmount: number }) => sum + Number(l.totalAmount), 0)
+        calculatedICR = Math.round(personnelTotal * (indirectCostRate / 100) * 100) / 100
+      } else {
+        // TOTAL_DIRECT or MTDC
+        calculatedICR = Math.round(lineTotal * (indirectCostRate / 100) * 100) / 100
+      }
+    }
+
+    // Validate sum of line totalAmounts equals budget totalAmount (excluding ICR)
     const lineTotal = lines.reduce(
       (sum: number, l: { totalAmount: number }) => sum + Number(l.totalAmount),
       0
     )
-    if (Math.abs(lineTotal - Number(totalAmount)) > 0.01) {
+    const expectedTotal = calculatedICR
+      ? lineTotal + calculatedICR
+      : lineTotal
+
+    if (Math.abs(expectedTotal - Number(totalAmount)) > 0.01) {
       return apiBadRequest(
-        `Sum of line amounts (${lineTotal}) must equal budget totalAmount (${totalAmount})`
+        `Sum of line amounts${calculatedICR ? ' + ICR' : ''} (${expectedTotal}) must equal budget totalAmount (${totalAmount})`
       )
+    }
+
+    // Calculate cost share amounts
+    let costShareAmt: number | null = null
+    let donorAmt: number | null = null
+    if (costShareRequired && costSharePercent && costSharePercent > 0) {
+      costShareAmt = Math.round(Number(totalAmount) * (costSharePercent / 100) * 100) / 100
+      donorAmt = Math.round((Number(totalAmount) - costShareAmt) * 100) / 100
     }
 
     // Validate project belongs to org
@@ -204,6 +268,11 @@ export async function POST(request: NextRequest) {
       return apiBadRequest('Fiscal year not found in this organization')
     }
 
+    // Validate budget ceiling
+    if (budgetCeiling && Number(totalAmount) > Number(budgetCeiling)) {
+      return apiBadRequest(`Total amount (${totalAmount}) exceeds budget ceiling (${budgetCeiling})`)
+    }
+
     // Validate all accountIds exist in same org
     const accountIds = lines.map((l: { accountId: string }) => l.accountId)
     const accounts = await prisma.account.findMany({
@@ -219,17 +288,55 @@ export async function POST(request: NextRequest) {
       return apiBadRequest('One or more account IDs are invalid or not found in this organization')
     }
 
+    // Generate budget code
+    let budgetCode: string
+    try {
+      budgetCode = await generateNextNumber(auth.organizationId, 'budget')
+    } catch {
+      // If sequence doesn't exist yet, create it and try again
+      await prisma.numberSequence.create({
+        data: {
+          organizationId: auth.organizationId,
+          entity: 'budget',
+          prefix: 'BUD',
+          separator: '-',
+          padLength: 4,
+          currentValue: 0,
+          includeYear: true,
+        },
+      })
+      budgetCode = await generateNextNumber(auth.organizationId, 'budget')
+    }
+
     // Create budget with lines in a transaction
     const budget = await prisma.$transaction(async (tx) => {
       const created = await tx.budget.create({
         data: {
+          budgetCode,
           name: name.trim(),
+          budgetType: budgetType || 'PROJECT',
           projectId,
           grantId: grantId || null,
           fiscalYearId,
+          startDate: startDate ? new Date(startDate) : null,
+          endDate: endDate ? new Date(endDate) : null,
+          periodType: periodType || 'ANNUAL',
           totalAmount: new Prisma.Decimal(totalAmount),
           currencyCode: currencyCode || 'BDT',
+          exchangeRate: exchangeRate ? new Prisma.Decimal(exchangeRate) : null,
           status: 'DRAFT',
+          version: 1,
+          indirectCostRate: indirectCostRate ? new Prisma.Decimal(indirectCostRate) : null,
+          indirectCostBase: indirectCostBase || null,
+          indirectCostAmount: calculatedICR ? new Prisma.Decimal(calculatedICR) : null,
+          costShareRequired: costShareRequired || false,
+          costSharePercent: costSharePercent ? new Prisma.Decimal(costSharePercent) : null,
+          costShareAmount: costShareAmt ? new Prisma.Decimal(costShareAmt) : null,
+          donorAmount: donorAmt ? new Prisma.Decimal(donorAmt) : null,
+          budgetCeiling: budgetCeiling ? new Prisma.Decimal(budgetCeiling) : null,
+          varianceThreshold: varianceThreshold != null ? new Prisma.Decimal(varianceThreshold) : new Prisma.Decimal(10),
+          narrative: narrative || null,
+          assumptions: assumptions || null,
           notes: notes || null,
           lines: {
             create: lines.map(
@@ -237,22 +344,34 @@ export async function POST(request: NextRequest) {
                 line: {
                   accountId: string
                   category: string
+                  subCategory?: string
                   description: string
                   unit?: string
                   quantity?: number
                   unitCost: number
                   totalAmount: number
+                  levelOfEffort?: number
+                  duration?: number
+                  donorShare?: number
+                  costShare?: number
+                  narrative?: string
                   notes?: string
                 },
                 index: number
               ) => ({
                 accountId: line.accountId,
                 category: line.category,
+                subCategory: line.subCategory || null,
                 description: line.description,
                 unit: line.unit || null,
                 quantity: new Prisma.Decimal(line.quantity ?? 1),
                 unitCost: new Prisma.Decimal(line.unitCost),
                 totalAmount: new Prisma.Decimal(line.totalAmount),
+                levelOfEffort: line.levelOfEffort != null ? new Prisma.Decimal(line.levelOfEffort) : null,
+                duration: line.duration || null,
+                donorShare: line.donorShare != null ? new Prisma.Decimal(line.donorShare) : null,
+                costShare: line.costShare != null ? new Prisma.Decimal(line.costShare) : null,
+                narrative: line.narrative || null,
                 notes: line.notes || null,
                 sortOrder: index,
               })
@@ -289,8 +408,8 @@ export async function POST(request: NextRequest) {
       module: 'budget',
       resource: 'budget',
       resourceId: budget.id,
-      description: `Created budget "${name}"`,
-      newValues: { name, totalAmount, projectId, lineCount: lines.length },
+      description: `Created budget "${name}" (${budgetCode})`,
+      newValues: { name, budgetCode, budgetType, totalAmount, projectId, lineCount: lines.length },
       ...auditCtx,
     })
 

@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
         { entity: 'collection', prefix: 'COL' },
         { entity: 'leave_application', prefix: 'LV' },
         { entity: 'payroll_run', prefix: 'PAY' },
+        { entity: 'budget', prefix: 'BUD' },
         { entity: 'budget_revision', prefix: 'BR' },
         { entity: 'asset_transfer', prefix: 'AT' },
         { entity: 'asset_maintenance', prefix: 'AM' },

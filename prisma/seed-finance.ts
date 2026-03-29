@@ -20,7 +20,7 @@ async function main() {
   if (!fy) throw new Error('Fiscal year not found.')
 
   console.log(`Organization: ${org.name} (${org.id})`)
-  console.log(`Admin user: ${adminUser.name} (${adminUser.id})`)
+  console.log(`Admin user: ${adminUser.fullName} (${adminUser.id})`)
   console.log(`Fiscal year: ${fy.name} (${fy.id})`)
 
   // ──────────────────────────────────────────────
@@ -115,7 +115,7 @@ async function main() {
         type: ba.type as any,
         isMotherAccount: ba.isMotherAccount,
         currentBalance: ba.balance,
-        currencyCode: ba.currency,
+        currencyCode: ba.currency as any,
       },
       create: {
         organizationId: org.id,
@@ -127,7 +127,7 @@ async function main() {
         type: ba.type as any,
         isMotherAccount: ba.isMotherAccount,
         currentBalance: ba.balance,
-        currencyCode: ba.currency,
+        currencyCode: ba.currency as any,
       },
     })
     bankAccounts[ba.accountCode] = created

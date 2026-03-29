@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
         const existingPRAggregate = await prisma.purchaseRequisition.aggregate({
           where: {
             projectId,
-            status: { notIn: ['REJECTED', 'CANCELLED'] },
+            status: { notIn: ['REJECTED', 'CANCELLED'] as any },
             deletedAt: null,
           },
           _sum: { totalEstimate: true },

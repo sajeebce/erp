@@ -87,6 +87,28 @@ enum BudgetStatus {
   REVISED
 }
 
+enum BudgetType {
+  PROJECT       // Project/Grant-specific budget
+  CORE          // Core/Unrestricted funding
+  PROGRAM       // Program-level budget
+  OPERATIONAL   // Administrative/Operational budget
+  PROPOSAL      // Pre-award proposal budget
+}
+
+enum BudgetPeriodType {
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUAL
+  ANNUAL
+  CUSTOM
+}
+
+enum IndirectCostBase {
+  TOTAL_DIRECT   // Total Direct Costs
+  MTDC           // Modified Total Direct Costs
+  PERSONNEL      // Total Personnel Costs only
+}
+
 // ─── Donor & Grant ───
 
 enum DonorType {

@@ -83,7 +83,26 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { name, totalAmount, notes, lines } = body
+    const {
+      name,
+      budgetType,
+      startDate,
+      endDate,
+      periodType,
+      totalAmount,
+      currencyCode,
+      exchangeRate,
+      indirectCostRate,
+      indirectCostBase,
+      costShareRequired,
+      costSharePercent,
+      budgetCeiling,
+      varianceThreshold,
+      narrative,
+      assumptions,
+      notes,
+      lines,
+    } = body
 
     // Build update data
     const data: Record<string, unknown> = {}
@@ -95,12 +114,59 @@ export async function PUT(
       data.name = name.trim()
     }
 
-    if (notes !== undefined) {
-      data.notes = notes || null
-    }
+    if (budgetType !== undefined) data.budgetType = budgetType
+    if (startDate !== undefined) data.startDate = startDate ? new Date(startDate) : null
+    if (endDate !== undefined) data.endDate = endDate ? new Date(endDate) : null
+    if (periodType !== undefined) data.periodType = periodType
+    if (currencyCode !== undefined) data.currencyCode = currencyCode
+    if (exchangeRate !== undefined) data.exchangeRate = exchangeRate ? new Prisma.Decimal(exchangeRate) : null
+    if (notes !== undefined) data.notes = notes || null
+    if (narrative !== undefined) data.narrative = narrative || null
+    if (assumptions !== undefined) data.assumptions = assumptions || null
+    if (budgetCeiling !== undefined) data.budgetCeiling = budgetCeiling ? new Prisma.Decimal(budgetCeiling) : null
+    if (varianceThreshold !== undefined) data.varianceThreshold = new Prisma.Decimal(varianceThreshold)
 
     if (totalAmount !== undefined) {
       data.totalAmount = new Prisma.Decimal(totalAmount)
+    }
+
+    // Handle ICR
+    if (indirectCostRate !== undefined) {
+      data.indirectCostRate = indirectCostRate ? new Prisma.Decimal(indirectCostRate) : null
+      data.indirectCostBase = indirectCostBase || null
+
+      if (indirectCostRate && indirectCostRate > 0 && lines) {
+        const lineTotal = lines.reduce(
+          (sum: number, l: { totalAmount: number; category?: string }) => sum + Number(l.totalAmount),
+          0
+        )
+        if (indirectCostBase === 'PERSONNEL') {
+          const personnelTotal = lines
+            .filter((l: { category?: string }) => l.category === 'Personnel')
+            .reduce((sum: number, l: { totalAmount: number }) => sum + Number(l.totalAmount), 0)
+          data.indirectCostAmount = new Prisma.Decimal(Math.round(personnelTotal * (indirectCostRate / 100) * 100) / 100)
+        } else {
+          data.indirectCostAmount = new Prisma.Decimal(Math.round(lineTotal * (indirectCostRate / 100) * 100) / 100)
+        }
+      } else {
+        data.indirectCostAmount = null
+      }
+    }
+
+    // Handle cost sharing
+    if (costShareRequired !== undefined) {
+      data.costShareRequired = costShareRequired
+      if (costShareRequired && costSharePercent) {
+        data.costSharePercent = new Prisma.Decimal(costSharePercent)
+        const effectiveTotal = totalAmount !== undefined ? Number(totalAmount) : Number(existing.totalAmount)
+        const shareAmt = Math.round(effectiveTotal * (costSharePercent / 100) * 100) / 100
+        data.costShareAmount = new Prisma.Decimal(shareAmt)
+        data.donorAmount = new Prisma.Decimal(Math.round((effectiveTotal - shareAmt) * 100) / 100)
+      } else {
+        data.costSharePercent = null
+        data.costShareAmount = null
+        data.donorAmount = null
+      }
     }
 
     // If lines are provided, validate and replace entirely
@@ -117,18 +183,6 @@ export async function PUT(
         if (line.totalAmount === undefined || Number(line.totalAmount) <= 0) {
           return apiBadRequest(`Line ${i + 1}: totalAmount must be greater than 0`)
         }
-      }
-
-      // Validate sum of line amounts equals budget totalAmount
-      const effectiveTotal = totalAmount !== undefined ? Number(totalAmount) : Number(existing.totalAmount)
-      const lineTotal = lines.reduce(
-        (sum: number, l: { totalAmount: number }) => sum + Number(l.totalAmount),
-        0
-      )
-      if (Math.abs(lineTotal - effectiveTotal) > 0.01) {
-        return apiBadRequest(
-          `Sum of line amounts (${lineTotal}) must equal budget totalAmount (${effectiveTotal})`
-        )
       }
 
       // Validate all accountIds exist in same org
@@ -165,22 +219,34 @@ export async function PUT(
                   line: {
                     accountId: string
                     category: string
+                    subCategory?: string
                     description: string
                     unit?: string
                     quantity?: number
                     unitCost: number
                     totalAmount: number
+                    levelOfEffort?: number
+                    duration?: number
+                    donorShare?: number
+                    costShare?: number
+                    narrative?: string
                     notes?: string
                   },
                   index: number
                 ) => ({
                   accountId: line.accountId,
                   category: line.category,
+                  subCategory: line.subCategory || null,
                   description: line.description,
                   unit: line.unit || null,
                   quantity: new Prisma.Decimal(line.quantity ?? 1),
                   unitCost: new Prisma.Decimal(line.unitCost),
                   totalAmount: new Prisma.Decimal(line.totalAmount),
+                  levelOfEffort: line.levelOfEffort != null ? new Prisma.Decimal(line.levelOfEffort) : null,
+                  duration: line.duration || null,
+                  donorShare: line.donorShare != null ? new Prisma.Decimal(line.donorShare) : null,
+                  costShare: line.costShare != null ? new Prisma.Decimal(line.costShare) : null,
+                  narrative: line.narrative || null,
                   notes: line.notes || null,
                   sortOrder: index,
                 })

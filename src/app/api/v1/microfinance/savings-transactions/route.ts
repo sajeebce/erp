@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       })
 
       const savingsLiabilityAccount = await prisma.account.findFirst({
-        where: { organizationId, accountType: { in: ['LIABILITY', 'INCOME'] }, isActive: true, isGroup: false, deletedAt: null },
+        where: { organizationId, type: { in: ['LIABILITY', 'INCOME'] as any }, isActive: true, isGroup: false, deletedAt: null },
         select: { id: true },
       })
 

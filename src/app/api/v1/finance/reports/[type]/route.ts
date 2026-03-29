@@ -814,7 +814,7 @@ async function generateGrantFinancial(filters: ReportFilters, _auth: AccessToken
     }
   })
 
-  return { reportType: 'grant-financial', fiscalYearId: filters.fiscalYearId, periodStart: filters.startDate, periodEnd: filters.endDate, generatedAt: new Date(), grants: grantReports, summary: { totalGrants: grantReports.length, totalAward: grantReports.reduce((s, g) => s + g.awardAmount, 0), totalDisbursed: grantReports.reduce((s, g) => s + g.disbursedAmount, 0), totalExpense: grantReports.reduce((s, g) => s + g.totalExpense, 0) } }
+  return { reportType: 'grant-financial', fiscalYearId: filters.fiscalYearId, periodStart: filters.startDate, periodEnd: filters.endDate, generatedAt: new Date(), grants: grantReports, summary: { totalGrants: grantReports.length, totalAward: grantReports.reduce((s, g) => s + g.awardAmount, 0), totalDisbursed: grantReports.reduce((s, g) => s + g.disbursedAmount, 0), totalExpense: grantReports.reduce((s, g) => s + g.totalExpenses, 0) } }
 }
 
 // ─── Bank Reconciliation Statement (printable summary) ───

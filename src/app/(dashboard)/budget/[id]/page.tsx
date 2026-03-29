@@ -3,13 +3,14 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { ArrowLeft, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Pencil, Plus, Trash2, Send, CheckCircle, XCircle, Play, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import {
   Select,
   SelectContent,
@@ -28,26 +29,50 @@ interface BudgetLineData {
   accountId: string
   account?: { id: string; code: string; name: string }
   category: string
+  subCategory: string | null
   description: string
   unit: string | null
   quantity: number | string
   unitCost: number | string
   totalAmount: number | string
+  levelOfEffort: number | string | null
+  duration: number | null
+  donorShare: number | string | null
+  costShare: number | string | null
+  narrative: string | null
   notes: string | null
 }
 
 interface BudgetData {
   id: string
+  budgetCode: string
   name: string
+  budgetType: string
   projectId: string
   project?: { id: string; name: string; projectNo?: string }
   grantId: string | null
   grant?: { id: string; title: string; grantNo?: string } | null
   fiscalYearId: string
   fiscalYear?: { id: string; name: string; startDate: string; endDate: string }
+  startDate: string | null
+  endDate: string | null
+  periodType: string
   totalAmount: number | string
   currencyCode: string
+  exchangeRate: number | string | null
   status: string
+  version: number
+  indirectCostRate: number | string | null
+  indirectCostBase: string | null
+  indirectCostAmount: number | string | null
+  costShareRequired: boolean
+  costSharePercent: number | string | null
+  costShareAmount: number | string | null
+  donorAmount: number | string | null
+  budgetCeiling: number | string | null
+  varianceThreshold: number | string
+  narrative: string | null
+  assumptions: string | null
   approvedById: string | null
   approvedAt: string | null
   notes: string | null
@@ -60,11 +85,17 @@ interface BudgetData {
 interface EditLine {
   accountId: string
   category: string
+  subCategory: string
   description: string
   unit: string
   quantity: string
   unitCost: string
   totalAmount: string
+  levelOfEffort: string
+  duration: string
+  donorShare: string
+  costShare: string
+  narrative: string
   notes: string
 }
 
@@ -89,11 +120,17 @@ function emptyLine(): EditLine {
   return {
     accountId: '',
     category: '',
+    subCategory: '',
     description: '',
     unit: '',
     quantity: '1',
     unitCost: '0',
     totalAmount: '0',
+    levelOfEffort: '',
+    duration: '',
+    donorShare: '',
+    costShare: '',
+    narrative: '',
     notes: '',
   }
 }
@@ -143,7 +180,7 @@ export default function BudgetDetailPage() {
   }, [fetchBudget])
 
   useEffect(() => {
-    fetch('/api/v1/finance/chart-of-accounts?limit=500')
+    fetch('/api/v1/finance/accounts?isGroup=false&limit=500')
       .then(res => res.json())
       .then(json => { if (json.success) setAccounts(json.data) })
       .catch(() => {})
@@ -158,11 +195,17 @@ export default function BudgetDetailPage() {
       budget.lines.map(l => ({
         accountId: l.accountId,
         category: l.category,
+        subCategory: l.subCategory || '',
         description: l.description,
         unit: l.unit || '',
         quantity: String(l.quantity),
         unitCost: String(l.unitCost),
         totalAmount: String(l.totalAmount),
+        levelOfEffort: l.levelOfEffort ? String(l.levelOfEffort) : '',
+        duration: l.duration ? String(l.duration) : '',
+        donorShare: l.donorShare ? String(l.donorShare) : '',
+        costShare: l.costShare ? String(l.costShare) : '',
+        narrative: l.narrative || '',
         notes: l.notes || '',
       }))
     )
@@ -241,11 +284,17 @@ export default function BudgetDetailPage() {
       lines: formLines.map(l => ({
         accountId: l.accountId,
         category: l.category,
+        subCategory: l.subCategory || null,
         description: l.description.trim(),
         unit: l.unit || null,
         quantity: parseFloat(l.quantity) || 1,
         unitCost: parseFloat(l.unitCost) || 0,
         totalAmount: parseFloat(l.totalAmount),
+        levelOfEffort: l.levelOfEffort ? parseFloat(l.levelOfEffort) : null,
+        duration: l.duration ? parseInt(l.duration) : null,
+        donorShare: l.donorShare ? parseFloat(l.donorShare) : null,
+        costShare: l.costShare ? parseFloat(l.costShare) : null,
+        narrative: l.narrative.trim() || null,
         notes: l.notes.trim() || null,
       })),
     }
@@ -283,6 +332,25 @@ export default function BudgetDetailPage() {
       }
     } catch {
       setError(t('form.failedToDelete'))
+    }
+  }
+
+  async function handleStatusChange(action: string, reason?: string) {
+    setError('')
+    try {
+      const res = await fetch(`/api/v1/budget/${id}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, reason }),
+      })
+      const json = await res.json()
+      if (res.ok && json.success) {
+        await fetchBudget()
+      } else {
+        setError(json.error || `Failed to ${action} budget`)
+      }
+    } catch {
+      setError(`Failed to ${action} budget`)
     }
   }
 
@@ -339,7 +407,7 @@ export default function BudgetDetailPage() {
       <div className="space-y-6">
         <PageHeader
           title={budget.name}
-          description={t('form.budgetDetail')}
+          description={`${budget.budgetCode} \u2022 ${t(`budgetType.${budget.budgetType}`)}`}
         >
           <Button variant="outline" size="sm" onClick={() => router.push('/budget')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -353,6 +421,7 @@ export default function BudgetDetailPage() {
           </div>
         )}
 
+        {/* Budget Details */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -360,10 +429,13 @@ export default function BudgetDetailPage() {
                 {budget.name}
                 <StatusBadge status={budget.status} />
               </CardTitle>
+              <Badge variant="outline">v{budget.version}</Badge>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <DetailItem label={t('budgetCode')} value={budget.budgetCode} />
+              <DetailItem label={t('budgetType.label')} value={t(`budgetType.${budget.budgetType}`)} />
               <DetailItem label={t('project')} value={budget.project?.name} />
               {budget.grant && (
                 <DetailItem label={t('grant')} value={`${budget.grant.grantNo || ''} ${budget.grant.title}`} />
@@ -373,15 +445,89 @@ export default function BudgetDetailPage() {
               )}
               <DetailItem label={t('totalAmount')} value={formatCurrency(Number(budget.totalAmount))} />
               <DetailItem label={t('form.currency')} value={budget.currencyCode} />
-              <DetailItem label={t('status')}>
-                <StatusBadge status={budget.status} />
-              </DetailItem>
+              {budget.exchangeRate && (
+                <DetailItem label={t('form.exchangeRate')} value={String(budget.exchangeRate)} />
+              )}
+              <DetailItem label={t('periodType.label')} value={t(`periodType.${budget.periodType}`)} />
+              {budget.startDate && (
+                <DetailItem label={t('form.startDate')} value={formatDate(budget.startDate)} />
+              )}
+              {budget.endDate && (
+                <DetailItem label={t('form.endDate')} value={formatDate(budget.endDate)} />
+              )}
               <DetailItem label={t('form.createdAt')} value={formatDate(budget.createdAt)} />
               <DetailItem label={t('form.updatedAt')} value={formatDate(budget.updatedAt)} />
               {budget._count && (
                 <DetailItem label={t('form.revisions')} value={String(budget._count.revisions)} />
               )}
             </div>
+
+            {/* ICR Section */}
+            {budget.indirectCostRate && Number(budget.indirectCostRate) > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">{t('indirectCost.title')}</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <DetailItem label={t('indirectCost.rate')} value={`${budget.indirectCostRate}%`} />
+                    <DetailItem label={t('indirectCost.base')} value={budget.indirectCostBase ? t(`indirectCost.${budget.indirectCostBase}`) : '\u2014'} />
+                    <DetailItem label={t('indirectCost.amount')} value={formatCurrency(Number(budget.indirectCostAmount || 0))} />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Cost Sharing Section */}
+            {budget.costShareRequired && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">{t('costShare.title')}</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <DetailItem label={t('costShare.percent')} value={`${budget.costSharePercent}%`} />
+                    <DetailItem label={t('costShare.amount')} value={formatCurrency(Number(budget.costShareAmount || 0))} />
+                    <DetailItem label={t('costShare.donorAmount')} value={formatCurrency(Number(budget.donorAmount || 0))} />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Controls */}
+            {(budget.budgetCeiling || Number(budget.varianceThreshold) !== 10) && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">{t('controls.title')}</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {budget.budgetCeiling && (
+                      <DetailItem label={t('controls.ceiling')} value={formatCurrency(Number(budget.budgetCeiling))} />
+                    )}
+                    <DetailItem label={t('controls.varianceThreshold')} value={`${budget.varianceThreshold}%`} />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Narratives */}
+            {(budget.narrative || budget.assumptions) && (
+              <>
+                <Separator />
+                <div className="space-y-3">
+                  {budget.narrative && (
+                    <div className="space-y-1">
+                      <span className="text-sm font-semibold">{t('narratives.narrative')}</span>
+                      <p className="text-sm whitespace-pre-wrap">{budget.narrative}</p>
+                    </div>
+                  )}
+                  {budget.assumptions && (
+                    <div className="space-y-1">
+                      <span className="text-sm font-semibold">{t('narratives.assumptions')}</span>
+                      <p className="text-sm whitespace-pre-wrap">{budget.assumptions}</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
             {budget.notes && (
               <div className="space-y-1">
@@ -408,14 +554,23 @@ export default function BudgetDetailPage() {
                     <th className="text-left py-2 px-3 font-medium">{t('form.unit')}</th>
                     <th className="text-right py-2 px-3 font-medium">{t('form.quantity')}</th>
                     <th className="text-right py-2 px-3 font-medium">{t('form.unitCost')}</th>
+                    {budget.lines.some(l => l.levelOfEffort) && (
+                      <th className="text-right py-2 px-3 font-medium">{t('form.levelOfEffort')}</th>
+                    )}
+                    {budget.lines.some(l => l.duration) && (
+                      <th className="text-right py-2 px-3 font-medium">{t('form.duration')}</th>
+                    )}
                     <th className="text-right py-2 px-3 font-medium">{t('form.lineTotal')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {budget.lines.map((line) => (
-                    <tr key={line.id} className="border-b last:border-0">
+                    <tr key={line.id} className="border-b last:border-0 group">
                       <td className="py-2 px-3">
                         <Badge variant="secondary">{line.category}</Badge>
+                        {line.subCategory && (
+                          <span className="text-xs text-muted-foreground ml-1">{line.subCategory}</span>
+                        )}
                       </td>
                       <td className="py-2 px-3">
                         {line.account && (
@@ -425,15 +580,41 @@ export default function BudgetDetailPage() {
                           </div>
                         )}
                       </td>
-                      <td className="py-2 px-3">{line.description}</td>
+                      <td className="py-2 px-3">
+                        <div>{line.description}</div>
+                        {line.narrative && (
+                          <div className="text-xs text-muted-foreground mt-1 italic">{line.narrative}</div>
+                        )}
+                      </td>
                       <td className="py-2 px-3">{line.unit || '\u2014'}</td>
                       <td className="py-2 px-3 text-right font-mono">{Number(line.quantity)}</td>
                       <td className="py-2 px-3 text-right font-mono">{formatCurrency(Number(line.unitCost))}</td>
+                      {budget.lines.some(l => l.levelOfEffort) && (
+                        <td className="py-2 px-3 text-right font-mono">
+                          {line.levelOfEffort ? `${line.levelOfEffort}%` : '\u2014'}
+                        </td>
+                      )}
+                      {budget.lines.some(l => l.duration) && (
+                        <td className="py-2 px-3 text-right font-mono">
+                          {line.duration || '\u2014'}
+                        </td>
+                      )}
                       <td className="py-2 px-3 text-right font-mono font-medium">{formatCurrency(Number(line.totalAmount))}</td>
                     </tr>
                   ))}
+                  {/* ICR row */}
+                  {budget.indirectCostAmount && Number(budget.indirectCostAmount) > 0 && (
+                    <tr className="border-b bg-muted/30">
+                      <td colSpan={budget.lines.some(l => l.levelOfEffort) ? 7 : 6} className="py-2 px-3 text-right text-sm italic text-muted-foreground">
+                        {t('indirectCost.title')} ({budget.indirectCostRate}%)
+                      </td>
+                      <td className={`py-2 px-3 text-right font-mono ${budget.lines.some(l => l.duration) ? '' : ''}`} colSpan={budget.lines.some(l => l.duration) ? 2 : 1}>
+                        {formatCurrency(Number(budget.indirectCostAmount))}
+                      </td>
+                    </tr>
+                  )}
                   <tr className="bg-muted/50 font-semibold">
-                    <td colSpan={6} className="py-2 px-3 text-right">{t('totalAmount')}</td>
+                    <td colSpan={budget.lines.some(l => l.levelOfEffort) && budget.lines.some(l => l.duration) ? 8 : budget.lines.some(l => l.levelOfEffort) || budget.lines.some(l => l.duration) ? 7 : 6} className="py-2 px-3 text-right">{t('totalAmount')}</td>
                     <td className="py-2 px-3 text-right font-mono">{formatCurrency(Number(budget.totalAmount))}</td>
                   </tr>
                 </tbody>
@@ -442,31 +623,93 @@ export default function BudgetDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Action Buttons */}
-        {isDraft && (
-          <Card>
-            <CardContent className="flex flex-wrap gap-3 pt-6">
-              <Button onClick={startEditing}>
-                <Pencil className="h-4 w-4 mr-2" />
-                {tc('buttons.edit')}
-              </Button>
+        {/* Workflow Action Buttons */}
+        <Card>
+          <CardContent className="flex flex-wrap gap-3 pt-6">
+            {/* DRAFT: Edit, Submit for Approval, Delete */}
+            {budget.status === 'DRAFT' && (
+              <>
+                <Button onClick={startEditing}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  {tc('buttons.edit')}
+                </Button>
 
+                <Button variant="default" onClick={() => handleStatusChange('submit')}>
+                  <Send className="h-4 w-4 mr-2" />
+                  Submit for Approval
+                </Button>
+
+                <ConfirmDialog
+                  trigger={
+                    <Button variant="destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {tc('buttons.delete')}
+                    </Button>
+                  }
+                  title={tc('buttons.delete')}
+                  description={t('form.confirmDelete')}
+                  confirmText={tc('buttons.delete')}
+                  variant="destructive"
+                  onConfirm={handleDelete}
+                />
+              </>
+            )}
+
+            {/* SUBMITTED: Approve, Reject (send back to DRAFT) */}
+            {budget.status === 'SUBMITTED' && (
+              <>
+                <Button variant="default" onClick={() => handleStatusChange('approve')} className="bg-green-600 hover:bg-green-700">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Approve Budget
+                </Button>
+
+                <ConfirmDialog
+                  trigger={
+                    <Button variant="outline">
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Reject (Send Back)
+                    </Button>
+                  }
+                  title="Reject Budget"
+                  description="This will send the budget back to DRAFT status. The creator can make changes and resubmit. Please provide a reason."
+                  confirmText="Reject"
+                  variant="destructive"
+                  onConfirm={() => handleStatusChange('reject', 'Needs revision per reviewer feedback')}
+                />
+              </>
+            )}
+
+            {/* APPROVED: Activate */}
+            {budget.status === 'APPROVED' && (
+              <Button variant="default" onClick={() => handleStatusChange('activate')}>
+                <Play className="h-4 w-4 mr-2" />
+                Activate Budget
+              </Button>
+            )}
+
+            {/* ACTIVE: Close */}
+            {budget.status === 'ACTIVE' && (
               <ConfirmDialog
                 trigger={
-                  <Button variant="destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {tc('buttons.delete')}
+                  <Button variant="outline">
+                    <Lock className="h-4 w-4 mr-2" />
+                    Close Budget
                   </Button>
                 }
-                title={tc('buttons.delete')}
-                description={t('form.confirmDelete')}
-                confirmText={tc('buttons.delete')}
+                title="Close Budget"
+                description="Closing this budget will lock it permanently. No further transactions can be posted against it. This action cannot be undone."
+                confirmText="Close Budget"
                 variant="destructive"
-                onConfirm={handleDelete}
+                onConfirm={() => handleStatusChange('close')}
               />
-            </CardContent>
-          </Card>
-        )}
+            )}
+
+            {/* Status workflow info */}
+            <div className="w-full mt-2 text-xs text-muted-foreground">
+              Workflow: DRAFT → SUBMITTED → APPROVED → ACTIVE → CLOSED
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -597,7 +840,7 @@ export default function BudgetDetailPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 <div className="space-y-2">
                   <Label>{t('form.unit')}</Label>
                   <Input
@@ -629,6 +872,31 @@ export default function BudgetDetailPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label>{t('form.levelOfEffort')}</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={line.levelOfEffort}
+                    onChange={(e) => updateLine(index, 'levelOfEffort', e.target.value)}
+                    placeholder="e.g. 100"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{t('form.duration')}</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={line.duration}
+                    onChange={(e) => updateLine(index, 'duration', e.target.value)}
+                    placeholder="e.g. 12"
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label>{t('form.lineTotal')}</Label>
                   <Input
                     type="number"
@@ -636,16 +904,29 @@ export default function BudgetDetailPage() {
                     step="0.01"
                     value={line.totalAmount}
                     onChange={(e) => updateLine(index, 'totalAmount', e.target.value)}
+                    className="font-mono font-medium"
                   />
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <Label>{t('form.lineNotes')}</Label>
-                  <Input
-                    value={line.notes}
-                    onChange={(e) => updateLine(index, 'notes', e.target.value)}
-                  />
-                </div>
+              {/* Narrative */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">{t('form.lineNarrative')}</Label>
+                <Textarea
+                  value={line.narrative}
+                  onChange={(e) => updateLine(index, 'narrative', e.target.value)}
+                  placeholder={t('form.lineNarrativePlaceholder')}
+                  rows={2}
+                  className="text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t('form.lineNotes')}</Label>
+                <Input
+                  value={line.notes}
+                  onChange={(e) => updateLine(index, 'notes', e.target.value)}
+                />
               </div>
             </div>
           ))}
