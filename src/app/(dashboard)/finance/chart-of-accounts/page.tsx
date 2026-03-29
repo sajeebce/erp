@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/sheet'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
+import { HelpButton } from '@/components/shared/help-modal'
 import { LocalizedNameInput } from '@/components/shared/localized-name-input'
 
 // ─── Types ───
@@ -533,6 +534,7 @@ function AccountSheet({
 
 export default function ChartOfAccountsPage() {
   const t = useTranslations('finance.chartOfAccounts')
+  const th = useTranslations('finance.help.chartOfAccounts')
   const [tree, setTree] = useState<AccountNode[]>([])
   const [loading, setLoading] = useState(true)
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -576,6 +578,18 @@ export default function ChartOfAccountsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t('title')} description={t('hierarchicalDescription')}>
+        <HelpButton
+          title={th('title')}
+          description={th('description')}
+          steps={[
+            { title: th('step1Title'), description: th('step1Desc') },
+            { title: th('step2Title'), description: th('step2Desc') },
+            { title: th('step3Title'), description: th('step3Desc') },
+            { title: th('step4Title'), description: th('step4Desc') },
+            { title: th('step5Title'), description: th('step5Desc') },
+          ]}
+          tips={[th('tip1'), th('tip2'), th('tip3')]}
+        />
         <Button size="sm" onClick={handleAdd}>
           <Plus className="h-4 w-4 mr-2" />{t('addAccount')}
         </Button>

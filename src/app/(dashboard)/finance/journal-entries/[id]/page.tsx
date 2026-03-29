@@ -12,6 +12,7 @@ import {
   ArrowLeft,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { FileUpload } from '@/components/shared/file-upload'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -723,6 +724,13 @@ export default function JournalEntryDetailPage() {
           </CardContent>
         </Card>
 
+        {/* Attachments (edit mode) */}
+        <Card>
+          <CardContent className="pt-6">
+            <FileUpload entityType="journal_entry" entityId={entry.id} module="finance" />
+          </CardContent>
+        </Card>
+
         {/* Bottom action bar */}
         <div className="flex items-center justify-end gap-2 pb-6">
           <Button variant="outline" onClick={cancelEdit}>
@@ -940,6 +948,13 @@ export default function JournalEntryDetailPage() {
               </TableFooter>
             </Table>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Attachments (view mode) */}
+      <Card>
+        <CardContent className="pt-6">
+          <FileUpload entityType="journal_entry" entityId={entry.id} module="finance" readOnly={!isDraft} />
         </CardContent>
       </Card>
 

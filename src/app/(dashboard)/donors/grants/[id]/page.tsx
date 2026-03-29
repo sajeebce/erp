@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { useFormatters } from '@/hooks/use-formatters'
+import { FileUpload } from '@/components/shared/file-upload'
 
 const GRANT_STATUSES = [
   'PIPELINE',
@@ -438,6 +439,13 @@ export default function GrantDetailPage() {
           </Card>
         )}
 
+        {/* File Attachments */}
+        <Card>
+          <CardContent className="pt-6">
+            <FileUpload entityType="grant" entityId={id} module="donors" readOnly={['COMPLETED', 'CLOSED'].includes(grant.status)} />
+          </CardContent>
+        </Card>
+
         {/* Budgets */}
         {grant.budgets && grant.budgets.length > 0 && (
           <Card>
@@ -640,6 +648,13 @@ export default function GrantDetailPage() {
             )}
           </Button>
         </CardFooter>
+      </Card>
+
+      {/* File Attachments */}
+      <Card>
+        <CardContent className="pt-6">
+          <FileUpload entityType="grant" entityId={id} module="donors" readOnly={false} />
+        </CardContent>
       </Card>
     </div>
   )

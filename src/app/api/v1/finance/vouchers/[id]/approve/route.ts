@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireRoleFromRequest } from '@/lib/auth'
+import { generateNextNumber } from '@/lib/number-sequence'
 import { logAudit, getAuditContext } from '@/lib/audit'
 import {
   apiSuccess,
@@ -8,6 +9,19 @@ import {
   apiNotFound,
   handleRouteError,
 } from '@/lib/api-response'
+import { Prisma } from '@prisma/client'
+
+// Maps voucher type to debit/credit account types
+// DEBIT voucher = pay money out (DR Expense, CR Cash/Bank)
+// RECEIPT voucher = receive money in (DR Cash/Bank, CR Income)
+const VOUCHER_ACCOUNT_MAPPING: Record<string, { debitType: string; creditType: string }> = {
+  DEBIT: { debitType: 'EXPENSE', creditType: 'ASSET' },
+  CASH: { debitType: 'EXPENSE', creditType: 'ASSET' },
+  BANK: { debitType: 'EXPENSE', creditType: 'ASSET' },
+  RECEIPT: { debitType: 'ASSET', creditType: 'INCOME' },
+  JOURNAL: { debitType: 'EXPENSE', creditType: 'ASSET' },
+  CONTRA: { debitType: 'ASSET', creditType: 'ASSET' },
+}
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -22,7 +36,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     ])
     const { id } = await params
 
-    // Verify voucher belongs to this org via organizationId
     const voucher = await prisma.voucher.findFirst({
       where: { id, organizationId: auth.organizationId, deletedAt: null },
     })
@@ -36,38 +49,136 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Segregation of duty: approver must be different from preparer
     if (voucher.preparedById === auth.userId) {
-      return apiBadRequest('The approver must be a different user than the preparer (segregation of duty)')
-    }
-
-    // Voucher must have a linked journal entry before approval
-    if (!voucher.journalEntryId) {
-      return apiBadRequest('Journal entry must be created and linked before approval')
+      return apiBadRequest('The approver must be a different user than the preparer (segregation of duty). Please ask another authorized user to approve this voucher.')
     }
 
     const now = new Date()
 
-    // Post the linked journal entry and approve the voucher in a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // Post the linked JE: set status=APPROVED, postedAt=now
-      await tx.journalEntry.update({
-        where: { id: voucher.journalEntryId! },
-        data: {
-          status: 'APPROVED',
-          approvedById: auth.userId,
-          approvedAt: now,
-          postedAt: now,
-        },
-      })
+    // Get current fiscal year
+    const fiscalYear = await prisma.fiscalYear.findFirst({
+      where: { organizationId: auth.organizationId, isCurrent: true },
+    })
+    if (!fiscalYear) {
+      return apiBadRequest('No current fiscal year found. Please configure a fiscal year first.')
+    }
 
-      // Approve the voucher
+    const result = await prisma.$transaction(async (tx) => {
+      let journalEntryId = voucher.journalEntryId
+
+      // Auto-create journal entry if not already linked
+      if (!journalEntryId) {
+        const entryNo = await generateNextNumber(auth.organizationId, 'journal_entry')
+        const mapping = VOUCHER_ACCOUNT_MAPPING[voucher.type] || VOUCHER_ACCOUNT_MAPPING.DEBIT
+
+        // Find a cash/bank ledger account from Chart of Accounts
+        const cashAccount = await tx.account.findFirst({
+          where: {
+            organizationId: auth.organizationId,
+            isBankAccount: true,
+            isActive: true,
+            isGroup: false,
+            deletedAt: null,
+          },
+          select: { id: true },
+        })
+        const cashBankAccountId = cashAccount?.id || null
+
+        // Find a default expense/income account for the other side
+        const targetType = voucher.type === 'RECEIPT' ? 'INCOME' : 'EXPENSE'
+        const targetAccount = await tx.account.findFirst({
+          where: {
+            organizationId: auth.organizationId,
+            type: targetType,
+            isActive: true,
+            isGroup: false,
+            deletedAt: null,
+          },
+          select: { id: true },
+        })
+
+        if (!cashBankAccountId || !targetAccount) {
+          throw new Error('Cannot create journal entry: required accounts (cash/bank and expense/income) not found. Please set up Chart of Accounts first.')
+        }
+
+        const amount = new Prisma.Decimal(Number(voucher.amount))
+
+        // Determine debit and credit accounts based on voucher type
+        const isPayment = ['DEBIT', 'CASH', 'BANK'].includes(voucher.type)
+        const debitAccountId = isPayment ? targetAccount.id : cashBankAccountId
+        const creditAccountId = isPayment ? cashBankAccountId : targetAccount.id
+
+        const je = await tx.journalEntry.create({
+          data: {
+            entryNo,
+            date: voucher.date,
+            description: `${voucher.type} Voucher: ${voucher.description}`,
+            reference: voucher.voucherNo,
+            fiscalYearId: fiscalYear.id,
+            projectId: voucher.projectId,
+            grantId: voucher.grantId,
+            totalDebit: amount,
+            totalCredit: amount,
+            status: 'APPROVED',
+            isAutoGenerated: true,
+            sourceModule: 'voucher',
+            sourceId: voucher.id,
+            createdById: auth.userId,
+            approvedById: auth.userId,
+            approvedAt: now,
+            postedAt: now,
+            lines: {
+              create: [
+                {
+                  accountId: debitAccountId,
+                  description: voucher.description,
+                  debit: amount,
+                  credit: new Prisma.Decimal(0),
+                  projectId: voucher.projectId,
+                },
+                {
+                  accountId: creditAccountId,
+                  description: voucher.description,
+                  debit: new Prisma.Decimal(0),
+                  credit: amount,
+                  projectId: voucher.projectId,
+                },
+              ],
+            },
+          },
+        })
+
+        journalEntryId = je.id
+      } else {
+        // Post the existing linked JE
+        await tx.journalEntry.update({
+          where: { id: journalEntryId },
+          data: {
+            status: 'APPROVED',
+            approvedById: auth.userId,
+            approvedAt: now,
+            postedAt: now,
+          },
+        })
+      }
+
+      // Approve the voucher and link JE
       const updated = await tx.voucher.update({
         where: { id },
         data: {
           status: 'APPROVED',
           approvedById: auth.userId,
           approvedAt: now,
+          journalEntryId,
         },
       })
+
+      // Cross-module: increment project amountSpent for payment-type vouchers
+      if (voucher.projectId && ['DEBIT', 'CASH', 'BANK'].includes(voucher.type)) {
+        await tx.project.update({
+          where: { id: voucher.projectId },
+          data: { amountSpent: { increment: new Prisma.Decimal(Number(voucher.amount)) } },
+        })
+      }
 
       return updated
     })
@@ -81,7 +192,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       module: 'finance',
       resource: 'voucher',
       resourceId: id,
-      description: `Approved voucher ${voucher.voucherNo} and posted linked journal entry`,
+      description: `Approved voucher ${voucher.voucherNo} and posted journal entry`,
       oldValues: { status: 'DRAFT' },
       newValues: { status: 'APPROVED', approvedById: auth.userId, approvedAt: now },
       ...auditCtx,

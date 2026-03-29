@@ -22,6 +22,9 @@
     "reset": "রিসেট",
     "refresh": "রিফ্রেশ",
     "filter": "ফিল্টার",
+    "help": "সাহায্য",
+    "tips": "টিপস",
+    "example": "উদাহরণ",
     "clear": "পরিষ্কার",
     "view": "দেখুন",
     "print": "প্রিন্ট",
@@ -159,5 +162,13 @@
     "CONSULTANT": "পরামর্শক",
     "INTERN": "ইন্টার্ন",
     "VOLUNTEER": "স্বেচ্ছাসেবী"
+  },
+  "fileUpload": {
+    "attachments": "সংযুক্তি",
+    "dragDrop": "ফাইল এখানে টেনে আনুন, অথবা ব্রাউজ করতে ক্লিক করুন",
+    "supportedFormats": "PDF, ছবি, Excel, Word, CSV (সর্বোচ্চ ৫০MB)",
+    "uploading": "আপলোড হচ্ছে...",
+    "pendingSave": "সংরক্ষণের পর আপলোড হবে",
+    "deleteConfirm": "এই ফাইল মুছে ফেলবেন?"
   }
 }

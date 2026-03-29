@@ -11,11 +11,11 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
-        <TopNavbar />
-        <main className="flex-1 p-6 animate-fade-in">{children}</main>
+      <SidebarInset className="h-dvh overflow-hidden">
+        <div data-print-hide="true"><TopNavbar /></div>
+        <main className="min-h-0 flex-1 overflow-y-auto p-6 animate-fade-in">{children}</main>
       </SidebarInset>
-      <CommandPalette />
+      <div data-print-hide="true"><CommandPalette /></div>
     </SidebarProvider>
   );
 }

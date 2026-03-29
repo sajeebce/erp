@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
 import { generateNextNumber } from '@/lib/number-sequence'
+import { logAudit, getAuditContext } from '@/lib/audit'
 import {
   apiCreated,
   apiPaginated,
@@ -116,6 +117,19 @@ export async function POST(request: NextRequest) {
         status: true,
         createdAt: true,
       },
+    })
+
+    const auditCtx = getAuditContext(request)
+    await logAudit({
+      organizationId: auth.organizationId,
+      userId: auth.userId,
+      action: 'CREATE',
+      module: 'microfinance',
+      resource: 'collection_sheet',
+      resourceId: collection.id,
+      description: `Created collection sheet ${collectionNo} for samity ${samityId}`,
+      newValues: { collectionNo, samityId, date, amountCollected, membersPresent },
+      ...auditCtx,
     })
 
     return apiCreated(collection)

@@ -134,6 +134,18 @@ pnpm tsx prisma/seed-phase4.ts
 pnpm tsx prisma/seed-phase5.ts
 ```
 
+### Phase 6: Finance (Bank Accounts, Journal Entries, Vouchers, Number Sequences)
+
+```bash
+pnpm tsx prisma/seed-finance.ts
+```
+
+### Phase 7: Bank Reconciliation test data (March 2026 vouchers + JEs linked to bank GL account)
+
+```bash
+pnpm tsx prisma/seed-reconciliation.ts
+```
+
 ---
 
 ## 6. Run the Dev Server

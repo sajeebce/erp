@@ -58,6 +58,10 @@ export async function GET(request: NextRequest) {
           currentBalance: true,
           isActive: true,
           description: true,
+          glAccountId: true,
+          glAccount: {
+            select: { id: true, code: true, name: true },
+          },
           createdAt: true,
           updatedAt: true,
         },
@@ -92,6 +96,7 @@ export async function POST(request: NextRequest) {
       isMotherAccount,
       currentBalance,
       description,
+      glAccountId,
     } = body
 
     if (!accountCode || !accountName || !type) {
@@ -107,6 +112,26 @@ export async function POST(request: NextRequest) {
       const validCurrencies = ['BDT', 'USD', 'EUR', 'GBP']
       if (!validCurrencies.includes(currencyCode)) {
         return apiBadRequest(`currencyCode must be one of: ${validCurrencies.join(', ')}`)
+      }
+    }
+
+    // Validate glAccountId if provided
+    if (glAccountId) {
+      const glAccount = await prisma.account.findFirst({
+        where: {
+          id: glAccountId,
+          organizationId: auth.organizationId,
+        },
+        select: { id: true, isGroup: true, isActive: true },
+      })
+      if (!glAccount) {
+        return apiBadRequest('GL account not found in this organization')
+      }
+      if (glAccount.isGroup) {
+        return apiBadRequest('GL account must not be a group account')
+      }
+      if (!glAccount.isActive) {
+        return apiBadRequest('GL account must be active')
       }
     }
 
@@ -139,6 +164,7 @@ export async function POST(request: NextRequest) {
         isMotherAccount: isMotherAccount ?? false,
         currentBalance: currentBalance ?? 0,
         description: description || null,
+        glAccountId: glAccountId || null,
       },
       select: {
         id: true,
@@ -155,6 +181,10 @@ export async function POST(request: NextRequest) {
         currentBalance: true,
         isActive: true,
         description: true,
+        glAccountId: true,
+        glAccount: {
+          select: { id: true, code: true, name: true },
+        },
         createdAt: true,
         updatedAt: true,
       },

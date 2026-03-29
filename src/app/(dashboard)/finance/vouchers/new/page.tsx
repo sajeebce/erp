@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { FileUpload } from '@/components/shared/file-upload'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -136,7 +137,7 @@ export default function NewVoucherPage() {
       })
       const json = await res.json()
       if (res.ok && json.success) {
-        router.push('/finance/vouchers')
+        router.push(`/finance/vouchers/${json.data.id}`)
       } else {
         setError(json.error || t('failedToCreate'))
       }
@@ -285,11 +286,12 @@ export default function NewVoucherPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="voucher-project">{t('project')}</Label>
-              <Select value={projectId} onValueChange={setProjectId}>
+              <Select value={projectId} onValueChange={(v) => setProjectId(v === '_none' ? '' : v)}>
                 <SelectTrigger id="voucher-project" className="w-full">
                   <SelectValue placeholder={t('selectProject')} />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="_none" className="text-muted-foreground">{t('noProject')}</SelectItem>
                   {projects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.code ? `${p.code} - ` : ''}{p.name}
@@ -301,11 +303,12 @@ export default function NewVoucherPage() {
 
             <div className="space-y-2">
               <Label htmlFor="voucher-grant">{t('grant')}</Label>
-              <Select value={grantId} onValueChange={setGrantId}>
+              <Select value={grantId} onValueChange={(v) => setGrantId(v === '_none' ? '' : v)}>
                 <SelectTrigger id="voucher-grant" className="w-full">
                   <SelectValue placeholder={t('selectGrant')} />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="_none" className="text-muted-foreground">{t('noGrant')}</SelectItem>
                   {grants.map((g) => (
                     <SelectItem key={g.id} value={g.id}>
                       {g.code ? `${g.code} - ` : ''}{g.name}
@@ -315,6 +318,9 @@ export default function NewVoucherPage() {
               </Select>
             </div>
           </div>
+
+          {/* Attachments */}
+          <FileUpload entityType="voucher" entityId={null} module="finance" />
         </CardContent>
 
         <CardFooter className="flex justify-end gap-3">

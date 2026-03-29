@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
 import { generateNextNumber } from '@/lib/number-sequence'
+import { logAudit, getAuditContext } from '@/lib/audit'
 import {
   apiCreated,
   apiBadRequest,
@@ -150,6 +151,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
       }),
     ])
+
+    const auditCtx = getAuditContext(request)
+    await logAudit({
+      organizationId: auth.organizationId,
+      userId: auth.userId,
+      action: 'UPDATE',
+      module: 'microfinance',
+      resource: 'loan_application',
+      resourceId: id,
+      description: `Approved loan application ${id} — account ${accountNo}, principal ${principal}`,
+      newValues: { accountNo, principal, installmentAmount, totalRepayable, durationMonths },
+      ...auditCtx,
+    })
 
     return apiCreated(loanAccount)
   } catch (error) {

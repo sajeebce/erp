@@ -36,6 +36,14 @@ const VALID_REPORT_TYPES = [
   'balance-sheet',
   'cash-flow',
   'fund-position',
+  'ledger',
+  'day-book',
+  'bank-book',
+  'cash-book',
+  'receipts-payments',
+  'fund-balance-changes',
+  'grant-financial',
+  'bank-reconciliation-statement',
 ] as const
 
 type ReportType = typeof VALID_REPORT_TYPES[number]
@@ -98,6 +106,22 @@ export async function GET(
         return apiSuccess(await generateCashFlow(filters, auth))
       case 'fund-position':
         return apiSuccess(await generateFundPosition(filters, auth))
+      case 'ledger':
+        return apiSuccess(await generateLedger(filters, auth, url))
+      case 'day-book':
+        return apiSuccess(await generateDayBook(filters, auth))
+      case 'bank-book':
+        return apiSuccess(await generateBankBook(filters, auth))
+      case 'cash-book':
+        return apiSuccess(await generateCashBook(filters, auth))
+      case 'receipts-payments':
+        return apiSuccess(await generateReceiptsPayments(filters, auth))
+      case 'fund-balance-changes':
+        return apiSuccess(await generateFundBalanceChanges(filters, auth))
+      case 'grant-financial':
+        return apiSuccess(await generateGrantFinancial(filters, auth, url))
+      case 'bank-reconciliation-statement':
+        return apiSuccess(await generateBankReconciliationStatement(filters, auth, url))
       default:
         return apiBadRequest('Invalid report type')
     }
@@ -517,5 +541,314 @@ async function generateFundPosition(filters: ReportFilters, _auth: AccessTokenPa
       totalFundBalance,
       overallUtilizationRate: totalIncome > 0 ? (totalExpenses / totalIncome) * 100 : 0,
     },
+  }
+}
+
+// ─── Ledger (General Ledger — per-account or specific account) ───
+
+async function generateLedger(filters: ReportFilters, _auth: AccessTokenPayload, url: URL) {
+  const accountId = url.searchParams.get('accountId')
+
+  const jeWhere = {
+    status: 'APPROVED' as const,
+    deletedAt: null,
+    fiscalYearId: filters.fiscalYearId,
+    ...(filters.startDate && filters.endDate ? { date: { gte: filters.startDate, lte: filters.endDate } } : {}),
+  }
+
+  if (accountId) {
+    // Single account ledger — show all lines with running balance
+    const lines = await prisma.journalEntryLine.findMany({
+      where: { accountId, journalEntry: jeWhere },
+      select: {
+        debit: true, credit: true, description: true,
+        account: { select: { code: true, name: true, nature: true } },
+        journalEntry: { select: { entryNo: true, date: true, description: true, reference: true } },
+      },
+      orderBy: { journalEntry: { date: 'asc' } },
+      take: 500,
+    })
+
+    const accountInfo = lines[0]?.account
+    const isDebitNature = accountInfo?.nature === 'DEBIT'
+
+    let runningBalance = 0
+    const entries = lines.map(l => {
+      const debit = Number(l.debit)
+      const credit = Number(l.credit)
+      // For debit-nature accounts (ASSET, EXPENSE): balance increases with debit
+      // For credit-nature accounts (LIABILITY, INCOME, EQUITY): balance increases with credit
+      runningBalance += isDebitNature ? (debit - credit) : (credit - debit)
+      return {
+        date: l.journalEntry.date,
+        entryNo: l.journalEntry.entryNo,
+        description: l.description || l.journalEntry.description,
+        reference: l.journalEntry.reference,
+        debit, credit,
+        balance: runningBalance,
+      }
+    })
+
+    return {
+      reportType: 'ledger', mode: 'single',
+      fiscalYearId: filters.fiscalYearId, periodStart: filters.startDate, periodEnd: filters.endDate,
+      generatedAt: new Date(),
+      accountId, accountCode: accountInfo?.code, accountName: accountInfo?.name,
+      entries,
+      totalDebit: entries.reduce((s, e) => s + e.debit, 0),
+      totalCredit: entries.reduce((s, e) => s + e.credit, 0),
+      closingBalance: runningBalance,
+    }
+  }
+
+  // All accounts summary — show per-account totals (not individual lines)
+  const accounts = await prisma.account.findMany({
+    where: { organizationId: filters.organizationId, isGroup: false, deletedAt: null },
+    select: {
+      id: true, code: true, name: true, type: true, nature: true,
+      journalLines: {
+        where: { journalEntry: jeWhere },
+        select: { debit: true, credit: true },
+      },
+    },
+    orderBy: { code: 'asc' },
+  })
+
+  const entries = accounts
+    .map(acc => {
+      const totalDebit = acc.journalLines.reduce((s, l) => s + Number(l.debit), 0)
+      const totalCredit = acc.journalLines.reduce((s, l) => s + Number(l.credit), 0)
+      const isDebitNature = acc.nature === 'DEBIT'
+      const balance = isDebitNature ? (totalDebit - totalCredit) : (totalCredit - totalDebit)
+      return {
+        accountId: acc.id,
+        accountCode: acc.code,
+        accountName: acc.name,
+        accountType: acc.type,
+        debit: totalDebit,
+        credit: totalCredit,
+        balance,
+      }
+    })
+    .filter(a => a.debit !== 0 || a.credit !== 0)
+
+  return {
+    reportType: 'ledger', mode: 'summary',
+    fiscalYearId: filters.fiscalYearId, periodStart: filters.startDate, periodEnd: filters.endDate,
+    generatedAt: new Date(),
+    accountId: 'all',
+    accounts: entries,
+    totalDebit: entries.reduce((s, e) => s + e.debit, 0),
+    totalCredit: entries.reduce((s, e) => s + e.credit, 0),
+  }
+}
+
+// ─── Day Book (all transactions by date) ───
+
+async function generateDayBook(filters: ReportFilters, _auth: AccessTokenPayload) {
+  const entries = await prisma.journalEntry.findMany({
+    where: {
+      status: 'APPROVED',
+      deletedAt: null,
+      fiscalYearId: filters.fiscalYearId,
+      ...(filters.startDate && filters.endDate ? { date: { gte: filters.startDate, lte: filters.endDate } } : {}),
+    },
+    select: {
+      entryNo: true,
+      date: true,
+      description: true,
+      reference: true,
+      totalDebit: true,
+      totalCredit: true,
+      lines: {
+        select: {
+          account: { select: { code: true, name: true } },
+          debit: true,
+          credit: true,
+          description: true,
+        },
+      },
+    },
+    orderBy: { date: 'asc' },
+  })
+
+  const totalDebit = entries.reduce((s, e) => s + Number(e.totalDebit), 0)
+  const totalCredit = entries.reduce((s, e) => s + Number(e.totalCredit), 0)
+
+  return { reportType: 'day-book', fiscalYearId: filters.fiscalYearId, periodStart: filters.startDate, periodEnd: filters.endDate, generatedAt: new Date(), entries: entries.map(e => ({ ...e, totalDebit: Number(e.totalDebit), totalCredit: Number(e.totalCredit), lines: e.lines.map(l => ({ ...l, debit: Number(l.debit), credit: Number(l.credit) })) })), summary: { totalEntries: entries.length, totalDebit, totalCredit } }
+}
+
+// ─── Bank Book (transactions for bank accounts only) ───
+
+async function generateBankBook(filters: ReportFilters, _auth: AccessTokenPayload) {
+  const lines = await prisma.journalEntryLine.findMany({
+    where: {
+      account: { organizationId: filters.organizationId, isBankAccount: true, deletedAt: null },
+      journalEntry: {
+        status: 'APPROVED', deletedAt: null, fiscalYearId: filters.fiscalYearId,
+        ...(filters.startDate && filters.endDate ? { date: { gte: filters.startDate, lte: filters.endDate } } : {}),
+      },
+    },
+    select: {
+      debit: true, credit: true, description: true,
+      account: { select: { code: true, name: true } },
+      journalEntry: { select: { entryNo: true, date: true, description: true, reference: true } },
+    },
+    orderBy: { journalEntry: { date: 'asc' } },
+  })
+
+  let runningBalance = 0
+  const entries = lines.map(l => {
+    const debit = Number(l.debit); const credit = Number(l.credit)
+    runningBalance += debit - credit
+    return { date: l.journalEntry.date, entryNo: l.journalEntry.entryNo, description: l.description || l.journalEntry.description, reference: l.journalEntry.reference, accountCode: l.account.code, accountName: l.account.name, debit, credit, balance: runningBalance }
+  })
+
+  return { reportType: 'bank-book', fiscalYearId: filters.fiscalYearId, periodStart: filters.startDate, periodEnd: filters.endDate, generatedAt: new Date(), entries, totalDebit: entries.reduce((s, e) => s + e.debit, 0), totalCredit: entries.reduce((s, e) => s + e.credit, 0), closingBalance: runningBalance }
+}
+
+// ─── Cash Book (transactions for cash accounts — non-bank asset accounts) ───
+
+async function generateCashBook(filters: ReportFilters, _auth: AccessTokenPayload) {
+  const lines = await prisma.journalEntryLine.findMany({
+    where: {
+      account: { organizationId: filters.organizationId, type: 'ASSET', isBankAccount: false, isGroup: false, deletedAt: null },
+      journalEntry: {
+        status: 'APPROVED', deletedAt: null, fiscalYearId: filters.fiscalYearId,
+        ...(filters.startDate && filters.endDate ? { date: { gte: filters.startDate, lte: filters.endDate } } : {}),
+      },
+    },
+    select: {
+      debit: true, credit: true, description: true,
+      account: { select: { code: true, name: true } },
+      journalEntry: { select: { entryNo: true, date: true, description: true, reference: true } },
+    },
+    orderBy: { journalEntry: { date: 'asc' } },
+  })
+
+  let runningBalance = 0
+  const entries = lines.map(l => {
+    const debit = Number(l.debit); const credit = Number(l.credit)
+    runningBalance += debit - credit
+    return { date: l.journalEntry.date, entryNo: l.journalEntry.entryNo, description: l.description || l.journalEntry.description, reference: l.journalEntry.reference, accountCode: l.account.code, accountName: l.account.name, debit, credit, balance: runningBalance }
+  })
+
+  return { reportType: 'cash-book', fiscalYearId: filters.fiscalYearId, periodStart: filters.startDate, periodEnd: filters.endDate, generatedAt: new Date(), entries, totalDebit: entries.reduce((s, e) => s + e.debit, 0), totalCredit: entries.reduce((s, e) => s + e.credit, 0), closingBalance: runningBalance }
+}
+
+// ─── Receipts & Payments Statement ───
+
+async function generateReceiptsPayments(filters: ReportFilters, _auth: AccessTokenPayload) {
+  const incomeBalances = await getAccountBalances(filters, ['INCOME'])
+  const expenseBalances = await getAccountBalances(filters, ['EXPENSE'])
+
+  const receipts = incomeBalances.map(a => ({ accountCode: a.accountCode, accountName: a.accountName, amount: a.totalCredit - a.totalDebit })).filter(a => a.amount !== 0)
+  const payments = expenseBalances.map(a => ({ accountCode: a.accountCode, accountName: a.accountName, amount: a.totalDebit - a.totalCredit })).filter(a => a.amount !== 0)
+
+  const totalReceipts = receipts.reduce((s, r) => s + r.amount, 0)
+  const totalPayments = payments.reduce((s, p) => s + p.amount, 0)
+
+  return { reportType: 'receipts-payments', fiscalYearId: filters.fiscalYearId, periodStart: filters.startDate, periodEnd: filters.endDate, generatedAt: new Date(), receipts, payments, summary: { totalReceipts, totalPayments, netSurplus: totalReceipts - totalPayments } }
+}
+
+// ─── Statement of Changes in Fund Balances (IPSAS mandatory) ───
+
+async function generateFundBalanceChanges(filters: ReportFilters, _auth: AccessTokenPayload) {
+  const equityBalances = await getAccountBalances(filters, ['EQUITY'])
+  const incomeBalances = await getAccountBalances(filters, ['INCOME'])
+  const expenseBalances = await getAccountBalances(filters, ['EXPENSE'])
+
+  const totalIncome = incomeBalances.reduce((s, a) => s + (a.totalCredit - a.totalDebit), 0)
+  const totalExpenses = expenseBalances.reduce((s, a) => s + (a.totalDebit - a.totalCredit), 0)
+  const netSurplus = totalIncome - totalExpenses
+
+  const openingFundBalance = equityBalances.reduce((s, a) => s + (a.totalCredit - a.totalDebit), 0)
+  const closingFundBalance = openingFundBalance + netSurplus
+
+  // Get grant-wise breakdown
+  const grants = await prisma.grant.findMany({
+    where: { donor: { organizationId: filters.organizationId } },
+    select: { id: true, title: true, grantNo: true, awardAmount: true, disbursedAmount: true },
+  })
+
+  return { reportType: 'fund-balance-changes', fiscalYearId: filters.fiscalYearId, periodStart: filters.startDate, periodEnd: filters.endDate, generatedAt: new Date(), openingFundBalance, totalIncome, totalExpenses, netSurplus, closingFundBalance, equityAccounts: equityBalances.map(a => ({ accountCode: a.accountCode, accountName: a.accountName, balance: a.totalCredit - a.totalDebit })), grantsSummary: grants.map(g => ({ grantNo: g.grantNo, title: g.title, awardAmount: Number(g.awardAmount), disbursedAmount: Number(g.disbursedAmount) })) }
+}
+
+// ─── Grant-wise Financial Report ───
+
+async function generateGrantFinancial(filters: ReportFilters, _auth: AccessTokenPayload, url: URL) {
+  const grantId = url.searchParams.get('grantId')
+
+  const grantWhere: Record<string, unknown> = { donor: { organizationId: filters.organizationId } }
+  if (grantId) grantWhere.id = grantId
+
+  const grants = await prisma.grant.findMany({
+    where: grantWhere,
+    select: {
+      id: true, title: true, grantNo: true, awardAmount: true, disbursedAmount: true, startDate: true, endDate: true,
+      donor: { select: { name: true } },
+      journalEntries: {
+        where: { status: 'APPROVED', deletedAt: null, fiscalYearId: filters.fiscalYearId },
+        select: {
+          totalDebit: true, totalCredit: true,
+          lines: { select: { debit: true, credit: true, account: { select: { code: true, name: true, type: true } } } },
+        },
+      },
+    },
+  })
+
+  const grantReports = grants.map(g => {
+    let totalIncome = 0, totalExpense = 0
+    for (const je of g.journalEntries) {
+      for (const l of je.lines) {
+        if (l.account.type === 'INCOME') totalIncome += Number(l.credit) - Number(l.debit)
+        if (l.account.type === 'EXPENSE') totalExpense += Number(l.debit) - Number(l.credit)
+      }
+    }
+    return {
+      grantId: g.id, grantNo: g.grantNo, grantTitle: g.title, donorName: g.donor.name,
+      awardAmount: Number(g.awardAmount), disbursedAmount: Number(g.disbursedAmount),
+      startDate: g.startDate, endDate: g.endDate,
+      totalIncome, totalExpenses: totalExpense, fundBalance: totalIncome - totalExpense,
+      utilizationRate: totalIncome > 0 ? (totalExpense / totalIncome) * 100 : 0,
+    }
+  })
+
+  return { reportType: 'grant-financial', fiscalYearId: filters.fiscalYearId, periodStart: filters.startDate, periodEnd: filters.endDate, generatedAt: new Date(), grants: grantReports, summary: { totalGrants: grantReports.length, totalAward: grantReports.reduce((s, g) => s + g.awardAmount, 0), totalDisbursed: grantReports.reduce((s, g) => s + g.disbursedAmount, 0), totalExpense: grantReports.reduce((s, g) => s + g.totalExpense, 0) } }
+}
+
+// ─── Bank Reconciliation Statement (printable summary) ───
+
+async function generateBankReconciliationStatement(filters: ReportFilters, _auth: AccessTokenPayload, url: URL) {
+  const bankAccountId = url.searchParams.get('bankAccountId')
+
+  const where: Record<string, unknown> = { bankAccount: { organizationId: filters.organizationId } }
+  if (bankAccountId) where.bankAccountId = bankAccountId
+
+  const reconciliations = await prisma.bankReconciliation.findMany({
+    where: {
+      ...where,
+      periodStart: { gte: filters.startDate },
+      periodEnd: { lte: filters.endDate },
+    },
+    select: {
+      id: true, periodStart: true, periodEnd: true, bookBalance: true, bankBalance: true, difference: true, status: true, reconciledAt: true,
+      bankAccount: { select: { accountCode: true, accountName: true, bankName: true } },
+      items: { select: { date: true, description: true, bankAmount: true, bookAmount: true, isMatched: true, type: true } },
+    },
+    orderBy: { periodEnd: 'desc' },
+  })
+
+  return {
+    reportType: 'bank-reconciliation-statement', fiscalYearId: filters.fiscalYearId, periodStart: filters.startDate, periodEnd: filters.endDate, generatedAt: new Date(),
+    reconciliations: reconciliations.map(r => ({
+      bankAccount: r.bankAccount, periodStart: r.periodStart, periodEnd: r.periodEnd,
+      bookBalance: Number(r.bookBalance), bankBalance: Number(r.bankBalance), difference: Number(r.difference),
+      status: r.status, reconciledAt: r.reconciledAt,
+      totalItems: r.items.length,
+      matchedItems: r.items.filter(i => i.isMatched).length,
+      unmatchedItems: r.items.filter(i => !i.isMatched).map(i => ({ date: i.date, description: i.description, amount: Number(i.bankAmount), type: i.type })),
+    })),
+    summary: { totalReconciliations: reconciliations.length, reconciled: reconciliations.filter(r => r.status === 'RECONCILED').length, pending: reconciliations.filter(r => r.status === 'PENDING').length },
   }
 }

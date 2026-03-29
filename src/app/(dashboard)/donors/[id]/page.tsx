@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { useFormatters } from '@/hooks/use-formatters'
+import { FileUpload } from '@/components/shared/file-upload'
 
 const DONOR_TYPES = [
   'BILATERAL',
@@ -344,6 +345,13 @@ export default function DonorDetailPage() {
           </Card>
         )}
 
+        {/* File Attachments */}
+        <Card>
+          <CardContent className="pt-6">
+            <FileUpload entityType="donor" entityId={id} module="donors" readOnly={!donor.isActive} />
+          </CardContent>
+        </Card>
+
         {/* Grants Section */}
         {donor.grants && donor.grants.length > 0 && (
           <Card>
@@ -552,6 +560,13 @@ export default function DonorDetailPage() {
             )}
           </Button>
         </CardFooter>
+      </Card>
+
+      {/* File Attachments */}
+      <Card>
+        <CardContent className="pt-6">
+          <FileUpload entityType="donor" entityId={id} module="donors" readOnly={false} />
+        </CardContent>
       </Card>
     </div>
   )

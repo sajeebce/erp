@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
         return apiBadRequest('Project not found or does not belong to your organization')
       }
 
-      // Validate budget
+      // Validate project-level budget
       const linesTotal = lines.reduce(
         (sum: number, l: { quantity?: number; estimatedPrice?: number }) =>
           sum + (Number(l.quantity || 0) * Number(l.estimatedPrice || 0)),
@@ -107,6 +107,38 @@ export async function POST(request: NextRequest) {
         return apiBadRequest(
           `Total estimate (${linesTotal}) exceeds remaining project budget (${remaining})`
         )
+      }
+
+      // Cross-module: validate against active/approved Budget if one exists
+      const activeBudget = await prisma.budget.findFirst({
+        where: {
+          projectId,
+          status: { in: ['APPROVED', 'ACTIVE'] },
+          deletedAt: null,
+        },
+        select: { id: true, totalAmount: true },
+      })
+
+      if (activeBudget) {
+        // Sum totalEstimate of all existing non-rejected PRs linked to this project
+        const existingPRAggregate = await prisma.purchaseRequisition.aggregate({
+          where: {
+            projectId,
+            status: { notIn: ['REJECTED', 'CANCELLED'] },
+            deletedAt: null,
+          },
+          _sum: { totalEstimate: true },
+        })
+
+        const committedAmount = Number(existingPRAggregate._sum.totalEstimate || 0)
+        const budgetTotal = Number(activeBudget.totalAmount)
+        const availableBudget = budgetTotal - committedAmount
+
+        if (linesTotal > availableBudget) {
+          return apiBadRequest(
+            `Insufficient budget. Available: ${availableBudget.toFixed(2)}, Requested: ${linesTotal.toFixed(2)}`
+          )
+        }
       }
     }
 

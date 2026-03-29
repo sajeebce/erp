@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { useFormatters } from '@/hooks/use-formatters'
+import { FileUpload } from '@/components/shared/file-upload'
 
 const CONDITIONS = ['NEW', 'GOOD', 'FAIR', 'POOR', 'DAMAGED'] as const
 
@@ -513,6 +514,13 @@ export default function AssetDetailPage() {
           </Card>
         )}
 
+        {/* File Attachments */}
+        <Card>
+          <CardContent className="pt-6">
+            <FileUpload entityType="asset" entityId={id} module="assets" readOnly={!asset.isActive} />
+          </CardContent>
+        </Card>
+
         {/* Action Buttons */}
         <Card>
           <CardContent className="flex flex-wrap gap-3 pt-6">
@@ -723,6 +731,13 @@ export default function AssetDetailPage() {
             )}
           </Button>
         </CardFooter>
+      </Card>
+
+      {/* File Attachments */}
+      <Card>
+        <CardContent className="pt-6">
+          <FileUpload entityType="asset" entityId={id} module="assets" readOnly={false} />
+        </CardContent>
       </Card>
     </div>
   )

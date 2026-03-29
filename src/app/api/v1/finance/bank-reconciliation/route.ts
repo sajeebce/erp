@@ -107,52 +107,30 @@ export async function POST(request: NextRequest) {
       return apiNotFound('Bank account not found in this organization')
     }
 
-    // Auto-calculate bookBalance from vouchers linked to this bank account in the period
-    const voucherAgg = await prisma.voucher.aggregate({
-      where: {
-        bankAccountId,
-        date: {
-          gte: start,
-          lte: end,
-        },
+    // Calculate bookBalance from approved JE lines for the specific GL account (or all bank accounts as fallback)
+    const jeWhere: Record<string, unknown> = {
+      journalEntry: {
         status: 'APPROVED',
         deletedAt: null,
+        date: { gte: start, lte: end },
       },
-      _sum: {
-        amount: true,
-      },
-    })
+    }
 
-    // Also check journal entries linked to vouchers for this bank account
+    if (bankAccount.glAccountId) {
+      jeWhere.accountId = bankAccount.glAccountId
+    } else {
+      jeWhere.account = { organizationId: auth.organizationId, isBankAccount: true }
+    }
+
     const journalAgg = await prisma.journalEntryLine.aggregate({
-      where: {
-        journalEntry: {
-          status: 'APPROVED',
-          deletedAt: null,
-          date: {
-            gte: start,
-            lte: end,
-          },
-          voucher: {
-            bankAccountId,
-          },
-        },
-      },
-      _sum: {
-        debit: true,
-        credit: true,
-      },
+      where: jeWhere,
+      _sum: { debit: true, credit: true },
     })
 
-    // Book balance = sum of credits - sum of debits for journal entries tied to this bank account
-    // (bank account is typically an asset, so debit increases, credit decreases)
+    // Bank is an ASSET account: debit increases, credit decreases
     const totalDebit = Number(journalAgg._sum.debit ?? 0)
     const totalCredit = Number(journalAgg._sum.credit ?? 0)
-
-    // If we have journal data, use that for book balance, otherwise fall back to voucher amounts
-    const bookBalance = journalAgg._sum.debit !== null || journalAgg._sum.credit !== null
-      ? totalDebit - totalCredit
-      : Number(voucherAgg._sum.amount ?? 0)
+    const bookBalance = totalDebit - totalCredit
 
     const numericBankBalance = Number(bankBalance)
     const difference = numericBankBalance - bookBalance

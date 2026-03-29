@@ -22,6 +22,9 @@
     "reset": "Reset",
     "refresh": "Refresh",
     "filter": "Filter",
+    "help": "Help",
+    "tips": "Tips",
+    "example": "Example",
     "clear": "Clear",
     "view": "View",
     "print": "Print",
@@ -176,5 +179,13 @@
     "CONSULTANT": "Consultant",
     "INTERN": "Intern",
     "VOLUNTEER": "Volunteer"
+  },
+  "fileUpload": {
+    "attachments": "Attachments",
+    "dragDrop": "Drag & drop files here, or click to browse",
+    "supportedFormats": "PDF, Images, Excel, Word, CSV (max 50MB)",
+    "uploading": "Uploading...",
+    "pendingSave": "Will upload after save",
+    "deleteConfirm": "Delete this file?"
   }
 }

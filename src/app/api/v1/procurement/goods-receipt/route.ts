@@ -172,6 +172,20 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Cross-module: update inventory stock for lines that reference an inventory item
+    for (const line of lines) {
+      if (line.inventoryItemId && Number(line.quantityAccepted || 0) > 0) {
+        await prisma.inventoryItem.update({
+          where: { id: line.inventoryItemId },
+          data: {
+            stockInHand: {
+              increment: Number(line.quantityAccepted),
+            },
+          },
+        })
+      }
+    }
+
     const audit = getAuditContext(request)
     await logAudit({
       organizationId: auth.organizationId,

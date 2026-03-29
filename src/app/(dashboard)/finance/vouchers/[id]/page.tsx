@@ -27,6 +27,7 @@ import { PageHeader } from '@/components/shared/page-header'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useFormatters } from '@/hooks/use-formatters'
+import { FileUpload } from '@/components/shared/file-upload'
 
 const VOUCHER_TYPES = ['DEBIT', 'RECEIPT', 'CASH', 'BANK', 'JOURNAL', 'CONTRA'] as const
 type VoucherType = (typeof VOUCHER_TYPES)[number]
@@ -136,7 +137,7 @@ export default function VoucherDetailPage() {
       if (res.ok && json.success) {
         setVoucher(json.data)
       } else {
-        setError(json.error || t('failedToLoad'))
+        setError(json.error?.message || t('failedToLoad'))
       }
     } catch {
       setError(t('failedToLoad'))
@@ -236,7 +237,7 @@ export default function VoucherDetailPage() {
         setEditing(false)
         await fetchVoucher()
       } else {
-        setError(json.error || t('failedToUpdate'))
+        setError(json.error?.message || t('failedToUpdate'))
       }
     } catch {
       setError(t('failedToUpdate'))
@@ -254,7 +255,7 @@ export default function VoucherDetailPage() {
       if (res.ok && json.success) {
         await fetchVoucher()
       } else {
-        setError(json.error || t('failedToUpdate'))
+        setError(json.error?.message || json.message || t('failedToUpdate'))
       }
     } catch {
       setError(t('failedToUpdate'))
@@ -273,7 +274,7 @@ export default function VoucherDetailPage() {
         setRejectReason('')
         await fetchVoucher()
       } else {
-        setError(json.error || t('failedToUpdate'))
+        setError(json.error?.message || json.message || t('failedToUpdate'))
       }
     } catch {
       setError(t('failedToUpdate'))
@@ -289,7 +290,7 @@ export default function VoucherDetailPage() {
       if (res.ok && json.success) {
         router.push('/finance/vouchers')
       } else {
-        setError(json.error || t('failedToUpdate'))
+        setError(json.error?.message || t('failedToUpdate'))
       }
     } catch {
       setError(t('failedToUpdate'))
@@ -412,6 +413,11 @@ export default function VoucherDetailPage() {
             <div className="space-y-1">
               <span className="text-sm font-medium text-muted-foreground">{t('description')}</span>
               <p className="text-sm">{voucher.description}</p>
+            </div>
+
+            {/* Attachments */}
+            <div className="border-t pt-4">
+              <FileUpload entityType="voucher" entityId={id} module="finance" readOnly={voucher.status !== 'DRAFT'} />
             </div>
 
             {/* Metadata */}
@@ -706,6 +712,10 @@ export default function VoucherDetailPage() {
               </Select>
             </div>
           </div>
+        </CardContent>
+
+        <CardContent className="pt-0">
+          <FileUpload entityType="voucher" entityId={id} module="finance" readOnly={false} />
         </CardContent>
 
         <CardFooter className="flex justify-end gap-3">

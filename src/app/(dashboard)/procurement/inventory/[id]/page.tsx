@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { useFormatters } from '@/hooks/use-formatters'
+import { FileUpload } from '@/components/shared/file-upload'
 
 const INVENTORY_CATEGORIES = ['OFFICE_SUPPLIES', 'IT_EQUIPMENT', 'FURNITURE', 'VEHICLE_PARTS', 'MEDICAL', 'FOOD', 'OTHER'] as const
 const UNITS = ['PCS', 'KG', 'LTR', 'MTR', 'BOX', 'SET', 'PACK', 'UNIT'] as const
@@ -308,6 +309,13 @@ export default function InventoryItemDetailPage() {
           </Card>
         )}
 
+        {/* File Attachments */}
+        <Card>
+          <CardContent className="pt-6">
+            <FileUpload entityType="inventory_item" entityId={id} module="procurement" readOnly={!item.isActive} />
+          </CardContent>
+        </Card>
+
         {/* Action Buttons */}
         <Card>
           <CardContent className="flex flex-wrap gap-3 pt-6">
@@ -459,6 +467,13 @@ export default function InventoryItemDetailPage() {
             )}
           </Button>
         </CardFooter>
+      </Card>
+
+      {/* File Attachments */}
+      <Card>
+        <CardContent className="pt-6">
+          <FileUpload entityType="inventory_item" entityId={id} module="procurement" readOnly={false} />
+        </CardContent>
       </Card>
     </div>
   )

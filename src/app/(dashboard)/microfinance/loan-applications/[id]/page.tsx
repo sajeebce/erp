@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
+import { FileUpload } from '@/components/shared/file-upload'
 
 interface LoanApplication {
   id: string
@@ -206,6 +207,13 @@ export default function LoanApplicationDetailPage() {
           <CardContent><p className="text-sm whitespace-pre-wrap">{application.notes}</p></CardContent>
         </Card>
       )}
+
+      {/* File Attachments */}
+      <Card>
+        <CardContent className="pt-6">
+          <FileUpload entityType="loan_application" entityId={params.id as string} module="microfinance" readOnly={application.status !== 'PENDING'} />
+        </CardContent>
+      </Card>
     </div>
   )
 }

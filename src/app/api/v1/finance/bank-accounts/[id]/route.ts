@@ -36,6 +36,10 @@ export async function GET(
         currentBalance: true,
         isActive: true,
         description: true,
+        glAccountId: true,
+        glAccount: {
+          select: { id: true, code: true, name: true },
+        },
         createdAt: true,
         updatedAt: true,
       },
@@ -107,6 +111,7 @@ export async function PUT(
       'accountName', 'type', 'bankName', 'branchName',
       'accountNumber', 'routingNumber', 'swiftCode', 'currencyCode',
       'isMotherAccount', 'currentBalance', 'isActive', 'description',
+      'glAccountId',
     ] as const
 
     const data: Record<string, unknown> = {}
@@ -163,6 +168,10 @@ export async function PUT(
         currentBalance: true,
         isActive: true,
         description: true,
+        glAccountId: true,
+        glAccount: {
+          select: { id: true, code: true, name: true },
+        },
         createdAt: true,
         updatedAt: true,
       },

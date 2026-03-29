@@ -31,6 +31,7 @@ model Account {
 
   journalLines    JournalEntryLine[]
   budgetLines     BudgetLine[]
+  bankAccounts    BankAccount[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -138,6 +139,7 @@ model Voucher {
 model BankAccount {
   id               String          @id @default(uuid()) @db.Uuid
   organizationId   String          @db.Uuid
+  glAccountId      String?         @db.Uuid  // FK to Chart of Accounts — the GL ledger account this bank account maps to
   accountCode      String
   accountName      String
   type             BankAccountType
@@ -155,12 +157,14 @@ model BankAccount {
   updatedAt        DateTime        @updatedAt
 
   organization     Organization    @relation(fields: [organizationId], references: [id])
+  glAccount        Account?        @relation(fields: [glAccountId], references: [id])
   vouchers         Voucher[]
   fundReceipts     FundReceipt[]
   reconciliations  BankReconciliation[]
 
   @@unique([organizationId, accountCode])
   @@index([organizationId])
+  @@index([glAccountId])
   @@index([type])
   @@index([isMotherAccount])
 }

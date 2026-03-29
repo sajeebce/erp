@@ -19,6 +19,7 @@ import {
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
+import { FileUpload } from '@/components/shared/file-upload'
 
 const PROJECT_STATUSES = ['PIPELINE', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CLOSED', 'CANCELLED'] as const
 
@@ -447,6 +448,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           </CardContent>
         </Card>
       )}
+
+      {/* File Attachments */}
+      <Card>
+        <CardContent className="pt-6">
+          <FileUpload entityType="project" entityId={id} module="projects" readOnly={['COMPLETED', 'CLOSED', 'CANCELLED'].includes(project.status)} />
+        </CardContent>
+      </Card>
 
       {/* Team Members */}
       {project.teamMembers.length > 0 && (

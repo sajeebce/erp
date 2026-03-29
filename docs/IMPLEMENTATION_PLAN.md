@@ -24,6 +24,9 @@
 7. **Server Components default** — Only add `'use client'` when strictly needed. Use `use cache` (not deprecated `unstable_cache`).
 8. **Cascade rules** — Soft-delete parents, restrict if children exist, archive completed projects (§5.3).
 9. **All file uploads go to Cloudflare R2** — Every module that handles file uploads (documents, receipts, photos, attachments) MUST use the centralized storage adapter. Never store files on local disk in production. Storage config is managed by Super Admin via `MediaSetting` table; tenants see read-only storage info in System Settings. Key format: `{orgId}/{module}/{year}/{month}/{uuid}-{filename}`.
+10. **Bank Reconciliation** — Full workflow: (1) Select bank account + period, (2) Import CSV bank statement with column mapping, (3) Side-by-side matching UI — bank lines vs book entries (JE/vouchers), (4) Auto-match by amount + date + reference, (5) Manual match or create JE from unmatched bank lines (fees, interest), (6) Finalize when difference=0 → lock period. CSV import supports all Bangladesh banks. Every matched item links to a JournalEntry via `matchedJournalId`.
+11. **Financial Reports** — Full-page dedicated report viewer (not modal). Architecture: (a) Listing page `/finance/financial-reports` — 13 report cards in 3 sections (Core/Subsidiary/NGO), click navigates to detail page; (b) Detail page `/finance/financial-reports/[type]` — filter bar (fiscal year, date range, show-zero toggle, generate button), auto-generates on fiscal year change; (c) Reusable `ReportViewer` component — company header, configurable columns (currency/number/date/text format), hierarchical rows (_isGroup, _level), pinned totals footer; (d) Print — `window.open()` popup with inline CSS, auto-print dialog, professional layout (company name, report title, period, bordered table, timestamp footer, A4 landscape); (e) CSV export — downloadable CSV with proper filename; (f) 13 report types: 5 Core (trial-balance, income-statement, balance-sheet, cash-flow, receipts-payments), 4 Subsidiary (ledger, day-book, bank-book, cash-book), 4 NGO-specific (fund-position, fund-balance-changes, grant-financial, bank-reconciliation-statement). All APIs compute data from approved JournalEntry lines in real-time.
+12. **Bank & Cash Management** — Operational cash/bank visibility page. Shows all bank, cash, and mobile banking accounts with real-time balances. Features: create/edit bank accounts, view transaction history, fund transfers (auto-generates contra voucher), freeze/close accounts. Bangladesh NGO-specific: NGOAB Mother Account (FC), Project Accounts (FD-6), FDR/SDR tracking, bKash/Nagad mobile banking. Summary cards: Total Bank Balance, Total Cash, Mobile Banking Balance, Total Liquid Position. Connected to: Vouchers (payment/receipt), Fund Receipts, Bank Reconciliation, Payroll.
 
 ---
 
@@ -33,66 +36,66 @@
 
 | # | Section | Lines | Description |
 |---|---------|-------|-------------|
-| **1** | **Architecture & Design Principles** | **24–321** | |
-| 1.1 | API-Centric Design | 26–34 | REST-first, integration, webhooks, export |
-| 1.2 | API Response Format | 35–58 | Standard success/error JSON structure |
-| 1.3 | SaaS Multi-Tenancy | 59–134 | Shared DB, tenant isolation, domain routing, onboarding, global vs scoped tables |
-| 1.4 | Authentication & Authorization | 135–189 | JWT structure, auth flow, RBAC helpers |
-| 1.4.1 | Subscription Guard | 190–215 | Plan-based access control (active/trial/past-due/cancelled) |
-| 1.4.2 | Impersonation | 216–229 | Super admin → tenant user impersonation |
-| 1.5 | Core Design Rules | 230–248 | Coding conventions, soft-delete, audit trail |
-| 1.5.1 | File Storage (Adapter Pattern) | 249–283 | Local ↔ R2 storage abstraction |
-| 1.5.2 | Payment Gateway (Factory Pattern) | 284–308 | bKash, Nagad, Stripe, bank API integration |
-| 1.6 | Deployment (VPS Direct) | 309–321 | Production deployment strategy |
-| **2** | **Folder Structure** | **322–804** | Complete `src/` directory tree with file descriptions |
-| **3** | **Menu Structure** | **805–819** | Sidebar navigation hierarchy |
-| **4** | **Database Schema (Prisma 7.x)** | **820–3974** | |
-| 4.1 | Enums | 822–1309 | All enum definitions |
-| 4.2 | Auth & Organization Models | 1310–1801 | User, Role, Permission, Organization, Subscription, SuperAdmin, etc. |
-| 4.3 | Finance & Accounting Models | 1802–2008 | Account, JournalEntry, Voucher, FundReceipt, BankReconciliation |
-| 4.4 | Budget Management Models | 2009–2135 | Budget, BudgetLine, BudgetRevision |
-| 4.5 | Donor & Grant Management Models | 2136–2296 | Donor, Grant, FundRequisition, DonorReport |
-| 4.6 | Project Management Models | 2297–2475 | Project, Activity, Milestone, Logframe, TimeEntry |
-| 4.7 | Beneficiary Management Models | 2476–2620 | Beneficiary, Enrollment, ServiceDelivery, ImpactAssessment, Grievance |
-| 4.8 | Procurement & Inventory Models | 2621–2943 | Vendor, Requisition, PurchaseOrder, GoodsReceipt, Inventory, Warehouse |
-| 4.9 | Fixed Asset Models | 2944–3092 | Asset, AssetCategory, Depreciation, Disposal, Transfer, Maintenance |
-| 4.10 | Human Resources Models | 3093–3461 | Employee, Attendance, Leave, Payroll, Performance, Training, Onboarding |
-| 4.11 | Microfinance Models | 3462–3722 | Samity, LoanProduct, LoanApplication, LoanAccount, Savings, Collection |
-| 4.12 | System Models | 3723–3974 | AuditLog, Notification, Webhook, SystemSetting, BackupLog, Workflow |
-| **5** | **Inter-Module Data Flow** | **3975–4087** | |
-| 5.1 | Master Relationship Map | 3977–4041 | Module dependency diagram |
-| 5.2 | Cross-Module Impact Analysis | 4042–4065 | What happens when data changes in one module |
-| 5.3 | Cascade Rules | 4066–4087 | Delete/archive behavior across modules |
-| **6** | **API Routes & CRUD Operations** | **4088–4444** | |
-| 6.1 | Common Query Parameters | 4090–4109 | Pagination, sorting, filtering, search |
-| 6.2 | Module-wise API Endpoints | 4110–4444 | All 220+ endpoints by module |
-| **7** | **Implementation Phases** | **4445–4766** | |
-| | Phase 1: Foundation & SaaS Core (Wk 1–4) | 4447–4530 | Auth, multi-tenancy, super admin, subscription |
-| | Phase 2: Core Finance (Wk 4–6) ✅ | 4531–4555 | Chart of Accounts, Journal Entries, Vouchers |
-| | Phase 3: Budget & Donor (Wk 7–9) ✅ | 4556–4578 | Budgets, Donors, Grants, Fund Receipts |
-| | Phase 4: Project & Beneficiary (Wk 10–12) ✅ | 4579–4604 | Projects, Activities, Beneficiaries |
-| | Phase 5: Operations (Wk 13–16) ✅ | 4605–4667 | Procurement, Assets, HR, Microfinance |
-| | Phase 6: Reports & Dashboard (Wk 23–25) ✅ | 4668–4694 | Reports, Analytics, Dashboard widgets |
-| | Phase 7: UI Pages ✅ | 4695–4726 | All CRUD UI pages across modules |
-| | Remaining (Deferred) | 4727–4740 | Webhooks, advanced features |
-| 7.1 | Cron Jobs | 4741–4766 | Scheduled tasks (token cleanup, depreciation, etc.) |
-| **8** | **Testing Guidelines** | **4767–5059** | |
-| 8.1 | Testing Strategy | 4769–4776 | Approach overview |
-| 8.2 | Module-wise Testing | 4777–4977 | Per-module test cases and seed data |
-| 8.3 | Integration Test Scenarios | 4978–5059 | Cross-module end-to-end test flows |
-| — | **Verification Checklist** | **5060–5089** | Pre-launch validation checklist |
-| — | **Critical Fixes (Post-Audit)** | **5090–5179** | Fix 1–9: journal auto-create, missing indexes, file upload, etc. |
-| — | **Important Features (Post-Fixes)** | **5180–5194** | International-grade enhancements |
-| — | **New Dependencies** | **5195–5226** | Required npm packages (auth, storage, validation, etc.) |
-| **9** | **Internationalization (i18n)** | **5227–5336** | |
-| 9.1 | Architecture | 5229–5238 | next-intl setup, cookie-based locale |
-| 9.2 | Supported Locales | 5239–5245 | EN (default), BN |
-| 9.3 | Message File Structure | 5246–5263 | JSON namespace per module |
-| 9.4 | Key Files | 5264–5275 | Config, request handler, middleware |
-| 9.5 | Locale Resolution Priority | 5276–5283 | Cookie → org setting → browser |
-| 9.6 | Usage Patterns | 5284–5315 | Server/Client component usage examples |
-| 9.7 | Database Fields | 5316–5325 | Bilingual name storage pattern |
-| 9.8 | API Endpoints | 5326–5336 | Language preference API |
+| **1** | **Architecture & Design Principles** | **101–398** | |
+| 1.1 | API-Centric Design | 103–111 | REST-first, integration, webhooks, export |
+| 1.2 | API Response Format | 112–135 | Standard success/error JSON structure |
+| 1.3 | SaaS Multi-Tenancy | 136–211 | Shared DB, tenant isolation, domain routing, onboarding, global vs scoped tables |
+| 1.4 | Authentication & Authorization | 212–266 | JWT structure, auth flow, RBAC helpers |
+| 1.4.1 | Subscription Guard | 267–292 | Plan-based access control (active/trial/past-due/cancelled) |
+| 1.4.2 | Impersonation | 293–306 | Super admin → tenant user impersonation |
+| 1.5 | Core Design Rules | 307–325 | Coding conventions, soft-delete, audit trail |
+| 1.5.1 | File Storage (Adapter Pattern) | 326–360 | Local ↔ R2 storage abstraction |
+| 1.5.2 | Payment Gateway (Factory Pattern) | 361–385 | bKash, Nagad, Stripe, bank API integration |
+| 1.6 | Deployment (VPS Direct) | 386–398 | Production deployment strategy |
+| **2** | **Folder Structure** | **399–881** | Complete `src/` directory tree with file descriptions |
+| **3** | **Menu Structure** | **882–896** | Sidebar navigation hierarchy |
+| **4** | **Database Schema (Prisma 7.x)** | **897–4051** | |
+| 4.1 | Enums | 899–1386 | All enum definitions |
+| 4.2 | Auth & Organization Models | 1387–1878 | User, Role, Permission, Organization, Subscription, SuperAdmin, etc. |
+| 4.3 | Finance & Accounting Models | 1879–2085 | Account, JournalEntry, Voucher, FundReceipt, BankAccount (+ glAccountId FK), BankReconciliation |
+| 4.4 | Budget Management Models | 2086–2212 | Budget, BudgetLine, BudgetRevision |
+| 4.5 | Donor & Grant Management Models | 2213–2373 | Donor, Grant, FundRequisition, DonorReport |
+| 4.6 | Project Management Models | 2374–2552 | Project, Activity, Milestone, Logframe, TimeEntry |
+| 4.7 | Beneficiary Management Models | 2553–2697 | Beneficiary, Enrollment, ServiceDelivery, ImpactAssessment, Grievance |
+| 4.8 | Procurement & Inventory Models | 2698–3020 | Vendor, Requisition, PurchaseOrder, GoodsReceipt, Inventory, Warehouse |
+| 4.9 | Fixed Asset Models | 3021–3169 | Asset, AssetCategory, Depreciation, Disposal, Transfer, Maintenance |
+| 4.10 | Human Resources Models | 3170–3538 | Employee, Attendance, Leave, Payroll, Performance, Training, Onboarding |
+| 4.11 | Microfinance Models | 3539–3799 | Samity, LoanProduct, LoanApplication, LoanAccount, Savings, Collection |
+| 4.12 | System Models | 3800–4051 | AuditLog, Notification, Webhook, SystemSetting, BackupLog, Workflow, Attachment |
+| **5** | **Inter-Module Data Flow** | **4053–4165** | |
+| 5.1 | Master Relationship Map | 4055–4119 | Module dependency diagram |
+| 5.2 | Cross-Module Impact Analysis | 4120–4143 | What happens when data changes in one module (✅ status column added) |
+| 5.3 | Cascade Rules | 4144–4165 | Delete/archive behavior across modules |
+| **6** | **API Routes & CRUD Operations** | **4166–4529** | |
+| 6.1 | Common Query Parameters | 4168–4187 | Pagination, sorting, filtering, search |
+| 6.2 | Module-wise API Endpoints | 4188–4529 | All 220+ endpoints by module (incl. CSV import, auto-match, attachments) |
+| **7** | **Implementation Phases** | **4530–4851** | |
+| | Phase 1: Foundation & SaaS Core (Wk 1–4) | 4532–4615 | Auth, multi-tenancy, super admin, subscription |
+| | Phase 2: Core Finance (Wk 4–6) ✅ | 4616–4640 | Chart of Accounts, Journal Entries, Vouchers |
+| | Phase 3: Budget & Donor (Wk 7–9) ✅ | 4641–4663 | Budgets, Donors, Grants, Fund Receipts |
+| | Phase 4: Project & Beneficiary (Wk 10–12) ✅ | 4664–4689 | Projects, Activities, Beneficiaries |
+| | Phase 5: Operations (Wk 13–16) ✅ | 4690–4752 | Procurement, Assets, HR, Microfinance |
+| | Phase 6: Reports & Dashboard (Wk 23–25) ✅ | 4753–4779 | Reports, Analytics, Dashboard widgets |
+| | Phase 7: UI Pages ✅ | 4780–4811 | All CRUD UI pages across modules |
+| | Remaining (Deferred) | 4812–4825 | Webhooks, advanced features |
+| 7.1 | Cron Jobs | 4826–4851 | Scheduled tasks (token cleanup, depreciation, etc.) |
+| **8** | **Testing Guidelines** | **4852–5144** | |
+| 8.1 | Testing Strategy | 4854–4861 | Approach overview |
+| 8.2 | Module-wise Testing | 4862–5062 | Per-module test cases and seed data |
+| 8.3 | Integration Test Scenarios | 5063–5144 | Cross-module end-to-end test flows |
+| — | **Verification Checklist** | **5145–5174** | Pre-launch validation checklist |
+| — | **Critical Fixes (Post-Audit)** | **5175–5264** | Fix 1–9: journal auto-create, missing indexes, file upload, etc. |
+| — | **Important Features (Post-Fixes)** | **5265–5279** | International-grade enhancements |
+| — | **New Dependencies** | **5280–5311** | Required npm packages (auth, storage, validation, etc.) |
+| **9** | **Internationalization (i18n)** | **5312–5421** | |
+| 9.1 | Architecture | 5314–5323 | next-intl setup, cookie-based locale |
+| 9.2 | Supported Locales | 5324–5330 | EN (default), BN |
+| 9.3 | Message File Structure | 5331–5348 | JSON namespace per module |
+| 9.4 | Key Files | 5349–5360 | Config, request handler, middleware |
+| 9.5 | Locale Resolution Priority | 5361–5368 | Cookie → org setting → browser |
+| 9.6 | Usage Patterns | 5369–5400 | Server/Client component usage examples |
+| 9.7 | Database Fields | 5401–5410 | Bilingual name storage pattern |
+| 9.8 | API Endpoints | 5411–5421 | Language preference API |
 
 ---
 
@@ -4118,25 +4121,25 @@ model Backup {
 
 When data changes in one module, here's exactly what it affects:
 
-| Source Action | Affected Modules | Specific Impact |
-|---------------|-----------------|-----------------|
-| **New Fund Receipt** (Donor) | Finance: creates Journal Entry (DR Bank, CR Grant Income) | Budget: updates available funds | Dashboard: updates "Total Fund Received" KPI | Grant: updates `disbursedAmount` |
-| **Voucher Approved** (Finance) | Finance: creates Journal Entry | Budget: increases actual spend → affects Budget vs Actual | Project: increases `amountSpent` | Dashboard: updates charts |
-| **Budget Revision Approved** | Budget: updates budget line amounts | Project: updates `totalBudget` | Procurement: changes available budget for PR validation |
-| **PR Created** (Procurement) | Budget: validates budget availability (blocks if insufficient) | Finance: eventually creates payment voucher |
-| **PO → GRN → Payment** | Inventory: increases stock (from GRN) | Finance: creates payment voucher & journal entry | Budget: increases actual spend | Vendor: updates `totalOrders` |
-| **Payroll Processed** (HR) | Finance: creates journal entry (DR Salary Expense, CR Bank) | Budget: increases actual spend per project (via allocation) | Project: increases `amountSpent` per project allocation |
-| **Depreciation Run** (Assets) | Finance: creates journal entry (DR Depreciation Expense, CR Accumulated Dep.) | Asset: updates `accumulatedDepreciation` and `netBookValue` | Budget: increases actual spend |
-| **Asset Disposed** | Finance: creates journal entry (gain/loss on disposal) | Asset: marks as disposed, updates register |
-| **Employee Joins/Leaves** (HR) | Project: updates team members | Payroll: adds/removes from payroll run | Dashboard: updates "Staff Count" KPI |
-| **Leave Approved** (HR) | Attendance: blocks attendance for leave period | Payroll: applies leave deduction if unpaid | Project: affects staff availability |
-| **Loan Disbursed** (MFI) | Finance: creates journal entry (DR Loan Outstanding, CR Bank/Cash) | Samity: updates outstanding portfolio | MFI Member: creates loan account |
-| **Loan Repayment Collected** | Finance: creates journal entry (DR Cash, CR Loan Outstanding + Interest Income) | Loan Account: reduces outstanding, updates last payment | Collection Sheet: records collection | Overdue: updates classification |
-| **Savings Deposit** (MFI) | Finance: creates journal entry (DR Cash, CR Member Savings) | Savings Account: increases balance |
-| **Beneficiary Enrolled** | Project: increases beneficiary count | Dashboard: updates "Active Beneficiaries" KPI |
-| **Service Delivered** | Project: tracks delivery metrics | Impact Assessment: feeds into indicator measurement |
-| **New Project Created** | Grant: links project to grant | Budget: enables budget creation | Finance: enables project-tagged transactions |
-| **Grant Status Change** | Project: updates project status | Budget: freezes/unfreezes budget | Fund Requisition: enables/disables requests |
+| Source Action | Affected Modules | Specific Impact | Status |
+|---------------|-----------------|-----------------|--------|
+| **New Fund Receipt** (Donor) | Finance: creates Journal Entry (DR Bank, CR Grant Income) | Budget: updates available funds | Dashboard: updates "Total Fund Received" KPI | Grant: updates `disbursedAmount` | ✅ implemented |
+| **Voucher Approved** (Finance) | Finance: auto-creates Journal Entry | Budget: actual spend tracked via JE lines → Budget vs Actual | Project: increases `amountSpent` | ✅ implemented |
+| **Budget Revision Approved** | Budget: updates budget line amounts | Project: updates `totalBudget` | Procurement: changes available budget for PR validation | ✅ implemented |
+| **PR Created** (Procurement) | Budget: validates budget availability (blocks if insufficient) | Finance: eventually creates payment voucher | ✅ implemented |
+| **PO → GRN → Payment** | Inventory: increases `stockInHand` (from GRN) | Finance: creates payment voucher & journal entry | Budget: increases actual spend | ✅ implemented |
+| **Payroll Approved** (HR) | Finance: auto-creates journal entry (DR Salary Expense, CR Bank) | Budget: actual spend tracked via JE | ✅ implemented |
+| **Depreciation Run** (Assets) | Finance: auto-creates journal entry (DR Depreciation Expense, CR Accumulated Dep.) | Asset: updates `accumulatedDepreciation` and `netBookValue` | ✅ implemented |
+| **Asset Disposed** | Finance: auto-creates journal entry (gain/loss on disposal) | Asset: marks as disposed, updates register | ✅ implemented |
+| **Employee Joins/Leaves** (HR) | Project: updates team members | Payroll: adds/removes from payroll run | Dashboard: updates "Staff Count" KPI | ⏳ dashboard KPI pending |
+| **Leave Approved** (HR) | LeaveBalance: updates taken/remaining | Payroll: applies leave deduction if unpaid | ✅ implemented |
+| **Loan Disbursed** (MFI) | Finance: auto-creates journal entry (DR Loan Outstanding, CR Bank/Cash) | LoanAccount: status → ACTIVE | ✅ implemented |
+| **Loan Repayment Collected** | Finance: auto-creates journal entry (DR Cash, CR Loan Outstanding + Interest Income) | Loan Account: reduces outstanding, updates last payment | ✅ implemented |
+| **Savings Deposit/Withdrawal** (MFI) | Finance: auto-creates journal entry (DR/CR Cash ↔ Savings) | Savings Account: updates balance | ✅ implemented |
+| **Beneficiary Enrolled** | Project: increases beneficiary count | Dashboard: updates "Active Beneficiaries" KPI | ⏳ dashboard KPI pending |
+| **Service Delivered** | Project: tracks delivery metrics | Impact Assessment: feeds into indicator measurement | ⏳ dashboard KPI pending |
+| **New Project Created** | Grant: links project to grant | Budget: enables budget creation | Finance: enables project-tagged transactions | ✅ implemented |
+| **Grant Status Change** | Project: updates project status | Budget: freezes/unfreezes budget | Fund Requisition: enables/disables requests | ⏳ partial |
 
 ### 5.3 Cascade Rules
 
@@ -4259,7 +4262,14 @@ GET /api/v1/{resource}?page=1&limit=20&sort=createdAt&order=desc&search=keyword&
 | GET | `/api/v1/finance/bank-reconciliation` | List reconciliations | finance.read.bank-reconciliation |
 | POST | `/api/v1/finance/bank-reconciliation` | Start reconciliation | finance.create.bank-reconciliation |
 | POST | `/api/v1/finance/bank-reconciliation/:id/match` | Match items | finance.update.bank-reconciliation |
-| GET | `/api/v1/finance/reports/:type` | Generate report (trial-balance, balance-sheet, income-statement, cash-flow, fund-position, ledger, day-book, bank-book, cash-book, receipts-payments) | finance.read.reports |
+| POST | `/api/v1/finance/bank-reconciliation/:id/import` | Import CSV bank statement | finance.create.bank-reconciliation |
+| POST | `/api/v1/finance/bank-reconciliation/:id/auto-match` | Auto-match bank items with JE lines | finance.update.bank-reconciliation |
+| GET | `/api/v1/finance/reports/:type` | Generate report — supported types below | finance.read.reports |
+| | | **Core:** trial-balance, income-statement, balance-sheet, cash-flow, receipts-payments ✅ | |
+| | | **Subsidiary:** ledger, day-book, bank-book, cash-book ✅ | |
+| | | **NGO-specific:** fund-position, fund-balance-changes, grant-financial, bank-reconciliation-statement ✅ | |
+| GET | `/api/v1/attachments` | List attachments by entityType + entityId | auth |
+| DELETE | `/api/v1/attachments` | Delete attachment by id | auth |
 
 #### Budget APIs
 | Method | Endpoint | Description | Permission |

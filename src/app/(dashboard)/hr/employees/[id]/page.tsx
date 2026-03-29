@@ -19,6 +19,7 @@ import {
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
+import { FileUpload } from '@/components/shared/file-upload'
 
 const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'CONSULTANT', 'INTERN', 'VOLUNTEER'] as const
 const STATUSES = ['ACTIVE', 'INACTIVE', 'ON_LEAVE', 'SUSPENDED'] as const
@@ -303,11 +304,19 @@ export default function EmployeeDetailPage() {
               <CardContent><p className="text-sm whitespace-pre-wrap">{employee.notes}</p></CardContent>
             </Card>
           )}
+
+          {/* File Attachments */}
+          <Card>
+            <CardContent className="pt-6">
+              <FileUpload entityType="employee" entityId={params.id as string} module="hr" readOnly={['INACTIVE', 'SUSPENDED'].includes(employee.status)} />
+            </CardContent>
+          </Card>
         </>
       )}
 
       {/* Edit Mode */}
       {editing && (
+        <>
         <Card>
           <CardHeader><CardTitle>{t('form.editEmployee')}</CardTitle></CardHeader>
           <CardContent className="space-y-6">
@@ -406,6 +415,14 @@ export default function EmployeeDetailPage() {
             </Button>
           </CardFooter>
         </Card>
+
+        {/* File Attachments */}
+        <Card>
+          <CardContent className="pt-6">
+            <FileUpload entityType="employee" entityId={params.id as string} module="hr" readOnly={false} />
+          </CardContent>
+        </Card>
+        </>
       )}
     </div>
   )

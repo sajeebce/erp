@@ -185,3 +185,75 @@
     animation: fade-in 0.4s ease-out;
   }
 }
+
+/* Print styles for financial reports */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 10pt !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide sidebar — target data-slot attributes from shadcn sidebar */
+  [data-slot="sidebar-wrapper"],
+  [data-slot="sidebar"],
+  [data-slot="sidebar-gap"],
+  [data-slot="sidebar-container"],
+  [data-sidebar="sidebar"],
+  [data-sidebar="trigger"] {
+    display: none !important;
+  }
+
+  /* Hide top navbar and command palette */
+  [data-print-hide="true"] {
+    display: none !important;
+  }
+
+  /* Make SidebarInset (main wrapper) full width */
+  [data-slot="sidebar-inset"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Main content area */
+  [data-slot="sidebar-inset"] > main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Report table print styles */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    font-size: 9pt !important;
+  }
+  th {
+    background: #f3f4f6 !important;
+    border: 1px solid #d1d5db !important;
+    padding: 6px 8px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    font-size: 8pt !important;
+  }
+  td {
+    border: 1px solid #e5e7eb !important;
+    padding: 4px 8px !important;
+  }
+  tfoot td {
+    border-top: 2px solid #111 !important;
+    font-weight: 700 !important;
+    background: #f9fafb !important;
+  }
+
+  /* Page setup */
+  @page {
+    margin: 1.5cm;
+    size: A4 landscape;
+  }
+}

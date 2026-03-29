@@ -110,19 +110,21 @@ export default function NewJournalEntryPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [accountsRes, fiscalYearsRes, projectsRes, grantsRes] =
+        const [accountsRes, fiscalYearsRes, projectsRes, grantsRes, orgRes] =
           await Promise.all([
             fetch('/api/v1/finance/accounts?isGroup=false&limit=500'),
             fetch('/api/v1/settings/fiscal-years'),
             fetch('/api/v1/projects?limit=100'),
             fetch('/api/v1/donors/grants?limit=100'),
+            fetch('/api/v1/settings/organization'),
           ])
 
-        const [accountsJson, fyJson, projJson, grantsJson] = await Promise.all([
+        const [accountsJson, fyJson, projJson, grantsJson, orgJson] = await Promise.all([
           accountsRes.json(),
           fiscalYearsRes.json(),
           projectsRes.json(),
           grantsRes.json(),
+          orgRes.json(),
         ])
 
         if (accountsJson.success) setAccounts(accountsJson.data)
@@ -133,6 +135,9 @@ export default function NewJournalEntryPage() {
         }
         if (projJson.success) setProjects(projJson.data)
         if (grantsJson.success) setGrants(grantsJson.data)
+        if (orgJson.success && orgJson.data.baseCurrency) {
+          setCurrencyCode(orgJson.data.baseCurrency)
+        }
       } catch {
         // Silently handle fetch errors for reference data
       }
@@ -239,7 +244,7 @@ export default function NewJournalEntryPage() {
       const json = await res.json()
 
       if (res.ok && json.success) {
-        router.push('/finance/journal-entries')
+        router.push(`/finance/journal-entries/${json.data.id}`)
       } else {
         setError(json.message || t('failedToSave'))
       }
@@ -344,11 +349,12 @@ export default function NewJournalEntryPage() {
 
             <div className="space-y-2">
               <Label htmlFor="project">{t('project')}</Label>
-              <Select value={projectId} onValueChange={setProjectId}>
+              <Select value={projectId} onValueChange={(v) => setProjectId(v === '_none' ? '' : v)}>
                 <SelectTrigger id="project">
                   <SelectValue placeholder={t('selectProject')} />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="_none" className="text-muted-foreground">{t('noProject')}</SelectItem>
                   {projects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.code ? `${p.code} - ${p.name}` : p.name}
@@ -360,11 +366,12 @@ export default function NewJournalEntryPage() {
 
             <div className="space-y-2">
               <Label htmlFor="grant">{t('grant')}</Label>
-              <Select value={grantId} onValueChange={setGrantId}>
+              <Select value={grantId} onValueChange={(v) => setGrantId(v === '_none' ? '' : v)}>
                 <SelectTrigger id="grant">
                   <SelectValue placeholder={t('selectGrant')} />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="_none" className="text-muted-foreground">{t('noGrant')}</SelectItem>
                   {grants.map((g) => (
                     <SelectItem key={g.id} value={g.id}>
                       {g.code ? `${g.code} - ${g.name}` : g.name}
