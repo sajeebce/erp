@@ -77,6 +77,7 @@
     "AGREEMENT": "Agreement",
     "IMPLEMENTATION": "Implementation",
     "CLOSEOUT": "Closeout",
+    "SUSPENDED": "Suspended",
     "IDENTIFICATION": "Identification",
     "HIGH": "High",
     "MEDIUM": "Medium",
