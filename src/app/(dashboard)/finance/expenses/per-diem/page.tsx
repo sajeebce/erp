@@ -229,7 +229,17 @@ export default function PerDiemRatesPage() {
       })
       if (!res.ok) throw new Error()
       const data = await res.json()
-      setCalcResult(data.data ?? data)
+      const raw = data.data ?? data
+      // API returns { rate, calculation } — flatten to CalculationResult
+      const calc = raw.calculation ?? raw
+      setCalcResult({
+        totalDays: calc.totalDays,
+        fullDays: calc.fullDays,
+        halfDays: calc.halfDays,
+        ratePerDay: calc.ratePerDay,
+        totalAmount: calc.totalAmount,
+        breakdown: `${calc.fullDays} full day(s) × ${raw.rate?.fullDayRate ?? calc.ratePerDay} + ${calc.halfDays} half day(s) × ${calc.halfDayRateUsed ?? calc.ratePerDay / 2}`,
+      })
     } catch {
       setCalcError(t('calculationFailed'))
     } finally {

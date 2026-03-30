@@ -51,9 +51,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     return apiSuccess({
       ...advance,
-      employee,
-      project,
-      grant,
+      date: advance.requestDate,
+      type: advance.advanceType,
+      employee: employee ? { id: employee.id, name: employee.fullName, employeeNo: employee.employeeNo, email: employee.email } : null,
+      project: project ? { id: project.id, name: project.name, projectNo: project.projectNo } : null,
+      grant: grant ? { id: grant.id, name: grant.title, grantNo: grant.grantNo } : null,
     })
   } catch (error) {
     return handleRouteError(error)

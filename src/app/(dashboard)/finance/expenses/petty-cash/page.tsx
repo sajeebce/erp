@@ -27,6 +27,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { SearchableSelect } from '@/components/shared/searchable-select'
+import { FileUpload } from '@/components/shared/file-upload'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
 
@@ -106,6 +107,8 @@ export default function PettyCashPage() {
   // Lookup data
   const [employees, setEmployees] = useState<Employee[]>([])
   const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([])
+  const [glAccounts, setGlAccounts] = useState<{ id: string; code: string; name: string }[]>([])
+  const [projects, setProjects] = useState<{ id: string; name: string; projectNo: string }[]>([])
 
   // Record Expense form
   const [reDate, setReDate] = useState('')
@@ -142,21 +145,31 @@ export default function PettyCashPage() {
 
   const fetchLookups = useCallback(async () => {
     try {
-      const [empRes, catRes] = await Promise.all([
+      const [empRes, catRes, accRes, projRes] = await Promise.all([
         fetch('/api/v1/hr/employees?limit=200'),
         fetch('/api/v1/finance/expense-categories'),
+        fetch('/api/v1/finance/accounts?isGroup=false&type=EXPENSE&limit=500'),
+        fetch('/api/v1/projects?limit=200'),
       ])
       if (empRes.ok) {
         const d = await empRes.json()
         const items = d.data ?? d ?? []
         setEmployees(items.map((e: Record<string, string>) => ({
           id: e.id,
-          name: e.name ?? `${e.firstName ?? ''} ${e.lastName ?? ''}`.trim(),
+          name: e.fullName ?? e.name ?? '',
         })))
       }
       if (catRes.ok) {
         const d = await catRes.json()
         setExpenseCategories(d.data ?? d ?? [])
+      }
+      if (accRes.ok) {
+        const d = await accRes.json()
+        setGlAccounts(d.data ?? d ?? [])
+      }
+      if (projRes.ok) {
+        const d = await projRes.json()
+        setProjects(d.data ?? d ?? [])
       }
     } catch {
       // Non-critical
@@ -164,6 +177,39 @@ export default function PettyCashPage() {
   }, [])
 
   useEffect(() => { fetchFunds(); fetchLookups() }, [fetchFunds, fetchLookups])
+
+  // ─── Fetch transactions when a fund is expanded ───
+
+  const [fundTransactions, setFundTransactions] = useState<Record<string, PettyCashTransaction[]>>({})
+  const [txLoading, setTxLoading] = useState(false)
+
+  useEffect(() => {
+    if (!expandedFundId) return
+    // Skip if already fetched
+    if (fundTransactions[expandedFundId]) return
+    let cancelled = false
+    const fetchTx = async () => {
+      setTxLoading(true)
+      try {
+        const res = await fetch(`/api/v1/finance/petty-cash/${expandedFundId}`)
+        if (!res.ok) throw new Error()
+        const data = await res.json()
+        const fund = data.data ?? data
+        if (!cancelled) {
+          setFundTransactions(prev => ({
+            ...prev,
+            [expandedFundId]: fund.recentTransactions ?? fund.transactions ?? [],
+          }))
+        }
+      } catch {
+        // Non-critical — transactions just won't show
+      } finally {
+        if (!cancelled) setTxLoading(false)
+      }
+    }
+    fetchTx()
+    return () => { cancelled = true }
+  }, [expandedFundId, fundTransactions])
 
   // ─── Toggle expand fund ───
 
@@ -183,23 +229,27 @@ export default function PettyCashPage() {
   const handleRecordExpense = async () => {
     if (!activeFundId) return
     setSaving(true)
+    setError('')
     try {
-      const res = await fetch(`/api/v1/finance/petty-cash/${activeFundId}/expense`, {
+      const res = await fetch(`/api/v1/finance/petty-cash/${activeFundId}/transactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           date: reDate,
+          action: 'EXPENSE',
           amount: parseFloat(reAmount) || 0,
           description: reDescription,
-          categoryId: reCategoryId || null,
+          category: reCategoryId || null,
           accountId: reAccountId || null,
           projectId: reProjectId || null,
           notes: reNotes || null,
         }),
       })
-      if (!res.ok) throw new Error()
+      const json = await res.json()
+      if (!res.ok) { setError(json.error?.message || json.error || t('failedToRecordExpense')); return }
       setExpenseOpen(false)
       resetExpenseForm()
+      setFundTransactions(prev => { const next = { ...prev }; delete next[activeFundId]; return next })
       fetchFunds()
     } catch {
       setError(t('failedToRecordExpense'))
@@ -213,18 +263,24 @@ export default function PettyCashPage() {
   const handleReplenish = async () => {
     if (!activeFundId) return
     setSaving(true)
+    setError('')
     try {
-      const res = await fetch(`/api/v1/finance/petty-cash/${activeFundId}/replenish`, {
+      const res = await fetch(`/api/v1/finance/petty-cash/${activeFundId}/transactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          date: new Date().toISOString().split('T')[0],
+          action: 'REPLENISHMENT',
           amount: parseFloat(rpAmount) || 0,
+          description: `Petty cash replenishment${rpNotes ? ': ' + rpNotes : ''}`,
           notes: rpNotes || null,
         }),
       })
-      if (!res.ok) throw new Error()
+      const json = await res.json()
+      if (!res.ok) { setError(json.error?.message || json.error || t('failedToReplenish')); return }
       setReplenishOpen(false)
       setRpAmount(''); setRpNotes('')
+      if (activeFundId) setFundTransactions(prev => { const next = { ...prev }; delete next[activeFundId]; return next })
       fetchFunds()
     } catch {
       setError(t('failedToReplenish'))
@@ -254,6 +310,7 @@ export default function PettyCashPage() {
       if (!res.ok) throw new Error()
       setReconcileOpen(false)
       setRcPhysicalCount('')
+      if (activeFundId) setFundTransactions(prev => { const next = { ...prev }; delete next[activeFundId]; return next })
       fetchFunds()
     } catch {
       setError(t('failedToReconcile'))
@@ -411,7 +468,11 @@ export default function PettyCashPage() {
                       </div>
 
                       {/* Recent Transactions */}
-                      {fund.transactions && fund.transactions.length > 0 ? (
+                      {txLoading && expandedFundId === fund.id ? (
+                        <div className="flex justify-center py-4">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : (fundTransactions[fund.id] ?? fund.transactions ?? []).length > 0 ? (
                         <div className="overflow-x-auto">
                           <Table>
                             <TableHeader>
@@ -425,7 +486,7 @@ export default function PettyCashPage() {
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {fund.transactions.map((tx) => (
+                              {(fundTransactions[fund.id] ?? fund.transactions ?? []).map((tx) => (
                                 <TableRow key={tx.id}>
                                   <TableCell className="text-sm">{formatDate(tx.date)}</TableCell>
                                   <TableCell>
@@ -464,7 +525,7 @@ export default function PettyCashPage() {
 
       {/* ─── Record Expense Dialog ─── */}
       <Dialog open={expenseOpen} onOpenChange={setExpenseOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t('recordExpense')}</DialogTitle>
             <DialogDescription>{t('recordExpenseDescription')}</DialogDescription>
@@ -493,21 +554,27 @@ export default function PettyCashPage() {
                 placeholder={t('selectCategory')}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="re-account">{t('glAccount')}</Label>
-                <Input id="re-account" value={reAccountId} onChange={(e) => setReAccountId(e.target.value)} placeholder={t('glAccountPlaceholder')} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="re-project">{t('project')}</Label>
-                <Input id="re-project" value={reProjectId} onChange={(e) => setReProjectId(e.target.value)} placeholder={t('projectPlaceholder')} />
-              </div>
+            <div className="grid gap-2">
+              <Label>{t('glAccount')}</Label>
+              <SearchableSelect
+                options={glAccounts.map((a) => ({ value: a.id, label: `${a.code} - ${a.name}` }))}
+                value={reAccountId}
+                onValueChange={setReAccountId}
+                placeholder={t('selectGlAccount')}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>{t('project')}</Label>
+              <SearchableSelect
+                options={projects.map((p) => ({ value: p.id, label: `${p.projectNo} - ${p.name}` }))}
+                value={reProjectId}
+                onValueChange={setReProjectId}
+                placeholder={t('selectProject')}
+              />
             </div>
             <div className="grid gap-2">
               <Label>{t('receipt')}</Label>
-              <div className="flex h-20 items-center justify-center rounded-md border-2 border-dashed text-sm text-muted-foreground">
-                {t('receiptUploadPlaceholder')}
-              </div>
+              <FileUpload entityType="petty_cash_expense" entityId={null} module="finance" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="re-notes">{t('notes')}</Label>

@@ -28,7 +28,8 @@
     "clear": "Clear",
     "view": "View",
     "print": "Print",
-    "copy": "Copy"
+    "copy": "Copy",
+    "all": "All"
   },
   "status": {
     "DRAFT": "Draft",

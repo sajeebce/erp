@@ -25,6 +25,22 @@ export const leaveApplicationSchema = z.object({
   reason: z.string().optional(),
 })
 
+export const onboardingChecklistSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+  category: z.enum(['DOCUMENT', 'FINANCE', 'LEGAL', 'COMPLIANCE', 'IT', 'ADMIN', 'HR', 'SECURITY']),
+  isRequired: z.boolean().optional(),
+  requiresDocument: z.boolean().optional(),
+  documentType: z.string().optional(),
+  sortOrder: z.number().int().optional(),
+})
+
+export const onboardingTaskUpdateSchema = z.object({
+  isCompleted: z.boolean().optional(),
+  notes: z.string().optional(),
+  documentId: z.string().uuid().optional(),
+})
+
 export const attendanceSchema = z.object({
   employeeId: z.string().uuid(),
   date: z.string(),

@@ -28,6 +28,7 @@ import { DataTable } from '@/components/shared/data-table'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { SearchableSelect } from '@/components/shared/searchable-select'
+import { FileUpload } from '@/components/shared/file-upload'
 import { useFormatters } from '@/hooks/use-formatters'
 
 // ---------- types ----------
@@ -190,7 +191,7 @@ export default function ExpenseClaimsPage() {
         fetch('/api/v1/projects?limit=100'),
         fetch('/api/v1/donors/grants?limit=100'),
         fetch('/api/v1/finance/expense-categories?limit=100'),
-        fetch('/api/v1/finance/chart-of-accounts?limit=200&isGroup=false'),
+        fetch('/api/v1/finance/accounts?isGroup=false&type=EXPENSE&limit=500'),
         fetch('/api/v1/finance/advances?status=DISBURSED&limit=100'),
       ])
       const [projJson, grantJson, catJson, accJson, advJson] = await Promise.all([
@@ -310,8 +311,8 @@ export default function ExpenseClaimsPage() {
     }
     if (projectId) payload.projectId = projectId
     if (grantId) payload.grantId = grantId
-    if (travelFrom) payload.travelDateFrom = travelFrom
-    if (travelTo) payload.travelDateTo = travelTo
+    if (travelFrom) payload.travelStartDate = travelFrom
+    if (travelTo) payload.travelEndDate = travelTo
     if (advanceId) payload.advanceId = advanceId
 
     try {
@@ -466,6 +467,21 @@ export default function ExpenseClaimsPage() {
                     </TableBody>
                   </Table>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Receipts & Attachments */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">{t('receipts')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <FileUpload
+                  entityType="expense_claim"
+                  entityId={selectedClaim.id}
+                  module="finance"
+                  readOnly={selectedClaim.status !== 'DRAFT'}
+                />
               </CardContent>
             </Card>
 
@@ -642,11 +658,11 @@ export default function ExpenseClaimsPage() {
             {/* Travel Dates */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="travel-from">{t('travelDateFrom')}</Label>
+                <Label htmlFor="travel-from">{t('travelStartDate')}</Label>
                 <Input id="travel-from" type="date" value={travelFrom} onChange={(e) => setTravelFrom(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="travel-to">{t('travelDateTo')}</Label>
+                <Label htmlFor="travel-to">{t('travelEndDate')}</Label>
                 <Input id="travel-to" type="date" value={travelTo} onChange={(e) => setTravelTo(e.target.value)} />
               </div>
             </div>
@@ -717,12 +733,19 @@ export default function ExpenseClaimsPage() {
                           <Checkbox
                             id={`receipt-${idx}`}
                             checked={li.hasReceipt}
-                            onCheckedChange={(checked) => updateLineItem(idx, 'hasReceipt', String(checked === true))}
+                            onCheckedChange={(checked) => updateLineItem(idx, 'hasReceipt', checked === true)}
                           />
                           <Label htmlFor={`receipt-${idx}`} className="text-sm">{t('hasReceipt')}</Label>
                         </div>
                       </div>
                     </div>
+
+                    {li.hasReceipt && (
+                      <div className="mt-2">
+                        <Label className="text-sm mb-1 block">{t('receiptUpload')}</Label>
+                        <FileUpload entityType="expense_claim_receipt" entityId={null} module="finance" />
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">

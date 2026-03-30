@@ -45,7 +45,7 @@ export async function POST(
     // If there's a difference, create an ADJUSTMENT transaction
     if (difference !== 0) {
       const result = await prisma.$transaction(async (tx) => {
-        const transactionNo = await generateNextNumber(auth.organizationId, 'petty_cash')
+        const transactionNo = await generateNextNumber(auth.organizationId, 'petty_cash_txn')
 
         const newBalance = physicalCount
 

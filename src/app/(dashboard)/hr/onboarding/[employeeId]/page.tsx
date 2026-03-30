@@ -1,16 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import {
   ArrowLeft, Loader2, Check, FileText, Shield, Monitor,
-  Building2, Heart, UserCheck, AlertTriangle,
+  Building2, Heart, UserCheck, AlertTriangle, Upload, Paperclip,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
@@ -22,6 +24,7 @@ interface OnboardingChecklist {
   category: string
   isRequired: boolean
   requiresDocument: boolean
+  documentType: string | null
 }
 
 interface OnboardingTask {
@@ -29,6 +32,7 @@ interface OnboardingTask {
   isCompleted: boolean
   completedAt: string | null
   documentId: string | null
+  notes: string | null
   checklist: OnboardingChecklist
 }
 
@@ -53,26 +57,94 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ComponentType
   SECURITY: { label: 'Security', icon: AlertTriangle },
 }
 
-function TaskRow({ task, onToggle, formatDate }: {
+function TaskRow({ task, employeeId, onRefresh, formatDate }: {
   task: OnboardingTask
-  onToggle: (checklistId: string, completed: boolean) => void
+  employeeId: string
+  onRefresh: () => void
   formatDate: (date: string) => string
 }) {
+  const [uploading, setUploading] = useState(false)
+  const [showNotes, setShowNotes] = useState(false)
+  const [notes, setNotes] = useState(task.notes || '')
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function handleToggle() {
+    // If task requires doc and no doc yet, prompt file upload instead
+    if (!task.isCompleted && task.checklist.requiresDocument && !task.documentId) {
+      fileRef.current?.click()
+      return
+    }
+
+    await fetch(`/api/v1/hr/onboarding/${employeeId}/tasks/${task.checklistId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isCompleted: !task.isCompleted }),
+    })
+    onRefresh()
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    try {
+      // 1. Upload the file
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('module', 'hr')
+      formData.append('entityType', 'onboarding')
+      formData.append('entityId', employeeId)
+
+      const uploadRes = await fetch('/api/v1/upload', { method: 'POST', body: formData })
+      const uploadJson = await uploadRes.json()
+
+      if (uploadJson.success) {
+        // 2. Mark task complete with documentId
+        await fetch(`/api/v1/hr/onboarding/${employeeId}/tasks/${task.checklistId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isCompleted: true, documentId: uploadJson.data.id }),
+        })
+        onRefresh()
+      }
+    } catch {
+      // silent
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  async function saveNotes() {
+    await fetch(`/api/v1/hr/onboarding/${employeeId}/tasks/${task.checklistId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: notes.trim() || null }),
+    })
+    setShowNotes(false)
+    onRefresh()
+  }
+
   return (
-    <div className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+    <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+      <input ref={fileRef} type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
+
       <button
-        onClick={() => onToggle(task.checklistId, !task.isCompleted)}
+        onClick={handleToggle}
+        disabled={uploading}
         className={cn(
-          "h-5 w-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors",
+          "h-5 w-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors mt-0.5",
           task.isCompleted
             ? "bg-primary border-primary text-primary-foreground"
             : "border-input hover:border-primary"
         )}
       >
-        {task.isCompleted && <Check className="h-3 w-3" />}
+        {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : task.isCompleted && <Check className="h-3 w-3" />}
       </button>
+
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <p className={cn("text-sm font-medium", task.isCompleted && "line-through text-muted-foreground")}>
             {task.checklist.name}
           </p>
@@ -80,18 +152,60 @@ function TaskRow({ task, onToggle, formatDate }: {
             <Badge variant="destructive" className="text-[10px] px-1 py-0">Required</Badge>
           )}
           {task.checklist.requiresDocument && !task.documentId && !task.isCompleted && (
-            <Badge variant="outline" className="text-[10px] px-1 py-0">Doc needed</Badge>
+            <Badge variant="outline" className="text-[10px] px-1 py-0 gap-1">
+              <Upload className="h-2.5 w-2.5" /> Upload needed
+            </Badge>
+          )}
+          {task.documentId && (
+            <Badge variant="secondary" className="text-[10px] px-1 py-0 gap-1">
+              <Paperclip className="h-2.5 w-2.5" /> Doc attached
+            </Badge>
           )}
         </div>
+
         {task.checklist.description && (
           <p className="text-xs text-muted-foreground mt-0.5">{task.checklist.description}</p>
         )}
+
+        {/* Notes section */}
+        {task.notes && !showNotes && (
+          <p className="text-xs text-muted-foreground mt-1 italic cursor-pointer hover:text-foreground" onClick={() => setShowNotes(true)}>
+            Note: {task.notes}
+          </p>
+        )}
+        {showNotes && (
+          <div className="mt-2 flex gap-2">
+            <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={1} className="text-xs h-8 min-h-0" placeholder="Add notes..." />
+            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={saveNotes}>Save</Button>
+            <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setShowNotes(false)}>Cancel</Button>
+          </div>
+        )}
+
+        {/* Upload button for doc-required tasks that are not yet completed */}
+        {task.checklist.requiresDocument && !task.documentId && !task.isCompleted && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-2 h-7 text-xs gap-1"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+            Upload {task.checklist.documentType?.replace(/_/g, ' ').toLowerCase() || 'document'}
+          </Button>
+        )}
       </div>
-      {task.completedAt && (
-        <span className="text-xs text-muted-foreground flex-shrink-0">
-          {formatDate(task.completedAt)}
-        </span>
-      )}
+
+      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+        {task.completedAt && (
+          <span className="text-xs text-muted-foreground">{formatDate(task.completedAt)}</span>
+        )}
+        {!showNotes && (
+          <button onClick={() => setShowNotes(true)} className="text-xs text-muted-foreground hover:text-foreground">
+            {task.notes ? 'Edit note' : '+ Note'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -126,17 +240,6 @@ export default function OnboardingDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId])
 
-  async function handleToggle(checklistId: string, completed: boolean) {
-    const res = await fetch(`/api/v1/hr/onboarding/${employeeId}/tasks/${checklistId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isCompleted: completed }),
-    })
-    if (res.ok) {
-      fetchData()
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -167,6 +270,8 @@ export default function OnboardingDetailPage() {
   const totalTasks = tasks.length
   const completedTasks = tasks.filter(t => t.isCompleted).length
   const progressPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+  const docsRequired = tasks.filter(t => t.checklist.requiresDocument).length
+  const docsUploaded = tasks.filter(t => t.checklist.requiresDocument && t.documentId).length
 
   // Group tasks by category
   const grouped = tasks.reduce((acc, task) => {
@@ -217,21 +322,40 @@ export default function OnboardingDetailPage() {
       </Card>
 
       {/* Overall Progress */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">
-                {completedTasks} of {totalTasks} tasks completed ({progressPct}%)
-              </span>
-              {progressPct === 100 && (
-                <Badge variant="default">Completed</Badge>
-              )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium">
+                  {completedTasks} of {totalTasks} tasks completed
+                </span>
+                {progressPct === 100 ? (
+                  <Badge variant="default">Completed</Badge>
+                ) : (
+                  <span className="text-muted-foreground font-mono">{progressPct}%</span>
+                )}
+              </div>
+              <Progress value={progressPct} className="h-3" />
             </div>
-            <Progress value={progressPct} className="h-3" />
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium">
+                  {docsUploaded} of {docsRequired} documents uploaded
+                </span>
+                <span className="text-muted-foreground font-mono">
+                  {docsRequired > 0 ? Math.round((docsUploaded / docsRequired) * 100) : 100}%
+                </span>
+              </div>
+              <Progress value={docsRequired > 0 ? (docsUploaded / docsRequired) * 100 : 100} className="h-3" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Task Checklist by Category */}
       {Object.entries(grouped).map(([category, categoryTasks]) => {
@@ -255,7 +379,8 @@ export default function OnboardingDetailPage() {
                 <TaskRow
                   key={task.checklistId}
                   task={task}
-                  onToggle={handleToggle}
+                  employeeId={employeeId}
+                  onRefresh={fetchData}
                   formatDate={formatDate}
                 />
               ))}

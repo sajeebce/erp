@@ -69,6 +69,8 @@ export async function GET(request: NextRequest) {
           status: true,
           netPayable: true,
           paidAt: true,
+          journalEntryId: true,
+          voucherId: true,
           createdAt: true,
           updatedAt: true,
           _count: {

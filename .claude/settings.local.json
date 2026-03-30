@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /k/projects/erp/src/app/\\\\\\(dashboard\\\\\\)/finance/expenses/petty-cash/)"
+    ]
+  }
+}

@@ -106,6 +106,71 @@ function getColumns(type: string, t: (key: string) => string) {
         { key: 'difference', label: t('difference'), ...currency },
         { key: 'status', label: t('status'), align: 'center' as const, format: 'text' as const },
       ]
+    case 'expense-summary':
+      return [
+        { key: 'category', label: t('category'), align: 'left' as const, format: 'text' as const },
+        { key: 'count', label: t('count'), align: 'right' as const, format: 'text' as const },
+        { key: 'totalAmount', label: t('amount'), ...currency },
+        { key: 'approvedAmount', label: t('approved'), ...currency },
+      ]
+    case 'advance-aging':
+      return [
+        { key: 'advanceNo', label: t('advanceNo'), align: 'left' as const, format: 'text' as const },
+        { key: 'employeeName', label: t('employee'), align: 'left' as const, format: 'text' as const },
+        { key: 'purpose', label: t('purpose'), align: 'left' as const, format: 'text' as const },
+        { key: 'disbursedAmount', label: t('disbursed'), ...currency },
+        { key: 'outstanding', label: t('outstanding'), ...currency },
+        { key: 'bucket', label: t('agingBucket'), align: 'center' as const, format: 'text' as const },
+        { key: 'status', label: t('status'), align: 'center' as const, format: 'text' as const },
+      ]
+    case 'petty-cash-statement':
+      return [
+        { key: 'fundName', label: t('fundName'), align: 'left' as const, format: 'text' as const },
+        { key: 'fundCode', label: t('code'), align: 'left' as const, format: 'text' as const },
+        { key: 'openingBalance', label: t('openingBalance'), ...currency },
+        { key: 'totalExpenses', label: t('expense'), ...currency },
+        { key: 'totalReplenishments', label: t('replenishments'), ...currency },
+        { key: 'closingBalance', label: t('closingBalance'), ...currency },
+      ]
+    case 'per-diem-utilization':
+      return [
+        { key: 'claimNo', label: t('claimNo'), align: 'left' as const, format: 'text' as const },
+        { key: 'employeeName', label: t('employee'), align: 'left' as const, format: 'text' as const },
+        { key: 'location', label: t('location'), align: 'left' as const, format: 'text' as const },
+        { key: 'entitledAmount', label: t('entitled'), ...currency },
+        { key: 'claimedAmount', label: t('claimed'), ...currency },
+        { key: 'variance', label: t('variance'), ...currency },
+      ]
+    case 'receipt-compliance':
+      return [
+        { key: 'claimNo', label: t('claimNo'), align: 'left' as const, format: 'text' as const },
+        { key: 'employeeName', label: t('employee'), align: 'left' as const, format: 'text' as const },
+        { key: 'totalItems', label: t('totalItems'), align: 'right' as const, format: 'text' as const },
+        { key: 'withReceipt', label: t('withReceipt'), align: 'right' as const, format: 'text' as const },
+        { key: 'withoutReceipt', label: t('withoutReceipt'), align: 'right' as const, format: 'text' as const },
+        { key: 'complianceRate', label: t('complianceRate'), align: 'right' as const, format: 'text' as const },
+        { key: 'totalAmount', label: t('amount'), ...currency },
+      ]
+    case 'tds-vds-register':
+      return [
+        { key: 'claimNo', label: t('claimNo'), align: 'left' as const, format: 'text' as const },
+        { key: 'employeeName', label: t('employee'), align: 'left' as const, format: 'text' as const },
+        { key: 'date', label: t('date'), align: 'left' as const, format: 'date' as const },
+        { key: 'category', label: t('category'), align: 'left' as const, format: 'text' as const },
+        { key: 'amount', label: t('baseAmount'), ...currency },
+        { key: 'tdsAmount', label: t('tdsAmount'), ...currency },
+        { key: 'vdsAmount', label: t('vdsAmount'), ...currency },
+      ]
+    case 'donor-expense-report':
+      return [
+        { key: 'grantNo', label: t('grantNo'), align: 'left' as const, format: 'text' as const },
+        { key: 'grantTitle', label: t('grantTitle'), align: 'left' as const, format: 'text' as const },
+        { key: 'donorName', label: t('donorName'), align: 'left' as const, format: 'text' as const },
+        { key: 'totalBudget', label: t('budget'), ...currency },
+        { key: 'totalExpenses', label: t('expense'), ...currency },
+        { key: 'remainingBudget', label: t('remaining'), ...currency },
+        { key: 'utilizationRate', label: t('utilization'), align: 'right' as const, format: 'text' as const },
+      ]
     default:
       return [
         { key: 'label', label: t('item'), align: 'left' as const, format: 'text' as const },
@@ -241,6 +306,65 @@ function transformData(type: string, data: Record<string, unknown>): { rows: Rec
         { label: 'Net Surplus / (Deficit)', amount: data.netSurplus, _isGroup: true },
         { label: 'Closing Fund Balance', amount: data.closingFundBalance, _isGroup: true },
       ],
+    }
+  }
+  if (type === 'expense-summary' && 'categories' in data) {
+    const categories = data.categories as Record<string, unknown>[]
+    const summary = data.summary as Record<string, unknown> | undefined
+    return {
+      rows: categories,
+      totals: summary ? { category: 'Total', totalAmount: summary.grandTotal, approvedAmount: summary.grandApproved, count: summary.totalClaims } : undefined,
+    }
+  }
+  if (type === 'advance-aging' && 'entries' in data) {
+    const entries = data.entries as Record<string, unknown>[]
+    const summary = data.summary as Record<string, unknown> | undefined
+    return {
+      rows: entries,
+      totals: summary ? { employeeName: 'Total', disbursedAmount: summary.totalDisbursed, outstanding: summary.totalOutstanding } : undefined,
+    }
+  }
+  if (type === 'petty-cash-statement' && 'funds' in data) {
+    const funds = data.funds as Record<string, unknown>[]
+    const summary = data.summary as Record<string, unknown> | undefined
+    return {
+      rows: funds,
+      totals: summary ? { fundName: 'Total', totalExpenses: summary.totalExpenses, totalReplenishments: summary.totalReplenishments, closingBalance: summary.totalClosingBalance } : undefined,
+    }
+  }
+  if (type === 'per-diem-utilization' && 'entries' in data) {
+    const entries = data.entries as Record<string, unknown>[]
+    const summary = data.summary as Record<string, unknown> | undefined
+    return {
+      rows: entries,
+      totals: summary ? { employeeName: 'Total', entitledAmount: summary.totalEntitled, claimedAmount: summary.totalClaimed, variance: summary.totalVariance } : undefined,
+    }
+  }
+  if (type === 'receipt-compliance' && 'entries' in data) {
+    const entries = data.entries as Record<string, unknown>[]
+    const summary = data.summary as Record<string, unknown> | undefined
+    return {
+      rows: entries.map(e => ({ ...e, complianceRate: `${e.complianceRate}%` })),
+      totals: summary ? { employeeName: 'Total', totalItems: summary.totalItems, withReceipt: summary.totalWithReceipt, withoutReceipt: summary.totalWithoutReceipt, complianceRate: `${summary.overallComplianceRate}%`, totalAmount: summary.totalAmount } : undefined,
+    }
+  }
+  if (type === 'tds-vds-register' && 'entries' in data) {
+    const entries = data.entries as Record<string, unknown>[]
+    const summary = data.summary as Record<string, unknown> | undefined
+    return {
+      rows: entries,
+      totals: summary ? { category: 'Total', amount: summary.totalBaseAmount, tdsAmount: summary.totalTds, vdsAmount: summary.totalVds } : undefined,
+    }
+  }
+  if (type === 'donor-expense-report' && 'grants' in data) {
+    const grants = data.grants as Record<string, unknown>[]
+    const summary = data.summary as Record<string, unknown> | undefined
+    return {
+      rows: grants.map(g => ({
+        ...g,
+        utilizationRate: `${Number(g.utilizationRate || 0).toFixed(1)}%`,
+      })),
+      totals: summary ? { grantTitle: 'Total', totalBudget: summary.totalBudget, totalExpenses: summary.totalExpenses, remainingBudget: summary.totalRemaining } : undefined,
     }
   }
   // Fallback

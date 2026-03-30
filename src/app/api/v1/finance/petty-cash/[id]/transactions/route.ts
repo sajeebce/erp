@@ -182,7 +182,7 @@ export async function POST(
 
     const result = await prisma.$transaction(async (tx) => {
       // Generate transaction number
-      const transactionNo = await generateNextNumber(auth.organizationId, 'petty_cash')
+      const transactionNo = await generateNextNumber(auth.organizationId, 'petty_cash_txn')
 
       let journalEntryId: string | null = null
 

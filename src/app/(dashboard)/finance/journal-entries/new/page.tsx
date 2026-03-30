@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
+import { FileUpload } from '@/components/shared/file-upload'
 import { cn } from '@/lib/utils'
 
 interface JournalLine {
@@ -521,6 +522,16 @@ export default function NewJournalEntryPage() {
               </>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Attachments */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('attachments')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <FileUpload entityType="journal_entry" entityId={null} module="finance" />
         </CardContent>
       </Card>
 

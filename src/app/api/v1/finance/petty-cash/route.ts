@@ -70,7 +70,23 @@ export async function GET(request: NextRequest) {
       prisma.pettyCashFund.count({ where }),
     ])
 
-    return apiPaginated(funds, total, page, limit)
+    // Resolve custodian names from Employee table
+    const custodianIds = [...new Set(funds.map((f: Record<string, unknown>) => f.custodianId as string).filter(Boolean))]
+    const employees = custodianIds.length > 0
+      ? await prisma.employee.findMany({
+          where: { id: { in: custodianIds }, organizationId: auth.organizationId },
+          select: { id: true, fullName: true, employeeNo: true },
+        })
+      : []
+    const empMap = Object.fromEntries(employees.map(e => [e.id, e]))
+
+    const enriched = funds.map((f: Record<string, unknown>) => ({
+      ...f,
+      custodianName: empMap[f.custodianId as string]?.fullName || null,
+      custodianEmployeeNo: empMap[f.custodianId as string]?.employeeNo || null,
+    }))
+
+    return apiPaginated(enriched, total, page, limit)
   } catch (error) {
     return handleRouteError(error)
   }
@@ -117,6 +133,25 @@ export async function POST(request: NextRequest) {
     const validFrequencies = ['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY']
     if (reconciliationFrequency && !validFrequencies.includes(reconciliationFrequency)) {
       return apiBadRequest(`reconciliationFrequency must be one of: ${validFrequencies.join(', ')}`)
+    }
+
+    // Validate custodian is a valid Employee in this org
+    const custodian = await prisma.employee.findFirst({
+      where: { id: custodianId, organizationId: auth.organizationId, deletedAt: null },
+      select: { id: true },
+    })
+    if (!custodian) {
+      return apiBadRequest('Custodian must be a valid employee in this organization')
+    }
+
+    if (alternateCustodianId) {
+      const altCustodian = await prisma.employee.findFirst({
+        where: { id: alternateCustodianId, organizationId: auth.organizationId, deletedAt: null },
+        select: { id: true },
+      })
+      if (!altCustodian) {
+        return apiBadRequest('Alternate custodian must be a valid employee in this organization')
+      }
     }
 
     // Check code uniqueness within org

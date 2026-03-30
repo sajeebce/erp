@@ -23,6 +23,7 @@ import { DataTable } from '@/components/shared/data-table'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { SearchableSelect } from '@/components/shared/searchable-select'
+import { FileUpload } from '@/components/shared/file-upload'
 import { useFormatters } from '@/hooks/use-formatters'
 
 // ---------- types ----------
@@ -41,8 +42,8 @@ interface Advance {
   status: string
   project?: { id: string; name: string; code?: string }
   grant?: { id: string; name: string; code?: string }
-  travelDateFrom?: string
-  travelDateTo?: string
+  travelStartDate?: string
+  travelEndDate?: string
   expectedSettlement?: string
   notes?: string
   createdAt: string
@@ -128,7 +129,7 @@ export default function AdvancesPage() {
     try {
       const params = new URLSearchParams({ limit: '200' })
       if (filterStatus !== 'ALL') params.set('status', filterStatus)
-      if (filterType !== 'ALL') params.set('type', filterType)
+      if (filterType !== 'ALL') params.set('advanceType', filterType)
 
       const res = await fetch(`/api/v1/finance/advances?${params}`)
       const json = await res.json()
@@ -228,8 +229,8 @@ export default function AdvancesPage() {
     }
     if (projectId) payload.projectId = projectId
     if (grantId) payload.grantId = grantId
-    if (travelFrom) payload.travelDateFrom = travelFrom
-    if (travelTo) payload.travelDateTo = travelTo
+    if (travelFrom) payload.travelStartDate = travelFrom
+    if (travelTo) payload.travelEndDate = travelTo
     if (expectedSettlement) payload.expectedSettlement = expectedSettlement
     if (notes.trim()) payload.notes = notes.trim()
 
@@ -366,18 +367,18 @@ export default function AdvancesPage() {
                   </div>
                 </div>
 
-                {(selectedAdvance.travelDateFrom || selectedAdvance.expectedSettlement) && (
+                {(selectedAdvance.travelStartDate || selectedAdvance.expectedSettlement) && (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mt-4 pt-4 border-t">
-                    {selectedAdvance.travelDateFrom && (
+                    {selectedAdvance.travelStartDate && (
                       <div>
-                        <span className="text-muted-foreground">{t('travelDateFrom')}</span>
-                        <p className="font-medium">{formatDate(selectedAdvance.travelDateFrom)}</p>
+                        <span className="text-muted-foreground">{t('travelStartDate')}</span>
+                        <p className="font-medium">{formatDate(selectedAdvance.travelStartDate)}</p>
                       </div>
                     )}
-                    {selectedAdvance.travelDateTo && (
+                    {selectedAdvance.travelEndDate && (
                       <div>
-                        <span className="text-muted-foreground">{t('travelDateTo')}</span>
-                        <p className="font-medium">{formatDate(selectedAdvance.travelDateTo)}</p>
+                        <span className="text-muted-foreground">{t('travelEndDate')}</span>
+                        <p className="font-medium">{formatDate(selectedAdvance.travelEndDate)}</p>
                       </div>
                     )}
                     {selectedAdvance.expectedSettlement && (
@@ -425,6 +426,18 @@ export default function AdvancesPage() {
                     <p className="mt-1 text-sm">{selectedAdvance.notes}</p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Attachments */}
+            <Card>
+              <CardContent className="pt-6">
+                <FileUpload
+                  entityType="advance"
+                  entityId={selectedAdvance.id}
+                  module="finance"
+                  readOnly={selectedAdvance.status !== 'REQUESTED'}
+                />
               </CardContent>
             </Card>
 
@@ -551,6 +564,10 @@ export default function AdvancesPage() {
                   </span>
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label>{t('settlementDocs')}</Label>
+                <FileUpload entityType="advance_settlement" entityId={null} module="finance" />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setSettleDialogOpen(false)}>{tc('buttons.cancel')}</Button>
@@ -645,11 +662,11 @@ export default function AdvancesPage() {
             {advanceType === 'TRAVEL' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="adv-travel-from">{t('travelDateFrom')}</Label>
+                  <Label htmlFor="adv-travel-from">{t('travelStartDate')}</Label>
                   <Input id="adv-travel-from" type="date" value={travelFrom} onChange={(e) => setTravelFrom(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="adv-travel-to">{t('travelDateTo')}</Label>
+                  <Label htmlFor="adv-travel-to">{t('travelEndDate')}</Label>
                   <Input id="adv-travel-to" type="date" value={travelTo} onChange={(e) => setTravelTo(e.target.value)} />
                 </div>
               </div>
@@ -674,6 +691,9 @@ export default function AdvancesPage() {
                 rows={3}
               />
             </div>
+
+            {/* Supporting Documents */}
+            <FileUpload entityType="advance" entityId={null} module="finance" />
           </CardContent>
 
           <CardFooter className="flex justify-end gap-3">

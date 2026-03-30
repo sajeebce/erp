@@ -29,6 +29,8 @@ const REQUIRED_DOCUMENTS = [
   { type: 'SIGNED_CONTRACT', label: 'Signed Employment Contract', required: true },
   { type: 'POLICY_ACKNOWLEDGMENT', label: 'Policy Handbook Acknowledgment', required: true },
   { type: 'NGOAB_FD4_NOTIFICATION', label: 'NGOAB FD-4 Notification', required: true },
+  { type: 'PASSPORT_COPY', label: 'Passport Copy', required: false },
+  { type: 'WORK_PERMIT', label: 'Work Permit', required: false },
 ]
 
 const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'CONSULTANT', 'INTERN', 'VOLUNTEER'] as const

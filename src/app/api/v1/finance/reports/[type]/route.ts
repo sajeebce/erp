@@ -44,6 +44,13 @@ const VALID_REPORT_TYPES = [
   'fund-balance-changes',
   'grant-financial',
   'bank-reconciliation-statement',
+  'expense-summary',
+  'advance-aging',
+  'petty-cash-statement',
+  'per-diem-utilization',
+  'receipt-compliance',
+  'tds-vds-register',
+  'donor-expense-report',
 ] as const
 
 type ReportType = typeof VALID_REPORT_TYPES[number]
@@ -122,6 +129,20 @@ export async function GET(
         return apiSuccess(await generateGrantFinancial(filters, auth, url))
       case 'bank-reconciliation-statement':
         return apiSuccess(await generateBankReconciliationStatement(filters, auth, url))
+      case 'expense-summary':
+        return apiSuccess(await generateExpenseSummary(filters, auth))
+      case 'advance-aging':
+        return apiSuccess(await generateAdvanceAging(filters, auth))
+      case 'petty-cash-statement':
+        return apiSuccess(await generatePettyCashStatement(filters, auth))
+      case 'per-diem-utilization':
+        return apiSuccess(await generatePerDiemUtilization(filters, auth))
+      case 'receipt-compliance':
+        return apiSuccess(await generateReceiptCompliance(filters, auth))
+      case 'tds-vds-register':
+        return apiSuccess(await generateTdsVdsRegister(filters, auth))
+      case 'donor-expense-report':
+        return apiSuccess(await generateDonorExpenseReport(filters, auth, url))
       default:
         return apiBadRequest('Invalid report type')
     }
@@ -850,5 +871,666 @@ async function generateBankReconciliationStatement(filters: ReportFilters, _auth
       unmatchedItems: r.items.filter(i => !i.isMatched).map(i => ({ date: i.date, description: i.description, amount: Number(i.bankAmount), type: i.type })),
     })),
     summary: { totalReconciliations: reconciliations.length, reconciled: reconciliations.filter(r => r.status === 'RECONCILED').length, pending: reconciliations.filter(r => r.status === 'PENDING').length },
+  }
+}
+
+// ─── Expense Summary ───
+
+async function generateExpenseSummary(filters: ReportFilters, _auth: AccessTokenPayload) {
+  const claims = await prisma.expenseClaim.findMany({
+    where: {
+      organizationId: filters.organizationId,
+      status: { in: ['FINANCE_APPROVED', 'PAID'] },
+      claimDate: {
+        ...(filters.startDate ? { gte: filters.startDate } : {}),
+        ...(filters.endDate ? { lte: filters.endDate } : {}),
+      },
+      ...(filters.projectId ? { projectId: filters.projectId } : {}),
+    },
+    select: {
+      id: true,
+      claimNo: true,
+      claimDate: true,
+      totalAmount: true,
+      approvedAmount: true,
+      projectId: true,
+      items: {
+        select: {
+          category: true,
+          amount: true,
+          approvedAmount: true,
+          projectId: true,
+        },
+      },
+    },
+  })
+
+  // Group by category
+  const categoryMap: Record<string, { category: string; totalAmount: number; approvedAmount: number; count: number; projects: Record<string, number> }> = {}
+
+  for (const claim of claims) {
+    for (const item of claim.items) {
+      const cat = item.category || 'Uncategorized'
+      if (!categoryMap[cat]) {
+        categoryMap[cat] = { category: cat, totalAmount: 0, approvedAmount: 0, count: 0, projects: {} }
+      }
+      categoryMap[cat].totalAmount += Number(item.amount)
+      categoryMap[cat].approvedAmount += Number(item.approvedAmount ?? item.amount)
+      categoryMap[cat].count += 1
+
+      const projId = item.projectId ?? claim.projectId ?? 'unallocated'
+      categoryMap[cat].projects[projId] = (categoryMap[cat].projects[projId] || 0) + Number(item.amount)
+    }
+  }
+
+  // Resolve project names
+  const allProjectIds = [...new Set(claims.flatMap(c => [c.projectId, ...c.items.map(i => i.projectId)]).filter(Boolean))] as string[]
+  const projects = allProjectIds.length > 0
+    ? await prisma.project.findMany({ where: { id: { in: allProjectIds } }, select: { id: true, name: true, projectNo: true } })
+    : []
+  const projectNameMap: Record<string, string> = Object.fromEntries(projects.map(p => [p.id, `${p.projectNo} - ${p.name}`]))
+
+  const categories = Object.values(categoryMap).map(c => ({
+    category: c.category,
+    totalAmount: c.totalAmount,
+    approvedAmount: c.approvedAmount,
+    count: c.count,
+    projectBreakdown: Object.entries(c.projects).map(([pid, amt]) => ({
+      projectId: pid,
+      projectName: projectNameMap[pid] || 'Unallocated',
+      amount: amt,
+    })),
+  })).sort((a, b) => b.totalAmount - a.totalAmount)
+
+  const grandTotal = categories.reduce((s, c) => s + c.totalAmount, 0)
+  const grandApproved = categories.reduce((s, c) => s + c.approvedAmount, 0)
+
+  return {
+    reportType: 'expense-summary',
+    fiscalYearId: filters.fiscalYearId,
+    periodStart: filters.startDate,
+    periodEnd: filters.endDate,
+    generatedAt: new Date(),
+    categories,
+    summary: {
+      totalCategories: categories.length,
+      totalClaims: claims.length,
+      grandTotal,
+      grandApproved,
+    },
+  }
+}
+
+// ─── Advance Aging ───
+
+async function generateAdvanceAging(filters: ReportFilters, _auth: AccessTokenPayload) {
+  const advances = await prisma.employeeAdvance.findMany({
+    where: {
+      organizationId: filters.organizationId,
+      status: { in: ['DISBURSED', 'PARTIALLY_SETTLED', 'OVERDUE'] },
+      disbursedAt: {
+        ...(filters.startDate ? { gte: filters.startDate } : {}),
+        ...(filters.endDate ? { lte: filters.endDate } : {}),
+      },
+    },
+    select: {
+      id: true,
+      advanceNo: true,
+      employeeId: true,
+      purpose: true,
+      advanceType: true,
+      disbursedAmount: true,
+      settledAmount: true,
+      disbursedAt: true,
+      expectedSettlementDate: true,
+      status: true,
+    },
+    orderBy: { disbursedAt: 'asc' },
+  })
+
+  // Resolve employee names
+  const employeeIds = [...new Set(advances.map(a => a.employeeId))]
+  const employees = employeeIds.length > 0
+    ? await prisma.employee.findMany({ where: { id: { in: employeeIds } }, select: { id: true, fullName: true } })
+    : []
+  const empNameMap: Record<string, string> = Object.fromEntries(employees.map(e => [e.id, e.fullName]))
+
+  const now = new Date()
+
+  const entries = advances.map(a => {
+    const disbursed = Number(a.disbursedAmount ?? 0)
+    const settled = Number(a.settledAmount ?? 0)
+    const outstanding = disbursed - settled
+    const daysAge = a.disbursedAt ? Math.floor((now.getTime() - new Date(a.disbursedAt).getTime()) / (24 * 60 * 60 * 1000)) : 0
+
+    let bucket: string
+    if (daysAge <= 30) bucket = '0-30'
+    else if (daysAge <= 60) bucket = '31-60'
+    else if (daysAge <= 90) bucket = '61-90'
+    else bucket = '90+'
+
+    return {
+      advanceNo: a.advanceNo,
+      employeeName: empNameMap[a.employeeId] || 'Unknown',
+      purpose: a.purpose,
+      advanceType: a.advanceType,
+      disbursedAmount: disbursed,
+      settledAmount: settled,
+      outstanding,
+      disbursedAt: a.disbursedAt,
+      expectedSettlementDate: a.expectedSettlementDate,
+      daysAge,
+      bucket,
+      status: a.status,
+    }
+  })
+
+  // Bucket summaries
+  const buckets = ['0-30', '31-60', '61-90', '90+']
+  const bucketSummary = buckets.map(b => ({
+    bucket: b,
+    count: entries.filter(e => e.bucket === b).length,
+    totalOutstanding: entries.filter(e => e.bucket === b).reduce((s, e) => s + e.outstanding, 0),
+  }))
+
+  const totalOutstanding = entries.reduce((s, e) => s + e.outstanding, 0)
+
+  return {
+    reportType: 'advance-aging',
+    fiscalYearId: filters.fiscalYearId,
+    periodStart: filters.startDate,
+    periodEnd: filters.endDate,
+    generatedAt: new Date(),
+    entries,
+    bucketSummary,
+    summary: {
+      totalAdvances: entries.length,
+      totalDisbursed: entries.reduce((s, e) => s + e.disbursedAmount, 0),
+      totalSettled: entries.reduce((s, e) => s + e.settledAmount, 0),
+      totalOutstanding,
+    },
+  }
+}
+
+// ─── Petty Cash Statement ───
+
+async function generatePettyCashStatement(filters: ReportFilters, _auth: AccessTokenPayload) {
+  const funds = await prisma.pettyCashFund.findMany({
+    where: {
+      organizationId: filters.organizationId,
+      isActive: true,
+    },
+    select: {
+      id: true,
+      name: true,
+      code: true,
+      location: true,
+      imprestAmount: true,
+      currentBalance: true,
+      transactions: {
+        where: {
+          date: {
+            ...(filters.startDate ? { gte: filters.startDate } : {}),
+            ...(filters.endDate ? { lte: filters.endDate } : {}),
+          },
+        },
+        select: {
+          id: true,
+          transactionNo: true,
+          date: true,
+          action: true,
+          amount: true,
+          balanceAfter: true,
+          description: true,
+          category: true,
+        },
+        orderBy: { date: 'asc' },
+      },
+    },
+    orderBy: { name: 'asc' },
+  })
+
+  const fundStatements = funds.map(f => {
+    const transactions = f.transactions.map(tx => ({
+      transactionNo: tx.transactionNo,
+      date: tx.date,
+      action: tx.action,
+      amount: Number(tx.amount),
+      balanceAfter: Number(tx.balanceAfter),
+      description: tx.description,
+      category: tx.category,
+    }))
+
+    const totalExpenses = transactions.filter(t => t.action === 'EXPENSE').reduce((s, t) => s + t.amount, 0)
+    const totalReplenishments = transactions.filter(t => t.action === 'REPLENISHMENT').reduce((s, t) => s + t.amount, 0)
+    const openingBalance = transactions.length > 0
+      ? (transactions[0].action === 'EXPENSE'
+        ? transactions[0].balanceAfter + transactions[0].amount
+        : transactions[0].balanceAfter - transactions[0].amount)
+      : Number(f.currentBalance)
+    const closingBalance = transactions.length > 0
+      ? transactions[transactions.length - 1].balanceAfter
+      : Number(f.currentBalance)
+
+    return {
+      fundId: f.id,
+      fundName: f.name,
+      fundCode: f.code,
+      location: f.location,
+      imprestAmount: Number(f.imprestAmount),
+      openingBalance,
+      closingBalance,
+      totalExpenses,
+      totalReplenishments,
+      transactionCount: transactions.length,
+      transactions,
+    }
+  })
+
+  return {
+    reportType: 'petty-cash-statement',
+    fiscalYearId: filters.fiscalYearId,
+    periodStart: filters.startDate,
+    periodEnd: filters.endDate,
+    generatedAt: new Date(),
+    funds: fundStatements,
+    summary: {
+      totalFunds: fundStatements.length,
+      totalExpenses: fundStatements.reduce((s, f) => s + f.totalExpenses, 0),
+      totalReplenishments: fundStatements.reduce((s, f) => s + f.totalReplenishments, 0),
+      totalClosingBalance: fundStatements.reduce((s, f) => s + f.closingBalance, 0),
+    },
+  }
+}
+
+// ─── Per Diem Utilization ───
+
+async function generatePerDiemUtilization(filters: ReportFilters, _auth: AccessTokenPayload) {
+  // Get expense claims with per-diem / travel items
+  const claims = await prisma.expenseClaim.findMany({
+    where: {
+      organizationId: filters.organizationId,
+      status: { in: ['FINANCE_APPROVED', 'PAID'] },
+      claimDate: {
+        ...(filters.startDate ? { gte: filters.startDate } : {}),
+        ...(filters.endDate ? { lte: filters.endDate } : {}),
+      },
+      items: {
+        some: {
+          category: { in: ['per_diem', 'travel', 'Per Diem', 'Travel', 'PER_DIEM', 'TRAVEL'] },
+        },
+      },
+    },
+    select: {
+      id: true,
+      claimNo: true,
+      employeeId: true,
+      claimDate: true,
+      travelStartDate: true,
+      travelEndDate: true,
+      projectId: true,
+      items: {
+        where: {
+          category: { in: ['per_diem', 'travel', 'Per Diem', 'Travel', 'PER_DIEM', 'TRAVEL'] },
+        },
+        select: {
+          amount: true,
+          approvedAmount: true,
+          location: true,
+          category: true,
+        },
+      },
+    },
+  })
+
+  // Resolve employee names
+  const employeeIds = [...new Set(claims.map(c => c.employeeId))]
+  const employees = employeeIds.length > 0
+    ? await prisma.employee.findMany({ where: { id: { in: employeeIds } }, select: { id: true, fullName: true } })
+    : []
+  const empNameMap: Record<string, string> = Object.fromEntries(employees.map(e => [e.id, e.fullName]))
+
+  // Get per diem rates for comparison
+  const rates = await prisma.perDiemRate.findMany({
+    where: { organizationId: filters.organizationId, isActive: true },
+    select: { location: true, fullDayRate: true },
+  })
+  const rateMap: Record<string, number> = Object.fromEntries(rates.map(r => [r.location.toLowerCase(), Number(r.fullDayRate)]))
+
+  const entries = claims.map(c => {
+    const claimedAmount = c.items.reduce((s, i) => s + Number(i.amount), 0)
+    const approvedAmount = c.items.reduce((s, i) => s + Number(i.approvedAmount ?? i.amount), 0)
+    const location = c.items[0]?.location || 'Unknown'
+
+    // Calculate entitled amount from rates and travel days
+    let entitledAmount = 0
+    if (c.travelStartDate && c.travelEndDate) {
+      const msPerDay = 24 * 60 * 60 * 1000
+      const days = Math.round((new Date(c.travelEndDate).getTime() - new Date(c.travelStartDate).getTime()) / msPerDay) + 1
+      const ratePerDay = rateMap[location.toLowerCase()] || 0
+      entitledAmount = days * ratePerDay
+    }
+
+    return {
+      claimNo: c.claimNo,
+      employeeName: empNameMap[c.employeeId] || 'Unknown',
+      claimDate: c.claimDate,
+      travelStartDate: c.travelStartDate,
+      travelEndDate: c.travelEndDate,
+      location,
+      claimedAmount,
+      approvedAmount,
+      entitledAmount,
+      variance: claimedAmount - entitledAmount,
+    }
+  })
+
+  return {
+    reportType: 'per-diem-utilization',
+    fiscalYearId: filters.fiscalYearId,
+    periodStart: filters.startDate,
+    periodEnd: filters.endDate,
+    generatedAt: new Date(),
+    entries,
+    summary: {
+      totalClaims: entries.length,
+      totalClaimed: entries.reduce((s, e) => s + e.claimedAmount, 0),
+      totalApproved: entries.reduce((s, e) => s + e.approvedAmount, 0),
+      totalEntitled: entries.reduce((s, e) => s + e.entitledAmount, 0),
+      totalVariance: entries.reduce((s, e) => s + e.variance, 0),
+    },
+  }
+}
+
+// ─── Receipt Compliance ───
+
+async function generateReceiptCompliance(filters: ReportFilters, _auth: AccessTokenPayload) {
+  const claims = await prisma.expenseClaim.findMany({
+    where: {
+      organizationId: filters.organizationId,
+      status: { in: ['FINANCE_APPROVED', 'PAID'] },
+      claimDate: {
+        ...(filters.startDate ? { gte: filters.startDate } : {}),
+        ...(filters.endDate ? { lte: filters.endDate } : {}),
+      },
+      ...(filters.projectId ? { projectId: filters.projectId } : {}),
+    },
+    select: {
+      id: true,
+      claimNo: true,
+      employeeId: true,
+      claimDate: true,
+      items: {
+        select: {
+          category: true,
+          amount: true,
+          hasReceipt: true,
+          noReceiptReason: true,
+        },
+      },
+    },
+  })
+
+  // Resolve employee names
+  const employeeIds = [...new Set(claims.map(c => c.employeeId))]
+  const employees = employeeIds.length > 0
+    ? await prisma.employee.findMany({ where: { id: { in: employeeIds } }, select: { id: true, fullName: true } })
+    : []
+  const empNameMap: Record<string, string> = Object.fromEntries(employees.map(e => [e.id, e.fullName]))
+
+  const entries = claims.map(c => {
+    const totalItems = c.items.length
+    const withReceipt = c.items.filter(i => i.hasReceipt).length
+    const withoutReceipt = totalItems - withReceipt
+    const totalAmount = c.items.reduce((s, i) => s + Number(i.amount), 0)
+    const receiptAmount = c.items.filter(i => i.hasReceipt).reduce((s, i) => s + Number(i.amount), 0)
+    const complianceRate = totalItems > 0 ? (withReceipt / totalItems) * 100 : 100
+
+    return {
+      claimNo: c.claimNo,
+      employeeName: empNameMap[c.employeeId] || 'Unknown',
+      claimDate: c.claimDate,
+      totalItems,
+      withReceipt,
+      withoutReceipt,
+      totalAmount,
+      receiptAmount,
+      nonReceiptAmount: totalAmount - receiptAmount,
+      complianceRate: Math.round(complianceRate * 10) / 10,
+      missingReasons: c.items.filter(i => !i.hasReceipt && i.noReceiptReason).map(i => ({
+        category: i.category,
+        amount: Number(i.amount),
+        reason: i.noReceiptReason,
+      })),
+    }
+  })
+
+  const totalItems = entries.reduce((s, e) => s + e.totalItems, 0)
+  const totalWithReceipt = entries.reduce((s, e) => s + e.withReceipt, 0)
+
+  return {
+    reportType: 'receipt-compliance',
+    fiscalYearId: filters.fiscalYearId,
+    periodStart: filters.startDate,
+    periodEnd: filters.endDate,
+    generatedAt: new Date(),
+    entries,
+    summary: {
+      totalClaims: entries.length,
+      totalItems,
+      totalWithReceipt,
+      totalWithoutReceipt: totalItems - totalWithReceipt,
+      overallComplianceRate: totalItems > 0 ? Math.round((totalWithReceipt / totalItems) * 1000) / 10 : 100,
+      totalAmount: entries.reduce((s, e) => s + e.totalAmount, 0),
+      receiptAmount: entries.reduce((s, e) => s + e.receiptAmount, 0),
+    },
+  }
+}
+
+// ─── TDS/VDS Register ───
+
+async function generateTdsVdsRegister(filters: ReportFilters, _auth: AccessTokenPayload) {
+  const claims = await prisma.expenseClaim.findMany({
+    where: {
+      organizationId: filters.organizationId,
+      status: { in: ['FINANCE_APPROVED', 'PAID'] },
+      claimDate: {
+        ...(filters.startDate ? { gte: filters.startDate } : {}),
+        ...(filters.endDate ? { lte: filters.endDate } : {}),
+      },
+      items: {
+        some: {
+          OR: [
+            { tdsAmount: { gt: 0 } },
+            { vdsAmount: { gt: 0 } },
+          ],
+        },
+      },
+    },
+    select: {
+      id: true,
+      claimNo: true,
+      employeeId: true,
+      claimDate: true,
+      items: {
+        where: {
+          OR: [
+            { tdsAmount: { gt: 0 } },
+            { vdsAmount: { gt: 0 } },
+          ],
+        },
+        select: {
+          category: true,
+          description: true,
+          amount: true,
+          tdsRate: true,
+          tdsAmount: true,
+          vdsRate: true,
+          vdsAmount: true,
+        },
+      },
+    },
+    orderBy: { claimDate: 'asc' },
+  })
+
+  // Resolve employee names
+  const employeeIds = [...new Set(claims.map(c => c.employeeId))]
+  const employees = employeeIds.length > 0
+    ? await prisma.employee.findMany({ where: { id: { in: employeeIds } }, select: { id: true, fullName: true } })
+    : []
+  const empNameMap: Record<string, string> = Object.fromEntries(employees.map(e => [e.id, e.fullName]))
+
+  // Flatten and group by month
+  const entries: {
+    claimNo: string; employeeName: string; date: Date; category: string; description: string;
+    amount: number; tdsRate: number; tdsAmount: number; vdsRate: number; vdsAmount: number; month: string;
+  }[] = []
+
+  for (const claim of claims) {
+    for (const item of claim.items) {
+      const monthKey = `${claim.claimDate.getFullYear()}-${String(claim.claimDate.getMonth() + 1).padStart(2, '0')}`
+      entries.push({
+        claimNo: claim.claimNo,
+        employeeName: empNameMap[claim.employeeId] || 'Unknown',
+        date: claim.claimDate,
+        category: item.category,
+        description: item.description,
+        amount: Number(item.amount),
+        tdsRate: Number(item.tdsRate ?? 0),
+        tdsAmount: Number(item.tdsAmount ?? 0),
+        vdsRate: Number(item.vdsRate ?? 0),
+        vdsAmount: Number(item.vdsAmount ?? 0),
+        month: monthKey,
+      })
+    }
+  }
+
+  // Monthly summary
+  const monthMap: Record<string, { tds: number; vds: number; baseAmount: number; count: number }> = {}
+  for (const e of entries) {
+    if (!monthMap[e.month]) monthMap[e.month] = { tds: 0, vds: 0, baseAmount: 0, count: 0 }
+    monthMap[e.month].tds += e.tdsAmount
+    monthMap[e.month].vds += e.vdsAmount
+    monthMap[e.month].baseAmount += e.amount
+    monthMap[e.month].count += 1
+  }
+
+  const monthlySummary = Object.entries(monthMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, data]) => ({ month, ...data, total: data.tds + data.vds }))
+
+  return {
+    reportType: 'tds-vds-register',
+    fiscalYearId: filters.fiscalYearId,
+    periodStart: filters.startDate,
+    periodEnd: filters.endDate,
+    generatedAt: new Date(),
+    entries,
+    monthlySummary,
+    summary: {
+      totalEntries: entries.length,
+      totalBaseAmount: entries.reduce((s, e) => s + e.amount, 0),
+      totalTds: entries.reduce((s, e) => s + e.tdsAmount, 0),
+      totalVds: entries.reduce((s, e) => s + e.vdsAmount, 0),
+      grandTotal: entries.reduce((s, e) => s + e.tdsAmount + e.vdsAmount, 0),
+    },
+  }
+}
+
+// ─── Donor Expense Report ───
+
+async function generateDonorExpenseReport(filters: ReportFilters, _auth: AccessTokenPayload, url: URL) {
+  const grantId = url.searchParams.get('grantId')
+
+  const grantWhere: Record<string, unknown> = { donor: { organizationId: filters.organizationId } }
+  if (grantId) grantWhere.id = grantId
+
+  const grants = await prisma.grant.findMany({
+    where: grantWhere,
+    select: {
+      id: true,
+      title: true,
+      grantNo: true,
+      awardAmount: true,
+      disbursedAmount: true,
+      donor: { select: { name: true } },
+      budgets: {
+        select: {
+          id: true,
+          name: true,
+          totalAmount: true,
+        },
+      },
+    },
+  })
+
+  // For each grant, get expense JE lines
+  const grantReports = await Promise.all(grants.map(async (grant) => {
+    const journalLines = await prisma.journalEntryLine.findMany({
+      where: {
+        journalEntry: {
+          status: 'APPROVED',
+          deletedAt: null,
+          fiscalYearId: filters.fiscalYearId,
+          grantId: grant.id,
+          ...(filters.startDate && filters.endDate ? { date: { gte: filters.startDate, lte: filters.endDate } } : {}),
+        },
+        account: { type: 'EXPENSE' },
+      },
+      select: {
+        debit: true,
+        credit: true,
+        account: { select: { code: true, name: true } },
+        journalEntry: { select: { date: true, description: true } },
+      },
+      orderBy: { journalEntry: { date: 'asc' } },
+    })
+
+    // Group by account
+    const accountMap: Record<string, { accountCode: string; accountName: string; totalAmount: number }> = {}
+    for (const line of journalLines) {
+      const key = line.account.code
+      if (!accountMap[key]) {
+        accountMap[key] = { accountCode: line.account.code, accountName: line.account.name, totalAmount: 0 }
+      }
+      accountMap[key].totalAmount += Number(line.debit) - Number(line.credit)
+    }
+
+    const expenseLines = Object.values(accountMap).sort((a, b) => a.accountCode.localeCompare(b.accountCode))
+    const totalExpenses = expenseLines.reduce((s, l) => s + l.totalAmount, 0)
+    const totalBudget = grant.budgets.reduce((s, b) => s + Number(b.totalAmount), 0)
+
+    return {
+      grantId: grant.id,
+      grantNo: grant.grantNo,
+      grantTitle: grant.title,
+      donorName: grant.donor.name,
+      awardAmount: Number(grant.awardAmount),
+      disbursedAmount: Number(grant.disbursedAmount),
+      totalBudget,
+      totalExpenses,
+      remainingBudget: totalBudget - totalExpenses,
+      utilizationRate: totalBudget > 0 ? Math.round((totalExpenses / totalBudget) * 1000) / 10 : 0,
+      expenseLines,
+    }
+  }))
+
+  // Filter out grants with no expenses unless specifically queried
+  const activeReports = grantId ? grantReports : grantReports.filter(g => g.totalExpenses > 0)
+
+  return {
+    reportType: 'donor-expense-report',
+    fiscalYearId: filters.fiscalYearId,
+    periodStart: filters.startDate,
+    periodEnd: filters.endDate,
+    generatedAt: new Date(),
+    grants: activeReports,
+    summary: {
+      totalGrants: activeReports.length,
+      totalAward: activeReports.reduce((s, g) => s + g.awardAmount, 0),
+      totalBudget: activeReports.reduce((s, g) => s + g.totalBudget, 0),
+      totalExpenses: activeReports.reduce((s, g) => s + g.totalExpenses, 0),
+      totalRemaining: activeReports.reduce((s, g) => s + g.remainingBudget, 0),
+    },
   }
 }

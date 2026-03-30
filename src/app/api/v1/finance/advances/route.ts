@@ -96,10 +96,20 @@ export async function GET(request: NextRequest) {
 
     const employeeMap = new Map(employees.map((e) => [e.id, e.fullName]))
 
-    const enriched = advances.map((a) => ({
-      ...a,
-      employeeName: employeeMap.get(a.employeeId) || null,
-    }))
+    const now = new Date()
+    const enriched = advances.map((a) => {
+      const disbursedAt = a.disbursedAt ? new Date(a.disbursedAt) : null
+      const agingDays = disbursedAt ? Math.floor((now.getTime() - disbursedAt.getTime()) / (1000 * 60 * 60 * 24)) : 0
+      return {
+        ...a,
+        date: a.requestDate,
+        type: a.advanceType,
+        employee: { id: a.employeeId, name: employeeMap.get(a.employeeId) || '-' },
+        employeeName: employeeMap.get(a.employeeId) || null,
+        agingDays,
+        outstandingAmount: Number(a.disbursedAmount || 0) - Number(a.settledAmount || 0),
+      }
+    })
 
     return apiPaginated(enriched, total, page, limit)
   } catch (error) {
