@@ -43,7 +43,7 @@
 | 4.1–4.12 | All Models | 870–4149 | Enums, Auth, Finance, Budget, Donor, Project, Beneficiary, Procurement, Asset, HR, Microfinance, System |
 | **5** | **Inter-Module Data Flow** | **4151–4262** | Module dependency, cross-module impact, cascade rules |
 | **6** | **API Routes & CRUD Operations** | **4264–4636** | 220+ endpoints by module |
-| **7** | **Implementation Phases** | **4638–8737** | |
+| **7** | **Implementation Phases** | **4638–8778** | |
 | | Phase 1: Foundation & SaaS Core | 4640–4722 | Auth, multi-tenancy, super admin, subscription |
 | | Phase 2: Core Finance ✅ | 4724–4747 | Chart of Accounts, Journal Entries, Vouchers |
 | | Phase 3: Budget & Donor ✅ | 4749–4770 | Budgets, Donors, Grants, Fund Receipts |
@@ -56,14 +56,14 @@
 | | **Phase 8b: HR Fixes + Gratuity + PF** | 5656–6672 | Critical HR fixes, Gratuity Fund, Provident Fund, Pension research |
 | | **Phase 9: Budget Intl Upgrade** | 6674–7070 | Phasing, Commitment, Budget Check, Interactive Pages, Burn Rate, Templates, NICRA |
 | | **Phase 10: Cross-Module Integration** | 7072–8101 | Procurement encumbrance, Payroll→Budget, Dashboard KPIs, Grant→Budget, NGOAB |
-| | **Phase 11: Daily Expense Management** | 8103–8737 | Petty Cash, Expense Claims, Advances, Per Diem, TDS/VDS, 7 models, 37 APIs |
-| 7.1 | Cron Jobs | 8739–8763 | Scheduled tasks (token cleanup, depreciation, etc.) |
-| **8** | **Testing Guidelines** | **8765–9056** | Testing strategy, module-wise tests, integration scenarios |
-| — | **Verification Checklist** | **9058–9086** | Pre-launch validation checklist |
-| — | **Critical Fixes (Post-Audit)** | **9088–9176** | Fix 1–9: journal auto-create, indexes, file upload |
-| — | **Important Features** | **9178–9191** | International-grade enhancements |
-| — | **New Dependencies** | **9193–9223** | Required npm packages |
-| **9** | **Internationalization (i18n)** | **9225–9335** | next-intl, EN + BN, message files, locale resolution |
+| | **Phase 11: Daily Expense Management** | 8103–8778 | Petty Cash, Expense Claims, Advances, Per Diem, TDS/VDS, 7 reports, fixes |
+| 7.1 | Cron Jobs | 8780–8804 | Scheduled tasks (token cleanup, depreciation, etc.) |
+| **8** | **Testing Guidelines** | **8806–9097** | Testing strategy, module-wise tests, integration scenarios |
+| — | **Verification Checklist** | **9099–9127** | Pre-launch validation checklist |
+| — | **Critical Fixes (Post-Audit)** | **9129–9217** | Fix 1–9: journal auto-create, indexes, file upload |
+| — | **Important Features** | **9219–9232** | International-grade enhancements |
+| — | **New Dependencies** | **9234–9264** | Required npm packages |
+| **9** | **Internationalization (i18n)** | **9266–9376** | next-intl, EN + BN, message files, locale resolution |
 
 ---
 
@@ -852,16 +852,16 @@ ngo-erp/
 
 ## 3. Menu Structure
 
-4 groups, 12 modules, 78 menu items.
+4 groups, 12 modules, 97 menu items.
 
 | Group | Color | Modules |
 |-------|-------|---------|
-| **CORE** | Blue | Dashboard (3), Finance & Accounting (6), Budget Management (5) |
+| **CORE** | Blue | Dashboard (3), Finance & Accounting (7 + 6 sub-items under Daily Expenses), Budget Management (7) |
 | **PROGRAMS** | Green | Donor & Grant (6), Project Management (8), Beneficiary Management (5) |
-| **OPERATIONS** | Amber | Procurement & Supply Chain (8), Fixed Assets (6), Human Resources (8), Microfinance (8) |
+| **OPERATIONS** | Amber | Procurement & Supply Chain (8), Fixed Assets (6), Human Resources (16), Microfinance (8) |
 | **SYSTEM** | Slate | Reports & Analytics (8), Settings & Administration (7) |
 
-*(Menu routes are defined in `src/data/navigation.ts` — no changes needed)*
+*(Menu routes are defined in `src/data/navigation.ts`)*
 
 ---
 
@@ -5596,7 +5596,7 @@ model DisciplinaryCase {
 |------|-------|-------------|
 | HR Analytics | `/hr/analytics` | Full analytics dashboard with charts: headcount trends, turnover rate, gender diversity pie, department breakdown, recruitment pipeline funnel, leave utilization, training hours/employee |
 
-#### 8.7 Enhanced Existing Features
+#### 8.7 Enhanced Existing Features ⬜ DEFERRED (Phase 8c — future)
 
 **Salary Structure Enhancements:**
 - Salary grade/step matrix (UN-style)
@@ -5653,15 +5653,15 @@ HR & Payroll
 ├── HR Analytics           ★ NEW
 ```
 
-### Phase 8b: HR Module — Critical Fixes, Gratuity Fund & Provident Fund
+### Phase 8b: HR Module — Critical Fixes, Gratuity Fund & Provident Fund ✅ completed ✅ seeded ✅ tested
 
 > **Priority: Fix broken flows, add missing BLA 2006 compliance features, complete HR as production-grade**
-> **Status:** ⬜ Planning complete, ready for implementation
+> **Status:** ✅ Implemented, seeded, API tested (17/17 PASS), pushed to GitHub (commit 9cf14d4)
 > **Dependencies:** Phase 8 (completed), Phase 5 HR basics (completed)
 
 ---
 
-#### 8b.1 Critical Fixes — Broken Flows & Missing Features
+#### 8b.1 Critical Fixes — Broken Flows & Missing Features ✅ completed
 
 > These are bugs/gaps in Phase 8 that MUST be fixed before any new features.
 
@@ -5870,7 +5870,7 @@ Same onboarding flow as above...
 
 ---
 
-#### 8b.2 Gratuity Fund Management
+#### 8b.2 Gratuity Fund Management ✅ completed
 
 > **Legal basis:** Bangladesh Labour Act 2006, Section 26 — employees with 5+ years continuous service entitled to gratuity at 30 days' wages per completed year. International NGOs typically offer from day 1 at 1 month/year rate.
 > **NGOAB requirement:** FD-4 form requires gratuity liability reporting.
@@ -6090,7 +6090,7 @@ model GratuityFundTransaction {
 
 ---
 
-#### 8b.3 Provident Fund Management
+#### 8b.3 Provident Fund Management ✅ completed
 
 > **Legal basis:** Bangladesh Labour Act 2006, Chapter XVII (Sections 264-269) — mandatory if 75%+ employees demand. NBR recognition makes it tax-exempt.
 > **International NGO practice:** Typically voluntary, 10% employee + 10% employer contribution.
@@ -8733,6 +8733,47 @@ enum PettyCashAction {
 > - **5 new GL accounts**
 > - **4 cron jobs**
 > - **Cross-module: Finance (JE, Voucher, Bank Recon, Bank & Cash, Reports), Budget (commitment, check), HR (employee profile, payroll), Projects (allocation)**
+
+#### 11.17 Critical Fixes (Post-Implementation Audit)
+
+**Fix 11-A: Petty Cash transactions not showing in expanded fund card**
+- **Root cause**: List API (`GET /petty-cash`) doesn't include transactions; fund detail API does but UI only calls list
+- **Fix**: When fund card expands, fetch `GET /petty-cash/{id}` to get transactions
+- **Impact**: Petty Cash page UI only
+
+**Fix 11-B: Expense Claim seed data — JE not created for PAID/APPROVED claims**
+- **Root cause**: Seed script set status directly without going through approval flow, so no JE auto-generated
+- **Fix**: Re-seed with proper JE creation for FINANCE_APPROVED and PAID claims, linked to vouchers
+- **Impact**: Seed data only, API logic is correct
+
+**Fix 11-C: Per Diem calculator response field mismatch**
+- **Root cause**: API returns different field names than what UI expects (e.g., `days` vs `totalDays`)
+- **Fix**: Align API response field names with UI expectations
+- **Impact**: Per Diem calculator API + UI
+
+**Fix 11-D: 7 new report types not implemented in Financial Reports API**
+- **Root cause**: Report types added to UI (cards visible) but not in `reports/[type]/route.ts` switch/case
+- **Fix**: Implement all 7 report generators following existing pattern:
+  - `expense-summary` — Expense claims grouped by category/project (from ExpenseClaim + ExpenseClaimItem)
+  - `advance-aging` — Outstanding advances bucketed 0-30/31-60/61-90/90+ days (from EmployeeAdvance)
+  - `petty-cash-statement` — Per-fund opening→transactions→closing (from PettyCashTransaction)
+  - `per-diem-utilization` — Per diem claims vs approved rates (from ExpenseClaimItem where category matches)
+  - `receipt-compliance` — Receipt attachment rate audit (from ExpenseClaimItem.hasReceipt)
+  - `tds-vds-register` — Tax deduction register NBR format (from ExpenseClaimItem.tdsAmount/vdsAmount)
+  - `donor-expense` — Grant-wise budget vs actual (from JE lines + Grant + Budget)
+- **Data sources**: Domain models (ExpenseClaim, EmployeeAdvance, PettyCashTransaction) NOT just JournalEntryLine
+- **UI columns**: Add to `getColumns()` switch/case in report viewer page
+- **Impact**: Financial Reports API (`reports/[type]/route.ts`), Report viewer page, i18n
+
+**Fix 11-E: Petty Cash fund GL account linking in seed data**
+- **Root cause**: Seed created BankAccount (type=CASH) without `glAccountId` → JE creation silently skipped
+- **Fix**: Seed links all CASH BankAccounts to GL 1102
+- **Impact**: Seed data, already fixed in DB
+
+**Fix 11-F: SearchableSelect dropdown scroll/overlap issues**
+- **Root cause**: Radix Popover inside Dialog conflicts with focus trap and z-index
+- **Fix**: Replaced Popover with plain CSS absolute dropdown, z-200, overscroll-contain
+- **Impact**: Global SearchableSelect component (all pages benefit)
 
 ---
 
