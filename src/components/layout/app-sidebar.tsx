@@ -169,18 +169,54 @@ export function AppSidebar() {
                       {item.items && item.items.length > 0 && (
                         <CollapsibleContent>
                           <SidebarMenuSub>
-                            {item.items.map((subItem) => (
-                              <SidebarMenuSubItem key={subItem.url}>
-                                <SidebarMenuSubButton
+                            {item.items.map((subItem) =>
+                              subItem.items && subItem.items.length > 0 ? (
+                                <Collapsible
+                                  key={subItem.url}
                                   asChild
-                                  isActive={pathname === subItem.url}
+                                  defaultOpen={pathname.startsWith(subItem.url)}
                                 >
-                                  <Link href={subItem.url}>
-                                    <span>{t(subItem.title)}</span>
-                                  </Link>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            ))}
+                                  <SidebarMenuSubItem>
+                                    <CollapsibleTrigger asChild>
+                                      <SidebarMenuSubButton
+                                        isActive={pathname.startsWith(subItem.url)}
+                                        className="cursor-pointer"
+                                      >
+                                        <span>{t(subItem.title)}</span>
+                                        <ChevronRight className="ml-auto h-3 w-3 transition-transform duration-200 ease-in-out group-data-[state=open]/collapsible:rotate-90" />
+                                      </SidebarMenuSubButton>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                      <SidebarMenuSub>
+                                        {subItem.items.map((nestedItem) => (
+                                          <SidebarMenuSubItem key={nestedItem.url}>
+                                            <SidebarMenuSubButton
+                                              asChild
+                                              isActive={pathname === nestedItem.url}
+                                            >
+                                              <Link href={nestedItem.url}>
+                                                <span>{t(nestedItem.title)}</span>
+                                              </Link>
+                                            </SidebarMenuSubButton>
+                                          </SidebarMenuSubItem>
+                                        ))}
+                                      </SidebarMenuSub>
+                                    </CollapsibleContent>
+                                  </SidebarMenuSubItem>
+                                </Collapsible>
+                              ) : (
+                                <SidebarMenuSubItem key={subItem.url}>
+                                  <SidebarMenuSubButton
+                                    asChild
+                                    isActive={pathname === subItem.url}
+                                  >
+                                    <Link href={subItem.url}>
+                                      <span>{t(subItem.title)}</span>
+                                    </Link>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              )
+                            )}
                           </SidebarMenuSub>
                         </CollapsibleContent>
                       )}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import Link from 'next/link'
 import {
   Loader2,
   Plus,
@@ -97,7 +98,6 @@ export default function PettyCashPage() {
   const [saving, setSaving] = useState(false)
 
   // Dialog states
-  const [createOpen, setCreateOpen] = useState(false)
   const [expenseOpen, setExpenseOpen] = useState(false)
   const [replenishOpen, setReplenishOpen] = useState(false)
   const [reconcileOpen, setReconcileOpen] = useState(false)
@@ -106,14 +106,6 @@ export default function PettyCashPage() {
   // Lookup data
   const [employees, setEmployees] = useState<Employee[]>([])
   const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([])
-
-  // Create Fund form
-  const [cfName, setCfName] = useState('')
-  const [cfCode, setCfCode] = useState('')
-  const [cfImprest, setCfImprest] = useState('')
-  const [cfCustodianId, setCfCustodianId] = useState('')
-  const [cfLocation, setCfLocation] = useState('')
-  const [cfNotes, setCfNotes] = useState('')
 
   // Record Expense form
   const [reDate, setReDate] = useState('')
@@ -180,37 +172,6 @@ export default function PettyCashPage() {
   }
 
   // ─── Create Fund ───
-
-  const resetCreateForm = () => {
-    setCfName(''); setCfCode(''); setCfImprest(''); setCfCustodianId('');
-    setCfLocation(''); setCfNotes('')
-  }
-
-  const handleCreateFund = async () => {
-    setSaving(true)
-    try {
-      const res = await fetch('/api/v1/finance/petty-cash', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: cfName,
-          code: cfCode,
-          imprestAmount: parseFloat(cfImprest) || 0,
-          custodianId: cfCustodianId,
-          location: cfLocation,
-          notes: cfNotes || null,
-        }),
-      })
-      if (!res.ok) throw new Error()
-      setCreateOpen(false)
-      resetCreateForm()
-      fetchFunds()
-    } catch {
-      setError(t('failedToCreate'))
-    } finally {
-      setSaving(false)
-    }
-  }
 
   // ─── Record Expense ───
 
@@ -314,9 +275,11 @@ export default function PettyCashPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t('title')} description={t('description')}>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t('createFund')}
+        <Button asChild>
+          <Link href="/finance/expenses/petty-cash/new">
+            <Plus className="mr-2 h-4 w-4" />
+            {t('createFund')}
+          </Link>
         </Button>
       </PageHeader>
 
@@ -499,56 +462,6 @@ export default function PettyCashPage() {
         </div>
       )}
 
-      {/* ─── Create Fund Dialog ─── */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('createFund')}</DialogTitle>
-            <DialogDescription>{t('createFundDescription')}</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="cf-name">{t('fundName')}</Label>
-              <Input id="cf-name" value={cfName} onChange={(e) => setCfName(e.target.value)} placeholder={t('fundNamePlaceholder')} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="cf-code">{t('fundCode')}</Label>
-                <Input id="cf-code" value={cfCode} onChange={(e) => setCfCode(e.target.value)} placeholder={t('fundCodePlaceholder')} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="cf-imprest">{t('imprestAmount')}</Label>
-                <Input id="cf-imprest" type="number" value={cfImprest} onChange={(e) => setCfImprest(e.target.value)} placeholder="0.00" />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label>{t('custodian')}</Label>
-              <SearchableSelect
-                options={employees.map((e) => ({ value: e.id, label: e.name }))}
-                value={cfCustodianId}
-                onValueChange={setCfCustodianId}
-                placeholder={t('selectCustodian')}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="cf-location">{t('location')}</Label>
-              <Input id="cf-location" value={cfLocation} onChange={(e) => setCfLocation(e.target.value)} placeholder={t('locationPlaceholder')} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="cf-notes">{t('notes')}</Label>
-              <Textarea id="cf-notes" value={cfNotes} onChange={(e) => setCfNotes(e.target.value)} rows={2} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>{tc('cancel')}</Button>
-            <Button onClick={handleCreateFund} disabled={saving || !cfName || !cfCode}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('createFund')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* ─── Record Expense Dialog ─── */}
       <Dialog open={expenseOpen} onOpenChange={setExpenseOpen}>
         <DialogContent className="sm:max-w-lg">
@@ -602,7 +515,7 @@ export default function PettyCashPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setExpenseOpen(false)}>{tc('cancel')}</Button>
+            <Button variant="outline" onClick={() => setExpenseOpen(false)}>{tc('buttons.cancel')}</Button>
             <Button onClick={handleRecordExpense} disabled={saving || !reDate || !reAmount}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('recordExpense')}
@@ -629,7 +542,7 @@ export default function PettyCashPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setReplenishOpen(false)}>{tc('cancel')}</Button>
+            <Button variant="outline" onClick={() => setReplenishOpen(false)}>{tc('buttons.cancel')}</Button>
             <Button onClick={handleReplenish} disabled={saving || !rpAmount}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('replenish')}
@@ -674,7 +587,7 @@ export default function PettyCashPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setReconcileOpen(false)}>{tc('cancel')}</Button>
+            <Button variant="outline" onClick={() => setReconcileOpen(false)}>{tc('buttons.cancel')}</Button>
             <Button onClick={handleReconcile} disabled={saving || !rcPhysicalCount}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('confirmReconcile')}

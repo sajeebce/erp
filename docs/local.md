@@ -152,6 +152,12 @@ pnpm tsx prisma/seed-finance.ts
 pnpm tsx prisma/seed-reconciliation.ts
 ```
 
+### Phase 8: Daily Expense Management (Categories, Per Diem, Petty Cash, Claims, Advances)
+
+```bash
+pnpm tsx prisma/seed-expenses.ts
+```
+
 ---
 
 ## 6. Run the Dev Server

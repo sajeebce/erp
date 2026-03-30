@@ -28,37 +28,49 @@ import { useFormatters } from '@/hooks/use-formatters'
 interface PettyCashFund {
   id: string
   name: string
-  currentBalance: number
-  imprestAmount: number
+  currentBalance: string | number
+  imprestAmount: string | number
 }
 
 interface ExpenseClaim {
   id: string
-  claimNumber: string
-  employeeName: string
-  amount: number
+  claimNo: string
+  employeeName: string | null
+  totalAmount: string | number
+  approvedAmount: string | number | null
   status: string
-  description: string
-  submittedAt: string
-  category: string
+  purpose: string
+  claimDate: string
+  projectName: string | null
+  itemCount: number
 }
 
 interface OutstandingAdvance {
   id: string
-  employeeName: string
-  amount: number
+  employeeName: string | null
+  estimatedAmount: string | number
+  approvedAmount: string | number | null
+  disbursedAmount: string | number | null
   purpose: string
-  issuedAt: string
+  requestDate: string
 }
 
 // ─── Status Badge Colors ───
 
 function statusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   switch (status) {
-    case 'APPROVED': return 'default'
+    case 'FINANCE_APPROVED':
+    case 'SUPERVISOR_APPROVED':
+    case 'APPROVED':
+    case 'PAID':
+    case 'SETTLED': return 'default'
     case 'SUBMITTED':
+    case 'REQUESTED':
+    case 'DISBURSED':
     case 'PENDING': return 'secondary'
-    case 'REJECTED': return 'destructive'
+    case 'REJECTED':
+    case 'CANCELLED':
+    case 'OVERDUE': return 'destructive'
     default: return 'outline'
   }
 }
@@ -80,11 +92,13 @@ export default function ExpenseDashboardPage() {
 
   // ─── Derived KPIs ───
 
-  const totalPettyCash = pettyCashFunds.reduce((sum, f) => sum + f.currentBalance, 0)
+  const totalPettyCash = pettyCashFunds.reduce((sum, f) => sum + Number(f.currentBalance), 0)
   const pendingClaimsCount = pendingClaims.length
-  const totalOutstandingAdvances = outstandingAdvances.reduce((sum, a) => sum + a.amount, 0)
+  const totalOutstandingAdvances = outstandingAdvances.reduce(
+    (sum, a) => sum + Number(a.disbursedAmount ?? a.approvedAmount ?? a.estimatedAmount), 0
+  )
   const claimsThisMonth = recentClaims.filter((c) => {
-    const d = new Date(c.submittedAt)
+    const d = new Date(c.claimDate)
     const now = new Date()
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
   }).length
@@ -271,30 +285,28 @@ export default function ExpenseDashboardPage() {
                   <TableRow>
                     <TableHead>{t('claimNumber')}</TableHead>
                     <TableHead>{t('employee')}</TableHead>
-                    <TableHead>{t('category')}</TableHead>
                     <TableHead>{t('claimDescription')}</TableHead>
                     <TableHead className="text-right">{t('amount')}</TableHead>
                     <TableHead>{t('status')}</TableHead>
-                    <TableHead>{t('submittedDate')}</TableHead>
+                    <TableHead>{t('claimDate')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {recentClaims.map((claim) => (
                     <TableRow key={claim.id}>
-                      <TableCell className="font-mono text-sm">{claim.claimNumber}</TableCell>
-                      <TableCell>{claim.employeeName}</TableCell>
-                      <TableCell>{claim.category}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">{claim.description}</TableCell>
+                      <TableCell className="font-mono text-sm">{claim.claimNo}</TableCell>
+                      <TableCell>{claim.employeeName ?? '—'}</TableCell>
+                      <TableCell className="max-w-[250px] truncate">{claim.purpose}</TableCell>
                       <TableCell className="text-right font-medium">
-                        {formatCurrency(claim.amount)}
+                        {formatCurrency(Number(claim.totalAmount))}
                       </TableCell>
                       <TableCell>
                         <Badge variant={statusVariant(claim.status)}>
-                          {t(`statuses.${claim.status}` as Parameters<typeof t>[0])}
+                          {tc(`status.${claim.status}` as Parameters<typeof tc>[0])}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {formatDate(claim.submittedAt)}
+                        {formatDate(claim.claimDate)}
                       </TableCell>
                     </TableRow>
                   ))}

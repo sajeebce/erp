@@ -214,22 +214,27 @@ model BankReconciliationItem {
 // ═══════════════════════════════════════════
 
 model PettyCashFund {
-  id              String           @id @default(uuid()) @db.Uuid
-  organizationId  String           @db.Uuid
-  name            String
-  code            String
-  imprestAmount   Decimal          @db.Decimal(18, 2)
-  currentBalance  Decimal          @default(0) @db.Decimal(18, 2)
-  currencyCode    CurrencyCode     @default(BDT)
-  custodianId     String           @db.Uuid
-  bankAccountId   String?          @db.Uuid
-  projectId       String?          @db.Uuid
-  location        String?
-  isActive        Boolean          @default(true)
-  lastReconciledAt DateTime?
-  notes           String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id                     String           @id @default(uuid()) @db.Uuid
+  organizationId         String           @db.Uuid
+  name                   String
+  code                   String
+  imprestAmount          Decimal          @db.Decimal(18, 2)
+  currentBalance         Decimal          @default(0) @db.Decimal(18, 2)
+  currencyCode           CurrencyCode     @default(BDT)
+  custodianId            String           @db.Uuid
+  alternateCustodianId   String?          @db.Uuid
+  bankAccountId          String?          @db.Uuid
+  projectId              String?          @db.Uuid
+  grantId                String?          @db.Uuid
+  location               String?
+  maxTransactionLimit    Decimal?         @db.Decimal(18, 2)
+  reconciliationFrequency String          @default("MONTHLY")
+  effectiveDate          DateTime         @default(now())
+  isActive               Boolean          @default(true)
+  lastReconciledAt       DateTime?
+  notes                  String?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
 
   organization    Organization     @relation(fields: [organizationId], references: [id])
   bankAccount     BankAccount?     @relation(fields: [bankAccountId], references: [id])

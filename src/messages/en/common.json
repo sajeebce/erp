@@ -114,7 +114,14 @@
     "VERBAL_WARNING": "Verbal Warning",
     "WRITTEN_WARNING": "Written Warning",
     "FINAL_WARNING": "Final Warning",
-    "SUSPENSION": "Suspension"
+    "SUSPENSION": "Suspension",
+    "FINANCE_APPROVED": "Finance Approved",
+    "SUPERVISOR_APPROVED": "Supervisor Approved",
+    "PAID": "Paid",
+    "PARTIALLY_SETTLED": "Partially Settled",
+    "SETTLED": "Settled",
+    "REQUESTED": "Requested",
+    "DISBURSED": "Disbursed"
   },
   "pagination": {
     "rowsPerPage": "Rows per page",

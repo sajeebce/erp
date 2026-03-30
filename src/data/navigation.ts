@@ -36,7 +36,18 @@ export const navigation: NavItem[] = [
       { title: "items.bankReconciliation", url: "/finance/bank-reconciliation" },
       { title: "items.bankCash", url: "/finance/bank-cash" },
       { title: "items.financialReports", url: "/finance/financial-reports" },
-      { title: "items.dailyExpenses", url: "/finance/expenses" },
+      {
+        title: "items.dailyExpenses",
+        url: "/finance/expenses",
+        items: [
+          { title: "items.expenseDashboard", url: "/finance/expenses" },
+          { title: "items.pettyCash", url: "/finance/expenses/petty-cash" },
+          { title: "items.expenseClaims", url: "/finance/expenses/claims" },
+          { title: "items.advances", url: "/finance/expenses/advances" },
+          { title: "items.perDiemRates", url: "/finance/expenses/per-diem" },
+          { title: "items.expenseCategories", url: "/finance/expenses/categories" },
+        ],
+      },
     ],
   },
   {

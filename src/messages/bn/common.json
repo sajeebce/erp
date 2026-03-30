@@ -114,7 +114,14 @@
     "VERBAL_WARNING": "মৌখিক সতর্কতা",
     "WRITTEN_WARNING": "লিখিত সতর্কতা",
     "FINAL_WARNING": "চূড়ান্ত সতর্কতা",
-    "SUSPENSION": "স্থগিত"
+    "SUSPENSION": "স্থগিত",
+    "FINANCE_APPROVED": "অর্থ অনুমোদিত",
+    "SUPERVISOR_APPROVED": "সুপারভাইজার অনুমোদিত",
+    "PAID": "পরিশোধিত",
+    "PARTIALLY_SETTLED": "আংশিক নিষ্পত্তি",
+    "SETTLED": "নিষ্পত্তি",
+    "REQUESTED": "অনুরোধকৃত",
+    "DISBURSED": "বিতরণকৃত"
   },
   "pagination": {
     "rowsPerPage": "প্রতি পৃষ্ঠায় সারি",

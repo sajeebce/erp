@@ -11,6 +11,7 @@ export interface NavItem {
 export interface NavSubItem {
   title: string;
   url: string;
+  items?: NavSubItem[];
 }
 
 export interface KPICardData {

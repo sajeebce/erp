@@ -46,9 +46,14 @@ export async function GET(request: NextRequest) {
           currentBalance: true,
           currencyCode: true,
           custodianId: true,
+          alternateCustodianId: true,
           bankAccountId: true,
           projectId: true,
+          grantId: true,
           location: true,
+          maxTransactionLimit: true,
+          reconciliationFrequency: true,
+          effectiveDate: true,
           isActive: true,
           lastReconciledAt: true,
           notes: true,
@@ -81,10 +86,15 @@ export async function POST(request: NextRequest) {
       code,
       imprestAmount,
       custodianId,
+      alternateCustodianId,
       projectId,
+      grantId,
       location,
       notes,
       currencyCode,
+      maxTransactionLimit,
+      reconciliationFrequency,
+      effectiveDate,
     } = body
 
     if (!name || !code || imprestAmount === undefined || !custodianId) {
@@ -93,6 +103,20 @@ export async function POST(request: NextRequest) {
 
     if (typeof imprestAmount !== 'number' || imprestAmount <= 0) {
       return apiBadRequest('imprestAmount must be a positive number')
+    }
+
+    if (maxTransactionLimit !== undefined && maxTransactionLimit !== null) {
+      if (typeof maxTransactionLimit !== 'number' || maxTransactionLimit <= 0) {
+        return apiBadRequest('maxTransactionLimit must be a positive number')
+      }
+      if (maxTransactionLimit > imprestAmount) {
+        return apiBadRequest('maxTransactionLimit cannot exceed imprestAmount')
+      }
+    }
+
+    const validFrequencies = ['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY']
+    if (reconciliationFrequency && !validFrequencies.includes(reconciliationFrequency)) {
+      return apiBadRequest(`reconciliationFrequency must be one of: ${validFrequencies.join(', ')}`)
     }
 
     // Check code uniqueness within org
@@ -108,6 +132,13 @@ export async function POST(request: NextRequest) {
     if (existing) {
       return apiConflict(`A petty cash fund with code "${code}" already exists in this organization`)
     }
+
+    // Get org's base currency
+    const org = await prisma.organization.findUnique({
+      where: { id: auth.organizationId },
+      select: { baseCurrency: true },
+    })
+    const orgCurrency = org?.baseCurrency ?? 'BDT'
 
     // Find the GL account for petty cash (code 1102)
     const pettyCashGlAccount = await prisma.account.findFirst({
@@ -128,7 +159,7 @@ export async function POST(request: NextRequest) {
           accountCode: `PC-${code.trim()}`,
           accountName: name.trim(),
           type: 'CASH',
-          currencyCode: currencyCode || 'BDT',
+          currencyCode: currencyCode || orgCurrency,
           currentBalance: imprestAmount,
           glAccountId: pettyCashGlAccount?.id || null,
         },
@@ -142,11 +173,16 @@ export async function POST(request: NextRequest) {
           code: code.trim(),
           imprestAmount,
           currentBalance: imprestAmount,
-          currencyCode: currencyCode || 'BDT',
+          currencyCode: currencyCode || orgCurrency,
           custodianId,
+          alternateCustodianId: alternateCustodianId || null,
           bankAccountId: bankAccount.id,
           projectId: projectId || null,
+          grantId: grantId || null,
           location: location || null,
+          maxTransactionLimit: maxTransactionLimit || null,
+          reconciliationFrequency: reconciliationFrequency || 'MONTHLY',
+          effectiveDate: effectiveDate ? new Date(effectiveDate) : new Date(),
           notes: notes || null,
         },
         select: {
@@ -157,9 +193,14 @@ export async function POST(request: NextRequest) {
           currentBalance: true,
           currencyCode: true,
           custodianId: true,
+          alternateCustodianId: true,
           bankAccountId: true,
           projectId: true,
+          grantId: true,
           location: true,
+          maxTransactionLimit: true,
+          reconciliationFrequency: true,
+          effectiveDate: true,
           isActive: true,
           notes: true,
           bankAccount: {
