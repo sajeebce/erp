@@ -36,32 +36,34 @@
 
 | # | Section | Lines | Description |
 |---|---------|-------|-------------|
-| **1** | **Architecture & Design Principles** | **68–365** | |
-| **2** | **Folder Structure** | **366–850** | Complete src/ directory tree |
-| **3** | **Menu Structure** | **851–865** | Sidebar navigation hierarchy |
-| **4** | **Database Schema (Prisma 7.x)** | **866–4148** | |
-| 4.1–4.12 | All Models | 868–4148 | Enums, Auth, Finance, Budget, Donor, Project, Beneficiary, Procurement, Asset, HR, Microfinance, System |
-| **5** | **Inter-Module Data Flow** | **4149–4261** | Module dependency, cross-module impact, cascade rules |
-| **6** | **API Routes & CRUD Operations** | **4262–4635** | 220+ endpoints by module |
-| **7** | **Implementation Phases** | **4636–7084** | |
-| | Phase 1: Foundation & SaaS Core | 4638–4721 | Auth, multi-tenancy, super admin, subscription |
-| | Phase 2: Core Finance ✅ | 4722–4746 | Chart of Accounts, Journal Entries, Vouchers |
-| | Phase 3: Budget & Donor ✅ | 4747–4769 | Budgets, Donors, Grants, Fund Receipts |
-| | Phase 4: Project & Beneficiary ✅ | 4770–4813 | Projects, Activities, Beneficiaries + 4b: Intl upgrade (type, sector, indicators, risks) |
-| | Phase 5: Operations ✅ | 4814–4876 | Procurement, Assets, HR, Microfinance |
-| | Phase 6: Reports & Dashboard ✅ | 4877–4903 | Reports, Analytics, Dashboard widgets |
-| | Phase 7: UI Pages ✅ | 4904–4935 | All CRUD UI pages across modules |
-| | Remaining (Deferred) | 4936–4947 | Webhooks, advanced features |
-| | **Phase 8: HR & Payroll Intl Upgrade ✅** | 4948–5653 | Recruitment/ATS, Contracts, Offboarding, Holidays, Grievance, Analytics |
-| | **Phase 9: Budget Intl Upgrade** | 5654–6051 | Phasing, Commitment, Budget Check, Interactive Pages, Burn Rate, Templates, NICRA |
-| | **Phase 10: Cross-Module Integration** | 6052–7084 | Procurement encumbrance, Payroll→Budget, Dashboard KPIs, Grant→Budget, NGOAB |
-| 7.1 | Cron Jobs | 7085–7110 | Scheduled tasks (token cleanup, depreciation, etc.) |
-| **8** | **Testing Guidelines** | **7111–7403** | Testing strategy, module-wise tests, integration scenarios |
-| — | **Verification Checklist** | **7404–7433** | Pre-launch validation checklist |
-| — | **Critical Fixes (Post-Audit)** | **7434–7523** | Fix 1–9: journal auto-create, indexes, file upload |
-| — | **Important Features** | **7524–7538** | International-grade enhancements |
-| — | **New Dependencies** | **7539–7570** | Required npm packages |
-| **9** | **Internationalization (i18n)** | **7571–7680** | next-intl, EN + BN, message files, locale resolution, API endpoints |
+| **1** | **Architecture & Design Principles** | **70–366** | |
+| **2** | **Folder Structure** | **368–851** | Complete src/ directory tree |
+| **3** | **Menu Structure** | **853–866** | Sidebar navigation hierarchy |
+| **4** | **Database Schema (Prisma 7.x)** | **868–4149** | |
+| 4.1–4.12 | All Models | 870–4149 | Enums, Auth, Finance, Budget, Donor, Project, Beneficiary, Procurement, Asset, HR, Microfinance, System |
+| **5** | **Inter-Module Data Flow** | **4151–4262** | Module dependency, cross-module impact, cascade rules |
+| **6** | **API Routes & CRUD Operations** | **4264–4636** | 220+ endpoints by module |
+| **7** | **Implementation Phases** | **4638–8737** | |
+| | Phase 1: Foundation & SaaS Core | 4640–4722 | Auth, multi-tenancy, super admin, subscription |
+| | Phase 2: Core Finance ✅ | 4724–4747 | Chart of Accounts, Journal Entries, Vouchers |
+| | Phase 3: Budget & Donor ✅ | 4749–4770 | Budgets, Donors, Grants, Fund Receipts |
+| | Phase 4: Project & Beneficiary ✅ | 4772–4814 | Projects, Activities, Beneficiaries |
+| | Phase 5: Operations ✅ | 4816–4877 | Procurement, Assets, HR, Microfinance |
+| | Phase 6: Reports & Dashboard ✅ | 4879–4904 | Reports, Analytics, Dashboard widgets |
+| | Phase 7: UI Pages ✅ | 4906–4936 | All CRUD UI pages across modules |
+| | Remaining (Deferred) | 4938–4948 | Webhooks, advanced features |
+| | **Phase 8: HR & Payroll Intl Upgrade ✅** | 4950–5654 | Recruitment/ATS, Contracts, Offboarding, Holidays, Grievance, Analytics |
+| | **Phase 8b: HR Fixes + Gratuity + PF** | 5656–6672 | Critical HR fixes, Gratuity Fund, Provident Fund, Pension research |
+| | **Phase 9: Budget Intl Upgrade** | 6674–7070 | Phasing, Commitment, Budget Check, Interactive Pages, Burn Rate, Templates, NICRA |
+| | **Phase 10: Cross-Module Integration** | 7072–8101 | Procurement encumbrance, Payroll→Budget, Dashboard KPIs, Grant→Budget, NGOAB |
+| | **Phase 11: Daily Expense Management** | 8103–8737 | Petty Cash, Expense Claims, Advances, Per Diem, TDS/VDS, 7 models, 37 APIs |
+| 7.1 | Cron Jobs | 8739–8763 | Scheduled tasks (token cleanup, depreciation, etc.) |
+| **8** | **Testing Guidelines** | **8765–9056** | Testing strategy, module-wise tests, integration scenarios |
+| — | **Verification Checklist** | **9058–9086** | Pre-launch validation checklist |
+| — | **Critical Fixes (Post-Audit)** | **9088–9176** | Fix 1–9: journal auto-create, indexes, file upload |
+| — | **Important Features** | **9178–9191** | International-grade enhancements |
+| — | **New Dependencies** | **9193–9223** | Required npm packages |
+| **9** | **Internationalization (i18n)** | **9225–9335** | next-intl, EN + BN, message files, locale resolution |
 
 ---
 
@@ -5651,6 +5653,1024 @@ HR & Payroll
 ├── HR Analytics           ★ NEW
 ```
 
+### Phase 8b: HR Module — Critical Fixes, Gratuity Fund & Provident Fund
+
+> **Priority: Fix broken flows, add missing BLA 2006 compliance features, complete HR as production-grade**
+> **Status:** ⬜ Planning complete, ready for implementation
+> **Dependencies:** Phase 8 (completed), Phase 5 HR basics (completed)
+
+---
+
+#### 8b.1 Critical Fixes — Broken Flows & Missing Features
+
+> These are bugs/gaps in Phase 8 that MUST be fixed before any new features.
+
+##### Fix A: Onboarding Page Rebuild (Static → API-Connected)
+
+**Current Problem:** `src/app/(dashboard)/hr/onboarding/page.tsx` uses hardcoded dummy data — not connected to any API. The `OnboardingChecklist` and `OnboardingProgress` Prisma models exist but are unused by the UI.
+
+**Fix:**
+- Rebuild onboarding page as `'use client'` with API calls to `/api/v1/hr/onboarding/`
+- New APIs needed:
+  | Method | Endpoint | Description |
+  |--------|----------|-------------|
+  | GET | `/api/v1/hr/onboarding` | List all active onboardings (employees with incomplete checklists) |
+  | GET | `/api/v1/hr/onboarding/:employeeId` | Get onboarding progress for specific employee |
+  | POST | `/api/v1/hr/onboarding/:employeeId/start` | Start onboarding for employee (creates all checklist tasks) |
+  | PATCH | `/api/v1/hr/onboarding/:employeeId/tasks/:checklistId` | Mark task complete/incomplete, upload document |
+  | GET | `/api/v1/hr/onboarding/checklists` | List all checklist template items (admin-configurable) |
+  | POST | `/api/v1/hr/onboarding/checklists` | Create new checklist template item |
+  | PATCH | `/api/v1/hr/onboarding/checklists/:id` | Update checklist item |
+  | DELETE | `/api/v1/hr/onboarding/checklists/:id` | Delete checklist item |
+
+- Onboarding page shows: employee list with progress bars, click to expand task checklist
+- Each task: checkbox + document upload slot + notes + completion date
+- KPI cards: New Employees, Completed, In Progress, Overdue (calculated from DB)
+
+##### Fix B: Employee Form — Document Collection Section
+
+**Current Problem:** `employees/new/page.tsx` has no document upload. Employee detail page has generic FileUpload but no structured document requirements.
+
+**Fix:**
+- Add "Required Documents" card to employee create form AND employee detail page
+- Documents tied to `EmployeeDocument` model (already exists with type field)
+- Required document types for Bangladesh NGO:
+
+| Document Type | Required | BLA 2006 Reference | Notes |
+|---------------|----------|-------------------|-------|
+| NID_COPY | ✅ Yes | Section 4 | National ID or Birth Certificate |
+| PHOTO | ✅ Yes | — | 2 passport-size photos |
+| EDUCATIONAL_CERT | ✅ Yes | — | Highest degree attested copy |
+| EXPERIENCE_CERT | Conditional | — | From previous employer(s) |
+| TIN_CERTIFICATE | ✅ Yes | Income Tax | Mandatory for salaried employees |
+| MEDICAL_FITNESS | Recommended | Section 38 | Medical certificate |
+| BANK_ACCOUNT | ✅ Yes | Section 123 | For salary payment |
+| NOMINEE_FORM | ✅ Yes | Section 28(4) | For PF/gratuity/death benefits |
+| EMERGENCY_CONTACT | ✅ Yes | — | Next-of-kin declaration |
+| SIGNED_CONTRACT | ✅ Yes | Section 5 | Appointment letter signed by both parties |
+| POLICY_ACKNOWLEDGMENT | ✅ Yes | — | Code of conduct, safeguarding, PSEA, anti-fraud |
+| NGOAB_FD4_NOTIFICATION | For NGOs | NGOAB rules | Personnel notification to NGOAB |
+| PASSPORT_COPY | For intl staff | — | For expatriate/international hires |
+| WORK_PERMIT | For intl staff | — | Required for non-Bangladeshi nationals |
+
+- Employee detail page: "Documents" tab showing checklist of required docs with upload status (✅ uploaded / ⚠️ missing)
+- Document upload stores to `EmployeeDocument` with type, filePath, uploadedAt
+- Onboarding checklist task completion can require document upload (e.g. "NID Copy" task → must upload NID before marking complete)
+
+##### Fix C: Recruitment → Employee → Contract → Onboarding Flow
+
+**Current Problem:** Recruitment HIRED status doesn't create Employee record. Employee creation doesn't trigger Contract or Onboarding.
+
+**Fix — Three integration points:**
+
+**C1. Recruitment HIRED → Convert to Employee**
+- New API: `POST /api/v1/hr/recruitment/applications/:id/convert-to-employee`
+- Pre-fills Employee form with applicant data (name, email, phone, education from parsed CV)
+- UI: "Convert to Employee" button on Application Detail page (visible only when status=HIRED)
+- Click opens pre-filled employee creation form at `/hr/employees/new?fromApplication={id}`
+- Employee create form detects `fromApplication` query param → fetches application data → pre-fills fields
+- After employee created, application gets `convertedEmployeeId` reference
+
+**C2. Employee Created → Auto-create Contract**
+- When POST `/api/v1/hr/employees` succeeds, API checks if `createContract: true` in body
+- If yes, auto-creates `EmployeeContract` with data from employee (type, salary, dates)
+- Default: `createContract: true` for both paths (recruitment + direct add)
+- Contract status: DRAFT (HR reviews and activates)
+
+**C3. Employee Created → Auto-start Onboarding**
+- When POST `/api/v1/hr/employees` succeeds, API auto-creates `OnboardingProgress` records for all active `OnboardingChecklist` items
+- Employee appears in `/hr/onboarding` immediately with 0% progress
+- Default checklist items (configurable by admin in Settings):
+  1. NID/Birth Certificate copy — category: DOCUMENT, required: true
+  2. Passport-size photos — category: DOCUMENT, required: true
+  3. Educational certificates — category: DOCUMENT, required: true
+  4. TIN certificate — category: DOCUMENT, required: true
+  5. Medical fitness certificate — category: DOCUMENT, required: false
+  6. Nominee declaration form — category: DOCUMENT, required: true
+  7. Bank account setup — category: FINANCE, required: true
+  8. Employment contract signing — category: LEGAL, required: true
+  9. Policy handbook acknowledgment — category: COMPLIANCE, required: true
+  10. Safeguarding & PSEA training — category: COMPLIANCE, required: true
+  11. IT access setup (email, system) — category: IT, required: true
+  12. ID card issuance — category: ADMIN, required: true
+  13. Orientation/induction — category: HR, required: true
+  14. Supervisor introduction — category: HR, required: true
+  15. Probation goals setting — category: HR, required: false
+  16. NGOAB FD-4 notification — category: COMPLIANCE, required: true (for NGOs)
+  17. Security briefing — category: SECURITY, required: false (for field staff)
+
+**Complete Flow Diagram:**
+```
+PATH A: Recruitment Flow
+══════════════════════════════════════════════════════════
+Job Post (DRAFT) → Publish (PUBLISHED) → Career Page (Public URL)
+    ↓
+Applications come in (from career page OR HR adds internally)
+    ↓
+Auto-Score CVs (software-based, no AI)
+  → Education match (25 pts)
+  → Experience years match (30 pts)
+  → Skills keyword match (20 pts)
+  → Language match (15 pts)
+  → Certification match (10 pts)
+    ↓
+Pipeline: APPLIED → SCREENED → SHORTLISTED → TECHNICAL_TEST → INTERVIEW → REFERENCE_CHECK → OFFER → HIRED
+    ↓
+HR clicks "Convert to Employee" on HIRED applicant
+    ↓
+Pre-filled Employee Form opens (name, email, phone, education from application)
+    ↓
+HR completes remaining fields → Saves
+    ↓
+System auto-creates:
+  ├── Employee record (EMP-xxx)
+  ├── Contract (CTR-xxx, status: DRAFT)
+  └── Onboarding (17 checklist tasks, 0% complete)
+    ↓
+HR goes to /hr/onboarding → sees new employee → works through checklist
+  ├── Upload documents (NID, TIN, certificates...)
+  ├── Complete admin tasks (IT access, ID card...)
+  ├── Compliance tasks (policy acknowledgment, PSEA training...)
+  └── Mark each task complete with evidence/upload
+    ↓
+All required tasks complete → Onboarding marked COMPLETED
+    ↓
+HR activates Contract (DRAFT → ACTIVE)
+    ↓
+Employee fully onboarded ✅
+
+PATH B: Direct Admin Onboarding (no recruitment)
+══════════════════════════════════════════════════════════
+HR clicks "Add Employee" on Employee Directory
+    ↓
+Full Employee Form (fill manually — no pre-fill)
+    ↓
+HR fills all fields → Saves
+    ↓
+System auto-creates:
+  ├── Employee record (EMP-xxx)
+  ├── Contract (CTR-xxx, status: DRAFT)
+  └── Onboarding (17 checklist tasks, 0% complete)
+    ↓
+Same onboarding flow as above...
+```
+
+##### Fix D: CV Auto-Scoring Improvements (Software-Only, No AI/ML)
+
+**Current:** Manual trigger per applicant, fixed weights, no comparison view.
+
+**Improvements (no AI):**
+1. **Auto-trigger on application submit** — score calculated immediately when application created (both public career page and internal), no manual "Score CV" button needed
+2. **Customizable weights per job** — HR can set weight for each criteria when creating job posting:
+   ```
+   Job Posting form → "Scoring Weights" section:
+   Education:     [___25___] pts (0-100 slider)
+   Experience:    [___30___] pts
+   Skills:        [___20___] pts
+   Languages:     [___15___] pts
+   Certifications:[___10___] pts
+   Total must = 100
+   ```
+3. **Comparison view** — New "Compare Candidates" view on Job Posting detail page:
+   - Side-by-side table of top N applicants
+   - Score breakdown bars per criteria
+   - Sort by total score, individual criteria
+4. **Structured application form (no AI parsing needed):**
+   - Instead of uploading CV and parsing it with AI, applicants fill structured form:
+     - Education: Add rows (degree, institution, year, field)
+     - Experience: Add rows (title, organization, start, end)
+     - Skills: Select from predefined skill tags + add custom
+     - Languages: Select language + proficiency level
+     - Certifications: Add rows (name, issuer, year)
+   - CV file upload is OPTIONAL (for HR reference), not for parsing
+   - This structured data goes directly into `parsedEducation`, `parsedSkills` etc. fields
+   - Scoring uses this structured data — no AI/NLP needed
+
+**New API:**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/hr/recruitment/applications/:id/convert-to-employee` | Convert hired applicant to employee |
+| GET | `/api/v1/hr/recruitment/jobs/:id/compare` | Side-by-side candidate comparison |
+
+**UI Changes:**
+- Application form (public career page): Structured education/experience/skills sections
+- Job posting form: Scoring weights customization section
+- Job detail page: "Compare Candidates" tab
+- Application detail page: "Convert to Employee" button (when HIRED)
+
+##### Fix Summary — 8b.1 Totals
+
+| Fix | New APIs | UI Changes | Priority |
+|-----|----------|-----------|----------|
+| A: Onboarding Rebuild | 8 | 1 page rebuild + admin config | CRITICAL |
+| B: Document Collection | 0 (uses existing) | Employee form + detail update | CRITICAL |
+| C: Flow Integration | 2 | Pre-fill form + auto-triggers | CRITICAL |
+| D: CV Scoring Improvements | 2 | Career page form + comparison view + weights | HIGH |
+| **TOTAL** | **12** | **4 page updates + 1 new view** | |
+
+---
+
+#### 8b.2 Gratuity Fund Management
+
+> **Legal basis:** Bangladesh Labour Act 2006, Section 26 — employees with 5+ years continuous service entitled to gratuity at 30 days' wages per completed year. International NGOs typically offer from day 1 at 1 month/year rate.
+> **NGOAB requirement:** FD-4 form requires gratuity liability reporting.
+
+##### Prisma Models (6 new models)
+
+```prisma
+// ─── gratuity.prisma ───
+
+model GratuityPolicy {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  name             String   // "Standard BLA Policy", "NGO Enhanced Policy"
+  isDefault        Boolean  @default(false)
+
+  // Eligibility
+  vestingPeriodMonths Int   @default(60) // 60 months = 5 years (BLA default)
+  minServiceMonths Int      @default(0)  // 0 = from day 1 (NGO style)
+
+  // Calculation
+  formulaType      String   @default("MONTHS_PER_YEAR") // MONTHS_PER_YEAR, FIXED_RATE, CUSTOM
+  ratePerYear      Decimal  @db.Decimal(5, 2) @default(1.00) // 1 month salary per year
+  calculationBase  String   @default("LAST_BASIC") // LAST_BASIC, AVERAGE_BASIC, GROSS
+
+  // Rate bands (for progressive rates)
+  rateBands        Json?    // [{fromYear: 1, toYear: 5, rate: 0.5}, {fromYear: 6, toYear: 99, rate: 1.0}]
+
+  // Fund management
+  accrualFrequency String   @default("MONTHLY") // MONTHLY, QUARTERLY, ANNUAL
+  fundBankAccountId String? @db.Uuid // Separate bank account for gratuity fund
+  maintainFund     Boolean  @default(true) // Whether to maintain separate fund
+
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model GratuityLedger {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  employeeId       String   @db.Uuid
+  policyId         String   @db.Uuid
+
+  // Running totals
+  totalAccrued     Decimal  @default(0) @db.Decimal(18, 2) // Total provision
+  totalPaid        Decimal  @default(0) @db.Decimal(18, 2) // Total paid out
+  currentBalance   Decimal  @default(0) @db.Decimal(18, 2) // Accrued - Paid
+
+  // Service calculation
+  serviceStartDate DateTime // Usually joiningDate
+  lastAccrualDate  DateTime?
+  isVested         Boolean  @default(false) // Crossed vesting period?
+
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([organizationId, employeeId])
+  @@index([organizationId])
+  @@index([employeeId])
+}
+
+model GratuityAccrual {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  ledgerId         String   @db.Uuid
+  employeeId       String   @db.Uuid
+
+  accrualMonth     Int      // 1-12
+  accrualYear      Int
+  basicSalary      Decimal  @db.Decimal(18, 2) // Salary used for calculation
+  accrualAmount    Decimal  @db.Decimal(18, 2) // Monthly accrual amount
+  serviceMonths    Int      // Total service months at time of accrual
+
+  // Project allocation
+  projectAllocations Json?  // [{projectId, percentage, amount}]
+
+  journalEntryId   String?  @db.Uuid // Auto-generated JE (DR Gratuity Expense, CR Gratuity Provision)
+  createdAt        DateTime @default(now())
+
+  @@unique([ledgerId, accrualMonth, accrualYear])
+  @@index([organizationId])
+  @@index([employeeId])
+}
+
+model GratuityPayment {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  paymentNo        String   @unique // auto: "GRT-PAY-001"
+  ledgerId         String   @db.Uuid
+  employeeId       String   @db.Uuid
+
+  paymentType      String   // "FINAL_SETTLEMENT", "INTERIM", "PARTIAL"
+  amount           Decimal  @db.Decimal(18, 2)
+  calculationBase  Decimal  @db.Decimal(18, 2) // Salary used
+  serviceYears     Decimal  @db.Decimal(5, 2)  // Years of service
+  serviceDays      Int
+
+  // Approval
+  status           String   @default("PENDING") // PENDING, APPROVED, PAID, CANCELLED
+  approvedById     String?  @db.Uuid
+  approvedAt       DateTime?
+  paidAt           DateTime?
+  paymentMethod    String?  // "BANK_TRANSFER", "CHEQUE", "CASH"
+  referenceNo      String?  // Cheque/transaction number
+
+  // Linked to offboarding if final settlement
+  offboardingId    String?  @db.Uuid
+
+  journalEntryId   String?  @db.Uuid // Auto-generated JE
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([employeeId])
+}
+
+model GratuityFund {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  name             String   // "Main Gratuity Fund"
+  bankAccountId    String?  @db.Uuid // Linked bank account
+  currentBalance   Decimal  @default(0) @db.Decimal(18, 2)
+
+  // FDR tracking
+  fdrDetails       Json?    // [{bank, accountNo, amount, maturityDate, interestRate}]
+  totalFdr         Decimal  @default(0) @db.Decimal(18, 2)
+
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  transactions     GratuityFundTransaction[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model GratuityFundTransaction {
+  id               String   @id @default(uuid()) @db.Uuid
+  fundId           String   @db.Uuid
+  transactionNo    String   @unique // auto: "GFT-001"
+  type             String   // "DEPOSIT", "WITHDRAWAL", "INTEREST", "FDR_MATURITY", "FDR_INVESTMENT"
+  amount           Decimal  @db.Decimal(18, 2)
+  balance          Decimal  @db.Decimal(18, 2) // Running balance after transaction
+  description      String?
+  referenceNo      String?
+  transactionDate  DateTime
+  journalEntryId   String?  @db.Uuid
+  createdAt        DateTime @default(now())
+
+  fund             GratuityFund @relation(fields: [fundId], references: [id])
+
+  @@index([fundId])
+}
+```
+
+##### API Endpoints (18)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **Policy** | | |
+| GET | `/api/v1/hr/gratuity/policies` | List gratuity policies |
+| POST | `/api/v1/hr/gratuity/policies` | Create policy |
+| GET | `/api/v1/hr/gratuity/policies/:id` | Policy detail |
+| PATCH | `/api/v1/hr/gratuity/policies/:id` | Update policy |
+| **Ledger** | | |
+| GET | `/api/v1/hr/gratuity/ledgers` | List all employee gratuity ledgers |
+| GET | `/api/v1/hr/gratuity/ledgers/:employeeId` | Employee gratuity statement (all accruals + payments) |
+| POST | `/api/v1/hr/gratuity/ledgers/enroll` | Enroll employee in gratuity (create ledger) |
+| **Accrual** | | |
+| POST | `/api/v1/hr/gratuity/accruals/run` | Run monthly accrual for all eligible employees |
+| GET | `/api/v1/hr/gratuity/accruals` | List accruals (filter: month, year, employee) |
+| GET | `/api/v1/hr/gratuity/accruals/preview` | Preview accrual before running (dry run) |
+| **Payment** | | |
+| GET | `/api/v1/hr/gratuity/payments` | List all payments |
+| POST | `/api/v1/hr/gratuity/payments` | Create payment (manual or from offboarding) |
+| POST | `/api/v1/hr/gratuity/payments/:id/approve` | Approve payment |
+| POST | `/api/v1/hr/gratuity/payments/:id/pay` | Mark as paid |
+| **Fund** | | |
+| GET | `/api/v1/hr/gratuity/fund` | Fund dashboard (balance, FDR, transactions) |
+| POST | `/api/v1/hr/gratuity/fund/transactions` | Record fund transaction (deposit/withdrawal) |
+| **Reports** | | |
+| GET | `/api/v1/hr/gratuity/reports/liability` | Total liability report (for NGOAB FD-4) |
+| GET | `/api/v1/hr/gratuity/reports/employee-statement` | Individual employee statement |
+
+##### UI Pages (11)
+
+| Page | Route | Description |
+|------|-------|-------------|
+| Gratuity Dashboard | `/hr/gratuity` | KPIs: total liability, monthly accrual, fund balance, vested employees |
+| Policies | `/hr/gratuity/policies` | List/create/edit gratuity policies |
+| Policy Detail | `/hr/gratuity/policies/:id` | Policy configuration with rate bands |
+| Employee Ledgers | `/hr/gratuity/ledgers` | All employees with gratuity balance, service years |
+| Ledger Detail | `/hr/gratuity/ledgers/:employeeId` | Employee statement: monthly accruals, payments, running balance |
+| Run Accrual | `/hr/gratuity/accruals` | Monthly accrual run with preview, history |
+| Payments | `/hr/gratuity/payments` | Payment list with approval workflow |
+| Create Payment | `/hr/gratuity/payments/new` | Payment form (manual or linked to offboarding) |
+| Fund Management | `/hr/gratuity/fund` | Fund balance, FDR tracking, deposit/withdraw |
+| Liability Report | `/hr/gratuity/reports/liability` | Total organization liability |
+| Employee Statement | `/hr/gratuity/reports/statement` | Printable employee gratuity statement |
+
+##### Cross-Module Integration
+
+| From | To | Trigger | Action |
+|------|-----|---------|--------|
+| Payroll → Gratuity | Monthly payroll processed | Auto-run gratuity accrual for all active employees |
+| Gratuity → Finance | Accrual run | Auto-create JE: DR Gratuity Expense (per project), CR Gratuity Provision |
+| Gratuity → Finance | Payment approved | Auto-create JE: DR Gratuity Provision, CR Bank |
+| Offboarding → Gratuity | Exit initiated | Auto-calculate final gratuity, create payment draft |
+| Gratuity → Budget | Accrual | Personnel cost line in project budgets |
+| Gratuity → NGOAB | FD-4 report | Gratuity liability data for FD-4 |
+
+---
+
+#### 8b.3 Provident Fund Management
+
+> **Legal basis:** Bangladesh Labour Act 2006, Chapter XVII (Sections 264-269) — mandatory if 75%+ employees demand. NBR recognition makes it tax-exempt.
+> **International NGO practice:** Typically voluntary, 10% employee + 10% employer contribution.
+
+##### Prisma Models (14 new models)
+
+```prisma
+// ─── provident-fund.prisma ───
+
+model PFPolicy {
+  id                    String   @id @default(uuid()) @db.Uuid
+  organizationId        String   @db.Uuid
+  name                  String   // "Standard PF Policy"
+  isDefault             Boolean  @default(false)
+
+  // Contribution rates
+  employeeContribRate   Decimal  @db.Decimal(5, 2) @default(10.00) // 10%
+  employerContribRate   Decimal  @db.Decimal(5, 2) @default(10.00) // 10%
+  contributionBase      String   @default("BASIC") // BASIC, GROSS
+
+  // Eligibility
+  eligibilityMonths     Int      @default(0) // Months of service before eligible (0 = immediate)
+  eligibilityTypes      Json?    // ["FULL_TIME", "CONTRACT"] — which employment types
+
+  // Vesting
+  vestingSchedule       Json     // [{months: 12, percentage: 25}, {months: 24, percentage: 50}, {months: 36, percentage: 75}, {months: 48, percentage: 100}]
+
+  // Interest
+  interestRate          Decimal  @db.Decimal(5, 2) @default(9.00) // Annual interest rate
+  interestCalcMethod    String   @default("MONTHLY_BALANCE") // MONTHLY_BALANCE, ANNUAL_BALANCE
+  interestPostingFreq   String   @default("ANNUAL") // ANNUAL, SEMI_ANNUAL
+
+  // Withdrawal rules
+  allowPartialWithdraw  Boolean  @default(true)
+  maxWithdrawPercent    Decimal? @db.Decimal(5, 2) // Max % of own contribution
+  withdrawalReasons     Json?    // ["MEDICAL", "HOUSING", "EDUCATION", "MARRIAGE"]
+  minServiceForWithdraw Int      @default(12) // Months of service before withdrawal allowed
+
+  // Loan rules
+  allowLoan             Boolean  @default(true)
+  maxLoanPercent        Decimal? @db.Decimal(5, 2) @default(80.00) // Max % of own balance
+  loanInterestRate      Decimal? @db.Decimal(5, 2) @default(5.00) // Annual
+  maxLoanRepayMonths    Int      @default(36) // Max repayment period
+  maxActiveLoans        Int      @default(1)
+
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model PFTrust {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @db.Uuid
+  name              String   // "Shapla Foundation PF Trust"
+  registrationNo    String?  // NBR registration number
+  registrationDate  DateTime?
+  bankAccountId     String?  @db.Uuid // Trust's bank account
+  currentBalance    Decimal  @default(0) @db.Decimal(18, 2)
+
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  trustees          PFTrustee[]
+  transactions      PFTrustTransaction[]
+  investments       PFInvestment[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model PFTrustee {
+  id            String   @id @default(uuid()) @db.Uuid
+  trustId       String   @db.Uuid
+  employeeId    String?  @db.Uuid // May be external person
+  name          String
+  role          String   // "CHAIRMAN", "SECRETARY", "MEMBER", "EMPLOYER_REP", "EMPLOYEE_REP"
+  appointedDate DateTime
+  isActive      Boolean  @default(true)
+
+  trust         PFTrust  @relation(fields: [trustId], references: [id])
+
+  @@index([trustId])
+}
+
+model PFEnrollment {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @db.Uuid
+  employeeId        String   @db.Uuid
+  policyId          String   @db.Uuid
+  enrollmentDate    DateTime
+  effectiveDate     DateTime // Contributions start from this date
+
+  // Rates (may override policy for individual)
+  employeeRate      Decimal  @db.Decimal(5, 2) // e.g. 10.00%
+  employerRate      Decimal  @db.Decimal(5, 2)
+
+  // Running balances
+  totalEmployeeContrib  Decimal @default(0) @db.Decimal(18, 2)
+  totalEmployerContrib  Decimal @default(0) @db.Decimal(18, 2)
+  totalInterest         Decimal @default(0) @db.Decimal(18, 2)
+  totalWithdrawals      Decimal @default(0) @db.Decimal(18, 2)
+  totalLoanOutstanding  Decimal @default(0) @db.Decimal(18, 2)
+  currentBalance        Decimal @default(0) @db.Decimal(18, 2) // Employee+Employer+Interest-Withdrawals-Loans
+
+  status            String   @default("ACTIVE") // ACTIVE, FROZEN, SETTLED
+  settledAt         DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  nominees          PFNominee[]
+
+  @@unique([organizationId, employeeId])
+  @@index([organizationId])
+  @@index([employeeId])
+}
+
+model PFNominee {
+  id            String   @id @default(uuid()) @db.Uuid
+  enrollmentId  String   @db.Uuid
+  name          String
+  relationship  String   // "SPOUSE", "CHILD", "PARENT", "SIBLING", "OTHER"
+  percentage    Decimal  @db.Decimal(5, 2) // Share % (all nominees must total 100%)
+  nidNumber     String?
+  phone         String?
+  address       String?
+
+  enrollment    PFEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId])
+}
+
+model PFContribution {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @db.Uuid
+  enrollmentId      String   @db.Uuid
+  employeeId        String   @db.Uuid
+
+  month             Int
+  year              Int
+  basicSalary       Decimal  @db.Decimal(18, 2)
+  employeeAmount    Decimal  @db.Decimal(18, 2)
+  employerAmount    Decimal  @db.Decimal(18, 2)
+  totalAmount       Decimal  @db.Decimal(18, 2)
+
+  // Project allocation (same as salary)
+  projectAllocations Json?   // [{projectId, percentage, amount}]
+
+  payrollRunId      String?  @db.Uuid // Linked to payroll run
+  journalEntryId    String?  @db.Uuid
+  createdAt         DateTime @default(now())
+
+  @@unique([enrollmentId, month, year])
+  @@index([organizationId])
+  @@index([employeeId])
+}
+
+model PFInterestPosting {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @db.Uuid
+  enrollmentId      String   @db.Uuid
+  employeeId        String   @db.Uuid
+
+  periodStart       DateTime
+  periodEnd         DateTime
+  openingBalance    Decimal  @db.Decimal(18, 2)
+  interestRate      Decimal  @db.Decimal(5, 2)
+  interestAmount    Decimal  @db.Decimal(18, 2)
+  closingBalance    Decimal  @db.Decimal(18, 2)
+
+  journalEntryId    String?  @db.Uuid
+  createdAt         DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([enrollmentId])
+}
+
+model PFWithdrawal {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @db.Uuid
+  withdrawalNo      String   @unique // auto: "PFW-001"
+  enrollmentId      String   @db.Uuid
+  employeeId        String   @db.Uuid
+
+  amount            Decimal  @db.Decimal(18, 2)
+  reason            String   // "MEDICAL", "HOUSING", "EDUCATION", "MARRIAGE", "HARDSHIP"
+  description       String?
+  supportingDocs    Json?    // [{name, filePath}]
+
+  status            String   @default("PENDING") // PENDING, APPROVED, PAID, REJECTED
+  approvedById      String?  @db.Uuid
+  approvedAt        DateTime?
+  paidAt            DateTime?
+
+  journalEntryId    String?  @db.Uuid
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([enrollmentId])
+}
+
+model PFLoan {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @db.Uuid
+  loanNo            String   @unique // auto: "PFL-001"
+  enrollmentId      String   @db.Uuid
+  employeeId        String   @db.Uuid
+
+  principalAmount   Decimal  @db.Decimal(18, 2)
+  interestRate      Decimal  @db.Decimal(5, 2) // Annual
+  repaymentMonths   Int
+  monthlyInstallment Decimal @db.Decimal(18, 2)
+  totalRepayable    Decimal  @db.Decimal(18, 2)
+  outstandingBalance Decimal @db.Decimal(18, 2)
+
+  disbursedAt       DateTime?
+  status            String   @default("PENDING") // PENDING, APPROVED, ACTIVE, COMPLETED, DEFAULTED
+  approvedById      String?  @db.Uuid
+  approvedAt        DateTime?
+
+  journalEntryId    String?  @db.Uuid
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  repayments        PFLoanRepayment[]
+
+  @@index([organizationId])
+  @@index([enrollmentId])
+}
+
+model PFLoanRepayment {
+  id                String   @id @default(uuid()) @db.Uuid
+  loanId            String   @db.Uuid
+  installmentNo     Int
+  dueDate           DateTime
+  principalPortion  Decimal  @db.Decimal(18, 2)
+  interestPortion   Decimal  @db.Decimal(18, 2)
+  totalAmount       Decimal  @db.Decimal(18, 2)
+  paidAmount        Decimal  @default(0) @db.Decimal(18, 2)
+  paidAt            DateTime?
+  payrollRunId      String?  @db.Uuid // Auto-deducted from salary
+  status            String   @default("PENDING") // PENDING, PAID, OVERDUE
+
+  loan              PFLoan   @relation(fields: [loanId], references: [id])
+
+  @@unique([loanId, installmentNo])
+  @@index([loanId])
+}
+
+model PFSettlement {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @db.Uuid
+  settlementNo      String   @unique // auto: "PFS-001"
+  enrollmentId      String   @db.Uuid
+  employeeId        String   @db.Uuid
+
+  // Balances at settlement
+  employeeContrib   Decimal  @db.Decimal(18, 2)
+  employerContrib   Decimal  @db.Decimal(18, 2)
+  interestEarned    Decimal  @db.Decimal(18, 2)
+  vestedPercent     Decimal  @db.Decimal(5, 2) // Based on vesting schedule
+  vestedEmployer    Decimal  @db.Decimal(18, 2) // Employer portion after vesting
+  forfeited         Decimal  @db.Decimal(18, 2) // Unvested employer portion
+  loanDeduction     Decimal  @db.Decimal(18, 2) // Outstanding loan deducted
+  netPayable        Decimal  @db.Decimal(18, 2) // Final amount
+
+  status            String   @default("CALCULATED") // CALCULATED, APPROVED, PAID
+  offboardingId     String?  @db.Uuid
+  approvedById      String?  @db.Uuid
+  paidAt            DateTime?
+
+  journalEntryId    String?  @db.Uuid
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([employeeId])
+}
+
+model PFInvestment {
+  id                String   @id @default(uuid()) @db.Uuid
+  trustId           String   @db.Uuid
+  type              String   // "FDR", "GOVT_SECURITIES", "ICB_UNIT", "BANK_DEPOSIT"
+  institutionName   String   // Bank/institution name
+  accountNo         String?
+  amount            Decimal  @db.Decimal(18, 2)
+  interestRate      Decimal  @db.Decimal(5, 2)
+  startDate         DateTime
+  maturityDate      DateTime?
+  currentValue      Decimal  @db.Decimal(18, 2)
+  status            String   @default("ACTIVE") // ACTIVE, MATURED, ENCASHED
+
+  trust             PFTrust  @relation(fields: [trustId], references: [id])
+
+  @@index([trustId])
+}
+
+model PFInvestmentIncome {
+  id                String   @id @default(uuid()) @db.Uuid
+  investmentId      String   @db.Uuid
+  incomeType        String   // "INTEREST", "DIVIDEND", "CAPITAL_GAIN"
+  amount            Decimal  @db.Decimal(18, 2)
+  receivedDate      DateTime
+  journalEntryId    String?  @db.Uuid
+  createdAt         DateTime @default(now())
+
+  @@index([investmentId])
+}
+
+model PFTrustTransaction {
+  id                String   @id @default(uuid()) @db.Uuid
+  trustId           String   @db.Uuid
+  transactionNo     String   @unique // auto: "PFT-001"
+  type              String   // "CONTRIBUTION_RECEIVED", "WITHDRAWAL_PAID", "LOAN_DISBURSED", "LOAN_REPAID", "INTEREST_CREDITED", "INVESTMENT_MADE", "INVESTMENT_MATURED", "INCOME_RECEIVED"
+  amount            Decimal  @db.Decimal(18, 2)
+  balance           Decimal  @db.Decimal(18, 2) // Running balance
+  description       String?
+  referenceNo       String?
+  transactionDate   DateTime
+  journalEntryId    String?  @db.Uuid
+  createdAt         DateTime @default(now())
+
+  trust             PFTrust  @relation(fields: [trustId], references: [id])
+
+  @@index([trustId])
+}
+```
+
+##### API Endpoints (45)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **Policy** (4) | | |
+| GET | `/api/v1/hr/pf/policies` | List PF policies |
+| POST | `/api/v1/hr/pf/policies` | Create policy |
+| GET | `/api/v1/hr/pf/policies/:id` | Policy detail |
+| PATCH | `/api/v1/hr/pf/policies/:id` | Update policy |
+| **Trust** (6) | | |
+| GET | `/api/v1/hr/pf/trust` | Trust dashboard (balance, investments) |
+| POST | `/api/v1/hr/pf/trust` | Create trust |
+| PATCH | `/api/v1/hr/pf/trust/:id` | Update trust |
+| GET | `/api/v1/hr/pf/trust/:id/trustees` | List trustees |
+| POST | `/api/v1/hr/pf/trust/:id/trustees` | Add trustee |
+| PATCH | `/api/v1/hr/pf/trust/:id/trustees/:tid` | Update/remove trustee |
+| **Enrollment** (6) | | |
+| GET | `/api/v1/hr/pf/enrollments` | List enrolled employees |
+| POST | `/api/v1/hr/pf/enrollments` | Enroll employee |
+| GET | `/api/v1/hr/pf/enrollments/:id` | Enrollment detail with nominees |
+| PATCH | `/api/v1/hr/pf/enrollments/:id` | Update enrollment |
+| POST | `/api/v1/hr/pf/enrollments/:id/nominees` | Add/update nominees |
+| DELETE | `/api/v1/hr/pf/enrollments/:id/nominees/:nid` | Remove nominee |
+| **Contributions** (4) | | |
+| POST | `/api/v1/hr/pf/contributions/run` | Process monthly contributions (linked to payroll) |
+| GET | `/api/v1/hr/pf/contributions` | List contributions (filter: month, year, employee) |
+| GET | `/api/v1/hr/pf/contributions/preview` | Preview before running |
+| GET | `/api/v1/hr/pf/contributions/employee/:id` | Employee contribution history |
+| **Interest** (3) | | |
+| POST | `/api/v1/hr/pf/interest/calculate` | Calculate annual interest for all members |
+| GET | `/api/v1/hr/pf/interest` | Interest posting history |
+| GET | `/api/v1/hr/pf/interest/preview` | Preview interest calculation |
+| **Withdrawals** (5) | | |
+| GET | `/api/v1/hr/pf/withdrawals` | List withdrawal requests |
+| POST | `/api/v1/hr/pf/withdrawals` | Submit withdrawal request |
+| GET | `/api/v1/hr/pf/withdrawals/:id` | Withdrawal detail |
+| POST | `/api/v1/hr/pf/withdrawals/:id/approve` | Approve/reject |
+| POST | `/api/v1/hr/pf/withdrawals/:id/pay` | Mark as paid |
+| **Loans** (7) | | |
+| GET | `/api/v1/hr/pf/loans` | List PF loans |
+| POST | `/api/v1/hr/pf/loans` | Apply for PF loan |
+| GET | `/api/v1/hr/pf/loans/:id` | Loan detail with repayment schedule |
+| POST | `/api/v1/hr/pf/loans/:id/approve` | Approve loan |
+| POST | `/api/v1/hr/pf/loans/:id/disburse` | Disburse loan |
+| GET | `/api/v1/hr/pf/loans/:id/repayments` | Repayment history |
+| POST | `/api/v1/hr/pf/loans/:id/repayments` | Record repayment |
+| **Settlement** (4) | | |
+| POST | `/api/v1/hr/pf/settlements/calculate` | Calculate final settlement for employee |
+| GET | `/api/v1/hr/pf/settlements` | List settlements |
+| POST | `/api/v1/hr/pf/settlements/:id/approve` | Approve settlement |
+| POST | `/api/v1/hr/pf/settlements/:id/pay` | Mark as paid |
+| **Investments** (3) | | |
+| GET | `/api/v1/hr/pf/investments` | List investments |
+| POST | `/api/v1/hr/pf/investments` | Create investment |
+| PATCH | `/api/v1/hr/pf/investments/:id` | Update (matured/encashed) |
+| **Reports** (3) | | |
+| GET | `/api/v1/hr/pf/reports/register` | PF register (all members) |
+| GET | `/api/v1/hr/pf/reports/statement/:employeeId` | Employee PF statement |
+| GET | `/api/v1/hr/pf/reports/trust-balance` | Trust balance sheet |
+
+##### UI Pages (26)
+
+| Page | Route | Description |
+|------|-------|-------------|
+| **Dashboard** | `/hr/provident-fund` | KPIs: total fund, members, monthly contribution, investment returns |
+| **Policy** | | |
+| Policies | `/hr/provident-fund/policies` | List/manage PF policies |
+| Policy Detail | `/hr/provident-fund/policies/:id` | Policy config (rates, vesting, loan rules) |
+| **Enrollment** | | |
+| Enrollments | `/hr/provident-fund/enrollments` | Member list with balances |
+| Enrollment Detail | `/hr/provident-fund/enrollments/:id` | Employee PF profile, nominees, history |
+| Enroll Employee | `/hr/provident-fund/enrollments/new` | Enrollment form |
+| Manage Nominees | `/hr/provident-fund/enrollments/:id/nominees` | Add/edit nominees (must total 100%) |
+| **Contributions** | | |
+| Monthly Run | `/hr/provident-fund/contributions` | Run/preview monthly contributions, history |
+| Employee History | `/hr/provident-fund/contributions/:employeeId` | Individual contribution history |
+| **Interest** | | |
+| Interest Posting | `/hr/provident-fund/interest` | Annual interest calculation, posting history |
+| **Withdrawals** | | |
+| Withdrawal List | `/hr/provident-fund/withdrawals` | All withdrawal requests with approval status |
+| New Withdrawal | `/hr/provident-fund/withdrawals/new` | Withdrawal application form |
+| Withdrawal Detail | `/hr/provident-fund/withdrawals/:id` | Detail with supporting docs, approval |
+| **Loans** | | |
+| Loan List | `/hr/provident-fund/loans` | All PF loans with status |
+| Apply Loan | `/hr/provident-fund/loans/new` | Loan application with EMI calculator |
+| Loan Detail | `/hr/provident-fund/loans/:id` | Loan detail, repayment schedule, payments |
+| **Settlements** | | |
+| Settlement List | `/hr/provident-fund/settlements` | All settlements |
+| Settlement Detail | `/hr/provident-fund/settlements/:id` | Breakdown: employee, employer, interest, vesting, loans, net |
+| **Trust Fund** | | |
+| Trust Dashboard | `/hr/provident-fund/trust` | Trust overview, board, balance |
+| Trustees | `/hr/provident-fund/trust/trustees` | Manage board of trustees |
+| Trust Transactions | `/hr/provident-fund/trust/transactions` | All trust transactions |
+| **Investments** | | |
+| Investment Portfolio | `/hr/provident-fund/investments` | FDR, govt securities, ICB units |
+| New Investment | `/hr/provident-fund/investments/new` | Create investment |
+| **Reports** | | |
+| PF Register | `/hr/provident-fund/reports/register` | All members register |
+| Employee Statement | `/hr/provident-fund/reports/statement` | Printable employee PF statement |
+| Trust Balance Sheet | `/hr/provident-fund/reports/trust-balance` | Trust financial position |
+
+##### Cross-Module Integration
+
+| From | To | Trigger | Action |
+|------|-----|---------|--------|
+| Payroll → PF | Monthly payroll | Auto-deduct employee PF from salary, add employer contribution |
+| PF → Finance | Contribution run | Auto-create JE: DR PF Expense (employer), DR Employee Salary (employee), CR PF Trust |
+| PF → Finance | Withdrawal paid | Auto-create JE: DR PF Trust, CR Bank |
+| PF → Finance | Loan disbursed | Auto-create JE: DR PF Loan Receivable, CR PF Trust |
+| PF → Payroll | Loan active | Auto-deduct EMI from monthly salary |
+| Offboarding → PF | Exit initiated | Auto-calculate PF settlement with vesting |
+| PF Trust → Finance | Investment | Auto-create JE for investment transactions |
+| Employee → PF | Employee created | Option to auto-enroll based on policy eligibility |
+
+---
+
+#### 8b.3b Pension Management — NOT NEEDED (Research Conclusion)
+
+> **Research finding:** A separate Pension module is NOT required for Bangladesh NGOs.
+> **Reason:** Bangladesh has no mandatory pension law for private/NGO sector. The government pension system covers only public servants (Public Servants Retirement Act 1974). The Universal Pension Management Act 2023 is in early stages and voluntary for private sector.
+
+**Bangladesh NGO retirement benefits = PF + Gratuity only.** Even the largest NGOs (BRAC with 100,000+ staff, Grameen Bank, ASA) use only PF + Gratuity — none operate a pension scheme.
+
+| Organization | PF | Gratuity | Pension |
+|---|---|---|---|
+| BRAC | ✅ (Staff Benefit Trust) | ✅ | ❌ |
+| Grameen Bank | ✅ (PF Trust) | ✅ | ❌ |
+| Save the Children BD | ✅ | ✅ | ❌ (intl staff via HQ) |
+| CARE Bangladesh | ✅ | ✅ | ❌ (intl staff via CARE USA 403b) |
+| UN Agencies | Own scheme (UNJSPF) | N/A | ✅ DB Pension (global, not local ERP) |
+
+**Why PF IS the pension equivalent:**
+- Provident Fund is a Defined Contribution (DC) retirement savings scheme
+- Monthly contributions (employee + employer) accumulate
+- Lump-sum payout at separation/retirement
+- Employee can use PF balance to purchase annuity privately
+- Combined with Gratuity lump-sum, this covers retirement needs
+
+**WPPF (Workers Profit Participation Fund):** Does NOT apply to NGOs (non-profit entities exempt under BLA §232-234).
+
+**Future-proofing:** If Universal Pension Act becomes mandatory for NGOs, it would be a simple monthly contribution (similar to PF) — can be added as an extension to existing Payroll module, not a separate module.
+
+**Decision: PF (8b.3) + Gratuity (8b.2) = Complete retirement benefits coverage for Bangladesh NGOs.**
+**Client-facing:** Menu shows "Pension Management" as parent — PF + Gratuity grouped underneath with combined Overview Dashboard + Retirement Summary. See §8b.4 for nav structure.
+
+---
+
+#### 8b.4 Updated Navigation (Final HR Sidebar)
+
+```
+👤 HR & Payroll
+├── Employee Directory      (existing)
+├── Recruitment             (Phase 8 ✅ + 8b.1 fixes)
+├── Onboarding              (Phase 5 ✅ → 8b.1 REBUILD)
+├── Contracts               (Phase 8 ✅)
+├── Attendance              (existing)
+├── Leave Management        (existing)
+├── Holiday Calendar        (Phase 8 ✅)
+├── Payroll                 (existing)
+├── Pension Management      ★ NEW — Client-facing name for PF + Gratuity combined
+│   ├── Overview Dashboard  ★ NEW — Combined PF+Gratuity retirement KPIs
+│   ├── Provident Fund      (8b.3)
+│   │   ├── PF Dashboard
+│   │   ├── Policies
+│   │   ├── Enrollments
+│   │   ├── Contributions
+│   │   ├── Withdrawals & Loans
+│   │   ├── Trust Fund
+│   │   └── PF Reports
+│   ├── Gratuity Fund       (8b.2)
+│   │   ├── Gratuity Dashboard
+│   │   ├── Policies
+│   │   ├── Employee Ledgers
+│   │   ├── Payments
+│   │   ├── Fund Management
+│   │   └── Gratuity Reports
+│   └── Retirement Summary  ★ NEW — Per-employee combined PF+Gratuity statement
+├── Performance             (existing)
+├── Training                (existing)
+├── Offboarding             (Phase 8 ✅)
+├── Grievances              (Phase 8 ✅)
+├── Disciplinary            (Phase 8 ✅)
+├── Org Chart               (existing)
+├── HR Analytics            (Phase 8 ✅)
+```
+
+> **"Pension Management" naming rationale:** Client expects "Pension Management" in the menu.
+> Technically Bangladesh NGOs don't have pension schemes (BLA 2006 has no pension for private/NGO sector).
+> However PF + Gratuity together serve as the retirement benefit system.
+> We label the parent menu "Pension Management" and group PF + Gratuity under it,
+> plus add a combined Overview Dashboard and Retirement Summary for the unified view.
+
+**Additional pages for the "Pension Management" wrapper:**
+
+| Page | Route | Description |
+|------|-------|-------------|
+| Pension Overview | `/hr/pension` | Combined dashboard: Total retirement liability (PF + Gratuity), total fund balance, enrolled employees, monthly contribution total, upcoming settlements. Charts: liability trend, fund vs provision gap |
+| Retirement Summary | `/hr/pension/retirement-summary` | Per-employee table: name, service years, PF balance, gratuity balance, total retirement benefit, vesting status. Click row → employee detail with PF statement + gratuity ledger combined |
+
+**API for combined view:**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/pension/overview` | Combined KPIs: total PF balance + gratuity liability, enrolled count, monthly contribution, fund adequacy ratio |
+| GET | `/api/v1/hr/pension/retirement-summary` | Per-employee combined PF + Gratuity balances with service years and vesting |
+
+**Route structure:**
+```
+/hr/pension                          → Overview Dashboard (combined)
+/hr/pension/retirement-summary       → Per-employee combined statement
+/hr/pension/provident-fund/...       → All PF sub-pages (8b.3)
+/hr/pension/gratuity/...             → All Gratuity sub-pages (8b.2)
+```
+
+---
+
+#### 8b.5 Summary — Phase 8b Totals
+
+| Sub-module | New Models | New APIs | New/Rebuilt Pages |
+|------------|-----------|----------|-------------------|
+| 8b.1 Critical Fixes | 0 (uses existing) | 12 | 4 rebuilt + 1 new |
+| 8b.2 Gratuity Fund | 6 | 18 | 11 |
+| 8b.3 Provident Fund | 14 | 45 | 26 |
+| Pension Management wrapper | 0 | 2 | 2 (overview + retirement summary) |
+| **TOTAL** | **20** | **77** | **44** |
+
+#### 8b.6 Implementation Order
+
+| Step | What | Priority | Depends On |
+|------|------|----------|------------|
+| 1 | Fix A: Onboarding rebuild (static → API) | CRITICAL | — |
+| 2 | Fix B: Employee document collection | CRITICAL | — |
+| 3 | Fix C: Recruitment → Employee → Onboarding flow | CRITICAL | Fix A, Fix B |
+| 4 | Fix D: CV scoring improvements (structured form, weights, comparison) | HIGH | — |
+| 5 | Gratuity: Prisma models + policies + ledger APIs | HIGH | — |
+| 6 | Gratuity: Accrual engine + payments + fund | HIGH | Step 5 |
+| 7 | Gratuity: UI pages (11) | HIGH | Step 6 |
+| 8 | Gratuity: Cross-module (Payroll, Finance JE, Offboarding) | HIGH | Step 7 |
+| 9 | PF: Prisma models + policies + trust + enrollment | MEDIUM | — |
+| 10 | PF: Contributions + interest + withdrawal + loan APIs | MEDIUM | Step 9 |
+| 11 | PF: Settlement + investment APIs | MEDIUM | Step 10 |
+| 12 | PF: UI pages (26) | MEDIUM | Step 11 |
+| 13 | PF: Cross-module (Payroll deduction, Finance JE, Offboarding) | MEDIUM | Step 12 |
+| 14 | Seed data for all new features | MEDIUM | Steps 1-13 |
+| 15 | i18n (EN + BN) for all new features | MEDIUM | Steps 1-13 |
+
+---
+
 ### Phase 9: Budget Management — International-Grade Upgrade
 
 > **Priority: Transform basic budget into a world-class NGO financial planning & control system**
@@ -7079,6 +8099,640 @@ Sources:
 - [Nonprofit Dashboard KPIs - SoPact](https://www.sopact.com/use-case/nonprofit-dashboard)
 - [Grant Management Dashboard KPIs](https://www.inetsoft.com/business/bi/kpis-in-grant-management-dashboards/)
 - [Nonprofit Financial Metrics](https://www.ensync-corp.com/blog/financial-metrics-for-nonprofits)
+
+### Phase 11: Daily Expense Management (Week 37-42)
+
+> **Priority: Complete operational expense lifecycle — petty cash, expense claims, advances, per diem, TDS/VDS**
+> **Benchmarks: SAP Concur, Oracle NetSuite Expense, Sage Intacct Expense, Zoho Expense**
+> **Compliance: USAID 2 CFR 200 Subpart E, Bangladesh VAT & Supplementary Duty Act 2012, Income Tax Act 2023, NGOAB FD-4/FD-6**
+> **Module Placement: Finance (`/finance/expenses/`) — Expense Reports inside Financial Reports**
+
+---
+
+#### 11.1 Chart of Accounts Impact
+
+**New GL accounts to add (via seed-accounts.ts update):**
+
+| Code | Name | Type | Nature | Purpose |
+|------|------|------|--------|---------|
+| `1131` | Advance Receivable - Travel | ASSET | DEBIT | Travel advances issued to staff |
+| `1132` | Advance Receivable - Activity | ASSET | DEBIT | Activity/program advances |
+| `2107` | Expense Claims Payable | LIABILITY | CREDIT | Approved claims pending payment |
+| `2108` | VDS Payable | LIABILITY | CREDIT | VAT Deducted at Source — govt deposit |
+| `2109` | TDS Payable | LIABILITY | CREDIT | Tax Deducted at Source — govt deposit |
+
+**Existing accounts used:**
+- `1101` Cash in Hand — direct expense payments
+- `1102` Petty Cash — petty cash fund operations (multiple sub-funds via PettyCashFund model)
+- `1111-1114` Bank accounts — reimbursements, advance disbursements
+- `1130` Advances to Staff — general staff advances (existing, kept for non-travel/activity)
+- `5201-5205` Travel expenses — per diem, transport, fuel
+- `5301-5304` Training expenses — workshop, venue, materials
+- `5401-5404` Equipment & supplies — office supplies, program supplies
+- `5501-5508` Admin expenses — rent, utilities, communications, bank charges
+- `5601-5604` Program activities — community mobilization, service delivery
+
+---
+
+#### 11.2 Journal Entry Auto-Generation
+
+**Every expense event creates a JournalEntry with `sourceModule: 'expense'`:**
+
+| Event | DR Account(s) | CR Account(s) | Trigger |
+|-------|--------------|---------------|---------|
+| Advance Issued (travel) | 1131 Advance Receivable - Travel | 1111 Bank / 1101 Cash | `POST /advances/:id/disburse` |
+| Advance Issued (activity) | 1132 Advance Receivable - Activity | 1111 Bank / 1101 Cash | `POST /advances/:id/disburse` |
+| Advance Settled (actual < advance) | 5xxx Expense accounts + 1101 Cash (refund) | 1131/1132 Advance Receivable | `POST /advances/:id/settle` |
+| Advance Settled (actual > advance) | 5xxx Expense accounts | 1131/1132 Advance Receivable + 1111 Bank (extra paid) | `POST /advances/:id/settle` |
+| Expense Claim Approved | 5xxx Expense accounts (per item) | 2107 Claims Payable | `POST /expense-claims/:id/approve` (finance level) |
+| Expense Claim Paid | 2107 Claims Payable | 1111 Bank / 1101 Cash | `POST /expense-claims/:id/pay` |
+| Petty Cash Expense | 5xxx Expense accounts | 1102 Petty Cash (via PettyCashFund.bankAccountId) | `POST /petty-cash/:id/transactions` |
+| Petty Cash Replenishment | 1102 Petty Cash | 1111 Bank | `POST /petty-cash/:id/replenish` |
+| TDS Deduction on Payment | 5xxx Expense (gross amount) | 2109 TDS Payable + 1111 Bank (net) | When TDS applicable on vendor payment |
+| VDS Deduction on Payment | 5xxx Expense (gross amount) | 2108 VDS Payable + 1111 Bank (net) | When VDS applicable on purchase |
+| TDS/VDS Govt Deposit | 2109/2108 TDS/VDS Payable | 1111 Bank | `POST /tax-deposits` |
+
+**Multi-line JE support:** Expense claims with multiple items across different expense accounts create multi-line JEs (not single-line like current vouchers). Each JE line carries `projectId` and `costCenterId` for dimensional reporting.
+
+**JE ↔ Expense linking:** `JournalEntry.sourceModule = 'expense'`, `JournalEntry.sourceId = expenseClaimId | advanceId | pettyCashTransactionId`
+
+---
+
+#### 11.3 Voucher Integration
+
+**How expenses connect to vouchers:**
+
+| Expense Event | Voucher Type | Auto-Created? | Details |
+|--------------|-------------|---------------|---------|
+| Petty cash expense | CASH | Yes | `sourceModule: 'petty_cash'` |
+| Expense claim payment (bank) | BANK | Yes | `sourceModule: 'expense_claim'` |
+| Expense claim payment (cash) | CASH | Yes | `sourceModule: 'expense_claim'` |
+| Advance disbursement (bank) | BANK | Yes | `sourceModule: 'advance'` |
+| Advance disbursement (cash) | CASH | Yes | `sourceModule: 'advance'` |
+| Petty cash replenishment | CONTRA | Yes | DR Petty Cash, CR Bank |
+
+**Voucher model additions:**
+```prisma
+// Add to Voucher model
+expenseClaimId  String?  @db.Uuid  // FK to ExpenseClaim
+advanceId       String?  @db.Uuid  // FK to EmployeeAdvance
+pettyCashTxId   String?  @db.Uuid  // FK to PettyCashTransaction
+```
+
+**Segregation of duty maintained:** Expense claim submitter ≠ finance approver ≠ payment processor.
+
+---
+
+#### 11.4 Bank Reconciliation Impact
+
+**Expense transactions in bank reconciliation:**
+
+| Transaction | Bank Statement | Book Entry | Matching Strategy |
+|------------|---------------|------------|-------------------|
+| EFT reimbursement to staff | Individual debit | DR Claims Payable, CR Bank | Auto-match: amount + date + reference (claim no) |
+| Batch reimbursement | Single debit | Multiple JE lines summing to batch | Manual match: 1 bank → N book entries |
+| Petty cash replenishment check | Debit when cashed | DR Petty Cash, CR Bank | Match by cheque number |
+| Advance disbursement (EFT) | Debit | DR Advance Receivable, CR Bank | Auto-match: amount + date |
+| Staff refund deposit | Credit | DR Bank, CR Advance Receivable | Auto-match as deposit |
+| TDS/VDS govt deposit | Debit (treasury challan) | DR TDS/VDS Payable, CR Bank | Match by challan reference |
+| bKash/Nagad payment | Mobile banking statement | DR Expense, CR Mobile Banking | Separate reconciliation cycle |
+
+**Auto-match enhancement:** Bank reconciliation auto-match algorithm will use `reference` field matching (expense claim number, advance number, challan number) in addition to existing amount + date matching.
+
+---
+
+#### 11.5 Bank & Cash Page Impact
+
+**Changes to `/finance/bank-cash` page:**
+
+1. **Petty Cash Funds display:** Each `PettyCashFund` creates a `BankAccount` record (type=CASH) with `glAccountId → 1102`. Multiple petty cash funds show as separate cash accounts.
+2. **Imprest indicator:** Each petty cash fund shows: imprest amount, current balance, replenishment needed (if balance < 25% of imprest).
+3. **Summary cards update:** "Total Cash" card includes all petty cash fund balances. New card: "Petty Cash Funds" count.
+4. **Quick actions:** "Record Expense" and "Request Replenishment" buttons on each petty cash fund card.
+5. **Balance tracking:** `BankAccount.currentBalance` auto-updated on every petty cash transaction.
+
+---
+
+#### 11.6 Financial Reports — New Expense Reports (Inside Existing Section)
+
+**Reports added to `/finance/financial-reports` page as 4th section "Expense & Compliance":**
+
+| Report | Category | API Type | Data Source | Description |
+|--------|----------|----------|-------------|-------------|
+| Expense Summary | Expense & Compliance | `expense-summary` | JE lines where sourceModule='expense' | Daily/monthly expense breakdown by category, project, department |
+| Advance Aging | Expense & Compliance | `advance-aging` | EmployeeAdvance where status ∉ [SETTLED, CANCELLED] | Outstanding advances grouped by 0-30, 31-60, 61-90, 90+ days |
+| Petty Cash Statement | Expense & Compliance | `petty-cash-statement` | PettyCashTransaction per fund | Per-fund opening balance, transactions, closing balance |
+| Per Diem Utilization | Expense & Compliance | `per-diem-utilization` | ExpenseClaimItem where category='PER_DIEM' | Staff-wise per diem claims vs budget, location analysis |
+| Receipt Compliance | Expense & Compliance | `receipt-compliance` | ExpenseClaimItem.hasReceipt statistics | % expenses with receipts, missing receipt list, category breakdown |
+| TDS/VDS Register | Expense & Compliance | `tax-register` | JE lines where accountId ∈ [2108, 2109] | Monthly deduction register, Mushak 6.3 compatible format |
+| Donor Expense Report | Expense & Compliance | `donor-expense` | JE lines filtered by grantId + expense accounts | Grant-wise expense breakdown (USAID SF-425 format compatible) |
+
+**API pattern:** All use existing `GET /api/v1/finance/reports/[type]` route — new type values added to the switch/case. Same fiscalYearId, dateRange, projectId filters.
+
+**Financial Reports page UI update:**
+```
+Core Statements (5 cards, blue)
+Subsidiary Books (4 cards, emerald)
+NGO Reports (4 cards, purple)
+Expense & Compliance (7 cards, amber) ★ NEW
+```
+
+---
+
+#### 11.7 Budget Module Connection
+
+**Budget check on expense submission:**
+- `POST /expense-claims` → check budget availability for each line item's budget category
+- `budget_check_mode` system setting applies (HARD block / SOFT warning / OFF)
+- Budget check uses: `Available = Budget Total - Committed - Actual`
+
+**Commitment lifecycle:**
+- Expense claim APPROVED → creates `BudgetCommitment` (status: COMMITTED, sourceType: EXPENSE_CLAIM)
+- Expense claim PAID → releases commitment (COMMITTED → RELEASED), records actual
+- Expense claim CANCELLED → cancels commitment (COMMITTED → CANCELLED)
+
+**Budget vs Actual page enhancement:**
+- "Committed" column includes expense claim commitments
+- Drill-down on actual amount shows individual expense transactions
+
+**New enum value:** Add `EXPENSE_CLAIM` to `CommitmentSource` enum (alongside PURCHASE_REQUISITION, PURCHASE_ORDER, CONTRACT)
+
+---
+
+#### 11.8 HR Module Connection
+
+**Employee model additions:**
+```prisma
+// Add relations to Employee model
+expenseClaims    ExpenseClaim[]
+advances         EmployeeAdvance[]
+```
+
+**Payroll integration:**
+- Outstanding advances > 90 days → option to auto-deduct from salary (`PayrollEntry.advanceDeduction` field)
+- Expense reimbursement → option to add to next payroll (`PayrollEntry.expenseReimbursement` field)
+
+**Employee profile page:** New tab "Expenses & Advances" showing:
+- Active advances with balances
+- Recent expense claims
+- Total claimed this fiscal year
+
+---
+
+#### 11.9 New Prisma Models
+
+```prisma
+// ─── finance.prisma additions ───
+
+model PettyCashFund {
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String           @db.Uuid
+  name            String
+  code            String
+  imprestAmount   Decimal          @db.Decimal(18, 2)
+  currentBalance  Decimal          @default(0) @db.Decimal(18, 2)
+  currencyCode    CurrencyCode     @default(BDT)
+  custodianId     String           @db.Uuid
+  bankAccountId   String?          @db.Uuid
+  projectId       String?          @db.Uuid
+  location        String?
+  isActive        Boolean          @default(true)
+  lastReconciledAt DateTime?
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  bankAccount     BankAccount?     @relation(fields: [bankAccountId], references: [id])
+  transactions    PettyCashTransaction[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([custodianId])
+}
+
+model PettyCashTransaction {
+  id              String           @id @default(uuid()) @db.Uuid
+  fundId          String           @db.Uuid
+  transactionNo   String           @unique
+  date            DateTime
+  action          PettyCashAction
+  amount          Decimal          @db.Decimal(18, 2)
+  balanceAfter    Decimal          @db.Decimal(18, 2)
+  description     String
+  category        String?
+  receiptPath     String?
+  projectId       String?          @db.Uuid
+  budgetLineId    String?          @db.Uuid
+  accountId       String?          @db.Uuid
+  voucherId       String?          @db.Uuid
+  journalEntryId  String?          @db.Uuid
+  recordedById    String           @db.Uuid
+  approvedById    String?          @db.Uuid
+  notes           String?
+  createdAt       DateTime         @default(now())
+
+  fund            PettyCashFund    @relation(fields: [fundId], references: [id])
+
+  @@index([fundId])
+  @@index([date])
+  @@index([projectId])
+}
+
+model ExpenseClaim {
+  id              String             @id @default(uuid()) @db.Uuid
+  organizationId  String             @db.Uuid
+  claimNo         String             @unique
+  employeeId      String             @db.Uuid
+  claimDate       DateTime           @default(now())
+  totalAmount     Decimal            @db.Decimal(18, 2)
+  approvedAmount  Decimal?           @db.Decimal(18, 2)
+  currencyCode    CurrencyCode       @default(BDT)
+  purpose         String
+  projectId       String?            @db.Uuid
+  grantId         String?            @db.Uuid
+  travelStartDate DateTime?
+  travelEndDate   DateTime?
+  status          ExpenseClaimStatus @default(DRAFT)
+  supervisorId    String?            @db.Uuid
+  supervisorApprovedAt DateTime?
+  financeApprovedById  String?       @db.Uuid
+  financeApprovedAt    DateTime?
+  rejectionReason      String?
+  paymentMethod   String?
+  paidAt          DateTime?
+  voucherId       String?            @db.Uuid
+  journalEntryId  String?            @db.Uuid
+  advanceId       String?            @db.Uuid
+  advanceDeducted Decimal?           @db.Decimal(18, 2)
+  netPayable      Decimal?           @db.Decimal(18, 2)
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  organization    Organization       @relation(fields: [organizationId], references: [id])
+  employee        Employee           @relation(fields: [employeeId], references: [id])
+  items           ExpenseClaimItem[]
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([projectId])
+}
+
+model ExpenseClaimItem {
+  id              String       @id @default(uuid()) @db.Uuid
+  claimId         String       @db.Uuid
+  date            DateTime
+  category        String
+  description     String
+  amount          Decimal      @db.Decimal(18, 2)
+  approvedAmount  Decimal?     @db.Decimal(18, 2)
+  receiptPath     String?
+  hasReceipt      Boolean      @default(false)
+  noReceiptReason String?
+  accountId       String?      @db.Uuid
+  projectId       String?      @db.Uuid
+  budgetLineId    String?      @db.Uuid
+  tdsRate         Decimal?     @db.Decimal(5, 2)
+  tdsAmount       Decimal?     @db.Decimal(18, 2)
+  vdsRate         Decimal?     @db.Decimal(5, 2)
+  vdsAmount       Decimal?     @db.Decimal(18, 2)
+  location        String?
+  notes           String?
+  sortOrder       Int          @default(0)
+
+  claim           ExpenseClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+}
+
+model EmployeeAdvance {
+  id              String         @id @default(uuid()) @db.Uuid
+  organizationId  String         @db.Uuid
+  advanceNo       String         @unique
+  employeeId      String         @db.Uuid
+  requestDate     DateTime       @default(now())
+  purpose         String
+  advanceType     AdvanceType    @default(TRAVEL)
+  estimatedAmount Decimal        @db.Decimal(18, 2)
+  approvedAmount  Decimal?       @db.Decimal(18, 2)
+  projectId       String?        @db.Uuid
+  grantId         String?        @db.Uuid
+  travelStartDate DateTime?
+  travelEndDate   DateTime?
+  expectedSettlementDate DateTime?
+  disbursedAmount Decimal?       @db.Decimal(18, 2)
+  disbursedAt     DateTime?
+  disbursementMethod String?
+  bankAccountId   String?        @db.Uuid
+  disbursementVoucherId String?  @db.Uuid
+  disbursementJournalId String?  @db.Uuid
+  settledAmount   Decimal?       @db.Decimal(18, 2)
+  refundAmount    Decimal?       @db.Decimal(18, 2)
+  additionalPaid  Decimal?       @db.Decimal(18, 2)
+  settledAt       DateTime?
+  status          AdvanceStatus  @default(REQUESTED)
+  approvedById    String?        @db.Uuid
+  approvedAt      DateTime?
+  rejectionReason String?
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+  employee        Employee       @relation(fields: [employeeId], references: [id])
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+model PerDiemRate {
+  id              String         @id @default(uuid()) @db.Uuid
+  organizationId  String         @db.Uuid
+  name            String
+  location        String
+  locationType    String         @default("DISTRICT")
+  donorId         String?        @db.Uuid
+  fullDayRate     Decimal        @db.Decimal(18, 2)
+  halfDayRate     Decimal?       @db.Decimal(18, 2)
+  overnightRate   Decimal?       @db.Decimal(18, 2)
+  mealsOnlyRate   Decimal?       @db.Decimal(18, 2)
+  currencyCode    CurrencyCode   @default(BDT)
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?
+  isActive        Boolean        @default(true)
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([location])
+  @@index([donorId])
+}
+
+model ExpenseCategory {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @db.Uuid
+  name            String
+  code            String
+  glAccountId     String?      @db.Uuid
+  budgetCategory  String?
+  maxAmountPerItem Decimal?    @db.Decimal(18, 2)
+  requiresReceipt Boolean      @default(true)
+  tdsApplicable   Boolean      @default(false)
+  defaultTdsRate  Decimal?     @db.Decimal(5, 2)
+  vdsApplicable   Boolean      @default(false)
+  defaultVdsRate  Decimal?     @db.Decimal(5, 2)
+  isActive        Boolean      @default(true)
+  sortOrder       Int          @default(0)
+  createdAt       DateTime     @default(now())
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+```
+
+**New enums (in base.prisma):**
+```prisma
+enum ExpenseClaimStatus {
+  DRAFT
+  SUBMITTED
+  SUPERVISOR_APPROVED
+  FINANCE_APPROVED
+  REJECTED
+  PAID
+  CANCELLED
+}
+
+enum AdvanceStatus {
+  REQUESTED
+  APPROVED
+  DISBURSED
+  PARTIALLY_SETTLED
+  SETTLED
+  OVERDUE
+  CANCELLED
+}
+
+enum AdvanceType {
+  TRAVEL
+  ACTIVITY
+  OPERATIONAL
+}
+
+enum PettyCashAction {
+  OPENING_BALANCE
+  EXPENSE
+  REPLENISHMENT
+  ADJUSTMENT
+  CLOSING
+}
+```
+
+---
+
+#### 11.10 API Endpoints
+
+**Petty Cash (8 endpoints):**
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/finance/petty-cash` | List all petty cash funds |
+| POST | `/api/v1/finance/petty-cash` | Create fund (auto-creates BankAccount type=CASH) |
+| GET | `/api/v1/finance/petty-cash/:id` | Fund detail with recent transactions |
+| PUT | `/api/v1/finance/petty-cash/:id` | Update fund (name, imprest, custodian) |
+| GET | `/api/v1/finance/petty-cash/:id/transactions` | Transaction history (paginated) |
+| POST | `/api/v1/finance/petty-cash/:id/transactions` | Record expense (auto-creates CASH voucher + JE) |
+| POST | `/api/v1/finance/petty-cash/:id/replenish` | Request replenishment (auto-creates CONTRA voucher) |
+| POST | `/api/v1/finance/petty-cash/:id/reconcile` | Physical count reconciliation |
+
+**Expense Claims (12 endpoints):**
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/finance/expense-claims` | List all claims (filterable by status, employee, project, date) |
+| POST | `/api/v1/finance/expense-claims` | Create claim with items (budget check on submit) |
+| GET | `/api/v1/finance/expense-claims/:id` | Claim detail with items, approval history |
+| PUT | `/api/v1/finance/expense-claims/:id` | Update draft claim |
+| DELETE | `/api/v1/finance/expense-claims/:id` | Delete draft claim |
+| POST | `/api/v1/finance/expense-claims/:id/submit` | Submit for approval (status: DRAFT → SUBMITTED) |
+| POST | `/api/v1/finance/expense-claims/:id/supervisor-approve` | Supervisor approval (SUBMITTED → SUPERVISOR_APPROVED) |
+| POST | `/api/v1/finance/expense-claims/:id/finance-approve` | Finance approval (→ FINANCE_APPROVED, auto JE: DR Expense, CR Claims Payable) |
+| POST | `/api/v1/finance/expense-claims/:id/reject` | Reject with reason |
+| POST | `/api/v1/finance/expense-claims/:id/pay` | Process payment (auto voucher, JE: DR Claims Payable, CR Bank) |
+| GET | `/api/v1/finance/expense-claims/my-claims` | Current user's claims |
+| POST | `/api/v1/finance/expense-claims/:id/items/:itemId/receipt` | Upload receipt image |
+
+**Advances (10 endpoints):**
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/finance/advances` | List all advances |
+| POST | `/api/v1/finance/advances` | Request advance (checks: no outstanding advance for this employee) |
+| GET | `/api/v1/finance/advances/:id` | Advance detail |
+| PUT | `/api/v1/finance/advances/:id` | Update pending advance |
+| POST | `/api/v1/finance/advances/:id/approve` | Approve advance request |
+| POST | `/api/v1/finance/advances/:id/disburse` | Disburse (auto BANK voucher + JE: DR Advance Receivable, CR Bank) |
+| POST | `/api/v1/finance/advances/:id/settle` | Settle with expense claim linkage |
+| GET | `/api/v1/finance/advances/outstanding` | Outstanding/overdue advances with aging |
+| GET | `/api/v1/finance/advances/employee/:employeeId` | Employee advance history |
+| POST | `/api/v1/finance/advances/:id/cancel` | Cancel pending advance |
+
+**Per Diem & Categories (7 endpoints):**
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/finance/per-diem-rates` | List all rates |
+| POST | `/api/v1/finance/per-diem-rates` | Create rate |
+| PUT | `/api/v1/finance/per-diem-rates/:id` | Update rate |
+| DELETE | `/api/v1/finance/per-diem-rates/:id` | Delete rate |
+| POST | `/api/v1/finance/per-diem-rates/calculate` | Calculate per diem for a trip (startDate, endDate, location) |
+| GET | `/api/v1/finance/expense-categories` | List expense categories with GL mapping |
+| POST | `/api/v1/finance/expense-categories` | Create/update category |
+
+**Reports (7 new report types added to existing `/api/v1/finance/reports/[type]`):**
+
+| Type | Description |
+|------|-------------|
+| `expense-summary` | Category/project/department expense breakdown |
+| `advance-aging` | Outstanding advances 0-30/31-60/61-90/90+ days |
+| `petty-cash-statement` | Per-fund opening, transactions, closing balance |
+| `per-diem-utilization` | Staff-wise per diem claims vs budget |
+| `receipt-compliance` | % expenses with receipts, missing receipt audit list |
+| `tax-register` | Monthly TDS/VDS register (Mushak 6.3 compatible) |
+| `donor-expense` | Grant-wise expense (USAID SF-425 format) |
+
+**Total: 37 new API endpoints + 7 new report types**
+
+---
+
+#### 11.11 UI Pages
+
+**Under `/finance/expenses/` (6 pages):**
+
+| Page | Path | Features |
+|------|------|----------|
+| **Expense Dashboard** | `/finance/expenses` | KPI cards (today's expenses, pending claims, outstanding advances, petty cash balances), recent claims, budget utilization donut chart |
+| **Petty Cash** | `/finance/expenses/petty-cash` | Fund cards with imprest vs balance, create fund, record transaction dialog, replenishment request, reconciliation (physical count vs book) |
+| **Expense Claims** | `/finance/expenses/claims` | DataTable (all/my-claims/pending-approval tabs), create claim form with line items + receipt upload, multi-level approval buttons, payment processing |
+| **Advances** | `/finance/expenses/advances` | DataTable with status filters, new advance form, approve/disburse/settle workflow, outstanding aging report inline |
+| **Per Diem Rates** | `/finance/expenses/per-diem` | Rate table by location/donor, create/edit rates, per diem calculator (trip dates + location → auto-calculate) |
+| **Expense Categories** | `/finance/expenses/categories` | Category list with GL account mapping, TDS/VDS settings, receipt requirement toggle |
+
+**Financial Reports page update (`/finance/financial-reports`):**
+- Add 4th section "Expense & Compliance" with 7 report cards (amber-colored)
+- Each card links to existing `/finance/financial-reports/[type]` detail page
+- Report viewer component reused — same filter bar, table, export, print
+
+**Other page modifications:**
+
+| Page | Change |
+|------|--------|
+| `/finance/bank-cash` | Show petty cash funds as CASH-type accounts with imprest indicator |
+| `/finance/vouchers/[id]` | Show linked expense claim/advance if `expenseClaimId`/`advanceId` exists |
+| `/hr/employees/[id]` | New "Expenses & Advances" tab (active advances, recent claims, fiscal year totals) |
+| `/budget/budget-vs-actual` | Committed column includes expense claim commitments |
+
+---
+
+#### 11.12 Updated Navigation
+
+```
+📊 Finance
+├── Chart of Accounts
+├── Journal Entries
+├── Vouchers
+├── Bank Reconciliation
+├── Bank & Cash
+├── Financial Reports          (includes new Expense & Compliance section)
+├── Daily Expenses ★ NEW
+│   ├── Expense Dashboard
+│   ├── Petty Cash
+│   ├── Expense Claims
+│   ├── Advances
+│   ├── Per Diem Rates
+│   └── Expense Categories
+```
+
+---
+
+#### 11.13 Implementation Order & Dependencies
+
+| Step | Task | Dependencies | Cross-Module Impact |
+|------|------|-------------|---------------------|
+| 11.0 | New GL accounts (seed-accounts.ts update) | None | Chart of Accounts |
+| 11.1 | New enums + Prisma models + db:push | None | Schema |
+| 11.2 | Expense categories API + UI | 11.1 | None |
+| 11.3 | Per diem rates API + UI | 11.1 | None |
+| 11.4 | Petty cash fund CRUD + transaction recording | 11.1 | Bank & Cash (auto-create BankAccount), Voucher (auto CASH voucher), JE (auto-generate) |
+| 11.5 | Expense claims CRUD + multi-level approval | 11.1, 11.2 | JE (auto on approve), Budget (commitment), Voucher (auto on pay) |
+| 11.6 | Advance management + settlement | 11.1 | JE (auto on disburse/settle), Voucher (auto), Budget |
+| 11.7 | TDS/VDS calculation on expense items | 11.5 | JE (tax liability lines), Financial Reports (tax register) |
+| 11.8 | Financial Reports — 7 new report types | 11.4, 11.5, 11.6 | Financial Reports page UI update |
+| 11.9 | Budget integration (commitment, check) | 11.5, Phase 9.2 | Budget vs Actual, BudgetCommitment |
+| 11.10 | Bank reconciliation enhancement | 11.4, 11.5, 11.6 | Reference-based matching |
+| 11.11 | HR integration (employee profile, payroll deduction) | 11.6 | Employee page, PayrollEntry |
+| 11.12 | Navigation update + i18n | All above | Sidebar, messages |
+
+---
+
+#### 11.14 Seed Data
+
+> **Seed data (Phase 11):**
+> - 5 new GL accounts (1131, 1132, 2107, 2108, 2109)
+> - 10 expense categories (Transport, Meals, Accommodation, Office Supplies, Communication, Fuel, Stationery, Courier, Refreshments, Miscellaneous)
+> - 8 per diem rates (Dhaka, Chittagong, Sylhet, Rajshahi, Khulna, District HQ, Upazila, Rural — for national staff)
+> - 3 petty cash funds (HQ Dhaka, Sylhet Field Office, Cox's Bazar Field Office)
+> - 5 sample expense claims (2 approved+paid, 1 pending approval, 1 draft, 1 rejected)
+> - 3 sample advances (1 settled, 1 disbursed, 1 overdue)
+> - 15 petty cash transactions across 3 funds
+
+---
+
+#### 11.15 Testing Scenarios
+
+| Test | Expected Result | Cross-Module Check |
+|------|-----------------|-------------------|
+| Create petty cash fund | BankAccount (type=CASH) auto-created, linked via bankAccountId | Bank & Cash page shows new fund |
+| Record petty cash expense BDT 500 | CASH voucher auto-created, JE auto-created (DR 5403, CR 1102), fund balance decreased | Cash Book report shows transaction, Budget actual updated |
+| Replenish petty cash | CONTRA voucher (DR 1102, CR 1111), fund balance restored to imprest | Bank reconciliation shows check/EFT |
+| Submit expense claim BDT 15,000 | Budget availability checked, claim status → SUBMITTED | Budget commitment NOT created yet (only on finance approve) |
+| Finance approve expense claim | JE created (DR 5xxx, CR 2107), BudgetCommitment created | Income Statement shows expense, Balance Sheet shows liability |
+| Pay expense claim via bank | BANK voucher created, JE (DR 2107, CR 1111), commitment released | Bank balance decreased, bank reconciliation matchable |
+| Issue travel advance BDT 20,000 | BANK voucher, JE (DR 1131, CR 1111) | Balance Sheet shows receivable |
+| Settle advance (actual BDT 18,000) | JE (DR 5xxx 18K, DR 1101 2K refund, CR 1131 20K) | Advance receivable cleared, expense recorded |
+| Advance overdue > 90 days | Payroll deduction option enabled | PayrollEntry.advanceDeduction available |
+| TDS 10% on consultancy BDT 50,000 | JE: DR 5103 50K, CR 2109 5K, CR 1111 45K | Tax register report shows TDS, TDS Payable in Balance Sheet |
+| Generate Expense Summary report | Groups by category, matches JE totals | Cross-verify with Income Statement expense totals |
+| Petty cash physical count reconciliation | Difference logged, adjustment JE if needed | Cash Book matches reconciled balance |
+
+---
+
+#### 11.16 Cron Jobs
+
+| Cron Job | Schedule | Description |
+|----------|----------|-------------|
+| `advance-overdue-check` | Daily 08:00 | Mark advances as OVERDUE if disbursed and expectedSettlementDate passed. Send notification to employee + supervisor |
+| `petty-cash-low-balance` | Daily 09:00 | Alert custodian if fund balance < 25% of imprest amount |
+| `expense-claim-reminder` | Daily 10:00 | Remind approvers of pending claims older than 3 days |
+| `tds-vds-deposit-reminder` | Monthly 1st, 08:00 | Remind finance of TDS/VDS deposit deadline (15th of month) |
+
+---
+
+> **Summary — Phase 11 Totals:**
+> - **7 new models** (PettyCashFund, PettyCashTransaction, ExpenseClaim, ExpenseClaimItem, EmployeeAdvance, PerDiemRate, ExpenseCategory)
+> - **4 new enums** (ExpenseClaimStatus, AdvanceStatus, AdvanceType, PettyCashAction)
+> - **37 new API endpoints + 7 new report types**
+> - **6 new pages + 4 page modifications + 7 report cards**
+> - **5 new GL accounts**
+> - **4 cron jobs**
+> - **Cross-module: Finance (JE, Voucher, Bank Recon, Bank & Cash, Reports), Budget (commitment, check), HR (employee profile, payroll), Projects (allocation)**
 
 ---
 

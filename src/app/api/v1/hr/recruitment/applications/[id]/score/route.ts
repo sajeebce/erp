@@ -26,8 +26,16 @@ const EDUCATION_LEVELS: Record<string, number> = {
   'ssc': 0,
 }
 
-function scoreEducation(parsed: Array<{ degree?: string }> | null, minEducation: string | null): number {
-  if (!minEducation) return 25 // Full marks if no requirement
+interface ScoringWeights {
+  education: number
+  experience: number
+  skills: number
+  languages: number
+  certifications: number
+}
+
+function scoreEducation(parsed: Array<{ degree?: string }> | null, minEducation: string | null, weight: number): number {
+  if (!minEducation) return weight // Full marks if no requirement
   if (!parsed || parsed.length === 0) return 0
 
   const requiredLevel = EDUCATION_LEVELS[minEducation.toLowerCase()] ?? 0
@@ -44,24 +52,24 @@ function scoreEducation(parsed: Array<{ degree?: string }> | null, minEducation:
     }
   }
 
-  if (highestLevel >= requiredLevel) return 25
-  if (highestLevel === requiredLevel - 1) return 15
-  return 5
+  if (highestLevel >= requiredLevel) return weight
+  if (highestLevel === requiredLevel - 1) return Math.round(weight * 0.6)
+  return Math.round(weight * 0.2)
 }
 
-function scoreExperience(totalYears: number | null, minExperience: number | null): number {
-  if (!minExperience || minExperience === 0) return 30 // Full marks if no requirement
+function scoreExperience(totalYears: number | null, minExperience: number | null, weight: number): number {
+  if (!minExperience || minExperience === 0) return weight // Full marks if no requirement
   if (!totalYears || totalYears === 0) return 0
 
   const ratio = totalYears / minExperience
-  if (ratio >= 1) return 30
-  if (ratio >= 0.75) return 22
-  if (ratio >= 0.5) return 15
-  return 5
+  if (ratio >= 1) return weight
+  if (ratio >= 0.75) return Math.round(weight * 0.73)
+  if (ratio >= 0.5) return Math.round(weight * 0.5)
+  return Math.round(weight * 0.17)
 }
 
-function scoreSkills(parsedSkills: string[] | null, requiredSkills: string[] | null): number {
-  if (!requiredSkills || requiredSkills.length === 0) return 20
+function scoreSkills(parsedSkills: string[] | null, requiredSkills: string[] | null, weight: number): number {
+  if (!requiredSkills || requiredSkills.length === 0) return weight
   if (!parsedSkills || parsedSkills.length === 0) return 0
 
   const normalizedParsed = parsedSkills.map(s => s.toLowerCase().trim())
@@ -74,14 +82,15 @@ function scoreSkills(parsedSkills: string[] | null, requiredSkills: string[] | n
     }
   }
 
-  return Math.round((matched / requiredSkills.length) * 20)
+  return Math.round((matched / requiredSkills.length) * weight)
 }
 
 function scoreLanguages(
   parsedLanguages: Array<{ language?: string; level?: string }> | null,
-  requiredLanguages: Array<{ language?: string; level?: string }> | null
+  requiredLanguages: Array<{ language?: string; level?: string }> | null,
+  weight: number
 ): number {
-  if (!requiredLanguages || requiredLanguages.length === 0) return 15
+  if (!requiredLanguages || requiredLanguages.length === 0) return weight
   if (!parsedLanguages || parsedLanguages.length === 0) return 0
 
   const parsedMap = new Map<string, string>()
@@ -98,11 +107,11 @@ function scoreLanguages(
     }
   }
 
-  return Math.round((matched / requiredLanguages.length) * 15)
+  return Math.round((matched / requiredLanguages.length) * weight)
 }
 
-function scoreCertifications(parsedCerts: string[] | null, requiredCerts: string[] | null): number {
-  if (!requiredCerts || requiredCerts.length === 0) return 10
+function scoreCertifications(parsedCerts: string[] | null, requiredCerts: string[] | null, weight: number): number {
+  if (!requiredCerts || requiredCerts.length === 0) return weight
   if (!parsedCerts || parsedCerts.length === 0) return 0
 
   const normalizedParsed = parsedCerts.map(c => c.toLowerCase().trim())
@@ -115,7 +124,7 @@ function scoreCertifications(parsedCerts: string[] | null, requiredCerts: string
     }
   }
 
-  return Math.round((matched / requiredCerts.length) * 10)
+  return Math.round((matched / requiredCerts.length) * weight)
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
@@ -133,6 +142,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             requiredSkills: true,
             requiredLanguages: true,
             requiredCertifications: true,
+            scoreWeightEducation: true,
+            scoreWeightExperience: true,
+            scoreWeightSkills: true,
+            scoreWeightLanguages: true,
+            scoreWeightCertifications: true,
           },
         },
       },
@@ -144,25 +158,39 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const job = application.jobPosting
 
+    // Use customizable weights from the job posting
+    const weights: ScoringWeights = {
+      education: job.scoreWeightEducation,
+      experience: job.scoreWeightExperience,
+      skills: job.scoreWeightSkills,
+      languages: job.scoreWeightLanguages,
+      certifications: job.scoreWeightCertifications,
+    }
+
     const educationScore = scoreEducation(
       application.parsedEducation as Array<{ degree?: string }> | null,
-      job.minEducation
+      job.minEducation,
+      weights.education
     )
     const experienceScore = scoreExperience(
       application.totalExperienceYears ? Number(application.totalExperienceYears) : null,
-      job.minExperience
+      job.minExperience,
+      weights.experience
     )
     const skillsScore = scoreSkills(
       application.parsedSkills as string[] | null,
-      job.requiredSkills as string[] | null
+      job.requiredSkills as string[] | null,
+      weights.skills
     )
     const languagesScore = scoreLanguages(
       application.parsedLanguages as Array<{ language?: string; level?: string }> | null,
-      job.requiredLanguages as Array<{ language?: string; level?: string }> | null
+      job.requiredLanguages as Array<{ language?: string; level?: string }> | null,
+      weights.languages
     )
     const certificationsScore = scoreCertifications(
       application.parsedCertifications as string[] | null,
-      job.requiredCertifications as string[] | null
+      job.requiredCertifications as string[] | null,
+      weights.certifications
     )
 
     const totalScore = educationScore + experienceScore + skillsScore + languagesScore + certificationsScore

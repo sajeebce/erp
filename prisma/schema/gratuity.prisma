@@ -1,0 +1,170 @@
+// ═══════════════════════════════════════════
+// NGO ERP — Gratuity Fund Models
+// Policy, Ledger, Accrual, Payment,
+// Fund & Fund Transactions
+// ═══════════════════════════════════════════
+
+model GratuityPolicy {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  name             String
+  isDefault        Boolean  @default(false)
+
+  // Eligibility
+  vestingPeriodMonths Int   @default(60)
+  minServiceMonths Int      @default(0)
+
+  // Calculation
+  formulaType      String   @default("MONTHS_PER_YEAR")
+  ratePerYear      Decimal  @db.Decimal(5, 2) @default(1.00)
+  calculationBase  String   @default("LAST_BASIC")
+
+  // Rate bands (for progressive rates)
+  rateBands        Json?
+
+  // Fund management
+  accrualFrequency String   @default("MONTHLY")
+  fundBankAccountId String? @db.Uuid
+  maintainFund     Boolean  @default(true)
+
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model GratuityLedger {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  employeeId       String   @unique @db.Uuid
+  policyId         String   @db.Uuid
+
+  // Running totals
+  totalAccrued     Decimal  @default(0) @db.Decimal(18, 2)
+  totalPaid        Decimal  @default(0) @db.Decimal(18, 2)
+  currentBalance   Decimal  @default(0) @db.Decimal(18, 2)
+
+  // Service calculation
+  serviceStartDate DateTime
+  lastAccrualDate  DateTime?
+  isVested         Boolean  @default(false)
+
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  employee     Employee     @relation(fields: [employeeId], references: [id])
+
+  accruals     GratuityAccrual[]
+  payments     GratuityPayment[]
+
+  @@unique([organizationId, employeeId])
+  @@index([organizationId])
+}
+
+model GratuityAccrual {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  ledgerId         String   @db.Uuid
+  employeeId       String   @db.Uuid
+
+  accrualMonth     Int
+  accrualYear      Int
+  basicSalary      Decimal  @db.Decimal(18, 2)
+  accrualAmount    Decimal  @db.Decimal(18, 2)
+  serviceMonths    Int
+
+  // Project allocation
+  projectAllocations Json?
+
+  journalEntryId   String?  @db.Uuid
+  createdAt        DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  ledger       GratuityLedger @relation(fields: [ledgerId], references: [id])
+
+  @@unique([ledgerId, accrualMonth, accrualYear])
+  @@index([organizationId])
+  @@index([employeeId])
+}
+
+model GratuityPayment {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  paymentNo        String   @unique
+  ledgerId         String   @db.Uuid
+  employeeId       String   @db.Uuid
+
+  paymentType      String
+  amount           Decimal  @db.Decimal(18, 2)
+  calculationBase  Decimal  @db.Decimal(18, 2)
+  serviceYears     Decimal  @db.Decimal(5, 2)
+  serviceDays      Int
+
+  // Approval
+  status           String   @default("PENDING")
+  approvedById     String?  @db.Uuid
+  approvedAt       DateTime?
+  paidAt           DateTime?
+  paymentMethod    String?
+  referenceNo      String?
+
+  // Linked to offboarding if final settlement
+  offboardingId    String?  @db.Uuid
+
+  journalEntryId   String?  @db.Uuid
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  ledger       GratuityLedger @relation(fields: [ledgerId], references: [id])
+
+  @@index([organizationId])
+  @@index([employeeId])
+}
+
+model GratuityFund {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  name             String
+  bankAccountId    String?  @db.Uuid
+  currentBalance   Decimal  @default(0) @db.Decimal(18, 2)
+
+  // FDR tracking
+  fdrDetails       Json?
+  totalFdr         Decimal  @default(0) @db.Decimal(18, 2)
+
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization             @relation(fields: [organizationId], references: [id])
+  transactions GratuityFundTransaction[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model GratuityFundTransaction {
+  id               String   @id @default(uuid()) @db.Uuid
+  fundId           String   @db.Uuid
+  transactionNo    String   @unique
+  type             String
+  amount           Decimal  @db.Decimal(18, 2)
+  balance          Decimal  @db.Decimal(18, 2)
+  description      String?
+  referenceNo      String?
+  transactionDate  DateTime
+  journalEntryId   String?  @db.Uuid
+  createdAt        DateTime @default(now())
+
+  fund             GratuityFund @relation(fields: [fundId], references: [id])
+
+  @@index([fundId])
+}

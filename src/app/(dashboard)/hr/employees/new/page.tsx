@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -28,11 +28,15 @@ interface Designation {
 
 export default function NewEmployeePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const t = useTranslations('hr')
   const tc = useTranslations('common')
 
+  const fromApplicationId = searchParams.get('fromApplication')
+
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [convertedFromApplicationId, setConvertedFromApplicationId] = useState('')
 
   // Form state
   const [fullName, setFullName] = useState('')
@@ -70,6 +74,27 @@ export default function NewEmployeePage() {
       .then(json => { if (json.success) setDesignations(json.data) })
       .catch(() => {})
   }, [])
+
+  // If coming from recruitment, fetch pre-fill data
+  useEffect(() => {
+    if (fromApplicationId) {
+      fetch(`/api/v1/hr/recruitment/applications/${fromApplicationId}/convert-to-employee`)
+        .then(res => res.json())
+        .then(json => {
+          if (json.success) {
+            const { prefill, jobPosting } = json.data
+            setFullName(prefill.fullName || '')
+            setEmail(prefill.applicantEmail || '')
+            setPhone(prefill.applicantPhone || '')
+            if (jobPosting.departmentId) setDepartmentId(jobPosting.departmentId)
+            if (jobPosting.designationId) setDesignationId(jobPosting.designationId)
+            if (jobPosting.employmentType) setEmploymentType(jobPosting.employmentType)
+            setConvertedFromApplicationId(fromApplicationId)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [fromApplicationId])
 
   function validate(): boolean {
     if (!fullName.trim() || !departmentId || !designationId || !joiningDate) {
@@ -111,6 +136,7 @@ export default function NewEmployeePage() {
     if (bankName.trim()) payload.bankName = bankName.trim()
     if (bankAccountNo.trim()) payload.bankAccountNo = bankAccountNo.trim()
     if (notes.trim()) payload.notes = notes.trim()
+    if (convertedFromApplicationId) payload.convertedFromApplicationId = convertedFromApplicationId
 
     try {
       const res = await fetch('/api/v1/hr/employees', {
@@ -140,17 +166,23 @@ export default function NewEmployeePage() {
         </Button>
       </PageHeader>
 
+      {error && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      {convertedFromApplicationId && (
+        <div className="rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3 text-sm text-blue-800 dark:text-blue-200">
+          This form is pre-filled from recruitment application. Review and complete all fields before saving.
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>{t('form.personalInfo')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {error && (
-            <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="emp-name">{t('fields.fullName')} *</Label>

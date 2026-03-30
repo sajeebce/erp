@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { apiCreated, apiBadRequest, apiNotFound, handleRouteError } from '@/lib/api-response'
+import { autoScoreApplication } from '@/lib/recruitment-scoring'
 
 function generateApplicationNo(): string {
   const now = new Date()
@@ -89,6 +90,11 @@ export async function POST(
         status: true,
         appliedAt: true,
       },
+    })
+
+    // Auto-trigger scoring immediately after creation
+    autoScoreApplication(application.id).catch((err) => {
+      console.error('Auto-score failed for public application', application.id, err)
     })
 
     return apiCreated(application)

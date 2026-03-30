@@ -75,6 +75,7 @@ model Employee {
   tinNumber         String?
 
   notes             String?
+  convertedFromApplicationId String? @db.Uuid // If hired via recruitment, link to JobApplication
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   deletedAt         DateTime?
@@ -98,6 +99,8 @@ model Employee {
   projectAllocations     EmployeeProjectAllocation[]
   contracts              EmployeeContract[]
   offboardings           Offboarding[]
+  gratuityLedger         GratuityLedger?
+  pfEnrollment           PFEnrollment?
 
   @@unique([organizationId, employeeNo])
   @@index([organizationId])
@@ -136,15 +139,21 @@ model EmployeeProjectAllocation {
 }
 
 model OnboardingChecklist {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String
-  description String?
-  isRequired  Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String?  @db.Uuid  // Null = global default, set = org-specific
+  name            String
+  description     String?
+  category        String   @default("HR") // DOCUMENT, FINANCE, LEGAL, COMPLIANCE, IT, ADMIN, HR, SECURITY
+  isRequired      Boolean  @default(true)
+  requiresDocument Boolean @default(false) // If true, task can only be completed by uploading a document
+  documentType    String?  // Links to EmployeeDocument.type e.g. "NID_COPY", "TIN_CERTIFICATE"
+  sortOrder       Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
 
-  progress    OnboardingProgress[]
+  progress        OnboardingProgress[]
+
+  @@index([organizationId])
 }
 
 model OnboardingProgress {
@@ -155,6 +164,7 @@ model OnboardingProgress {
   completedAt   DateTime?
   completedById String?             @db.Uuid  // User FK — plain String, no @relation
   notes         String?
+  documentId    String?             @db.Uuid  // Link to uploaded EmployeeDocument if task requires doc
 
   employee      Employee            @relation(fields: [employeeId], references: [id])
   checklist     OnboardingChecklist @relation(fields: [checklistId], references: [id])
@@ -412,6 +422,13 @@ model JobPosting {
   requiredSkills      Json?            // ["project-management", "M&E"]
   requiredLanguages   Json?            // [{"language": "English", "level": "Fluent"}]
   requiredCertifications Json?         // ["PMP", "CPA"]
+
+  // Scoring weights (customizable per job, must total 100)
+  scoreWeightEducation     Int          @default(25)
+  scoreWeightExperience    Int          @default(30)
+  scoreWeightSkills        Int          @default(20)
+  scoreWeightLanguages     Int          @default(15)
+  scoreWeightCertifications Int         @default(10)
 
   // Funding link
   projectId           String?          @db.Uuid

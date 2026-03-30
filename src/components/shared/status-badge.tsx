@@ -114,9 +114,27 @@ const statusStyles: Record<string, string> = {
   WITHDRAWN: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400',
   SCHEDULED: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
 
+  // Pension / PF / Gratuity
+  VESTED: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  NOT_VESTED: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  FROZEN: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  CALCULATED: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+  DEFAULTED: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  MATURED: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+  ENCASHED: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+
   // Contracts
   EXPIRING_SOON: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
   RENEWED: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+
+  // Expense Claims & Advances
+  SUPERVISOR_APPROVED: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+  FINANCE_APPROVED: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  PAID: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  REQUESTED: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  DISBURSED: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
+  SETTLED: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  PARTIALLY_SETTLED: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
 
   // Offboarding / Grievances / Disciplinary
   INITIATED: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',

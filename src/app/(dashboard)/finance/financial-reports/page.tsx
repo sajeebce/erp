@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import {
   FileSpreadsheet, BarChart3, PieChart, TrendingUp, Wallet, Receipt,
   BookOpen, Calendar, Landmark, FileText, Shield, DollarSign,
+  ClipboardList, Clock, Coins, Utensils, FileCheck, Calculator, Globe,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -15,7 +16,7 @@ import { HelpButton } from '@/components/shared/help-modal'
 interface ReportDef {
   type: string
   icon: React.ElementType
-  category: 'core' | 'subsidiary' | 'ngo'
+  category: 'core' | 'subsidiary' | 'ngo' | 'expense'
 }
 
 const REPORTS: ReportDef[] = [
@@ -32,18 +33,27 @@ const REPORTS: ReportDef[] = [
   { type: 'fund-balance-changes', icon: DollarSign, category: 'ngo' },
   { type: 'grant-financial', icon: Shield, category: 'ngo' },
   { type: 'bank-reconciliation-statement', icon: Landmark, category: 'ngo' },
+  { type: 'expense-summary', icon: ClipboardList, category: 'expense' },
+  { type: 'advance-aging', icon: Clock, category: 'expense' },
+  { type: 'petty-cash-statement', icon: Coins, category: 'expense' },
+  { type: 'per-diem-utilization', icon: Utensils, category: 'expense' },
+  { type: 'receipt-compliance', icon: FileCheck, category: 'expense' },
+  { type: 'tds-vds-register', icon: Calculator, category: 'expense' },
+  { type: 'donor-expense-report', icon: Globe, category: 'expense' },
 ]
 
 const CATEGORY_COLORS: Record<string, string> = {
   core: 'text-blue-600 bg-blue-50 dark:bg-blue-950 dark:text-blue-400',
   subsidiary: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400',
   ngo: 'text-purple-600 bg-purple-50 dark:bg-purple-950 dark:text-purple-400',
+  expense: 'text-amber-600 bg-amber-50 dark:bg-amber-950 dark:text-amber-400',
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
   core: 'Core',
   subsidiary: 'Subsidiary',
   ngo: 'NGO',
+  expense: 'Expense',
 }
 
 function ReportSection({ title, category, reports, t, onOpen }: {
@@ -113,6 +123,7 @@ export default function FinancialReportsPage() {
       <ReportSection title={t('coreStatements')} category="core" reports={REPORTS.filter(r => r.category === 'core')} t={t} onOpen={openReport} />
       <ReportSection title={t('subsidiaryBooks')} category="subsidiary" reports={REPORTS.filter(r => r.category === 'subsidiary')} t={t} onOpen={openReport} />
       <ReportSection title={t('ngoReports')} category="ngo" reports={REPORTS.filter(r => r.category === 'ngo')} t={t} onOpen={openReport} />
+      <ReportSection title={t('expenseCompliance')} category="expense" reports={REPORTS.filter(r => r.category === 'expense')} t={t} onOpen={openReport} />
     </div>
   )
 }

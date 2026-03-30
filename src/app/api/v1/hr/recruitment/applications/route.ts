@@ -10,13 +10,15 @@ import {
   handleRouteError,
   parsePaginationParams,
 } from '@/lib/api-response'
+import { autoScoreApplication } from '@/lib/recruitment-scoring'
 
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuthFromRequest(request)
 
     const url = new URL(request.url)
-    const { page, limit, skip, search, sort, order } = parsePaginationParams(url)
+    const { page, limit, skip, search, sort: rawSort, order } = parsePaginationParams(url)
+    const sort = rawSort === 'createdAt' ? 'appliedAt' : rawSort
 
     const where: Record<string, unknown> = {
       organizationId: auth.organizationId,
@@ -113,6 +115,11 @@ export async function POST(request: NextRequest) {
         customResponses: body.customResponses || null,
         notes: body.notes || null,
       },
+    })
+
+    // Auto-trigger scoring immediately after creation
+    autoScoreApplication(application.id).catch((err) => {
+      console.error('Auto-score failed for application', application.id, err)
     })
 
     const auditCtx = getAuditContext(request)

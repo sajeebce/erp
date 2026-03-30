@@ -18,7 +18,7 @@ async function main() {
   const org = await prisma.organization.findUnique({ where: { slug: 'shapla-foundation' } })
   if (!org) throw new Error('Org not found')
 
-  const washProject = await prisma.project.findFirst({ where: { organizationId: org.id, name: { contains: 'WASH' } } })!
+  const washProject = await prisma.project.findFirst({ where: { organizationId: org.id, name: { contains: 'Water' } } }) ?? await prisma.project.findFirst({ where: { organizationId: org.id } })
 
   // ═══ PROCUREMENT ═══
 

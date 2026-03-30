@@ -667,3 +667,39 @@ enum AuditAction {
   EXPORT
   IMPORT
 }
+
+// ─── Daily Expense Management ───
+
+enum ExpenseClaimStatus {
+  DRAFT
+  SUBMITTED
+  SUPERVISOR_APPROVED
+  FINANCE_APPROVED
+  REJECTED
+  PAID
+  CANCELLED
+}
+
+enum AdvanceStatus {
+  REQUESTED
+  APPROVED
+  DISBURSED
+  PARTIALLY_SETTLED
+  SETTLED
+  OVERDUE
+  CANCELLED
+}
+
+enum AdvanceType {
+  TRAVEL
+  ACTIVITY
+  OPERATIONAL
+}
+
+enum PettyCashAction {
+  OPENING_BALANCE
+  EXPENSE
+  REPLENISHMENT
+  ADJUSTMENT
+  CLOSING
+}

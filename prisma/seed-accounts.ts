@@ -57,6 +57,8 @@ const accounts: AccountDef[] = [
   { code: '1114', name: 'FDR/Term Deposit', bn: 'এফডিআর/মেয়াদী আমানত', type: 'ASSET', nature: 'DEBIT', level: 4, isGroup: false, parentCode: '1110', isBankAccount: true },
   { code: '1120', name: 'Accounts Receivable', bn: 'প্রাপ্য হিসাব', type: 'ASSET', nature: 'DEBIT', level: 3, isGroup: false, parentCode: '1100' },
   { code: '1130', name: 'Advances to Staff', bn: 'কর্মচারী অগ্রিম', type: 'ASSET', nature: 'DEBIT', level: 3, isGroup: false, parentCode: '1100' },
+  { code: '1131', name: 'Advance Receivable - Travel', bn: 'ভ্রমণ অগ্রিম প্রাপ্য', type: 'ASSET', nature: 'DEBIT', parentCode: '1100', level: 3, isGroup: false },
+  { code: '1132', name: 'Advance Receivable - Activity', bn: 'কার্যক্রম অগ্রিম প্রাপ্য', type: 'ASSET', nature: 'DEBIT', parentCode: '1100', level: 3, isGroup: false },
   { code: '1140', name: 'Advances to Vendors', bn: 'সরবরাহকারী অগ্রিম', type: 'ASSET', nature: 'DEBIT', level: 3, isGroup: false, parentCode: '1100' },
   { code: '1150', name: 'Prepaid Expenses', bn: 'অগ্রিম প্রদত্ত ব্যয়', type: 'ASSET', nature: 'DEBIT', level: 3, isGroup: false, parentCode: '1100' },
   { code: '1160', name: 'Tax Deducted at Source', bn: 'উৎসে কর কর্তন', type: 'ASSET', nature: 'DEBIT', level: 3, isGroup: false, parentCode: '1100' },
@@ -84,6 +86,9 @@ const accounts: AccountDef[] = [
   { code: '2104', name: 'VAT Payable', bn: 'প্রদেয় ভ্যাট', type: 'LIABILITY', nature: 'CREDIT', level: 3, isGroup: false, parentCode: '2100' },
   { code: '2105', name: 'Provident Fund Payable', bn: 'প্রদেয় ভবিষ্য তহবিল', type: 'LIABILITY', nature: 'CREDIT', level: 3, isGroup: false, parentCode: '2100' },
   { code: '2106', name: 'Gratuity Payable', bn: 'প্রদেয় আনুতোষিক', type: 'LIABILITY', nature: 'CREDIT', level: 3, isGroup: false, parentCode: '2100' },
+  { code: '2107', name: 'Expense Claims Payable', bn: 'প্রদেয় ব্যয় দাবি', type: 'LIABILITY', nature: 'CREDIT', parentCode: '2100', level: 3, isGroup: false },
+  { code: '2108', name: 'VDS Payable', bn: 'প্রদেয় ভিডিএস', type: 'LIABILITY', nature: 'CREDIT', parentCode: '2100', level: 3, isGroup: false },
+  { code: '2109', name: 'TDS Payable', bn: 'প্রদেয় টিডিএস', type: 'LIABILITY', nature: 'CREDIT', parentCode: '2100', level: 3, isGroup: false },
   { code: '2110', name: 'Advances from Donors', bn: 'দাতা অগ্রিম', type: 'LIABILITY', nature: 'CREDIT', level: 3, isGroup: false, parentCode: '2100' },
   { code: '2120', name: 'Accrued Expenses', bn: 'জমাকৃত ব্যয়', type: 'LIABILITY', nature: 'CREDIT', level: 3, isGroup: false, parentCode: '2100' },
 

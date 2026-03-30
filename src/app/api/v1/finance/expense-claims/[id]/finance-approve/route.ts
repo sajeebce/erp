@@ -1,0 +1,199 @@
+import { NextRequest } from 'next/server'
+import { prisma } from '@/lib/db'
+import { requireAuthFromRequest } from '@/lib/auth'
+import { generateNextNumber } from '@/lib/number-sequence'
+import { logAudit, getAuditContext } from '@/lib/audit'
+import {
+  apiSuccess,
+  apiBadRequest,
+  apiNotFound,
+  handleRouteError,
+} from '@/lib/api-response'
+import { Prisma } from '@prisma/client'
+
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
+
+export async function POST(request: NextRequest, { params }: RouteParams) {
+  try {
+    const auth = await requireAuthFromRequest(request)
+    const { id } = await params
+
+    const claim = await prisma.expenseClaim.findFirst({
+      where: { id, organizationId: auth.organizationId },
+      include: { items: { orderBy: { sortOrder: 'asc' } } },
+    })
+
+    if (!claim) {
+      return apiNotFound('Expense claim not found')
+    }
+
+    if (claim.status !== 'SUPERVISOR_APPROVED') {
+      return apiBadRequest(
+        'Only SUPERVISOR_APPROVED claims can be finance-approved. Current status: ' + claim.status,
+      )
+    }
+
+    // Get current fiscal year
+    const fiscalYear = await prisma.fiscalYear.findFirst({
+      where: { organizationId: auth.organizationId, isCurrent: true },
+    })
+    if (!fiscalYear) {
+      return apiBadRequest('No current fiscal year found. Please configure a fiscal year first.')
+    }
+
+    // Find the Expense Claims Payable account (code 2107)
+    const claimsPayableAccount = await prisma.account.findFirst({
+      where: { organizationId: auth.organizationId, code: '2107' },
+    })
+    if (!claimsPayableAccount) {
+      return apiBadRequest(
+        'Expense Claims Payable account (2107) not found. Please set up Chart of Accounts.',
+      )
+    }
+
+    // Find a default expense account for items without accountId
+    const defaultExpenseAccount = await prisma.account.findFirst({
+      where: {
+        organizationId: auth.organizationId,
+        type: 'EXPENSE',
+        isActive: true,
+        isGroup: false,
+        deletedAt: null,
+      },
+      select: { id: true },
+    })
+
+    const now = new Date()
+
+    // Calculate approved amount from items
+    const approvedAmount = claim.items.reduce((sum, item) => {
+      const itemApproved = item.approvedAmount ? Number(item.approvedAmount) : Number(item.amount)
+      return sum + itemApproved
+    }, 0)
+
+    // Calculate advance deduction and net payable
+    let advanceDeducted = 0
+    if (claim.advanceId) {
+      const advance = await prisma.employeeAdvance.findFirst({
+        where: { id: claim.advanceId },
+      })
+      if (advance && advance.disbursedAmount) {
+        const disbursed = Number(advance.disbursedAmount)
+        const alreadySettled = Number(advance.settledAmount || 0)
+        advanceDeducted = Math.min(approvedAmount, disbursed - alreadySettled)
+      }
+    }
+    const netPayable = approvedAmount - advanceDeducted
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Create journal entry
+      const entryNo = await generateNextNumber(auth.organizationId, 'journal_entry')
+      const totalApproved = new Prisma.Decimal(approvedAmount)
+
+      // Build JE lines: DR each expense account, CR claims payable
+      const jeLines: Array<{
+        accountId: string
+        description: string
+        debit: Prisma.Decimal
+        credit: Prisma.Decimal
+        projectId: string | null
+      }> = []
+
+      for (const item of claim.items) {
+        const itemAmount = item.approvedAmount
+          ? new Prisma.Decimal(Number(item.approvedAmount))
+          : new Prisma.Decimal(Number(item.amount))
+
+        const accountId = item.accountId || defaultExpenseAccount?.id
+        if (!accountId) {
+          throw new Error(
+            'No expense account found for item. Please assign accounts to items or set up a default expense account.',
+          )
+        }
+
+        jeLines.push({
+          accountId,
+          description: `${item.category}: ${item.description}`,
+          debit: itemAmount,
+          credit: new Prisma.Decimal(0),
+          projectId: item.projectId || claim.projectId,
+        })
+      }
+
+      // Credit line: Expense Claims Payable
+      jeLines.push({
+        accountId: claimsPayableAccount.id,
+        description: `Expense claim ${claim.claimNo} - ${claim.purpose}`,
+        debit: new Prisma.Decimal(0),
+        credit: totalApproved,
+        projectId: claim.projectId,
+      })
+
+      const je = await tx.journalEntry.create({
+        data: {
+          entryNo,
+          date: now,
+          description: `Expense claim ${claim.claimNo}: ${claim.purpose}`,
+          reference: claim.claimNo,
+          fiscalYearId: fiscalYear.id,
+          projectId: claim.projectId,
+          grantId: claim.grantId,
+          totalDebit: totalApproved,
+          totalCredit: totalApproved,
+          status: 'APPROVED',
+          isAutoGenerated: true,
+          sourceModule: 'expense_claim',
+          sourceId: claim.id,
+          createdById: auth.userId,
+          approvedById: auth.userId,
+          approvedAt: now,
+          postedAt: now,
+          lines: {
+            create: jeLines,
+          },
+        },
+      })
+
+      // Update the claim
+      const updated = await tx.expenseClaim.update({
+        where: { id },
+        data: {
+          status: 'FINANCE_APPROVED',
+          financeApprovedById: auth.userId,
+          financeApprovedAt: now,
+          approvedAmount: new Prisma.Decimal(approvedAmount),
+          advanceDeducted: advanceDeducted > 0 ? new Prisma.Decimal(advanceDeducted) : null,
+          netPayable: new Prisma.Decimal(netPayable),
+          journalEntryId: je.id,
+        },
+      })
+
+      return updated
+    })
+
+    const auditCtx = getAuditContext(request)
+    await logAudit({
+      organizationId: auth.organizationId,
+      userId: auth.userId,
+      action: 'APPROVE',
+      module: 'finance',
+      resource: 'expense_claim',
+      resourceId: id,
+      description: `Finance approved expense claim ${claim.claimNo} for amount ${approvedAmount}`,
+      oldValues: { status: 'SUPERVISOR_APPROVED' },
+      newValues: {
+        status: 'FINANCE_APPROVED',
+        approvedAmount,
+        advanceDeducted,
+        netPayable,
+      },
+      ...auditCtx,
+    })
+
+    return apiSuccess(result)
+  } catch (error) {
+    return handleRouteError(error)
+  }
+}

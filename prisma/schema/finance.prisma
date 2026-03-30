@@ -161,6 +161,7 @@ model BankAccount {
   vouchers         Voucher[]
   fundReceipts     FundReceipt[]
   reconciliations  BankReconciliation[]
+  pettyCashFunds   PettyCashFund[]
 
   @@unique([organizationId, accountCode])
   @@index([organizationId])
@@ -206,4 +207,219 @@ model BankReconciliationItem {
   reconciliation    BankReconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
 
   @@index([reconciliationId])
+}
+
+// ═══════════════════════════════════════════
+// Daily Expense Management Models
+// ═══════════════════════════════════════════
+
+model PettyCashFund {
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String           @db.Uuid
+  name            String
+  code            String
+  imprestAmount   Decimal          @db.Decimal(18, 2)
+  currentBalance  Decimal          @default(0) @db.Decimal(18, 2)
+  currencyCode    CurrencyCode     @default(BDT)
+  custodianId     String           @db.Uuid
+  bankAccountId   String?          @db.Uuid
+  projectId       String?          @db.Uuid
+  location        String?
+  isActive        Boolean          @default(true)
+  lastReconciledAt DateTime?
+  notes           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  bankAccount     BankAccount?     @relation(fields: [bankAccountId], references: [id])
+  transactions    PettyCashTransaction[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([custodianId])
+}
+
+model PettyCashTransaction {
+  id              String           @id @default(uuid()) @db.Uuid
+  fundId          String           @db.Uuid
+  transactionNo   String           @unique
+  date            DateTime
+  action          PettyCashAction
+  amount          Decimal          @db.Decimal(18, 2)
+  balanceAfter    Decimal          @db.Decimal(18, 2)
+  description     String
+  category        String?
+  receiptPath     String?
+  projectId       String?          @db.Uuid
+  budgetLineId    String?          @db.Uuid
+  accountId       String?          @db.Uuid
+  voucherId       String?          @db.Uuid
+  journalEntryId  String?          @db.Uuid
+  recordedById    String           @db.Uuid
+  approvedById    String?          @db.Uuid
+  notes           String?
+  createdAt       DateTime         @default(now())
+
+  fund            PettyCashFund    @relation(fields: [fundId], references: [id])
+
+  @@index([fundId])
+  @@index([date])
+  @@index([projectId])
+}
+
+model ExpenseClaim {
+  id              String             @id @default(uuid()) @db.Uuid
+  organizationId  String             @db.Uuid
+  claimNo         String             @unique
+  employeeId      String             @db.Uuid
+  claimDate       DateTime           @default(now())
+  totalAmount     Decimal            @db.Decimal(18, 2)
+  approvedAmount  Decimal?           @db.Decimal(18, 2)
+  currencyCode    CurrencyCode       @default(BDT)
+  purpose         String
+  projectId       String?            @db.Uuid
+  grantId         String?            @db.Uuid
+  travelStartDate DateTime?
+  travelEndDate   DateTime?
+  status          ExpenseClaimStatus @default(DRAFT)
+  supervisorId    String?            @db.Uuid
+  supervisorApprovedAt DateTime?
+  financeApprovedById  String?       @db.Uuid
+  financeApprovedAt    DateTime?
+  rejectionReason      String?
+  paymentMethod   String?
+  paidAt          DateTime?
+  voucherId       String?            @db.Uuid
+  journalEntryId  String?            @db.Uuid
+  advanceId       String?            @db.Uuid
+  advanceDeducted Decimal?           @db.Decimal(18, 2)
+  netPayable      Decimal?           @db.Decimal(18, 2)
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  organization    Organization       @relation(fields: [organizationId], references: [id])
+  items           ExpenseClaimItem[]
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([projectId])
+}
+
+model ExpenseClaimItem {
+  id              String       @id @default(uuid()) @db.Uuid
+  claimId         String       @db.Uuid
+  date            DateTime
+  category        String
+  description     String
+  amount          Decimal      @db.Decimal(18, 2)
+  approvedAmount  Decimal?     @db.Decimal(18, 2)
+  receiptPath     String?
+  hasReceipt      Boolean      @default(false)
+  noReceiptReason String?
+  accountId       String?      @db.Uuid
+  projectId       String?      @db.Uuid
+  budgetLineId    String?      @db.Uuid
+  tdsRate         Decimal?     @db.Decimal(5, 2)
+  tdsAmount       Decimal?     @db.Decimal(18, 2)
+  vdsRate         Decimal?     @db.Decimal(5, 2)
+  vdsAmount       Decimal?     @db.Decimal(18, 2)
+  location        String?
+  notes           String?
+  sortOrder       Int          @default(0)
+
+  claim           ExpenseClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+}
+
+model EmployeeAdvance {
+  id              String         @id @default(uuid()) @db.Uuid
+  organizationId  String         @db.Uuid
+  advanceNo       String         @unique
+  employeeId      String         @db.Uuid
+  requestDate     DateTime       @default(now())
+  purpose         String
+  advanceType     AdvanceType    @default(TRAVEL)
+  estimatedAmount Decimal        @db.Decimal(18, 2)
+  approvedAmount  Decimal?       @db.Decimal(18, 2)
+  projectId       String?        @db.Uuid
+  grantId         String?        @db.Uuid
+  travelStartDate DateTime?
+  travelEndDate   DateTime?
+  expectedSettlementDate DateTime?
+  disbursedAmount Decimal?       @db.Decimal(18, 2)
+  disbursedAt     DateTime?
+  disbursementMethod String?
+  bankAccountId   String?        @db.Uuid
+  disbursementVoucherId String?  @db.Uuid
+  disbursementJournalId String?  @db.Uuid
+  settledAmount   Decimal?       @db.Decimal(18, 2)
+  refundAmount    Decimal?       @db.Decimal(18, 2)
+  additionalPaid  Decimal?       @db.Decimal(18, 2)
+  settledAt       DateTime?
+  status          AdvanceStatus  @default(REQUESTED)
+  approvedById    String?        @db.Uuid
+  approvedAt      DateTime?
+  rejectionReason String?
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([status])
+}
+
+model PerDiemRate {
+  id              String         @id @default(uuid()) @db.Uuid
+  organizationId  String         @db.Uuid
+  name            String
+  location        String
+  locationType    String         @default("DISTRICT")
+  donorId         String?        @db.Uuid
+  fullDayRate     Decimal        @db.Decimal(18, 2)
+  halfDayRate     Decimal?       @db.Decimal(18, 2)
+  overnightRate   Decimal?       @db.Decimal(18, 2)
+  mealsOnlyRate   Decimal?       @db.Decimal(18, 2)
+  currencyCode    CurrencyCode   @default(BDT)
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?
+  isActive        Boolean        @default(true)
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([location])
+  @@index([donorId])
+}
+
+model ExpenseCategory {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @db.Uuid
+  name            String
+  code            String
+  glAccountId     String?      @db.Uuid
+  budgetCategory  String?
+  maxAmountPerItem Decimal?    @db.Decimal(18, 2)
+  requiresReceipt Boolean      @default(true)
+  tdsApplicable   Boolean      @default(false)
+  defaultTdsRate  Decimal?     @db.Decimal(5, 2)
+  vdsApplicable   Boolean      @default(false)
+  defaultVdsRate  Decimal?     @db.Decimal(5, 2)
+  isActive        Boolean      @default(true)
+  sortOrder       Int          @default(0)
+  createdAt       DateTime     @default(now())
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
 }

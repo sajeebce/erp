@@ -132,8 +132,44 @@ export async function POST(request: NextRequest) {
         bankName: body.bankName || null,
         tinNumber: body.tinNumber || null,
         notes: body.notes || null,
+        convertedFromApplicationId: body.convertedFromApplicationId || null,
       },
     })
+
+    // Auto-create Contract (DRAFT)
+    const contractNo = await generateNextNumber(auth.organizationId, 'employee-contract')
+    await prisma.employeeContract.create({
+      data: {
+        organizationId: auth.organizationId,
+        contractNo,
+        employeeId: employee.id,
+        contractType: body.employmentType || 'FULL_TIME',
+        title: `${body.fullName} - Employment Contract`,
+        startDate: new Date(body.joiningDate),
+        endDate: body.endDate ? new Date(body.endDate) : null,
+        basicSalary: body.basicSalary ? new Prisma.Decimal(body.basicSalary) : new Prisma.Decimal(0),
+        status: 'DRAFT',
+      },
+    })
+
+    // Auto-start Onboarding
+    const checklists = await prisma.onboardingChecklist.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { organizationId: auth.organizationId },
+          { organizationId: null },
+        ],
+      },
+    })
+    if (checklists.length > 0) {
+      await prisma.onboardingProgress.createMany({
+        data: checklists.map((c) => ({
+          employeeId: employee.id,
+          checklistId: c.id,
+        })),
+      })
+    }
 
     const auditCtx = getAuditContext(request)
     await logAudit({

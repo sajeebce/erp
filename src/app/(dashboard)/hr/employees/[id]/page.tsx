@@ -3,17 +3,33 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { ArrowLeft, Loader2, Pencil } from 'lucide-react'
+import { ArrowLeft, Loader2, Pencil, Check, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { SearchableSelect } from '@/components/shared/searchable-select'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
 import { FileUpload } from '@/components/shared/file-upload'
+
+const REQUIRED_DOCUMENTS = [
+  { type: 'NID_COPY', label: 'NID / Birth Certificate', required: true },
+  { type: 'PHOTO', label: 'Passport-size Photos', required: true },
+  { type: 'EDUCATIONAL_CERT', label: 'Educational Certificates', required: true },
+  { type: 'EXPERIENCE_CERT', label: 'Experience Certificates', required: false },
+  { type: 'TIN_CERTIFICATE', label: 'TIN Certificate', required: true },
+  { type: 'MEDICAL_FITNESS', label: 'Medical Fitness Certificate', required: false },
+  { type: 'BANK_ACCOUNT', label: 'Bank Account Details', required: true },
+  { type: 'NOMINEE_FORM', label: 'Nominee Declaration Form', required: true },
+  { type: 'EMERGENCY_CONTACT', label: 'Emergency Contact Form', required: true },
+  { type: 'SIGNED_CONTRACT', label: 'Signed Employment Contract', required: true },
+  { type: 'POLICY_ACKNOWLEDGMENT', label: 'Policy Handbook Acknowledgment', required: true },
+  { type: 'NGOAB_FD4_NOTIFICATION', label: 'NGOAB FD-4 Notification', required: true },
+]
 
 const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'CONSULTANT', 'INTERN', 'VOLUNTEER'] as const
 const STATUSES = ['ACTIVE', 'INACTIVE', 'ON_LEAVE', 'SUSPENDED'] as const
@@ -79,6 +95,9 @@ export default function EmployeeDetailPage() {
   const [emergencyContact, setEmergencyContact] = useState('')
   const [notes, setNotes] = useState('')
 
+  // Documents
+  const [employeeDocuments, setEmployeeDocuments] = useState<{ type: string; uploadedAt: string }[]>([])
+
   // Lookup data
   const [departments, setDepartments] = useState<Department[]>([])
   const [designations, setDesignations] = useState<Designation[]>([])
@@ -100,6 +119,11 @@ export default function EmployeeDetailPage() {
       })
       .catch(() => setError(tc('errors.loadFailed')))
       .finally(() => setLoading(false))
+
+    fetch(`/api/v1/hr/employees/${params.id}/documents`)
+      .then(res => res.json())
+      .then(json => { if (json.success) setEmployeeDocuments(json.data) })
+      .catch(() => {})
 
     fetch('/api/v1/hr/departments')
       .then(res => res.json())
@@ -291,6 +315,42 @@ export default function EmployeeDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Required Documents Checklist */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Required Documents</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {REQUIRED_DOCUMENTS.map(doc => {
+                  const uploaded = employeeDocuments.find(d => d.type === doc.type)
+                  return (
+                    <div key={doc.type} className="flex items-center justify-between p-2 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        {uploaded ? (
+                          <div className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                            <Check className="h-3 w-3 text-green-600" />
+                          </div>
+                        ) : (
+                          <div className="h-5 w-5 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                            <AlertTriangle className="h-3 w-3 text-amber-600" />
+                          </div>
+                        )}
+                        <span className="text-sm">{doc.label}</span>
+                        {doc.required && <Badge variant="outline" className="text-[10px]">Required</Badge>}
+                      </div>
+                      {uploaded ? (
+                        <span className="text-xs text-muted-foreground">{formatDate(uploaded.uploadedAt)}</span>
+                      ) : (
+                        <span className="text-xs text-amber-600">Missing</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
 
           {employee.notes && (
             <Card>

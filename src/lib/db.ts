@@ -6,7 +6,11 @@ const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:post
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
+  _prismaVersion: number | undefined
 }
+
+// Bump this version to force PrismaClient re-creation after schema changes
+const PRISMA_CLIENT_VERSION = 2
 
 function createPrismaClient() {
   const pool = new pg.Pool({ connectionString })
@@ -15,6 +19,12 @@ function createPrismaClient() {
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   })
+}
+
+// Re-create the client if the version has changed (e.g. after prisma generate)
+if (globalForPrisma._prismaVersion !== PRISMA_CLIENT_VERSION) {
+  globalForPrisma.prisma = undefined
+  globalForPrisma._prismaVersion = PRISMA_CLIENT_VERSION
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient()

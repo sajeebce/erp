@@ -36,6 +36,7 @@ export const navigation: NavItem[] = [
       { title: "items.bankReconciliation", url: "/finance/bank-reconciliation" },
       { title: "items.bankCash", url: "/finance/bank-cash" },
       { title: "items.financialReports", url: "/finance/financial-reports" },
+      { title: "items.dailyExpenses", url: "/finance/expenses" },
     ],
   },
   {
@@ -133,6 +134,7 @@ export const navigation: NavItem[] = [
       { title: "items.leaveManagement", url: "/hr/leave" },
       { title: "items.holidays", url: "/hr/holidays" },
       { title: "items.payroll", url: "/hr/payroll" },
+      { title: "items.pensionManagement", url: "/hr/pension" },
       { title: "items.performance", url: "/hr/performance" },
       { title: "items.training", url: "/hr/training" },
       { title: "items.offboarding", url: "/hr/offboarding" },

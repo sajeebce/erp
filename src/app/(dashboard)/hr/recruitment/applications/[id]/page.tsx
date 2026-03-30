@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import {
   ArrowLeft, Loader2, ChevronRight, XCircle, CalendarPlus,
-  Sparkles, GraduationCap, BriefcaseBusiness, Code2, Languages, Award,
+  Sparkles, GraduationCap, BriefcaseBusiness, Code2, Languages, Award, UserCheck,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -548,6 +548,21 @@ export default function ApplicationDetailPage() {
                     </a>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Convert to Employee */}
+          {isHired && (
+            <Card>
+              <CardContent className="pt-4 space-y-2">
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  onClick={() => router.push(`/hr/employees/new?fromApplication=${application.id}`)}
+                >
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  Convert to Employee
+                </Button>
               </CardContent>
             </Card>
           )}
