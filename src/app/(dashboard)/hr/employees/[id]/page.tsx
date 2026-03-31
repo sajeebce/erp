@@ -383,7 +383,7 @@ export default function EmployeeDetailPage() {
       }
       case 'timeline': {
         const res = await fetch(`/api/v1/hr/employees/${employeeId}/timeline`).then(r => r.json()).catch(() => ({ success: false }))
-        setTimeline(res.success ? (Array.isArray(res.data) ? res.data : []) : [])
+        setTimeline(res.success ? (Array.isArray(res.data) ? res.data : res.data?.events || []) : [])
         break
       }
     }
