@@ -14,6 +14,11 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
+// ─── Helper: round to 2 decimal places ───
+function r2(n: number): number {
+  return Math.round(n * 100) / 100
+}
+
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const auth = await requireAuthFromRequest(request)
@@ -32,7 +37,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         organizationId: auth.organizationId,
         status: 'ACTIVE',
         deletedAt: null,
-        basicSalary: { not: null },
+      },
+      include: {
+        salaryGrade: { include: { steps: true } },
+        salaryStructure: {
+          include: {
+            lines: {
+              where: { isActive: true },
+              include: { component: true },
+              orderBy: { sortOrder: 'asc' },
+            },
+          },
+        },
+        department: { select: { id: true, name: true } },
+        designation: { select: { id: true, title: true } },
       },
     })
 
@@ -48,81 +66,344 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     })
 
+    // Determine fiscal year for YTD calculation
+    const fiscalYear = await prisma.fiscalYear.findFirst({
+      where: { organizationId: auth.organizationId, isCurrent: true },
+      select: { id: true, startDate: true, endDate: true },
+    })
+
+    // Pre-fetch previous PayrollEntryLines in this fiscal year for YTD
+    // We need all entries from payroll runs in the same fiscal year, before current month
+    let previousEntryLines: { payrollEntryId: string; componentId: string; amount: Prisma.Decimal }[] = []
+    let previousEntryEmployeeMap: Record<string, string> = {} // entryId -> employeeId
+
+    if (fiscalYear) {
+      const previousRuns = await prisma.payrollRun.findMany({
+        where: {
+          id: { not: id },
+          status: { in: ['PROCESSED', 'APPROVED', 'PAID'] },
+          // Runs within fiscal year dates
+          OR: [
+            {
+              year: { gt: fiscalYear.startDate.getFullYear(), lt: fiscalYear.endDate.getFullYear() },
+            },
+            {
+              year: fiscalYear.startDate.getFullYear(),
+              month: { gte: fiscalYear.startDate.getMonth() + 1 },
+            },
+            {
+              year: fiscalYear.endDate.getFullYear(),
+              month: { lte: fiscalYear.endDate.getMonth() + 1 },
+            },
+          ],
+        },
+        select: { id: true },
+      })
+
+      if (previousRuns.length > 0) {
+        const prevEntries = await prisma.payrollEntry.findMany({
+          where: { payrollRunId: { in: previousRuns.map((r) => r.id) } },
+          select: { id: true, employeeId: true },
+        })
+
+        previousEntryEmployeeMap = Object.fromEntries(
+          prevEntries.map((e) => [e.id, e.employeeId])
+        )
+
+        previousEntryLines = await prisma.payrollEntryLine.findMany({
+          where: { payrollEntryId: { in: prevEntries.map((e) => e.id) } },
+          select: { payrollEntryId: true, componentId: true, amount: true },
+        })
+      }
+    }
+
+    // Build YTD lookup: employeeId -> componentId -> sum
+    const ytdMap: Record<string, Record<string, number>> = {}
+    for (const line of previousEntryLines) {
+      const empId = previousEntryEmployeeMap[line.payrollEntryId]
+      if (!empId) continue
+      if (!ytdMap[empId]) ytdMap[empId] = {}
+      ytdMap[empId][line.componentId] = (ytdMap[empId][line.componentId] || 0) + Number(line.amount)
+    }
+
     let totalGross = 0
     let totalDeductions = 0
     let totalNet = 0
 
     const entries: Prisma.PayrollEntryCreateManyInput[] = []
+    // Collect lines per employee to create after entries
+    const allLines: {
+      employeeId: string
+      lines: {
+        componentId: string
+        componentName: string
+        componentCode: string
+        lineType: string
+        calculationType: string
+        percentage: number | null
+        amount: number
+        ytdAmount: number
+        sortOrder: number
+      }[]
+    }[] = []
 
     for (const emp of employees) {
-      const basic = Number(emp.basicSalary ?? 0)
-      if (basic <= 0) continue
+      let basicSalary = 0
+      let useStructure = false
 
-      // Salary components (standard NGO structure)
-      const houseRent = basic * 0.5
-      const medical = basic * 0.1
-      const transport = basic * 0.1
+      // (a) If employee has salaryGradeId + salaryStepNo -> get basic from SalaryGradeStep
+      if (emp.salaryGradeId && emp.salaryStepNo && emp.salaryGrade) {
+        const step = emp.salaryGrade.steps.find(
+          (s) => s.stepNumber === emp.salaryStepNo
+        )
+        if (step) {
+          basicSalary = Number(step.basicSalary)
+        }
+      }
 
-      // Attendance
+      // If no grade/step basic found, fall back to employee.basicSalary
+      if (basicSalary <= 0) {
+        basicSalary = Number(emp.basicSalary ?? 0)
+      }
+
+      if (basicSalary <= 0) continue
+
+      // (b) Check if employee has salary structure
+      const structureLines = emp.salaryStructure?.lines ?? []
+
+      // ── Attendance ──
       const empAttendance = attendanceRecords.filter((a) => a.employeeId === emp.id)
-      const presentDays = empAttendance.filter((a) => ['PRESENT', 'LATE', 'HALF_DAY'].includes(a.status)).length
+      const presentDays = empAttendance.filter((a) =>
+        ['PRESENT', 'LATE', 'HALF_DAY'].includes(a.status)
+      ).length
       const leaveDays = empAttendance.filter((a) => a.status === 'ON_LEAVE').length
-      const absentDays = daysInMonth - presentDays - leaveDays
-      const effectiveAbsent = Math.max(0, absentDays)
-
+      const absentDays = Math.max(0, daysInMonth - presentDays - leaveDays)
       const otHours = empAttendance.reduce((sum, a) => sum + Number(a.otHours), 0)
 
-      const grossSalary = basic + houseRent + medical + transport
+      // ── Calculate components ──
+      const entryLines: typeof allLines[number]['lines'] = []
 
-      // Deductions
-      const pfDeduction = basic * 0.1
-      const tdsDeduction = basic * 0.05
+      let houseRent = 0
+      let medical = 0
+      let transport = 0
+      let otherEarnings = 0
+      let pfDeduction = 0
+      let tdsDeduction = 0
+      let otherDeductions = 0
+      let grossSalary = 0
 
-      // Absent deduction: per-day rate * absent days
+      if (structureLines.length > 0) {
+        useStructure = true
+
+        // First pass: calculate FIXED and PERCENT_OF_BASIC earnings to get subtotal for PERCENT_OF_GROSS
+        let earningsSubtotal = 0
+        const pendingGrossLines: typeof structureLines = []
+
+        for (const line of structureLines) {
+          const comp = line.component
+          if (line.calculationType === 'PERCENT_OF_GROSS') {
+            pendingGrossLines.push(line)
+            continue
+          }
+
+          let amount = 0
+          let pct: number | null = null
+
+          if (line.calculationType === 'FIXED') {
+            amount = Number(line.amount ?? 0)
+          } else if (line.calculationType === 'PERCENT_OF_BASIC') {
+            pct = Number(line.percentage ?? 0)
+            amount = r2(basicSalary * pct / 100)
+          }
+
+          if (comp.type === 'EARNING') {
+            earningsSubtotal += amount
+          }
+
+          const empYtd = ytdMap[emp.id]?.[comp.id] ?? 0
+
+          entryLines.push({
+            componentId: comp.id,
+            componentName: comp.name,
+            componentCode: comp.code,
+            lineType: comp.type,
+            calculationType: line.calculationType,
+            percentage: pct,
+            amount: r2(amount),
+            ytdAmount: r2(empYtd + amount),
+            sortOrder: line.sortOrder,
+          })
+        }
+
+        // Calculate gross from earnings so far (for PERCENT_OF_GROSS)
+        // Gross = all earnings summed
+        grossSalary = earningsSubtotal
+
+        // Second pass: PERCENT_OF_GROSS
+        for (const line of pendingGrossLines) {
+          const comp = line.component
+          const pct = Number(line.percentage ?? 0)
+          const amount = r2(grossSalary * pct / 100)
+
+          if (comp.type === 'EARNING') {
+            grossSalary += amount
+          }
+
+          const empYtd = ytdMap[emp.id]?.[comp.id] ?? 0
+
+          entryLines.push({
+            componentId: comp.id,
+            componentName: comp.name,
+            componentCode: comp.code,
+            lineType: comp.type,
+            calculationType: 'PERCENT_OF_GROSS',
+            percentage: pct,
+            amount: r2(amount),
+            ytdAmount: r2(empYtd + amount),
+            sortOrder: line.sortOrder,
+          })
+        }
+
+        // Re-calculate grossSalary as sum of all EARNING lines
+        grossSalary = r2(entryLines
+          .filter((l) => l.lineType === 'EARNING')
+          .reduce((s, l) => s + l.amount, 0))
+
+        // Map component codes to flat columns for backward compat
+        for (const line of entryLines) {
+          const code = line.componentCode.toUpperCase()
+          if (line.lineType === 'EARNING') {
+            if (code === 'BASIC') {
+              // basicSalary is already set
+            } else if (code === 'HOUSE_RENT' || code === 'HRA') {
+              houseRent += line.amount
+            } else if (code === 'MEDICAL' || code === 'MED') {
+              medical += line.amount
+            } else if (code === 'TRANSPORT' || code === 'TA') {
+              transport += line.amount
+            } else {
+              otherEarnings += line.amount
+            }
+          } else if (line.lineType === 'DEDUCTION') {
+            if (code === 'PF' || code === 'PF_DEDUCTION') {
+              pfDeduction += line.amount
+            } else if (code === 'TDS' || code === 'TAX') {
+              tdsDeduction += line.amount
+            } else {
+              otherDeductions += line.amount
+            }
+          }
+        }
+      } else {
+        // ── FALLBACK: Legacy flat calculation ──
+        houseRent = r2(basicSalary * 0.5)
+        medical = r2(basicSalary * 0.1)
+        transport = r2(basicSalary * 0.1)
+
+        grossSalary = r2(basicSalary + houseRent + medical + transport)
+
+        pfDeduction = r2(basicSalary * 0.1)
+        tdsDeduction = r2(basicSalary * 0.05)
+      }
+
+      // Absent deduction always applies
       const perDayRate = grossSalary / daysInMonth
-      const absentDeduction = Math.round(perDayRate * effectiveAbsent * 100) / 100
+      const absentDeduction = r2(perDayRate * absentDays)
 
-      const totalDeductionsForEmp = pfDeduction + tdsDeduction + absentDeduction
-      const netSalary = Math.round((grossSalary - totalDeductionsForEmp) * 100) / 100
+      const totalDeductionsForEmp = useStructure
+        ? r2(entryLines.filter((l) => l.lineType === 'DEDUCTION').reduce((s, l) => s + l.amount, 0) + absentDeduction)
+        : r2(pfDeduction + tdsDeduction + absentDeduction)
+
+      const netSalary = r2(grossSalary - totalDeductionsForEmp)
 
       entries.push({
         payrollRunId: id,
         employeeId: emp.id,
-        basicSalary: new Prisma.Decimal(basic),
+        basicSalary: new Prisma.Decimal(basicSalary),
         houseRent: new Prisma.Decimal(houseRent),
         medicalAllowance: new Prisma.Decimal(medical),
         transportAllowance: new Prisma.Decimal(transport),
+        otherEarnings: new Prisma.Decimal(otherEarnings),
         grossSalary: new Prisma.Decimal(grossSalary),
         pfDeduction: new Prisma.Decimal(pfDeduction),
         tdsDeduction: new Prisma.Decimal(tdsDeduction),
+        otherDeductions: new Prisma.Decimal(otherDeductions),
         absentDeduction: new Prisma.Decimal(absentDeduction),
         netSalary: new Prisma.Decimal(netSalary),
         workingDays: daysInMonth,
         presentDays,
-        absentDays: effectiveAbsent,
+        absentDays,
         otHours: new Prisma.Decimal(otHours),
       })
+
+      if (useStructure && entryLines.length > 0) {
+        allLines.push({ employeeId: emp.id, lines: entryLines })
+      }
 
       totalGross += grossSalary
       totalDeductions += totalDeductionsForEmp
       totalNet += netSalary
     }
 
-    await prisma.$transaction([
-      prisma.payrollEntry.createMany({ data: entries }),
-      prisma.payrollRun.update({
+    // Execute in transaction
+    await prisma.$transaction(async (tx) => {
+      // Create all payroll entries
+      await tx.payrollEntry.createMany({ data: entries })
+
+      // Update the run
+      await tx.payrollRun.update({
         where: { id },
         data: {
+          organizationId: auth.organizationId,
           status: 'PROCESSED',
-          totalGross: new Prisma.Decimal(Math.round(totalGross * 100) / 100),
-          totalDeductions: new Prisma.Decimal(Math.round(totalDeductions * 100) / 100),
-          totalNet: new Prisma.Decimal(Math.round(totalNet * 100) / 100),
+          totalGross: new Prisma.Decimal(r2(totalGross)),
+          totalDeductions: new Prisma.Decimal(r2(totalDeductions)),
+          totalNet: new Prisma.Decimal(r2(totalNet)),
           employeeCount: entries.length,
           processedById: auth.userId,
           processedAt: new Date(),
         },
-      }),
-    ])
+      })
+
+      // Create PayrollEntryLine records for structure-based entries
+      if (allLines.length > 0) {
+        // Fetch the just-created entries to get their IDs
+        const createdEntries = await tx.payrollEntry.findMany({
+          where: { payrollRunId: id },
+          select: { id: true, employeeId: true },
+        })
+
+        const entryIdMap = Object.fromEntries(
+          createdEntries.map((e) => [e.employeeId, e.id])
+        )
+
+        const lineRecords: Prisma.PayrollEntryLineCreateManyInput[] = []
+
+        for (const { employeeId, lines } of allLines) {
+          const payrollEntryId = entryIdMap[employeeId]
+          if (!payrollEntryId) continue
+
+          for (const line of lines) {
+            lineRecords.push({
+              payrollEntryId,
+              componentId: line.componentId,
+              componentName: line.componentName,
+              componentCode: line.componentCode,
+              lineType: line.lineType,
+              calculationType: line.calculationType as 'FIXED' | 'PERCENT_OF_BASIC' | 'PERCENT_OF_GROSS',
+              percentage: line.percentage != null ? new Prisma.Decimal(line.percentage) : null,
+              amount: new Prisma.Decimal(line.amount),
+              ytdAmount: new Prisma.Decimal(line.ytdAmount),
+              sortOrder: line.sortOrder,
+            })
+          }
+        }
+
+        if (lineRecords.length > 0) {
+          await tx.payrollEntryLine.createMany({ data: lineRecords })
+        }
+      }
+    })
 
     const auditCtx = getAuditContext(request)
     await logAudit({
@@ -133,7 +414,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       resource: 'payroll_run',
       resourceId: id,
       description: `Processed payroll run ${run.runNo} — ${entries.length} employees`,
-      newValues: { status: 'PROCESSED', employeeCount: entries.length, totalNet },
+      newValues: { status: 'PROCESSED', employeeCount: entries.length, totalNet: r2(totalNet) },
       ...auditCtx,
     })
 
@@ -141,9 +422,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       id,
       status: 'PROCESSED',
       employeeCount: entries.length,
-      totalGross: Math.round(totalGross * 100) / 100,
-      totalDeductions: Math.round(totalDeductions * 100) / 100,
-      totalNet: Math.round(totalNet * 100) / 100,
+      totalGross: r2(totalGross),
+      totalDeductions: r2(totalDeductions),
+      totalNet: r2(totalNet),
     })
   } catch (error) {
     return handleRouteError(error)

@@ -6,10 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Wallet, TrendingUp, FolderOpen, Users, Clock, UserCheck, ShoppingCart, Shield,
+  ArrowUpRight, ArrowDownRight, Briefcase, UserMinus, UserPlus, FileWarning,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, Legend,
+  ComposedChart,
 } from 'recharts'
 import { useFormatters } from '@/hooks/use-formatters'
 
@@ -36,6 +38,23 @@ interface DashboardData {
   upcomingDeadlines: { reportNo: string; type: string; dueDate: string; grantTitle: string }[]
 }
 
+interface HrKpiData {
+  totalHeadcount: number
+  headcountDelta: number
+  newJoiners: number
+  separations: number
+  turnoverRate: number
+  openPositions: number
+  expiringContracts: number
+}
+
+interface HeadcountTrendPoint {
+  month: string
+  headcount: number
+  joiners: number
+  leavers: number
+}
+
 const CHART_COLORS = [
   'var(--chart-1, hsl(221, 83%, 53%))',
   'var(--chart-2, hsl(160, 60%, 45%))',
@@ -50,6 +69,11 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const [hrKpis, setHrKpis] = useState<HrKpiData | null>(null)
+  const [hrKpisLoading, setHrKpisLoading] = useState(true)
+  const [headcountTrend, setHeadcountTrend] = useState<HeadcountTrendPoint[]>([])
+  const [trendLoading, setTrendLoading] = useState(true)
+
   useEffect(() => {
     fetch('/api/v1/dashboard')
       .then(res => res.json())
@@ -58,6 +82,18 @@ export default function DashboardPage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false))
+
+    fetch('/api/v1/dashboard/hr-kpis')
+      .then(res => res.json())
+      .then(json => { if (json.success) setHrKpis(json.data) })
+      .catch(console.error)
+      .finally(() => setHrKpisLoading(false))
+
+    fetch('/api/v1/dashboard/hr-headcount-trend')
+      .then(res => res.json())
+      .then(json => { if (json.success) setHeadcountTrend(json.data) })
+      .catch(console.error)
+      .finally(() => setTrendLoading(false))
   }, [])
 
   if (loading) {
@@ -89,6 +125,51 @@ export default function DashboardPage() {
     { title: t('kpis.complianceScore'), value: `${data.kpis.complianceScore}%`, icon: Shield, color: 'text-emerald-600' },
   ]
 
+  const hrKpiCards = hrKpis ? [
+    {
+      title: t('hrKpis.totalHeadcount'),
+      value: String(hrKpis.totalHeadcount),
+      icon: Users,
+      color: 'text-blue-600',
+      delta: hrKpis.headcountDelta,
+    },
+    {
+      title: t('hrKpis.newJoiners'),
+      value: String(hrKpis.newJoiners),
+      icon: UserPlus,
+      color: 'text-emerald-600',
+      sub: t('hrKpis.thisMonth'),
+    },
+    {
+      title: t('hrKpis.separations'),
+      value: String(hrKpis.separations),
+      icon: UserMinus,
+      color: 'text-red-600',
+      sub: t('hrKpis.thisMonth'),
+    },
+    {
+      title: t('hrKpis.turnoverRate'),
+      value: `${hrKpis.turnoverRate.toFixed(1)}%`,
+      icon: TrendingUp,
+      color: 'text-amber-600',
+      sub: t('hrKpis.trailing12mo'),
+    },
+    {
+      title: t('hrKpis.openPositions'),
+      value: String(hrKpis.openPositions),
+      icon: Briefcase,
+      color: 'text-violet-600',
+      sub: t('hrKpis.hiring'),
+    },
+    {
+      title: t('hrKpis.expiringContracts'),
+      value: String(hrKpis.expiringContracts),
+      icon: FileWarning,
+      color: 'text-orange-600',
+      sub: t('hrKpis.next30days'),
+    },
+  ] : []
+
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
@@ -109,6 +190,71 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* HR Workforce KPIs */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">{t('hrKpis.title')}</h2>
+
+        {hrKpisLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i}><CardContent className="p-5"><Skeleton className="h-16" /></CardContent></Card>
+            ))}
+          </div>
+        ) : hrKpis ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+            {hrKpiCards.map((kpi) => (
+              <Card key={kpi.title}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide leading-tight">{kpi.title}</p>
+                      <div className="flex items-baseline gap-1.5 mt-1">
+                        <p className="text-xl font-bold">{kpi.value}</p>
+                        {'delta' in kpi && kpi.delta !== undefined && kpi.delta !== 0 && (
+                          <span className={`flex items-center text-xs font-medium ${kpi.delta > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {kpi.delta > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                            {Math.abs(kpi.delta)}
+                          </span>
+                        )}
+                      </div>
+                      {kpi.sub && <p className="text-[10px] text-muted-foreground mt-0.5">{kpi.sub}</p>}
+                    </div>
+                    <div className={`h-8 w-8 rounded-md bg-muted flex items-center justify-center ${kpi.color}`}>
+                      <kpi.icon className="h-4 w-4" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : null}
+
+        {/* Headcount Trend Chart */}
+        {trendLoading ? (
+          <Card><CardContent className="p-6"><Skeleton className="h-64" /></CardContent></Card>
+        ) : headcountTrend.length > 0 ? (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">{t('hrKpis.headcountTrend')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={280}>
+                <ComposedChart data={headcountTrend}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="month" className="text-xs" tick={{ fontSize: 11 }} />
+                  <YAxis className="text-xs" tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="joiners" fill="hsl(160, 60%, 45%)" radius={[2, 2, 0, 0]} name={t('hrKpis.joiners')} />
+                  <Bar dataKey="leavers" fill="hsl(0, 75%, 55%)" radius={[2, 2, 0, 0]} name={t('hrKpis.leavers')} />
+                  <Line type="monotone" dataKey="headcount" stroke="hsl(221, 83%, 53%)" strokeWidth={2} dot={{ r: 3 }} name={t('hrKpis.headcount')} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
 
       {/* Charts Row 1 */}

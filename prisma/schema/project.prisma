@@ -50,6 +50,7 @@ model Project {
   purchaseRequisitions    PurchaseRequisition[]
   assets                  Asset[]
   employeeAllocations     EmployeeProjectAllocation[]
+  payrollBudgetAllocations PayrollBudgetAllocation[]
 
   @@unique([organizationId, projectNo])
   @@index([organizationId])

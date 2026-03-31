@@ -74,6 +74,13 @@ model Organization {
   pfLoans            PFLoan[]
   pfSettlements      PFSettlement[]
 
+  // ── Phase 8c Relations ──
+  salaryGrades       SalaryGrade[]
+  salaryStructures   SalaryStructure[]
+  payslipTemplates   PayslipTemplate[]
+  teamCoverageRules  TeamCoverageRule[]
+  okrCycles          OKRCycle[]
+
   @@index([slug])
 }
 

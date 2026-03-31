@@ -22,6 +22,7 @@ model Department {
   employees    Employee[]
   users        User[]
   jobPostings  JobPosting[]
+  coverageRules TeamCoverageRule[]
 
   @@unique([organizationId, name])
   @@unique([organizationId, code])
@@ -80,8 +81,13 @@ model Employee {
   // ── Employment (Phase 12) ──
   dutyStation       String?        // Work location / field office
   probationEndDate  DateTime?
-  gradeLevel        String?        // Pay grade / band
+  gradeLevel        String?        // Legacy — use salaryGradeId instead
   costCenter        String?        // Financial cost allocation
+
+  // ── Phase 8c: Salary Grade Link ──
+  salaryGradeId     String?        @db.Uuid
+  salaryStepNo      Int?           // Current step within grade
+  salaryStructureId String?        @db.Uuid
   workingHoursPerWeek Decimal?     @default(40) @db.Decimal(4, 1)
   noticePeriodDays  Int?           @default(30)
   isExpatriate      Boolean        @default(false)
@@ -162,6 +168,11 @@ model Employee {
   skills                 EmployeeSkill[]
   languages              EmployeeLanguage[]
   certifications         EmployeeCertification[]
+
+  // ── Phase 8c Relations ──
+  salaryGrade            SalaryGrade?     @relation(fields: [salaryGradeId], references: [id])
+  salaryStructure        SalaryStructure? @relation("EmployeeSalaryStructure", fields: [salaryStructureId], references: [id])
+  salaryRevisions        SalaryRevisionHistory[]
 
   @@unique([organizationId, employeeNo])
   @@index([organizationId])
@@ -430,6 +441,8 @@ model LeaveApplication {
   endDate       DateTime
   days          Int
   reason        String?
+  isHalfDay     Boolean     @default(false)
+  halfDaySession String?    // "MORNING" or "AFTERNOON"
   status        LeaveStatus @default(PENDING)
   approvedById  String?     @db.Uuid  // User FK — plain String, no @relation
   approvedAt    DateTime?
@@ -449,7 +462,7 @@ model SalaryComponent {
   id           String   @id @default(uuid()) @db.Uuid
   name         String   @unique // "Basic", "House Rent", "Medical", "Transport", "PF Deduction", "TDS"
   code         String   @unique
-  type         String   // "EARNING" or "DEDUCTION"
+  type         String   // "EARNING" or "DEDUCTION" or "EMPLOYER_CONTRIBUTION"
   isFixed      Boolean  @default(true)
   isPercentage Boolean  @default(false)
   percentageOf String?  // "BASIC" — if this is a % of another component
@@ -457,10 +470,15 @@ model SalaryComponent {
   isActive     Boolean  @default(true)
   sortOrder    Int      @default(0)
   createdAt    DateTime @default(now())
+
+  // ── Phase 8c Relations ──
+  structureLines  SalaryStructureLine[]
+  payrollLines    PayrollEntryLine[]
 }
 
 model PayrollRun {
   id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String?          @db.Uuid  // Phase 8c: for budget allocation queries
   runNo           String           @unique
   month           Int              // 1-12
   year            Int
@@ -479,9 +497,11 @@ model PayrollRun {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
-  entries         PayrollEntry[]
+  entries              PayrollEntry[]
+  budgetAllocations    PayrollBudgetAllocation[]
 
   @@unique([month, year])
+  @@index([organizationId])
   @@index([status])
 }
 
@@ -510,6 +530,11 @@ model PayrollEntry {
   payrollRun         PayrollRun @relation(fields: [payrollRunId], references: [id])
   employee           Employee   @relation(fields: [employeeId], references: [id])
 
+  // ── Phase 8c Relations ──
+  lines              PayrollEntryLine[]
+  distributions      PayslipDistribution[]
+  budgetAllocations  PayrollBudgetAllocation[]
+
   @@unique([payrollRunId, employeeId])
   @@index([payrollRunId])
   @@index([employeeId])
@@ -530,6 +555,15 @@ model PerformanceReview {
   status             String            @default("DRAFT") // DRAFT, SELF_REVIEW, SUPERVISOR_REVIEW, COMPLETED
   reviewedById       String?           @db.Uuid  // User FK — plain String, no @relation
   completedAt        DateTime?
+
+  // ── Phase 8c: OKR Integration ──
+  okrCycleId         String?           @db.Uuid
+  okrScore           Decimal?          @db.Decimal(3, 2)  // 0.00-1.00 auto-pulled from OKR
+  competencyScore    Decimal?          @db.Decimal(3, 2)  // Separate competency assessment
+  okrWeight          Decimal           @default(0.4) @db.Decimal(3, 2)  // 40% weight
+  competencyWeight   Decimal           @default(0.3) @db.Decimal(3, 2)  // 30% weight
+  supervisorWeight   Decimal           @default(0.3) @db.Decimal(3, 2)  // 30% weight
+
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
@@ -987,4 +1021,342 @@ model DisciplinaryCase {
 
   @@index([organizationId])
   @@index([employeeId])
+}
+
+// ═══════════════════════════════════════════
+// Phase 8c: Salary Grades, Payslip, OKR,
+// Team Calendar, Personnel Cost Tracking
+// ═══════════════════════════════════════════
+
+// ─── Salary Grade System ───
+
+model SalaryGrade {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @db.Uuid
+  code            String   // "G-1", "P-3", "Band-A"
+  name            String   // "General Service Level 1"
+  level           Int      // Numeric level for sorting
+  description     String?
+  minSalary       Decimal  @db.Decimal(18, 2)
+  midSalary       Decimal  @db.Decimal(18, 2)
+  maxSalary       Decimal  @db.Decimal(18, 2)
+  currency        String   @default("BDT")
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  steps           SalaryGradeStep[]
+  structures      SalaryStructure[]
+  employees       Employee[]
+  previousRevisions SalaryRevisionHistory[] @relation("PreviousGrade")
+  newRevisions      SalaryRevisionHistory[] @relation("NewGrade")
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([isActive])
+  @@index([level])
+}
+
+model SalaryGradeStep {
+  id           String   @id @default(uuid()) @db.Uuid
+  gradeId      String   @db.Uuid
+  stepNumber   Int
+  basicSalary  Decimal  @db.Decimal(18, 2)
+  effectiveFrom DateTime
+  effectiveTo  DateTime?
+  createdAt    DateTime @default(now())
+
+  grade        SalaryGrade @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+
+  @@unique([gradeId, stepNumber])
+  @@index([gradeId])
+}
+
+model SalaryStructure {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @db.Uuid
+  name            String   // "Standard Bangladesh", "Expatriate Package"
+  gradeId         String?  @db.Uuid
+  description     String?
+  isDefault       Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  grade           SalaryGrade? @relation(fields: [gradeId], references: [id])
+  lines           SalaryStructureLine[]
+  employees       Employee[]   @relation("EmployeeSalaryStructure")
+
+  @@index([organizationId])
+  @@index([gradeId])
+}
+
+model SalaryStructureLine {
+  id               String                        @id @default(uuid()) @db.Uuid
+  structureId      String                        @db.Uuid
+  componentId      String                        @db.Uuid
+  calculationType  SalaryComponentCalculationType
+  amount           Decimal?                      @db.Decimal(18, 2)  // Used when FIXED
+  percentage       Decimal?                      @db.Decimal(5, 2)   // Used when PERCENT_*
+  sortOrder        Int                           @default(0)
+  isActive         Boolean                       @default(true)
+  createdAt        DateTime                      @default(now())
+
+  structure        SalaryStructure  @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  component        SalaryComponent  @relation(fields: [componentId], references: [id])
+
+  @@unique([structureId, componentId])
+  @@index([structureId])
+}
+
+model SalaryRevisionHistory {
+  id              String             @id @default(uuid()) @db.Uuid
+  organizationId  String             @db.Uuid
+  employeeId      String             @db.Uuid
+  revisionDate    DateTime
+  effectiveDate   DateTime
+  revisionType    SalaryRevisionType
+  previousGradeId String?            @db.Uuid
+  newGradeId      String?            @db.Uuid
+  previousStepNo  Int?
+  newStepNo       Int?
+  previousBasic   Decimal?           @db.Decimal(18, 2)
+  newBasic        Decimal            @db.Decimal(18, 2)
+  previousGross   Decimal?           @db.Decimal(18, 2)
+  newGross        Decimal            @db.Decimal(18, 2)
+  reason          String?
+  remarks         String?
+  approvedById    String?            @db.Uuid
+  approvedAt      DateTime?
+  createdAt       DateTime           @default(now())
+
+  employee        Employee     @relation(fields: [employeeId], references: [id])
+  previousGrade   SalaryGrade? @relation("PreviousGrade", fields: [previousGradeId], references: [id])
+  newGrade        SalaryGrade? @relation("NewGrade", fields: [newGradeId], references: [id])
+
+  @@index([employeeId])
+  @@index([organizationId])
+  @@index([revisionDate])
+}
+
+// ─── Dynamic Payroll Lines & Payslip ───
+
+model PayrollEntryLine {
+  id              String                        @id @default(uuid()) @db.Uuid
+  payrollEntryId  String                        @db.Uuid
+  componentId     String                        @db.Uuid
+  componentName   String                        // Denormalized for payslip
+  componentCode   String                        // Denormalized for payslip
+  lineType        String                        // "EARNING", "DEDUCTION", "EMPLOYER_CONTRIBUTION"
+  calculationType SalaryComponentCalculationType
+  percentage      Decimal?                      @db.Decimal(5, 2)
+  amount          Decimal                       @db.Decimal(18, 2)
+  ytdAmount       Decimal                       @default(0) @db.Decimal(18, 2)
+  sortOrder       Int                           @default(0)
+  createdAt       DateTime                      @default(now())
+
+  payrollEntry    PayrollEntry    @relation(fields: [payrollEntryId], references: [id], onDelete: Cascade)
+  component       SalaryComponent @relation(fields: [componentId], references: [id])
+
+  @@index([payrollEntryId])
+  @@index([componentId])
+}
+
+model PayslipTemplate {
+  id                        String   @id @default(uuid()) @db.Uuid
+  organizationId            String   @db.Uuid
+  name                      String   // "Default", "Bangladesh Office"
+  headerText                String?
+  footerText                String?
+  logoPath                  String?
+  showYTD                   Boolean  @default(true)
+  showEmployerContributions Boolean  @default(false)
+  showAttendanceSummary     Boolean  @default(true)
+  showNetPayInWords         Boolean  @default(true)
+  paperSize                 String   @default("A4")
+  isDefault                 Boolean  @default(true)
+  isActive                  Boolean  @default(true)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  organization              Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+}
+
+model PayslipDistribution {
+  id              String    @id @default(uuid()) @db.Uuid
+  payrollEntryId  String    @db.Uuid
+  method          String    // "PORTAL", "EMAIL", "DOWNLOAD"
+  sentTo          String?
+  sentAt          DateTime?
+  downloadedAt    DateTime?
+  createdAt       DateTime  @default(now())
+
+  payrollEntry    PayrollEntry @relation(fields: [payrollEntryId], references: [id])
+
+  @@index([payrollEntryId])
+}
+
+// ─── Team Leave Calendar ───
+
+model TeamCoverageRule {
+  id                     String   @id @default(uuid()) @db.Uuid
+  organizationId         String   @db.Uuid
+  departmentId           String?  @db.Uuid
+  minimumPresencePercent Decimal  @default(60) @db.Decimal(5, 2)
+  isActive               Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  organization           Organization @relation(fields: [organizationId], references: [id])
+  department             Department?  @relation(fields: [departmentId], references: [id])
+
+  @@unique([organizationId, departmentId])
+  @@index([organizationId])
+}
+
+// ─── OKR Framework ───
+
+model OKRCycle {
+  id               String         @id @default(uuid()) @db.Uuid
+  organizationId   String         @db.Uuid
+  name             String         // "Q1 2026", "Annual 2026"
+  cycleType        String         // "QUARTERLY", "ANNUAL"
+  startDate        DateTime
+  endDate          DateTime
+  status           OKRCycleStatus @default(PLANNING)
+  checkInFrequency String         @default("BIWEEKLY") // "WEEKLY", "BIWEEKLY", "MONTHLY"
+  createdById      String         @db.Uuid
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  organization     Organization   @relation(fields: [organizationId], references: [id])
+  objectives       OKRObjective[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([status])
+}
+
+model OKRObjective {
+  id                  String             @id @default(uuid()) @db.Uuid
+  organizationId      String             @db.Uuid
+  cycleId             String             @db.Uuid
+  ownerType           OKROwnerType
+  ownerId             String             @db.Uuid  // departmentId or employeeId
+  parentObjectiveId   String?            @db.Uuid
+  title               String
+  description         String?
+  weight              Decimal            @default(1) @db.Decimal(3, 2)
+  progress            Decimal            @default(0) @db.Decimal(5, 2) // 0-100
+  score               Decimal?           @db.Decimal(3, 2) // 0.00-1.00
+  status              OKRObjectiveStatus @default(DRAFT)
+  createdById         String             @db.Uuid
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  cycle               OKRCycle       @relation(fields: [cycleId], references: [id])
+  parentObjective     OKRObjective?  @relation("ObjectiveCascade", fields: [parentObjectiveId], references: [id])
+  childObjectives     OKRObjective[] @relation("ObjectiveCascade")
+  keyResults          OKRKeyResult[]
+  scores              OKRScore[]
+
+  @@index([organizationId])
+  @@index([cycleId])
+  @@index([ownerType, ownerId])
+  @@index([parentObjectiveId])
+}
+
+model OKRKeyResult {
+  id              String             @id @default(uuid()) @db.Uuid
+  objectiveId     String             @db.Uuid
+  title           String
+  description     String?
+  resultType      KeyResultType
+  startValue      Decimal            @default(0) @db.Decimal(18, 2)
+  targetValue     Decimal            @db.Decimal(18, 2)
+  currentValue    Decimal            @default(0) @db.Decimal(18, 2)
+  unit            String?            // "beneficiaries", "reports", "%", "BDT"
+  progress        Decimal            @default(0) @db.Decimal(5, 2) // 0-100
+  score           Decimal?           @db.Decimal(3, 2) // 0.00-1.00
+  dueDate         DateTime?
+  status          OKRObjectiveStatus @default(DRAFT)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  objective       OKRObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+  checkIns        OKRCheckIn[]
+
+  @@index([objectiveId])
+}
+
+model OKRCheckIn {
+  id              String   @id @default(uuid()) @db.Uuid
+  keyResultId     String   @db.Uuid
+  checkInDate     DateTime @default(now())
+  previousValue   Decimal  @db.Decimal(18, 2)
+  newValue        Decimal  @db.Decimal(18, 2)
+  progress        Decimal  @db.Decimal(5, 2) // 0-100
+  note            String?
+  blockers        String?
+  createdById     String   @db.Uuid
+  createdAt       DateTime @default(now())
+
+  keyResult       OKRKeyResult @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
+
+  @@index([keyResultId])
+  @@index([checkInDate])
+}
+
+model OKRScore {
+  id            String       @id @default(uuid()) @db.Uuid
+  objectiveId   String       @db.Uuid
+  scorerId      String       @db.Uuid
+  scoreType     OKRScoreType
+  score         Decimal      @db.Decimal(3, 2) // 0.00-1.00
+  comments      String?
+  scoredAt      DateTime     @default(now())
+
+  objective     OKRObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  @@unique([objectiveId, scorerId, scoreType])
+  @@index([objectiveId])
+}
+
+// ─── Personnel Cost Tracking ───
+
+model PayrollBudgetAllocation {
+  id              String      @id @default(uuid()) @db.Uuid
+  organizationId  String      @db.Uuid
+  payrollRunId    String      @db.Uuid
+  payrollEntryId  String      @db.Uuid
+  employeeId      String      @db.Uuid
+  projectId       String      @db.Uuid
+  budgetId        String?     @db.Uuid
+  budgetLineId    String?     @db.Uuid
+  allocationPct   Decimal     @db.Decimal(5, 2)
+  grossAmount     Decimal     @db.Decimal(18, 2)
+  netAmount       Decimal     @db.Decimal(18, 2)
+  fringeAmount    Decimal     @default(0) @db.Decimal(18, 2)
+  totalCharge     Decimal     @db.Decimal(18, 2)
+  period          String      // "2026-03"
+  createdAt       DateTime    @default(now())
+
+  payrollRun      PayrollRun   @relation(fields: [payrollRunId], references: [id])
+  payrollEntry    PayrollEntry @relation(fields: [payrollEntryId], references: [id])
+  project         Project      @relation(fields: [projectId], references: [id])
+  budget          Budget?      @relation(fields: [budgetId], references: [id])
+  budgetLine      BudgetLine?  @relation(fields: [budgetLineId], references: [id])
+
+  @@unique([payrollEntryId, projectId])
+  @@index([organizationId])
+  @@index([payrollRunId])
+  @@index([projectId])
+  @@index([budgetId])
+  @@index([period])
 }

@@ -97,5 +97,22 @@
     "ipAddress": "আইপি ঠিকানা",
     "device": "ডিভাইস",
     "status": "অবস্থা"
+  },
+  "hrKpis": {
+    "title": "এইচআর কর্মী সংক্ষিপ্তসার",
+    "totalHeadcount": "মোট কর্মী",
+    "newJoiners": "নতুন যোগদানকারী",
+    "separations": "বিচ্ছেদ",
+    "turnoverRate": "টার্নওভার হার",
+    "openPositions": "খালি পদ",
+    "expiringContracts": "মেয়াদোত্তীর্ণ চুক্তি",
+    "headcountTrend": "কর্মী সংখ্যার প্রবণতা (১২ মাস)",
+    "thisMonth": "এই মাস",
+    "trailing12mo": "গত ১২ মাস",
+    "next30days": "আগামী ৩০ দিন",
+    "hiring": "নিয়োগ",
+    "headcount": "কর্মী সংখ্যা",
+    "joiners": "যোগদানকারী",
+    "leavers": "বিচ্ছেদকারী"
   }
 }

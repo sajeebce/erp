@@ -157,13 +157,20 @@ async function main() {
 
   console.log(`✓ ${branches.length} Branches + ${samities.length} Samities + ${members.length} Members + ${loanProducts.length} Loan Products + 1 Loan Account + 3 Savings Accounts created`)
 
-  // Update sequences
-  await Promise.all([
-    prisma.numberSequence.update({ where: { organizationId_entity: { organizationId: org.id, entity: 'vendor' } }, data: { currentValue: 3 } }),
-    prisma.numberSequence.update({ where: { organizationId_entity: { organizationId: org.id, entity: 'asset' } }, data: { currentValue: 4 } }),
-    prisma.numberSequence.update({ where: { organizationId_entity: { organizationId: org.id, entity: 'employee' } }, data: { currentValue: 6 } }),
-    prisma.numberSequence.update({ where: { organizationId_entity: { organizationId: org.id, entity: 'samity' } }, data: { currentValue: 2 } }),
-  ])
+  // Upsert sequences
+  const seqs = [
+    { entity: 'vendor', prefix: 'VEN', currentValue: 3 },
+    { entity: 'asset', prefix: 'AST', currentValue: 4 },
+    { entity: 'employee', prefix: 'EMP', currentValue: 6 },
+    { entity: 'samity', prefix: 'SMT', currentValue: 2 },
+  ]
+  for (const s of seqs) {
+    await prisma.numberSequence.upsert({
+      where: { organizationId_entity: { organizationId: org.id, entity: s.entity } },
+      update: { currentValue: s.currentValue },
+      create: { organizationId: org.id, entity: s.entity, prefix: s.prefix, currentValue: s.currentValue },
+    })
+  }
 
   console.log('\n✅ Phase 5 seeding complete!')
 }

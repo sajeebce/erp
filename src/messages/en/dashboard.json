@@ -97,5 +97,22 @@
     "ipAddress": "IP Address",
     "device": "Device",
     "status": "Status"
+  },
+  "hrKpis": {
+    "title": "HR Workforce Overview",
+    "totalHeadcount": "Total Headcount",
+    "newJoiners": "New Joiners",
+    "separations": "Separations",
+    "turnoverRate": "Turnover Rate",
+    "openPositions": "Open Positions",
+    "expiringContracts": "Expiring Contracts",
+    "headcountTrend": "Headcount Trend (12 Months)",
+    "thisMonth": "this month",
+    "trailing12mo": "trailing 12mo",
+    "next30days": "next 30 days",
+    "hiring": "hiring",
+    "headcount": "Headcount",
+    "joiners": "Joiners",
+    "leavers": "Leavers"
   }
 }

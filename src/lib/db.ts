@@ -10,7 +10,7 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 // Bump this version to force PrismaClient re-creation after schema changes
-const PRISMA_CLIENT_VERSION = 2
+const PRISMA_CLIENT_VERSION = 3
 
 function createPrismaClient() {
   const pool = new pg.Pool({ connectionString })

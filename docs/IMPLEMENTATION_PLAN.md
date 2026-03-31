@@ -58,13 +58,14 @@
 | | **Phase 10: Cross-Module Integration** | 7072–8101 | Procurement encumbrance, Payroll→Budget, Dashboard KPIs, Grant→Budget, NGOAB |
 | | **Phase 11: Daily Expense Management** | 8103–8778 | Petty Cash, Expense Claims, Advances, Per Diem, TDS/VDS, 7 reports, fixes |
 | | **Phase 12: HR Employee Profile Upgrade** | 8780–9838 | Schema expansion (7 models, ~35 fields), tabbed profile UI, 34 APIs, documents, compliance |
-| 7.1 | Cron Jobs | 9839–9862 | Scheduled tasks (token cleanup, depreciation, etc.) |
-| **8** | **Testing Guidelines** | **9865–10156** | Testing strategy, module-wise tests, integration scenarios |
-| — | **Verification Checklist** | **10158–10186** | Pre-launch validation checklist |
-| — | **Critical Fixes (Post-Audit)** | **10188–10276** | Fix 1–9: journal auto-create, indexes, file upload |
-| — | **Important Features** | **10278–10291** | International-grade enhancements |
-| — | **New Dependencies** | **10293–10322** | Required npm packages |
-| **9** | **Internationalization (i18n)** | **10325–10434** | next-intl, EN + BN, message files, locale resolution |
+| | **Phase 8c: HR Deferred + Cross-Module HR** | 9841–11017 | Salary grades, payslip PDF, team leave calendar, OKR, personnel cost tracking, dashboard HR KPIs |
+| 7.1 | Cron Jobs | 11019–11042 | Scheduled tasks (token cleanup, depreciation, etc.) |
+| **8** | **Testing Guidelines** | **11045–11336** | Testing strategy, module-wise tests, integration scenarios |
+| — | **Verification Checklist** | **11338–11366** | Pre-launch validation checklist |
+| — | **Critical Fixes (Post-Audit)** | **11368–11456** | Fix 1–9: journal auto-create, indexes, file upload |
+| — | **Important Features** | **11458–11471** | International-grade enhancements |
+| — | **New Dependencies** | **11473–11502** | Required npm packages |
+| **9** | **Internationalization (i18n)** | **11505–11614** | next-intl, EN + BN, message files, locale resolution |
 
 ---
 
@@ -9835,6 +9836,1184 @@ Update all seed files to use UPPERCASE enum values:
 - `prisma/seed-phase12-hr-profile.ts` — New seed file
 - `prisma/seed-phase5.ts`, `prisma/seed-phase8-hr.ts` — Gender casing fix
 - `prisma/migration-fix-gender-case.ts` — Data migration script
+
+---
+
+### Phase 8c: HR Deferred Features + Cross-Module HR Integration ⬜ TODO
+
+> **Priority: Complete all deferred 8.7 features (salary structure, payslip PDF, team leave calendar, OKR) + implement Phase 10.2 (HR/Payroll→Budget) + Dashboard HR KPIs**
+> **Benchmarks: UNDP ICSC Salary Scale, SAP SuccessFactors Compensation, BambooHR Team Calendar, Lattice OKR, Sage Intacct Nonprofit Payroll Allocation, Oracle HCM Payslip**
+> **Compliance: Bangladesh Labour Act 2006, USAID 2 CFR 200 (personnel cost allocation), ILO Payslip Standards, NGOAB FD-6 Personnel Budget**
+> **Dependencies:** Phase 8 (✅), Phase 8b (✅), Phase 12 (✅), Phase 5 HR basics (✅)
+> **Scope:** 6 major features — salary grades, dynamic payroll lines, payslip PDF, team leave calendar, OKR framework, personnel cost tracking, dashboard HR KPIs
+
+---
+
+#### 8c.0 Overview — Feature Map
+
+| # | Feature | New Models | New APIs | New Pages | Seed Records |
+|---|---------|-----------|----------|-----------|-------------|
+| 8c.1 | Salary Grade/Step Matrix | 4 | 14 | 3 | ~50 |
+| 8c.2 | Dynamic PayrollEntryLine + Payslip PDF | 3 | 8 | 2 | ~80 |
+| 8c.3 | Team Leave Calendar | 1 | 3 | 1 | ~20 |
+| 8c.4 | OKR Framework | 5 | 16 | 5 | ~60 |
+| 8c.5 | HR/Payroll → Budget Personnel Cost Tracking | 1 | 8 | 1 | ~30 |
+| 8c.6 | Dashboard KPI — Employee Join/Leave/Turnover | 0 | 3 | 0 (dashboard update) | — |
+| **Total** | | **14** | **52** | **12** | **~240** |
+
+---
+
+#### 8c.1 Salary Grade/Step Matrix (UN-Style)
+
+**Context:** International NGOs (UNDP, UNICEF, Save the Children, BRAC) use structured salary grade systems. The UN system uses ICSC scales with Professional (P-1 to P-5) and General Service (G-1 to G-7) tracks, each with 10-15 steps representing annual increments. Large INGOs use Hay Group/Korn Ferry job evaluation with 8-12 grades, min/mid/max ranges, and 3-5 steps per band.
+
+**Current Problem:** `Employee.gradeLevel` is a plain string. `SalaryComponent` exists but isn't linked to grades. Salary is stored as flat fields on `Employee` (basicSalary, houseRentAllowance, etc.) with no structure, no revision history, and no grade-step progression logic.
+
+##### 8c.1a New Enums (base.prisma)
+
+```prisma
+enum SalaryComponentCalculationType {
+  FIXED              // Fixed amount
+  PERCENT_OF_BASIC   // Percentage of basic salary
+  PERCENT_OF_GROSS   // Percentage of gross salary
+}
+
+enum SalaryRevisionType {
+  INITIAL            // First assignment
+  STEP_INCREMENT     // Annual step progression
+  GRADE_PROMOTION    // Grade change (promotion)
+  COLA               // Cost of Living Adjustment
+  MARKET_ADJUSTMENT  // Market benchmarking
+  CORRECTION         // Data correction
+  DEMOTION           // Grade downgrade
+}
+```
+
+##### 8c.1b New Model: `SalaryGrade`
+
+```prisma
+model SalaryGrade {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @db.Uuid
+  code            String   // "G-1", "P-3", "Band-A"
+  name            String   // "General Service Level 1", "Professional Level 3"
+  level           Int      // Numeric level for sorting (1, 2, 3...)
+  description     String?
+  minSalary       Decimal  @db.Decimal(18, 2)  // Range minimum
+  midSalary       Decimal  @db.Decimal(18, 2)  // Range midpoint
+  maxSalary       Decimal  @db.Decimal(18, 2)  // Range maximum
+  currency        String   @default("BDT")
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?  // null = current
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  steps           SalaryGradeStep[]
+  structures      SalaryStructure[]
+  employees       Employee[]  // Employees in this grade
+  revisions       SalaryRevisionHistory[]  // as previousGrade/newGrade
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([isActive])
+  @@index([level])
+}
+```
+
+##### 8c.1c New Model: `SalaryGradeStep`
+
+```prisma
+model SalaryGradeStep {
+  id           String   @id @default(uuid()) @db.Uuid
+  gradeId      String   @db.Uuid
+  stepNumber   Int      // 1, 2, 3... within the grade
+  basicSalary  Decimal  @db.Decimal(18, 2)  // Basic salary at this step
+  effectiveFrom DateTime
+  effectiveTo  DateTime?
+  createdAt    DateTime @default(now())
+
+  grade        SalaryGrade @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+
+  @@unique([gradeId, stepNumber])
+  @@index([gradeId])
+}
+```
+
+##### 8c.1d New Model: `SalaryStructure` (Allowance Template)
+
+```prisma
+model SalaryStructure {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @db.Uuid
+  name            String   // "Standard Bangladesh", "Expatriate Package", "Field Staff"
+  gradeId         String?  @db.Uuid  // Optional: grade-specific structure
+  description     String?
+  isDefault       Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  grade           SalaryGrade? @relation(fields: [gradeId], references: [id])
+  lines           SalaryStructureLine[]
+
+  @@index([organizationId])
+  @@index([gradeId])
+}
+
+model SalaryStructureLine {
+  id               String   @id @default(uuid()) @db.Uuid
+  structureId      String   @db.Uuid
+  componentId      String   @db.Uuid  // FK to SalaryComponent
+  calculationType  SalaryComponentCalculationType  // FIXED, PERCENT_OF_BASIC, PERCENT_OF_GROSS
+  amount           Decimal? @db.Decimal(18, 2)     // Used when FIXED
+  percentage       Decimal? @db.Decimal(5, 2)      // Used when PERCENT_*
+  sortOrder        Int      @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  structure        SalaryStructure @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  component        SalaryComponent @relation(fields: [componentId], references: [id])
+
+  @@unique([structureId, componentId])
+  @@index([structureId])
+}
+```
+
+##### 8c.1e New Model: `SalaryRevisionHistory`
+
+```prisma
+model SalaryRevisionHistory {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @db.Uuid
+  employeeId      String   @db.Uuid
+  revisionDate    DateTime
+  effectiveDate   DateTime
+  revisionType    SalaryRevisionType
+  previousGradeId String?  @db.Uuid
+  newGradeId      String?  @db.Uuid
+  previousStepNo  Int?
+  newStepNo       Int?
+  previousBasic   Decimal? @db.Decimal(18, 2)
+  newBasic        Decimal  @db.Decimal(18, 2)
+  previousGross   Decimal? @db.Decimal(18, 2)
+  newGross        Decimal  @db.Decimal(18, 2)
+  reason          String?
+  remarks         String?
+  approvedById    String?  @db.Uuid
+  approvedAt      DateTime?
+  createdAt       DateTime @default(now())
+
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  previousGrade   SalaryGrade? @relation("PreviousGrade", fields: [previousGradeId], references: [id])
+  newGrade        SalaryGrade? @relation("NewGrade", fields: [newGradeId], references: [id])
+
+  @@index([employeeId])
+  @@index([organizationId])
+  @@index([revisionDate])
+}
+```
+
+##### 8c.1f Employee Model Changes
+
+```prisma
+model Employee {
+  // ... existing fields ...
+
+  // CHANGE: gradeLevel String? → salaryGradeId (FK)
+  salaryGradeId     String?  @db.Uuid
+  salaryStepNo      Int?     // Current step within grade
+  salaryStructureId String?  @db.Uuid  // Assigned allowance template
+
+  salaryGrade       SalaryGrade?     @relation(fields: [salaryGradeId], references: [id])
+  salaryStructure   SalaryStructure? @relation(fields: [salaryStructureId], references: [id])
+  salaryRevisions   SalaryRevisionHistory[]
+}
+```
+
+**Migration note:** Existing `gradeLevel` string field is kept temporarily for backward compatibility. A data migration script maps existing gradeLevel strings to new SalaryGrade records.
+
+##### 8c.1g SalaryComponent Model Enhancement
+
+Add relation to SalaryStructureLine:
+
+```prisma
+model SalaryComponent {
+  // ... existing fields ...
+  structureLines  SalaryStructureLine[]
+}
+```
+
+##### 8c.1h API Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/hr/salary-grades` | List all salary grades (with steps) |
+| POST | `/api/v1/hr/salary-grades` | Create salary grade |
+| GET | `/api/v1/hr/salary-grades/:id` | Get grade detail with steps |
+| PUT | `/api/v1/hr/salary-grades/:id` | Update grade |
+| DELETE | `/api/v1/hr/salary-grades/:id` | Deactivate grade |
+| POST | `/api/v1/hr/salary-grades/:id/steps` | Add/update steps (bulk) |
+| GET | `/api/v1/hr/salary-structures` | List salary structures |
+| POST | `/api/v1/hr/salary-structures` | Create structure with lines |
+| GET | `/api/v1/hr/salary-structures/:id` | Get structure with component lines |
+| PUT | `/api/v1/hr/salary-structures/:id` | Update structure + lines |
+| DELETE | `/api/v1/hr/salary-structures/:id` | Deactivate structure |
+| GET | `/api/v1/hr/employees/:id/salary-history` | Get employee salary revision timeline |
+| POST | `/api/v1/hr/employees/:id/salary-revision` | Create salary revision (grade/step change) |
+| POST | `/api/v1/hr/salary-grades/bulk-increment` | Apply annual increment to all eligible employees |
+
+##### 8c.1i UI Pages
+
+| Path | Description |
+|------|-------------|
+| `/hr/salary-grades` | **Salary Grade Matrix** — spreadsheet-style view: grades as rows, steps as columns, each cell = basic salary. Color-coded ranges (below mid = green, near max = amber). CRUD actions. |
+| `/hr/salary-structures` | **Salary Structure Templates** — list of templates with component breakdown. Create/edit wizard: name, grade link, add component lines with calculation type. |
+| `/hr/employees/[id]` → Compensation Tab | **Enhanced:** Show current grade + step, structure breakdown (earnings/deductions table), gross/net calculation, revision history timeline. "Revise Salary" button opens modal. |
+
+---
+
+#### 8c.2 Dynamic PayrollEntryLine + Payslip PDF Generation
+
+**Context:** Current `PayrollEntry` uses flat columns (houseRent, medicalAllowance, transportAllowance, etc.) which is inflexible — adding a new component requires schema change. International-standard ERPs use a line-item approach where each payroll entry has dynamic component lines. This also enables proper payslip generation with variable components.
+
+##### 8c.2a New Model: `PayrollEntryLine`
+
+```prisma
+model PayrollEntryLine {
+  id              String   @id @default(uuid()) @db.Uuid
+  payrollEntryId  String   @db.Uuid
+  componentId     String   @db.Uuid   // FK to SalaryComponent
+  componentName   String   // Denormalized for payslip display
+  componentCode   String   // Denormalized for payslip display
+  lineType        String   // "EARNING", "DEDUCTION", "EMPLOYER_CONTRIBUTION"
+  calculationType SalaryComponentCalculationType
+  percentage      Decimal? @db.Decimal(5, 2)  // If percentage-based
+  amount          Decimal  @db.Decimal(18, 2)  // Calculated amount
+  ytdAmount       Decimal  @default(0) @db.Decimal(18, 2)  // Year-to-date
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  payrollEntry    PayrollEntry @relation(fields: [payrollEntryId], references: [id], onDelete: Cascade)
+  component       SalaryComponent @relation(fields: [componentId], references: [id])
+
+  @@index([payrollEntryId])
+  @@index([componentId])
+}
+```
+
+##### 8c.2b New Model: `PayslipTemplate`
+
+```prisma
+model PayslipTemplate {
+  id                      String   @id @default(uuid()) @db.Uuid
+  organizationId          String   @db.Uuid
+  name                    String   // "Default", "Bangladesh Office", "Field Staff"
+  headerText              String?  // Custom header (org name override)
+  footerText              String?  // Custom footer
+  logoPath                String?  // Path to organization logo
+  showYTD                 Boolean  @default(true)
+  showEmployerContributions Boolean @default(false)
+  showAttendanceSummary   Boolean  @default(true)
+  showNetPayInWords       Boolean  @default(true)
+  paperSize               String   @default("A4")  // A4, LETTER
+  isDefault               Boolean  @default(true)
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  organization            Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+}
+```
+
+##### 8c.2c New Model: `PayslipDistribution`
+
+```prisma
+model PayslipDistribution {
+  id              String   @id @default(uuid()) @db.Uuid
+  payrollEntryId  String   @db.Uuid
+  method          String   // "PORTAL", "EMAIL", "DOWNLOAD"
+  sentTo          String?  // Email address if method=EMAIL
+  sentAt          DateTime?
+  downloadedAt    DateTime?
+  createdAt       DateTime @default(now())
+
+  payrollEntry    PayrollEntry @relation(fields: [payrollEntryId], references: [id])
+
+  @@index([payrollEntryId])
+}
+```
+
+##### 8c.2d PayrollEntry Model Enhancement
+
+```prisma
+model PayrollEntry {
+  // ... existing flat fields KEPT for backward compatibility during transition ...
+  // New relations:
+  lines           PayrollEntryLine[]
+  distributions   PayslipDistribution[]
+}
+```
+
+**Migration strategy:** Existing flat columns (houseRent, medicalAllowance, etc.) are kept. The payroll processing API is updated to ALSO create `PayrollEntryLine` records. New payslip generation reads from `lines`. Over time, flat columns become derived/redundant.
+
+##### 8c.2e Payroll Processing Changes
+
+The `/api/v1/hr/payroll/runs/[id]/process` endpoint is **rewritten** to:
+
+1. For each active employee:
+   a. Lookup `Employee.salaryGradeId` + `salaryStepNo` → get basic salary from `SalaryGradeStep`
+   b. Lookup `Employee.salaryStructureId` → get `SalaryStructureLine[]` with components
+   c. For each structure line, calculate amount:
+      - FIXED → use `line.amount`
+      - PERCENT_OF_BASIC → `basicSalary * (line.percentage / 100)`
+      - PERCENT_OF_GROSS → calculated after all earnings
+   d. Create `PayrollEntryLine` for each component (earnings + deductions)
+   e. Also populate flat columns for backward compatibility
+   f. Calculate YTD by summing previous `PayrollEntryLine` amounts for same component in fiscal year
+
+2. Fallback: If employee has no grade/structure assigned, use legacy flat calculation (current behavior)
+
+##### 8c.2f Payslip Generation
+
+**Payslip content (international standard):**
+
+| Section | Content |
+|---------|---------|
+| **Header** | Org name, logo, pay period, payment date, payslip reference |
+| **Employee** | ID, name, department, designation, grade/step, bank (last 4 digits), TIN, PF no |
+| **Earnings** | Each earning component as a line (from PayrollEntryLine WHERE lineType=EARNING) |
+| **Deductions** | Each deduction component as a line (from PayrollEntryLine WHERE lineType=DEDUCTION) |
+| **Summary** | Gross Pay, Total Deductions, **Net Pay** (prominent), Net pay in words |
+| **YTD** | Cumulative earnings, deductions, tax for fiscal year |
+| **Employer** | PF employer share, gratuity provision (from PayrollEntryLine WHERE lineType=EMPLOYER_CONTRIBUTION) |
+| **Attendance** | Working days, present, absent, OT hours (from PayrollEntry) |
+
+**PDF generation approach:** Server-side HTML→PDF using the existing `window.open()` print pattern (consistent with financial reports). A dedicated payslip HTML template is rendered server-side and opened in a print-optimized popup. For bulk download, generate individual HTML pages and bundle. No new npm dependency needed — uses existing `report-viewer` pattern with `@media print` CSS.
+
+##### 8c.2g API Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/hr/payroll/entries/:entryId/payslip` | Get payslip data (structured JSON for rendering) |
+| GET | `/api/v1/hr/payroll/runs/:id/payslips` | Get all payslips for a run (bulk) |
+| GET | `/api/v1/hr/payroll/runs/:id/payslips/download` | Bulk payslip download (HTML bundle) |
+| GET | `/api/v1/hr/employees/:id/payslips` | Employee's payslip history (all months) |
+| GET | `/api/v1/hr/payslip-templates` | List payslip templates |
+| POST | `/api/v1/hr/payslip-templates` | Create template |
+| PUT | `/api/v1/hr/payslip-templates/:id` | Update template |
+| POST | `/api/v1/hr/payroll/entries/:entryId/payslip/distribute` | Mark payslip as distributed (email/portal) |
+
+##### 8c.2h UI Pages
+
+| Path | Description |
+|------|-------------|
+| `/hr/payroll` (enhanced) | **Rebuild from mock → API-connected.** Payroll register shows dynamic component columns from PayrollEntryLine. "View Payslip" button per employee. Bulk "Download All Payslips" button. |
+| `/hr/payroll/payslip/[entryId]` | **Payslip Viewer** — print-optimized page. Professional layout matching international standard (earnings left, deductions right, net pay prominent). Download PDF button (window.print()). |
+| `/hr/payslip-templates` | **Template Management** — configure payslip layout options (show/hide sections, logo, header/footer text). |
+
+---
+
+#### 8c.3 Team Leave Calendar
+
+**Context:** Modern HR systems (BambooHR, Personio, Bob) display team absence as a horizontal Gantt-style timeline with color-coded leave bars, holiday overlays, and coverage indicators. This enables managers to make informed leave approval decisions.
+
+##### 8c.3a New Model: `TeamCoverageRule`
+
+```prisma
+model TeamCoverageRule {
+  id                    String   @id @default(uuid()) @db.Uuid
+  organizationId        String   @db.Uuid
+  departmentId          String?  @db.Uuid  // null = org-wide default
+  minimumPresencePercent Decimal @db.Decimal(5, 2) @default(60)  // 60% minimum
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  organization          Organization @relation(fields: [organizationId], references: [id])
+  department            Department?  @relation(fields: [departmentId], references: [id])
+
+  @@unique([organizationId, departmentId])
+  @@index([organizationId])
+}
+```
+
+##### 8c.3b LeaveApplication Enhancement
+
+```prisma
+model LeaveApplication {
+  // ... existing fields ...
+  isHalfDay       Boolean  @default(false)
+  halfDaySession  String?  // "MORNING" or "AFTERNOON"
+}
+```
+
+##### 8c.3c API Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/hr/leave/calendar` | Team leave calendar data: `?month=3&year=2026&departmentId=X` → returns employees with their leave bars + holidays + coverage per day |
+| GET | `/api/v1/hr/leave/coverage` | Coverage check: `?departmentId=X&startDate=Y&endDate=Z` → returns daily team presence %, warns if below threshold |
+| GET | `/api/v1/hr/leave/coverage-rules` | List coverage rules |
+| POST | `/api/v1/hr/leave/coverage-rules` | Create/update coverage rule |
+
+**Calendar API Response Structure:**
+
+```typescript
+{
+  month: number,
+  year: number,
+  holidays: [{ date, name, type }],
+  employees: [{
+    id, fullName, department, designation, avatar,
+    leaves: [{ id, startDate, endDate, leaveType, leaveTypeName, color, status, isHalfDay, halfDaySession }]
+  }],
+  coverage: [{  // One entry per calendar day
+    date: string,
+    totalEmployees: number,
+    onLeave: number,
+    present: number,
+    presencePercent: number,
+    status: "GOOD" | "WARNING" | "CRITICAL"  // based on coverage rule
+  }]
+}
+```
+
+##### 8c.3d UI Page
+
+| Path | Description |
+|------|-------------|
+| `/hr/leave/calendar` | **Team Leave Calendar** — Gantt-style horizontal timeline |
+
+**UI Layout:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Team Leave Calendar                              [◀ Mar 2026 ▶]    │
+│ Department: [All ▾]  Leave Type: [All ▾]  [My Team] [All]         │
+├──────────────┬──────────────────────────────────────────────────────┤
+│ Coverage %   │ 92% | 85% | 85% | ... | 62% | 77% | ... | 88%     │
+│              │  🟢    🟢    🟢   ...    🟡    🟢   ...    🟢      │
+├──────────────┼──────────────────────────────────────────────────────┤
+│              │  1  2  3  4  5  6  7  8  9 10 11 12 13 14 ...  31  │
+│              │  Sa Su Mo Tu We Th Fr Sa Su Mo Tu We Th Fr ...  Tu  │
+│              │  ██    ░░ ░░ ░░ ░░    ██       ░░ ░░ ░░        ░░  │
+├──────────────┼──────────────────────────────────────────────────────┤
+│ Ahmed Khan   │        ████████████                                 │
+│ Sr. Manager  │        (Annual Leave - Approved)                    │
+├──────────────┼──────────────────────────────────────────────────────┤
+│ Fatima Ali   │                          ██████                     │
+│ Coordinator  │                          (Sick Leave - Pending)     │
+├──────────────┼──────────────────────────────────────────────────────┤
+│ ...          │                                                     │
+└──────────────┴──────────────────────────────────────────────────────┘
+ Legend: ██ Weekend  ░░ Holiday  ████ Annual  ████ Sick  ████ Casual
+```
+
+**Features:**
+- Horizontal scroll for dates, fixed employee column
+- Color-coded bars by leave type (Annual=blue, Sick=red, Casual=green, etc.)
+- Weekends and holidays as shaded columns
+- Coverage heat map row at top (green >80%, amber 50-80%, red <50%)
+- Hover on leave bar → tooltip with details
+- Click empty cell → pre-fill leave application form
+- Department and leave type filters
+- "My Team" toggle for managers (shows direct reports only)
+- Monthly navigation (prev/next arrows)
+
+---
+
+#### 8c.4 OKR Framework (Objectives & Key Results)
+
+**Context:** International NGOs use Results-Based Management (RBM) aligned to strategic plans. OKR provides a structured framework for cascading organizational goals → department → team → individual. This EXTENDS the existing `PerformanceReview` model — OKR scores feed into performance reviews as one dimension alongside competency assessments and supervisor evaluation.
+
+**Design Decision:** OKR extends (not replaces) PerformanceReview. The review pulls the employee's OKR achievement score as one input. This is the long-term scalable approach because:
+1. Not all roles use OKRs (field staff may only have supervisor evaluation)
+2. Performance dimensions vary (OKR + competency + behavior + peer feedback)
+3. OKR cycles (quarterly) and review cycles (annual/mid-year) have different cadences
+
+##### 8c.4a New Enums (base.prisma)
+
+```prisma
+enum OKRCycleStatus {
+  PLANNING    // OKRs being drafted
+  ACTIVE      // Cycle in progress, check-ins happening
+  SCORING     // Cycle ended, scoring in progress
+  CLOSED      // All scores finalized
+}
+
+enum OKROwnerType {
+  ORGANIZATION
+  DEPARTMENT
+  TEAM
+  INDIVIDUAL
+}
+
+enum OKRObjectiveStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum KeyResultType {
+  METRIC      // Quantitative: start value → target value
+  MILESTONE   // Binary or stage-based
+  PERCENTAGE  // 0% → 100%
+}
+
+enum OKRScoreType {
+  SELF
+  MANAGER
+  PEER
+}
+```
+
+##### 8c.4b New Model: `OKRCycle`
+
+```prisma
+model OKRCycle {
+  id              String          @id @default(uuid()) @db.Uuid
+  organizationId  String          @db.Uuid
+  name            String          // "Q1 2026", "Annual 2026"
+  cycleType       String          // "QUARTERLY", "ANNUAL"
+  startDate       DateTime
+  endDate         DateTime
+  status          OKRCycleStatus  @default(PLANNING)
+  checkInFrequency String         @default("BIWEEKLY") // "WEEKLY", "BIWEEKLY", "MONTHLY"
+  createdById     String          @db.Uuid
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  organization    Organization    @relation(fields: [organizationId], references: [id])
+  objectives      OKRObjective[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([status])
+}
+```
+
+##### 8c.4c New Model: `OKRObjective`
+
+```prisma
+model OKRObjective {
+  id                  String              @id @default(uuid()) @db.Uuid
+  organizationId      String              @db.Uuid
+  cycleId             String              @db.Uuid
+  ownerType           OKROwnerType        // ORGANIZATION, DEPARTMENT, TEAM, INDIVIDUAL
+  ownerId             String              @db.Uuid  // departmentId or employeeId depending on ownerType
+  parentObjectiveId   String?             @db.Uuid  // Cascade: org → dept → team → individual
+  title               String
+  description         String?
+  weight              Decimal             @default(1) @db.Decimal(3, 2)  // Weight within the cycle (0.00-1.00)
+  progress            Decimal             @default(0) @db.Decimal(5, 2)  // 0-100 auto-calculated from KRs
+  score               Decimal?            @db.Decimal(3, 2)  // 0.00-1.00 (Google-style: 0.7 = on track)
+  status              OKRObjectiveStatus  @default(DRAFT)
+  createdById         String              @db.Uuid
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  cycle               OKRCycle            @relation(fields: [cycleId], references: [id])
+  parentObjective     OKRObjective?       @relation("ObjectiveCascade", fields: [parentObjectiveId], references: [id])
+  childObjectives     OKRObjective[]      @relation("ObjectiveCascade")
+  keyResults          OKRKeyResult[]
+  scores              OKRScore[]
+
+  @@index([organizationId])
+  @@index([cycleId])
+  @@index([ownerType, ownerId])
+  @@index([parentObjectiveId])
+}
+```
+
+##### 8c.4d New Model: `OKRKeyResult`
+
+```prisma
+model OKRKeyResult {
+  id              String          @id @default(uuid()) @db.Uuid
+  objectiveId     String          @db.Uuid
+  title           String
+  description     String?
+  resultType      KeyResultType   // METRIC, MILESTONE, PERCENTAGE
+  startValue      Decimal         @default(0) @db.Decimal(18, 2)
+  targetValue     Decimal         @db.Decimal(18, 2)
+  currentValue    Decimal         @default(0) @db.Decimal(18, 2)
+  unit            String?         // "beneficiaries", "reports", "%", "BDT"
+  progress        Decimal         @default(0) @db.Decimal(5, 2)  // 0-100
+  score           Decimal?        @db.Decimal(3, 2)  // 0.00-1.00
+  dueDate         DateTime?
+  status          OKRObjectiveStatus @default(DRAFT)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  objective       OKRObjective    @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+  checkIns        OKRCheckIn[]
+
+  @@index([objectiveId])
+}
+```
+
+##### 8c.4e New Model: `OKRCheckIn`
+
+```prisma
+model OKRCheckIn {
+  id              String   @id @default(uuid()) @db.Uuid
+  keyResultId     String   @db.Uuid
+  checkInDate     DateTime @default(now())
+  previousValue   Decimal  @db.Decimal(18, 2)
+  newValue        Decimal  @db.Decimal(18, 2)
+  progress        Decimal  @db.Decimal(5, 2)  // 0-100 at time of check-in
+  note            String?
+  blockers        String?  // Any impediments
+  createdById     String   @db.Uuid
+  createdAt       DateTime @default(now())
+
+  keyResult       OKRKeyResult @relation(fields: [keyResultId], references: [id], onDelete: Cascade)
+
+  @@index([keyResultId])
+  @@index([checkInDate])
+}
+```
+
+##### 8c.4f New Model: `OKRScore`
+
+```prisma
+model OKRScore {
+  id            String       @id @default(uuid()) @db.Uuid
+  objectiveId   String       @db.Uuid
+  scorerId      String       @db.Uuid
+  scoreType     OKRScoreType // SELF, MANAGER, PEER
+  score         Decimal      @db.Decimal(3, 2)  // 0.00-1.00
+  comments      String?
+  scoredAt      DateTime     @default(now())
+
+  objective     OKRObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  @@unique([objectiveId, scorerId, scoreType])
+  @@index([objectiveId])
+}
+```
+
+##### 8c.4g PerformanceReview Enhancement
+
+```prisma
+model PerformanceReview {
+  // ... existing fields ...
+  okrCycleId       String?  @db.Uuid   // Link to OKR cycle
+  okrScore         Decimal? @db.Decimal(3, 2)  // Auto-pulled from employee's OKR achievement (0.00-1.00)
+  competencyScore  Decimal? @db.Decimal(3, 2)  // Separate competency assessment
+  okrWeight        Decimal  @default(0.4) @db.Decimal(3, 2)  // 40% OKR weight in final score
+  competencyWeight Decimal  @default(0.3) @db.Decimal(3, 2)  // 30% competency weight
+  supervisorWeight Decimal  @default(0.3) @db.Decimal(3, 2)  // 30% supervisor weight
+
+  // finalScore recalculated: (okrScore * okrWeight) + (competencyScore * competencyWeight) + (supervisorScore * supervisorWeight)
+}
+```
+
+##### 8c.4h API Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/hr/okr/cycles` | List OKR cycles |
+| POST | `/api/v1/hr/okr/cycles` | Create cycle |
+| GET | `/api/v1/hr/okr/cycles/:id` | Get cycle with objectives tree |
+| PUT | `/api/v1/hr/okr/cycles/:id` | Update cycle (status transitions) |
+| GET | `/api/v1/hr/okr/objectives` | List objectives (filter by cycle, owner, status) |
+| POST | `/api/v1/hr/okr/objectives` | Create objective with key results |
+| GET | `/api/v1/hr/okr/objectives/:id` | Get objective with KRs, check-ins, scores |
+| PUT | `/api/v1/hr/okr/objectives/:id` | Update objective |
+| DELETE | `/api/v1/hr/okr/objectives/:id` | Cancel objective |
+| POST | `/api/v1/hr/okr/key-results/:krId/check-in` | Submit check-in (update progress) |
+| PUT | `/api/v1/hr/okr/key-results/:krId` | Update key result |
+| POST | `/api/v1/hr/okr/objectives/:id/score` | Submit score (self/manager/peer) |
+| GET | `/api/v1/hr/okr/my-okrs` | Current user's objectives across active cycles |
+| GET | `/api/v1/hr/okr/team-okrs` | Manager's team objectives |
+| GET | `/api/v1/hr/okr/alignment-tree` | Full cascade tree: org → dept → team → individual |
+| GET | `/api/v1/hr/okr/analytics` | OKR health metrics: % on track, completion rates, adoption |
+
+##### 8c.4i UI Pages
+
+| Path | Description |
+|------|-------------|
+| `/hr/okr` | **OKR Dashboard** — current cycle summary, My OKRs cards with progress bars, team OKRs overview, quick check-in action |
+| `/hr/okr/cycles` | **Cycle Management** — list of cycles with status. Create new cycle. Transition status (Planning → Active → Scoring → Closed) |
+| `/hr/okr/alignment` | **Alignment Tree View** — expandable tree: org objectives → department → team → individual. Each node: title, progress %, status color. Click to expand key results. |
+| `/hr/okr/objectives/new` | **Create Objective** — form: title, description, parent alignment (optional), weight. Add key results inline (title, type, target value, unit, due date). |
+| `/hr/okr/objectives/[id]` | **Objective Detail** — KR progress cards, check-in timeline, score inputs (self/manager/peer), comments. "Check In" button opens quick-update form. |
+
+**OKR Dashboard Layout:**
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│ Objectives & Key Results          Cycle: [Q1 2026 ▾] (ACTIVE)│
+├───────────────────────────────────────────────────────────────┤
+│ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐             │
+│ │ Total   │ │On Track │ │At Risk  │ │Behind   │             │
+│ │   12    │ │   8     │ │   3     │ │   1     │             │
+│ │objectives│ │  67%   │ │  25%    │ │   8%    │             │
+│ └─────────┘ └─────────┘ └─────────┘ └─────────┘             │
+├───────────────────────────────────────────────────────────────┤
+│ My Objectives                                                 │
+│ ┌─────────────────────────────────────────────────────────┐   │
+│ │ ○ Increase beneficiary reach in Cox's Bazar    72% ████░│   │
+│ │   KR1: Enroll 500 new beneficiaries           80% ████░ │   │
+│ │   KR2: Complete 12 field assessments          58% ███░░ │   │
+│ │   KR3: Submit quarterly report to USAID       100% █████│   │
+│ │   [Check In]  Last check-in: 3 days ago                 │   │
+│ └─────────────────────────────────────────────────────────┘   │
+│ ┌─────────────────────────────────────────────────────────┐   │
+│ │ ○ Improve team capacity building               45% ██░░░│   │
+│ │   KR1: 3 training workshops completed          33% ██░░░│   │
+│ │   KR2: All team members certified in PSEA     60% ███░░ │   │
+│ │   [Check In]  Last check-in: 7 days ago ⚠️              │   │
+│ └─────────────────────────────────────────────────────────┘   │
+└───────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### 8c.5 HR/Payroll → Budget Personnel Cost Tracking
+
+**Context:** Personnel costs = 60-80% of NGO budgets. USAID (2 CFR 200), EU, and DFID require detailed cost allocation by grant/project. This implements Phase 10.2 as defined in the implementation plan, connecting payroll to budget through employee project allocations.
+
+**Note:** This section implements the design already specified in Phase 10.2 (lines 7258-7352). Refer to Phase 10.2 for the `PayrollBudgetAllocation` model, API endpoints, and UI changes. Key additions beyond 10.2:
+
+##### 8c.5a PayrollBudgetAllocation Model
+
+(As defined in Phase 10.2 — `PayrollBudgetAllocation` with payrollRunId, payrollEntryId, employeeId, projectId, budgetId, budgetLineId, allocationPct, grossAmount, netAmount, fringeAmount, totalCharge, period)
+
+##### 8c.5b Integration with Salary Grade System
+
+Enhancement over Phase 10.2 spec — now that we have dynamic PayrollEntryLine:
+
+```
+Payroll Approval Flow (enhanced):
+1. PayrollRun PROCESSED → entries have PayrollEntryLines from salary structure
+2. For each PayrollEntry:
+   a. Get EmployeeProjectAllocation records (active, date-overlapping)
+   b. For each allocation:
+      - Split EACH PayrollEntryLine amount by allocation percentage
+      - Track earnings, deductions, employer contributions separately
+      - grossCharge = sum(earning lines) * allocation%
+      - fringeCharge = sum(employer contribution lines) * allocation%
+      - totalCharge = grossCharge + fringeCharge
+   c. Match to BudgetLine: category="Personnel" AND budget.projectId = allocation.projectId
+   d. Budget availability check per project
+3. Show detailed budget impact (per component, per project) on approval screen
+4. On approval: create PayrollBudgetAllocation records with component-level breakdown
+```
+
+##### 8c.5c API Endpoints
+
+(As defined in Phase 10.2 — 8 endpoints for project allocation CRUD, budget impact preview, personnel cost summary, plus the new `/hr/project-allocations` matrix page)
+
+##### 8c.5d UI Changes
+
+(As defined in Phase 10.2 — employee detail Project Allocations tab, payroll approval Budget Impact panel, budget-vs-actual personnel drill-down, project detail Personnel Costs tab, plus new `/hr/project-allocations` matrix page)
+
+---
+
+#### 8c.6 Dashboard KPI — Employee Join/Leave/Turnover Metrics
+
+**Context:** HR dashboards in international NGO ERPs show headcount trends, turnover rates, and workforce composition. Current dashboard only shows `staffCount` — no join/leave counts, no trends, no turnover analysis.
+
+##### 8c.6a New Dashboard API Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/v1/dashboard/hr-kpis` | HR-specific KPI data (lazy-loaded on dashboard) |
+| GET | `/api/v1/dashboard/hr-headcount-trend` | Monthly headcount for last 12 months (line chart data) |
+| GET | `/api/v1/hr/analytics/turnover` | Detailed turnover analysis (for HR analytics page) |
+
+##### 8c.6b HR KPI Response Structure
+
+```typescript
+// GET /api/v1/dashboard/hr-kpis
+{
+  totalHeadcount: number,
+  headcountDelta: number,         // vs last month (+5, -2)
+  newJoinersThisMonth: number,
+  separationsThisMonth: number,
+  turnoverRate: number,           // Trailing 12 months: (separations / avg headcount) × 100
+  openPositions: number,          // PUBLISHED job postings vacancy count
+  expiringContracts: number,      // Contracts ending in next 30 days
+  genderRatio: { male: number, female: number, other: number },
+  departmentBreakdown: [{ department: string, count: number, joiners: number, leavers: number }],
+  employmentTypeBreakdown: [{ type: string, count: number }],
+  turnoverByDepartment: [{ department: string, rate: number }],
+  separationReasons: [{ reason: string, count: number }]  // From Offboarding.separationType
+}
+
+// GET /api/v1/dashboard/hr-headcount-trend
+{
+  months: [{
+    month: "2026-03",
+    activeCount: number,
+    joinedCount: number,
+    leftCount: number,
+    netChange: number
+  }]  // Last 12 months
+}
+```
+
+##### 8c.6c Dashboard UI Updates
+
+**New KPI Cards Row (below existing financial KPIs):**
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ HR Workforce Overview                                            │
+├─────────┬─────────┬─────────┬─────────┬─────────┬──────────────┤
+│ Total   │ New     │ Separa- │ Turnover│ Open    │ Expiring     │
+│ Staff   │ Joiners │ tions   │ Rate    │ Positions│ Contracts   │
+│   47    │    3    │    1    │  8.5%   │    5    │     2        │
+│  ↑5     │this mo. │this mo. │  12mo   │ hiring  │  next 30d    │
+└─────────┴─────────┴─────────┴─────────┴─────────┴──────────────┘
+```
+
+**New Chart — Headcount Trend:**
+
+```
+Headcount Trend (12 Months)
+60 ┤
+50 ┤                               ████
+45 ┤                     ████ ████ ████ ████
+40 ┤          ████ ████ ████ ████ ████ ████ ████
+35 ┤████ ████ ████ ████ ████
+30 ┤────┴────┴────┴────┴────┴────┴────┴────┴──→
+     Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  ...
+     ── Headcount   ▓▓ Joiners   ░░ Leavers
+```
+
+- Recharts ComposedChart: Line for headcount, Bars for joiners (green) and leavers (red)
+- Click any month bar → drill-down list of actual employees
+
+**New Chart — Turnover by Department (on HR Analytics page):**
+- Horizontal BarChart: departments on Y-axis, turnover rate on X-axis
+- Color-coded: green (<10%), amber (10-20%), red (>20%)
+
+---
+
+#### 8c.7 Navigation Updates
+
+**New sidebar items under HR & Payroll:**
+
+```
+HR & Payroll
+├── Employee Directory     (existing)
+├── Recruitment            (existing)
+├── Onboarding             (existing)
+├── Contracts              (existing)
+├── Attendance             (existing)
+├── Leave Management       (existing)
+│   └── Team Calendar      ★ NEW (8c.3)
+├── Holiday Calendar       (existing)
+├── Payroll                (existing)
+│   └── Payslip Templates  ★ NEW (8c.2)
+├── Salary Grades          ★ NEW (8c.1)
+├── Salary Structures      ★ NEW (8c.1)
+├── Pension Management     (existing)
+├── Performance            (existing)
+├── OKR                    ★ NEW (8c.4)
+├── Training               (existing)
+├── Project Allocations    ★ NEW (8c.5)
+├── Offboarding            (existing)
+├── Grievances             (existing)
+├── Disciplinary           (existing)
+├── Org Chart              (existing)
+├── HR Analytics           (existing)
+```
+
+---
+
+#### 8c.8 i18n Keys
+
+**New message keys to add across `src/messages/{en,bn}/hr.json`:**
+
+```json
+{
+  "salaryGrades": {
+    "title": "Salary Grades",
+    "code": "Grade Code",
+    "name": "Grade Name",
+    "level": "Level",
+    "minSalary": "Minimum",
+    "midSalary": "Midpoint",
+    "maxSalary": "Maximum",
+    "steps": "Steps",
+    "stepNumber": "Step",
+    "basicSalary": "Basic Salary",
+    "addStep": "Add Step",
+    "gradeMatrix": "Grade Matrix",
+    "effectiveFrom": "Effective From",
+    "noGrades": "No salary grades configured"
+  },
+  "salaryStructures": {
+    "title": "Salary Structures",
+    "name": "Structure Name",
+    "description": "Description",
+    "linkedGrade": "Linked Grade",
+    "components": "Components",
+    "calculationType": "Calculation Type",
+    "fixed": "Fixed Amount",
+    "percentOfBasic": "% of Basic",
+    "percentOfGross": "% of Gross",
+    "addComponent": "Add Component",
+    "isDefault": "Default Structure",
+    "noStructures": "No salary structures configured"
+  },
+  "salaryRevision": {
+    "title": "Salary Revision",
+    "currentGrade": "Current Grade",
+    "newGrade": "New Grade",
+    "currentStep": "Current Step",
+    "newStep": "New Step",
+    "revisionType": "Revision Type",
+    "effectiveDate": "Effective Date",
+    "reason": "Reason",
+    "history": "Salary History",
+    "bulkIncrement": "Bulk Annual Increment",
+    "noHistory": "No salary revision history"
+  },
+  "payslip": {
+    "title": "Payslip",
+    "payslips": "Payslips",
+    "viewPayslip": "View Payslip",
+    "downloadPayslip": "Download Payslip",
+    "downloadAll": "Download All Payslips",
+    "payPeriod": "Pay Period",
+    "paymentDate": "Payment Date",
+    "earnings": "Earnings",
+    "deductions": "Deductions",
+    "grossPay": "Gross Pay",
+    "totalDeductions": "Total Deductions",
+    "netPay": "Net Pay",
+    "netPayInWords": "Net Pay (in words)",
+    "ytd": "Year-to-Date",
+    "employerContributions": "Employer Contributions",
+    "attendanceSummary": "Attendance Summary",
+    "workingDays": "Working Days",
+    "presentDays": "Days Present",
+    "absentDays": "Days Absent",
+    "templates": "Payslip Templates",
+    "templateName": "Template Name",
+    "noPayslips": "No payslips available"
+  },
+  "leaveCalendar": {
+    "title": "Team Leave Calendar",
+    "coverage": "Team Coverage",
+    "coverageGood": "Good Coverage",
+    "coverageWarning": "Low Coverage",
+    "coverageCritical": "Critical Coverage",
+    "myTeam": "My Team",
+    "allTeams": "All Teams",
+    "halfDay": "Half Day",
+    "morning": "Morning",
+    "afternoon": "Afternoon",
+    "coverageRules": "Coverage Rules",
+    "minimumPresence": "Minimum Presence %",
+    "legend": "Legend"
+  },
+  "okr": {
+    "title": "Objectives & Key Results",
+    "cycles": "OKR Cycles",
+    "cycleName": "Cycle Name",
+    "cycleType": "Cycle Type",
+    "quarterly": "Quarterly",
+    "annual": "Annual",
+    "planning": "Planning",
+    "active": "Active",
+    "scoring": "Scoring",
+    "closed": "Closed",
+    "objectives": "Objectives",
+    "objectiveTitle": "Objective Title",
+    "keyResults": "Key Results",
+    "keyResultTitle": "Key Result Title",
+    "resultType": "Result Type",
+    "metric": "Metric",
+    "milestone": "Milestone",
+    "percentage": "Percentage",
+    "startValue": "Start Value",
+    "targetValue": "Target Value",
+    "currentValue": "Current Value",
+    "progress": "Progress",
+    "score": "Score",
+    "weight": "Weight",
+    "checkIn": "Check In",
+    "checkInHistory": "Check-in History",
+    "lastCheckIn": "Last Check-in",
+    "alignment": "Alignment",
+    "alignmentTree": "Alignment Tree",
+    "parentObjective": "Parent Objective",
+    "ownerType": "Owner Type",
+    "organization": "Organization",
+    "department": "Department",
+    "team": "Team",
+    "individual": "Individual",
+    "onTrack": "On Track",
+    "atRisk": "At Risk",
+    "behind": "Behind",
+    "myOKRs": "My OKRs",
+    "teamOKRs": "Team OKRs",
+    "noObjectives": "No objectives found",
+    "noCycles": "No OKR cycles created",
+    "scoreObjective": "Score Objective",
+    "selfScore": "Self Score",
+    "managerScore": "Manager Score",
+    "peerScore": "Peer Score",
+    "analytics": "OKR Analytics",
+    "completionRate": "Completion Rate",
+    "adoptionRate": "Adoption Rate"
+  },
+  "projectAllocations": {
+    "title": "Project Allocations",
+    "matrix": "Allocation Matrix",
+    "allocationPercent": "Allocation %",
+    "totalAllocation": "Total Allocation",
+    "allocationExceeds": "Total allocation cannot exceed 100%",
+    "addAllocation": "Add Project Allocation",
+    "noAllocations": "No project allocations configured",
+    "budgetImpact": "Budget Impact",
+    "budgetImpactPreview": "Payroll Budget Impact Preview",
+    "personnelCharge": "Personnel Charge",
+    "grossCharge": "Gross Charge to Project",
+    "fringeCharge": "Fringe Charge",
+    "unallocated": "Unallocated"
+  },
+  "dashboardKpi": {
+    "hrOverview": "HR Workforce Overview",
+    "totalHeadcount": "Total Headcount",
+    "newJoiners": "New Joiners",
+    "separations": "Separations",
+    "turnoverRate": "Turnover Rate",
+    "openPositions": "Open Positions",
+    "expiringContracts": "Expiring Contracts",
+    "headcountTrend": "Headcount Trend",
+    "turnoverByDept": "Turnover by Department",
+    "separationReasons": "Separation Reasons",
+    "thisMonth": "This Month",
+    "trailing12mo": "Trailing 12 Months",
+    "next30days": "Next 30 Days"
+  }
+}
+```
+
+---
+
+#### 8c.9 Seed Data Plan
+
+| Feature | Seed Records | Details |
+|---------|-------------|---------|
+| Salary Grades | 6 grades × 5 steps = 30 | G-1 to G-6 with progressive salaries |
+| Salary Structures | 2 structures × 6 lines = 12 | "Standard Bangladesh" + "Field Staff" with HRA, Medical, Transport, PF, TDS |
+| Employee Grade Assignments | 6 employees updated | Assign grades/steps/structures to existing employees |
+| Salary Revisions | 6 records | Initial assignments + 2 step increments + 1 promotion |
+| PayrollEntryLines | ~12 per employee × 6 = 72 | For processed payroll run (6 components per entry) |
+| Payslip Template | 1 default | "Default NGO Payslip" |
+| Leave Calendar Data | 10 leave applications | Spread across departments for calendar view |
+| Half-Day Leaves | 3 records | Test half-day support |
+| Coverage Rules | 2 records | Org-wide 60% + Finance dept 80% |
+| OKR Cycle | 1 quarterly cycle | "Q1 2026" (ACTIVE status) |
+| OKR Objectives | 8 records | 2 org + 3 dept + 3 individual (cascade) |
+| Key Results | 16 records | 2 per objective (mix of METRIC, MILESTONE, PERCENTAGE) |
+| Check-Ins | 12 records | 3-4 check-ins per active KR |
+| OKR Scores | 6 records | Self + manager scores for completed objectives |
+| PerformanceReview Updates | 3 records | Link existing reviews to OKR cycle with okrScore |
+| Project Allocations | 8 records | 6 employees split across 3 projects |
+| PayrollBudgetAllocation | 18 records | 6 employees × 3 projects for current month |
+
+**Seed file:** `prisma/seed-phase8c.ts`
+
+---
+
+#### 8c.10 Implementation Order & Dependencies
+
+| Step | Task | Dependencies | Estimated Effort |
+|------|------|-------------|-----------------|
+| **8c.1a** | Schema: new enums + SalaryGrade + SalaryGradeStep + SalaryStructure + SalaryStructureLine + SalaryRevisionHistory | None | 1 day |
+| **8c.1b** | Schema: Employee model changes (gradeId FK, structureId FK) | 8c.1a | 0.5 day |
+| **8c.1c** | Schema: PayrollEntryLine + PayslipTemplate + PayslipDistribution | 8c.1a | 0.5 day |
+| **8c.1d** | Schema: TeamCoverageRule + LeaveApplication half-day fields | None | 0.5 day |
+| **8c.1e** | Schema: OKR models (5 tables) + PerformanceReview enhancement | None | 1 day |
+| **8c.1f** | Schema: PayrollBudgetAllocation | None | 0.5 day |
+| **8c.2a** | Prisma migration (all schema changes) | 8c.1a–8c.1f | 0.5 day |
+| **8c.2b** | Salary Grade CRUD APIs (6 endpoints) | 8c.2a | 1 day |
+| **8c.2c** | Salary Structure CRUD APIs (5 endpoints) | 8c.2a | 1 day |
+| **8c.2d** | Salary Revision API + Employee salary history | 8c.2b, 8c.2c | 1 day |
+| **8c.2e** | Payroll processing rewrite (dynamic lines) | 8c.2a | 1.5 days |
+| **8c.2f** | Payslip APIs (4 endpoints) | 8c.2e | 1 day |
+| **8c.2g** | Leave Calendar API + Coverage API | 8c.2a | 1 day |
+| **8c.2h** | OKR CRUD APIs (12 endpoints) | 8c.2a | 2 days |
+| **8c.2i** | OKR Check-in + Scoring APIs (4 endpoints) | 8c.2h | 1 day |
+| **8c.2j** | Project Allocation + Budget Impact APIs (8 endpoints) | 8c.2a | 1.5 days |
+| **8c.2k** | Dashboard HR KPI APIs (3 endpoints) | 8c.2a | 1 day |
+| **8c.3a** | UI: Salary Grade Matrix page | 8c.2b | 1 day |
+| **8c.3b** | UI: Salary Structure page | 8c.2c | 1 day |
+| **8c.3c** | UI: Employee Compensation tab enhancement | 8c.2d | 1 day |
+| **8c.3d** | UI: Payroll page rebuild (mock → API, dynamic columns) | 8c.2e | 1.5 days |
+| **8c.3e** | UI: Payslip viewer page | 8c.2f | 1 day |
+| **8c.3f** | UI: Team Leave Calendar page | 8c.2g | 1.5 days |
+| **8c.3g** | UI: OKR Dashboard + Cycles page | 8c.2h | 1.5 days |
+| **8c.3h** | UI: OKR Alignment Tree + Objective Detail page | 8c.2i | 1.5 days |
+| **8c.3i** | UI: Project Allocations matrix page | 8c.2j | 1 day |
+| **8c.3j** | UI: Dashboard HR KPI cards + charts | 8c.2k | 1 day |
+| **8c.4a** | Seed data (all features) | All APIs | 1 day |
+| **8c.4b** | i18n messages (EN + BN) | All UI | 0.5 day |
+| **8c.4c** | Navigation sidebar updates | All UI pages | 0.5 day |
+| **8c.4d** | End-to-end testing | All | 1 day |
+
+**Total estimated effort: ~28 days**
+
+---
+
+#### 8c.11 Summary — Phase 8c Totals
+
+| Metric | Count |
+|--------|-------|
+| New Prisma models | 14 |
+| Enhanced Prisma models | 4 (Employee, PayrollEntry, SalaryComponent, PerformanceReview) |
+| New enums | 8 |
+| New API endpoints | 52 |
+| New UI pages | 12 |
+| Enhanced UI pages | 4 (payroll, employee detail, dashboard, HR analytics) |
+| New sidebar items | 6 |
+| i18n keys (estimated) | ~300 (EN + BN) |
+| Seed records | ~240 |
+
+**Files affected:**
+- `prisma/schema/hr.prisma` — 14 new models + 4 model enhancements
+- `prisma/schema/base.prisma` — 8 new enums
+- `prisma/schema/budget.prisma` — PayrollBudgetAllocation model
+- `src/app/api/v1/hr/salary-grades/` — 6 new API routes
+- `src/app/api/v1/hr/salary-structures/` — 5 new API routes
+- `src/app/api/v1/hr/payroll/` — 4 new + 2 modified API routes
+- `src/app/api/v1/hr/leave/calendar/` — 3 new API routes
+- `src/app/api/v1/hr/okr/` — 16 new API routes
+- `src/app/api/v1/hr/employees/[employeeId]/project-allocations/` — 4 new API routes
+- `src/app/api/v1/dashboard/` — 3 new API routes
+- `src/app/(dashboard)/hr/salary-grades/page.tsx` — New page
+- `src/app/(dashboard)/hr/salary-structures/page.tsx` — New page
+- `src/app/(dashboard)/hr/payroll/page.tsx` — Rebuild
+- `src/app/(dashboard)/hr/payroll/payslip/[entryId]/page.tsx` — New page
+- `src/app/(dashboard)/hr/payslip-templates/page.tsx` — New page
+- `src/app/(dashboard)/hr/leave/calendar/page.tsx` — New page
+- `src/app/(dashboard)/hr/okr/page.tsx` — New page
+- `src/app/(dashboard)/hr/okr/cycles/page.tsx` — New page
+- `src/app/(dashboard)/hr/okr/alignment/page.tsx` — New page
+- `src/app/(dashboard)/hr/okr/objectives/new/page.tsx` — New page
+- `src/app/(dashboard)/hr/okr/objectives/[id]/page.tsx` — New page
+- `src/app/(dashboard)/hr/project-allocations/page.tsx` — New page
+- `src/app/(dashboard)/hr/employees/[id]/page.tsx` — Enhanced (compensation tab, project allocations tab)
+- `src/app/(dashboard)/dashboard/page.tsx` — Enhanced (HR KPI row + chart)
+- `src/app/(dashboard)/hr/analytics/page.tsx` — Enhanced (turnover chart)
+- `src/data/navigation.ts` — 6 new items
+- `src/messages/en/hr.json` + `src/messages/bn/hr.json` — ~300 new keys
+- `prisma/seed-phase8c.ts` — New seed file
 
 ---
 

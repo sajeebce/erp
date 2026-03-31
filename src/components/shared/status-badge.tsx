@@ -123,6 +123,12 @@ const statusStyles: Record<string, string> = {
   MATURED: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
   ENCASHED: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
 
+  // OKR
+  PLANNING: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
+  SCORING: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  BEHIND: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  NOT_STARTED: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+
   // Contracts
   EXPIRING_SOON: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
   RENEWED: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',

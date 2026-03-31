@@ -54,6 +54,7 @@ model Budget {
 
   lines              BudgetLine[]
   revisions          BudgetRevision[]
+  payrollBudgetAllocations PayrollBudgetAllocation[]
 
   @@index([projectId])
   @@index([grantId])
@@ -87,6 +88,7 @@ model BudgetLine {
   account        Account  @relation(fields: [accountId], references: [id])
 
   revisionLines  BudgetRevisionLine[]
+  payrollBudgetAllocations PayrollBudgetAllocation[]
 
   @@index([budgetId])
   @@index([accountId])

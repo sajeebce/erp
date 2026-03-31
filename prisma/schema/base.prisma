@@ -703,3 +703,54 @@ enum PettyCashAction {
   ADJUSTMENT
   CLOSING
 }
+
+// ─── Phase 8c: Salary & OKR ───
+
+enum SalaryComponentCalculationType {
+  FIXED
+  PERCENT_OF_BASIC
+  PERCENT_OF_GROSS
+}
+
+enum SalaryRevisionType {
+  INITIAL
+  STEP_INCREMENT
+  GRADE_PROMOTION
+  COLA
+  MARKET_ADJUSTMENT
+  CORRECTION
+  DEMOTION
+}
+
+enum OKRCycleStatus {
+  PLANNING
+  ACTIVE
+  SCORING
+  CLOSED
+}
+
+enum OKROwnerType {
+  ORGANIZATION
+  DEPARTMENT
+  TEAM
+  INDIVIDUAL
+}
+
+enum OKRObjectiveStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum KeyResultType {
+  METRIC
+  MILESTONE
+  PERCENTAGE
+}
+
+enum OKRScoreType {
+  SELF
+  MANAGER
+  PEER
+}
