@@ -54,10 +54,19 @@ model Employee {
   passport          String?
   phone             String?
   email             String?
-  emergencyContact  String?
+  emergencyContact  String?        // Legacy single string — use emergencyContacts relation instead
   presentAddress    String?
   permanentAddress  String?
   photo             String?
+
+  // ── Personal (Phase 12) ──
+  spouseName        String?
+  numberOfDependents Int?
+  nationality       String?        @default("Bangladeshi")
+  religion          String?
+  bloodGroup        String?        // A+, A-, B+, B-, AB+, AB-, O+, O-
+  birthPlace        String?
+  disability        String?        // null = no disability, else description
 
   departmentId      String         @db.Uuid
   designationId     String         @db.Uuid
@@ -68,11 +77,54 @@ model Employee {
   reportingToId     String?        @db.Uuid // Manager
   status            EmployeeStatus @default(ACTIVE)
 
+  // ── Employment (Phase 12) ──
+  dutyStation       String?        // Work location / field office
+  probationEndDate  DateTime?
+  gradeLevel        String?        // Pay grade / band
+  costCenter        String?        // Financial cost allocation
+  workingHoursPerWeek Decimal?     @default(40) @db.Decimal(4, 1)
+  noticePeriodDays  Int?           @default(30)
+  isExpatriate      Boolean        @default(false)
+  shiftSchedule     String?        // Day / Night / Rotational
+
   // Salary info
   basicSalary       Decimal?       @db.Decimal(18, 2)
   bankAccountNo     String?
   bankName          String?
   tinNumber         String?
+
+  // ── Bank (Phase 12) ──
+  bankBranch        String?
+  bankRoutingNo     String?
+  mobileBankingProvider String?    // bKash, Nagad, Rocket
+  mobileBankingNumber   String?
+  paymentMethod     String?        @default("BANK_TRANSFER") // BANK_TRANSFER, MOBILE_BANKING, CHECK, CASH
+  taxCircle         String?
+  taxZone           String?
+
+  // ── Compensation (Phase 12) ──
+  houseRentAllowance    Decimal?   @db.Decimal(18, 2)
+  medicalAllowance      Decimal?   @db.Decimal(18, 2)
+  transportAllowance    Decimal?   @db.Decimal(18, 2)
+  otherAllowances       Json?      // [{name: "Food", amount: 3000}, ...]
+  grossSalary           Decimal?   @db.Decimal(18, 2) // Computed: basic + all allowances
+  payFrequency          String?    @default("MONTHLY") // MONTHLY, BI_WEEKLY, WEEKLY
+
+  // ── NGOAB Compliance (Phase 12) ──
+  ngoabNotified         Boolean    @default(false)
+  fd4ReferenceNo        String?
+  fd4SubmissionDate     DateTime?
+  fd4ApprovalStatus     String?    // PENDING, APPROVED, REJECTED
+
+  // ── Safeguarding (Phase 12) ──
+  codeOfConductSigned   Boolean    @default(false)
+  codeOfConductDate     DateTime?
+  pseaDeclarationSigned Boolean    @default(false)
+  safeguardingTrainingDate    DateTime?
+  safeguardingTrainingExpiry  DateTime?
+  backgroundCheckStatus String?    // PENDING, CLEARED, FLAGGED
+  backgroundCheckDate   DateTime?
+  mdsCheckCompleted     Boolean    @default(false) // Misconduct Disclosure Scheme (USAID/DFID)
 
   notes             String?
   convertedFromApplicationId String? @db.Uuid // If hired via recruitment, link to JobApplication
@@ -102,6 +154,15 @@ model Employee {
   gratuityLedger         GratuityLedger?
   pfEnrollment           PFEnrollment?
 
+  // ── Phase 12 Relations ──
+  emergencyContacts      EmployeeEmergencyContact[]
+  educationHistory       EmployeeEducation[]
+  workHistory            EmployeeWorkHistory[]
+  dependents             EmployeeDependent[]
+  skills                 EmployeeSkill[]
+  languages              EmployeeLanguage[]
+  certifications         EmployeeCertification[]
+
   @@unique([organizationId, employeeNo])
   @@index([organizationId])
   @@index([departmentId])
@@ -110,14 +171,150 @@ model Employee {
 }
 
 model EmployeeDocument {
+  id                 String    @id @default(uuid()) @db.Uuid
+  employeeId         String    @db.Uuid
+  name               String
+  type               String    // NID_COPY, PHOTO, EDUCATIONAL_CERT, TIN_CERTIFICATE, etc.
+  filePath           String
+  uploadedAt         DateTime  @default(now())
+
+  // ── Phase 12 metadata ──
+  documentNumber     String?   // Reference number on the document
+  issuedDate         DateTime?
+  expiryDate         DateTime?
+  issuingAuthority   String?
+  verifiedBy         String?   @db.Uuid // User who verified
+  verifiedAt         DateTime?
+  verificationStatus String?   @default("PENDING") // PENDING, VERIFIED, REJECTED
+  notes              String?
+
+  employee           Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([type])
+  @@index([expiryDate])
+}
+
+// ═══════════════════════════════════════════
+// Phase 12: Employee Profile Sub-Resources
+// Emergency Contacts, Education, Work History,
+// Dependents, Skills, Languages, Certifications
+// ═══════════════════════════════════════════
+
+model EmployeeEmergencyContact {
+  id             String   @id @default(uuid()) @db.Uuid
+  employeeId     String   @db.Uuid
+  contactName    String
+  relationship   String   // SPOUSE, PARENT, SIBLING, CHILD, FRIEND, OTHER
+  phone          String
+  alternatePhone String?
+  email          String?
+  address        String?
+  isPrimary      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+}
+
+model EmployeeEducation {
+  id            String   @id @default(uuid()) @db.Uuid
+  employeeId    String   @db.Uuid
+  degree        String   // SSC, HSC, Bachelor's, Master's, PhD, Diploma, Certificate
+  institution   String
+  fieldOfStudy  String?
+  startYear     Int?
+  endYear       Int?
+  grade         String?  // GPA, Class, Division
+  country       String?  @default("Bangladesh")
+  createdAt     DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+}
+
+model EmployeeWorkHistory {
+  id               String    @id @default(uuid()) @db.Uuid
+  employeeId       String    @db.Uuid
+  employer         String
+  jobTitle         String
+  department       String?
+  startDate        DateTime
+  endDate          DateTime?
+  reasonForLeaving String?
+  responsibilities String?
+  location         String?
+  isCurrent        Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+}
+
+model EmployeeDependent {
+  id                String   @id @default(uuid()) @db.Uuid
+  employeeId        String   @db.Uuid
+  name              String
+  relationship      String   // SPOUSE, CHILD, PARENT, SIBLING, OTHER
+  dateOfBirth       DateTime?
+  gender            String?  // MALE, FEMALE, OTHER
+  nidNumber         String?
+  occupation        String?
+  isNominee         Boolean  @default(false) // For PF/Gratuity
+  nomineePercentage Decimal? @db.Decimal(5, 2)
+  nomineeFor        String?  // PF, GRATUITY, INSURANCE, DEATH_BENEFIT
+  isInsuranceBeneficiary Boolean @default(false)
+  createdAt         DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+}
+
+model EmployeeSkill {
   id          String   @id @default(uuid()) @db.Uuid
   employeeId  String   @db.Uuid
-  name        String
-  type        String   // "NID", "Certificate", "Contract", "Photo", "Resume"
-  filePath    String
-  uploadedAt  DateTime @default(now())
+  skillName   String
+  proficiency String   // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+  yearsOfExp  Int?
+  createdAt   DateTime @default(now())
 
-  employee    Employee @relation(fields: [employeeId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, skillName])
+  @@index([employeeId])
+}
+
+model EmployeeLanguage {
+  id          String   @id @default(uuid()) @db.Uuid
+  employeeId  String   @db.Uuid
+  language    String   // Bengali, English, Arabic, Hindi, Urdu, etc.
+  readLevel   String?  // NONE, BASIC, FLUENT, NATIVE
+  writeLevel  String?
+  speakLevel  String?
+  createdAt   DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, language])
+  @@index([employeeId])
+}
+
+model EmployeeCertification {
+  id            String    @id @default(uuid()) @db.Uuid
+  employeeId    String    @db.Uuid
+  name          String
+  issuingOrg    String
+  issueDate     DateTime?
+  expiryDate    DateTime?
+  certificateNo String?
+  filePath      String?   // Uploaded certificate file
+  createdAt     DateTime  @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([employeeId])
 }

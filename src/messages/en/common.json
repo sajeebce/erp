@@ -11,6 +11,7 @@
     "import": "Import",
     "download": "Download",
     "upload": "Upload",
+    "replace": "Replace",
     "submit": "Submit",
     "approve": "Approve",
     "reject": "Reject",
@@ -122,7 +123,9 @@
     "PARTIALLY_SETTLED": "Partially Settled",
     "SETTLED": "Settled",
     "REQUESTED": "Requested",
-    "DISBURSED": "Disbursed"
+    "DISBURSED": "Disbursed",
+    "CLEARED": "Cleared",
+    "FLAGGED": "Flagged"
   },
   "pagination": {
     "rowsPerPage": "Rows per page",
@@ -168,7 +171,11 @@
     "loading": "Loading...",
     "noData": "No data available",
     "comingSoon": "Coming Soon",
-    "comingSoonDesc": "This module is currently under development."
+    "comingSoonDesc": "This module is currently under development.",
+    "signed": "Signed",
+    "notSigned": "Not Signed",
+    "pending": "Pending",
+    "completed": "Completed"
   },
   "search": {
     "placeholder": "Search..."

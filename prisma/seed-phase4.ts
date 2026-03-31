@@ -97,14 +97,14 @@ async function main() {
 
   // ─── 3. Beneficiaries ───
   const bens = await Promise.all([
-    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-001', name: 'Halima Begum', fatherSpouseName: 'Abdul Karim', age: 35, gender: 'Female', nidNumber: '1990123456789', district: 'Sylhet', upazila: 'Sylhet Sadar', union: 'Khadimpara', village: 'Hatkhola' } }),
-    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-002', name: 'Reshma Khatun', fatherSpouseName: 'Md. Alam', age: 28, gender: 'Female', nidNumber: '1995234567890', district: 'Sylhet', upazila: 'Sylhet Sadar', union: 'Mogalgaon' } }),
-    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-003', name: 'Kamal Hossain', fatherSpouseName: 'Late Nurul Islam', age: 42, gender: 'Male', nidNumber: '1982345678901', district: 'Sylhet', upazila: 'Bianibazar', union: 'Mathiura' } }),
-    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-004', name: 'Fatema Akter', fatherSpouseName: 'Jamal Uddin', age: 30, gender: 'Female', nidNumber: '1994456789012', district: 'Dhaka', upazila: 'Kamrangirchar', union: 'Ward 5' } }),
-    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-005', name: 'Sufia Begum', fatherSpouseName: 'Md. Rafiq', age: 38, gender: 'Female', nidNumber: '1986567890123', district: 'Sylhet', upazila: 'Golapganj', union: 'Lakshmanpur' } }),
-    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-006', name: 'Rahim Mia', fatherSpouseName: 'Korban Ali', age: 45, gender: 'Male', nidNumber: '1979678901234', district: 'Barishal', upazila: 'Bakerganj', union: 'Padrishibpur' } }),
-    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-007', name: 'Josna Rani', fatherSpouseName: 'Shyamal Das', age: 25, gender: 'Female', nidNumber: '1999789012345', district: 'Dhaka', upazila: 'Hazaribagh', union: 'Ward 3' } }),
-    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-008', name: 'Nargis Akter', fatherSpouseName: 'Md. Hanif', age: 32, gender: 'Female', nidNumber: '1992890123456', district: 'Sylhet', upazila: 'Companiganj', union: 'Islampur' } }),
+    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-001', name: 'Halima Begum', fatherSpouseName: 'Abdul Karim', age: 35, gender: 'FEMALE', nidNumber: '1990123456789', district: 'Sylhet', upazila: 'Sylhet Sadar', union: 'Khadimpara', village: 'Hatkhola' } }),
+    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-002', name: 'Reshma Khatun', fatherSpouseName: 'Md. Alam', age: 28, gender: 'FEMALE', nidNumber: '1995234567890', district: 'Sylhet', upazila: 'Sylhet Sadar', union: 'Mogalgaon' } }),
+    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-003', name: 'Kamal Hossain', fatherSpouseName: 'Late Nurul Islam', age: 42, gender: 'MALE', nidNumber: '1982345678901', district: 'Sylhet', upazila: 'Bianibazar', union: 'Mathiura' } }),
+    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-004', name: 'Fatema Akter', fatherSpouseName: 'Jamal Uddin', age: 30, gender: 'FEMALE', nidNumber: '1994456789012', district: 'Dhaka', upazila: 'Kamrangirchar', union: 'Ward 5' } }),
+    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-005', name: 'Sufia Begum', fatherSpouseName: 'Md. Rafiq', age: 38, gender: 'FEMALE', nidNumber: '1986567890123', district: 'Sylhet', upazila: 'Golapganj', union: 'Lakshmanpur' } }),
+    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-006', name: 'Rahim Mia', fatherSpouseName: 'Korban Ali', age: 45, gender: 'MALE', nidNumber: '1979678901234', district: 'Barishal', upazila: 'Bakerganj', union: 'Padrishibpur' } }),
+    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-007', name: 'Josna Rani', fatherSpouseName: 'Shyamal Das', age: 25, gender: 'FEMALE', nidNumber: '1999789012345', district: 'Dhaka', upazila: 'Hazaribagh', union: 'Ward 3' } }),
+    prisma.beneficiary.create({ data: { organizationId: org.id, beneficiaryNo: 'BEN-2026-008', name: 'Nargis Akter', fatherSpouseName: 'Md. Hanif', age: 32, gender: 'FEMALE', nidNumber: '1992890123456', district: 'Sylhet', upazila: 'Companiganj', union: 'Islampur' } }),
   ])
   console.log(`✓ ${bens.length} Beneficiaries created`)
 

@@ -11,6 +11,7 @@
     "import": "আমদানি",
     "download": "ডাউনলোড",
     "upload": "আপলোড",
+    "replace": "প্রতিস্থাপন",
     "submit": "জমা দিন",
     "approve": "অনুমোদন",
     "reject": "প্রত্যাখ্যান",
@@ -122,7 +123,9 @@
     "PARTIALLY_SETTLED": "আংশিক নিষ্পত্তি",
     "SETTLED": "নিষ্পত্তি",
     "REQUESTED": "অনুরোধকৃত",
-    "DISBURSED": "বিতরণকৃত"
+    "DISBURSED": "বিতরণকৃত",
+    "CLEARED": "অনুমোদিত",
+    "FLAGGED": "চিহ্নিত"
   },
   "pagination": {
     "rowsPerPage": "প্রতি পৃষ্ঠায় সারি",
@@ -168,7 +171,11 @@
     "loading": "লোড হচ্ছে...",
     "noData": "কোনো তথ্য নেই",
     "comingSoon": "শীঘ্রই আসছে",
-    "comingSoonDesc": "এই মডিউলটি বর্তমানে উন্নয়নাধীন।"
+    "comingSoonDesc": "এই মডিউলটি বর্তমানে উন্নয়নাধীন।",
+    "signed": "স্বাক্ষরিত",
+    "notSigned": "স্বাক্ষরিত নয়",
+    "pending": "মুলতুবি",
+    "completed": "সম্পন্ন"
   },
   "combobox": {
     "select": "নির্বাচন করুন...",

@@ -158,6 +158,30 @@ pnpm tsx prisma/seed-reconciliation.ts
 pnpm tsx prisma/seed-expenses.ts
 ```
 
+### Phase 9: Budget Module (International-grade budgets with ICR, cost sharing)
+
+```bash
+pnpm tsx prisma/seed-budget.ts
+```
+
+### Phase 10: HR Upgrade (Recruitment, Contracts, Holidays, Offboarding, Grievance, Disciplinary)
+
+```bash
+pnpm tsx prisma/seed-phase8-hr.ts
+```
+
+### Phase 11: Pension Management & Onboarding (Gratuity, Provident Fund, Onboarding Checklists)
+
+```bash
+pnpm tsx prisma/seed-phase8b.ts
+```
+
+### Phase 12: HR Employee Profile (Emergency Contacts, Education, Work History, Skills, Dependents, Certifications)
+
+```bash
+pnpm tsx prisma/seed-phase12-hr-profile.ts
+```
+
 ---
 
 ## 6. Run the Dev Server

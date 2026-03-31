@@ -59,12 +59,12 @@ async function main() {
     const hrOfficer = designations.find(d => d.title === 'HR Officer') || designations[0]
 
     employees = await Promise.all([
-      prisma.employee.create({ data: { organizationId: org.id, employeeNo: 'EMP-001', fullName: 'Karim Ahmed', gender: 'Male', departmentId: (dMap.get('FIN') || departments[0]).id, designationId: finHead.id, employmentType: 'FULL_TIME', joiningDate: new Date('2020-01-15'), status: 'ACTIVE', basicSalary: 85000, phone: '01712111222' } }),
-      prisma.employee.create({ data: { organizationId: org.id, employeeNo: 'EMP-002', fullName: 'Nasima Akter', gender: 'Female', departmentId: (dMap.get('FIN') || departments[0]).id, designationId: accountant.id, employmentType: 'FULL_TIME', joiningDate: new Date('2021-06-01'), status: 'ACTIVE', basicSalary: 45000, phone: '01812222333' } }),
-      prisma.employee.create({ data: { organizationId: org.id, employeeNo: 'EMP-003', fullName: 'Mahbub Alam', gender: 'Male', departmentId: (dMap.get('FLD') || departments[1]).id, designationId: fc.id, employmentType: 'FULL_TIME', joiningDate: new Date('2022-03-10'), status: 'ACTIVE', basicSalary: 55000, phone: '01912333444' } }),
-      prisma.employee.create({ data: { organizationId: org.id, employeeNo: 'EMP-004', fullName: 'Fatema Khatun', gender: 'Female', departmentId: (dMap.get('PRG') || departments[1]).id, designationId: pm.id, employmentType: 'FULL_TIME', joiningDate: new Date('2019-08-01'), status: 'ACTIVE', basicSalary: 75000, phone: '01612444555' } }),
-      prisma.employee.create({ data: { organizationId: org.id, employeeNo: 'EMP-005', fullName: 'Rafiqul Islam', gender: 'Male', departmentId: (dMap.get('FLD') || departments[1]).id, designationId: fc.id, employmentType: 'CONTRACT', joiningDate: new Date('2025-07-01'), endDate: new Date('2027-06-30'), status: 'ACTIVE', basicSalary: 40000, phone: '01512555666' } }),
-      prisma.employee.create({ data: { organizationId: org.id, employeeNo: 'EMP-006', fullName: 'Taslima Begum', gender: 'Female', departmentId: (dMap.get('HRD') || departments[2]).id, designationId: hrOfficer.id, employmentType: 'FULL_TIME', joiningDate: new Date('2023-01-15'), status: 'ACTIVE', basicSalary: 50000, phone: '01312666777' } }),
+      prisma.employee.create({ data: { organizationId: org.id, employeeNo: 'EMP-001', fullName: 'Karim Ahmed', gender: 'MALE', departmentId: (dMap.get('FIN') || departments[0]).id, designationId: finHead.id, employmentType: 'FULL_TIME', joiningDate: new Date('2020-01-15'), status: 'ACTIVE', basicSalary: 85000, phone: '01712111222' } }),
+      prisma.employee.create({ data: { organizationId: org.id, employeeNo: 'EMP-002', fullName: 'Nasima Akter', gender: 'FEMALE', departmentId: (dMap.get('FIN') || departments[0]).id, designationId: accountant.id, employmentType: 'FULL_TIME', joiningDate: new Date('2021-06-01'), status: 'ACTIVE', basicSalary: 45000, phone: '01812222333' } }),
+      prisma.employee.create({ data: { organizationId: org.id, employeeNo: 'EMP-003', fullName: 'Mahbub Alam', gender: 'MALE', departmentId: (dMap.get('FLD') || departments[1]).id, designationId: fc.id, employmentType: 'FULL_TIME', joiningDate: new Date('2022-03-10'), status: 'ACTIVE', basicSalary: 55000, phone: '01912333444' } }),
+      prisma.employee.create({ data: { organizationId: org.id, employeeNo: 'EMP-004', fullName: 'Fatema Khatun', gender: 'FEMALE', departmentId: (dMap.get('PRG') || departments[1]).id, designationId: pm.id, employmentType: 'FULL_TIME', joiningDate: new Date('2019-08-01'), status: 'ACTIVE', basicSalary: 75000, phone: '01612444555' } }),
+      prisma.employee.create({ data: { organizationId: org.id, employeeNo: 'EMP-005', fullName: 'Rafiqul Islam', gender: 'MALE', departmentId: (dMap.get('FLD') || departments[1]).id, designationId: fc.id, employmentType: 'CONTRACT', joiningDate: new Date('2025-07-01'), endDate: new Date('2027-06-30'), status: 'ACTIVE', basicSalary: 40000, phone: '01512555666' } }),
+      prisma.employee.create({ data: { organizationId: org.id, employeeNo: 'EMP-006', fullName: 'Taslima Begum', gender: 'FEMALE', departmentId: (dMap.get('HRD') || departments[2]).id, designationId: hrOfficer.id, employmentType: 'FULL_TIME', joiningDate: new Date('2023-01-15'), status: 'ACTIVE', basicSalary: 50000, phone: '01312666777' } }),
     ])
     console.log(`  → ${employees.length} Employees created`)
   }
@@ -463,7 +463,7 @@ async function main() {
       organizationId: org.id,
       employeeNo: 'EMP-007',
       fullName: 'Imran Hossain',
-      gender: 'Male',
+      gender: 'MALE',
       departmentId: fieldDept.id,
       designationId: fcDesig.id,
       employmentType: 'CONTRACT',

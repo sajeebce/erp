@@ -43,7 +43,7 @@
 | 4.1–4.12 | All Models | 870–4149 | Enums, Auth, Finance, Budget, Donor, Project, Beneficiary, Procurement, Asset, HR, Microfinance, System |
 | **5** | **Inter-Module Data Flow** | **4151–4262** | Module dependency, cross-module impact, cascade rules |
 | **6** | **API Routes & CRUD Operations** | **4264–4636** | 220+ endpoints by module |
-| **7** | **Implementation Phases** | **4638–8778** | |
+| **7** | **Implementation Phases** | **4638–9838** | |
 | | Phase 1: Foundation & SaaS Core | 4640–4722 | Auth, multi-tenancy, super admin, subscription |
 | | Phase 2: Core Finance ✅ | 4724–4747 | Chart of Accounts, Journal Entries, Vouchers |
 | | Phase 3: Budget & Donor ✅ | 4749–4770 | Budgets, Donors, Grants, Fund Receipts |
@@ -53,17 +53,18 @@
 | | Phase 7: UI Pages ✅ | 4906–4936 | All CRUD UI pages across modules |
 | | Remaining (Deferred) | 4938–4948 | Webhooks, advanced features |
 | | **Phase 8: HR & Payroll Intl Upgrade ✅** | 4950–5654 | Recruitment/ATS, Contracts, Offboarding, Holidays, Grievance, Analytics |
-| | **Phase 8b: HR Fixes + Gratuity + PF** | 5656–6672 | Critical HR fixes, Gratuity Fund, Provident Fund, Pension research |
+| | **Phase 8b: HR Fixes + Gratuity + PF ✅** | 5656–6672 | Critical HR fixes, Gratuity Fund, Provident Fund, Pension research |
 | | **Phase 9: Budget Intl Upgrade** | 6674–7070 | Phasing, Commitment, Budget Check, Interactive Pages, Burn Rate, Templates, NICRA |
 | | **Phase 10: Cross-Module Integration** | 7072–8101 | Procurement encumbrance, Payroll→Budget, Dashboard KPIs, Grant→Budget, NGOAB |
 | | **Phase 11: Daily Expense Management** | 8103–8778 | Petty Cash, Expense Claims, Advances, Per Diem, TDS/VDS, 7 reports, fixes |
-| 7.1 | Cron Jobs | 8780–8804 | Scheduled tasks (token cleanup, depreciation, etc.) |
-| **8** | **Testing Guidelines** | **8806–9097** | Testing strategy, module-wise tests, integration scenarios |
-| — | **Verification Checklist** | **9099–9127** | Pre-launch validation checklist |
-| — | **Critical Fixes (Post-Audit)** | **9129–9217** | Fix 1–9: journal auto-create, indexes, file upload |
-| — | **Important Features** | **9219–9232** | International-grade enhancements |
-| — | **New Dependencies** | **9234–9264** | Required npm packages |
-| **9** | **Internationalization (i18n)** | **9266–9376** | next-intl, EN + BN, message files, locale resolution |
+| | **Phase 12: HR Employee Profile Upgrade** | 8780–9838 | Schema expansion (7 models, ~35 fields), tabbed profile UI, 34 APIs, documents, compliance |
+| 7.1 | Cron Jobs | 9839–9862 | Scheduled tasks (token cleanup, depreciation, etc.) |
+| **8** | **Testing Guidelines** | **9865–10156** | Testing strategy, module-wise tests, integration scenarios |
+| — | **Verification Checklist** | **10158–10186** | Pre-launch validation checklist |
+| — | **Critical Fixes (Post-Audit)** | **10188–10276** | Fix 1–9: journal auto-create, indexes, file upload |
+| — | **Important Features** | **10278–10291** | International-grade enhancements |
+| — | **New Dependencies** | **10293–10322** | Required npm packages |
+| **9** | **Internationalization (i18n)** | **10325–10434** | next-intl, EN + BN, message files, locale resolution |
 
 ---
 
@@ -8777,7 +8778,1065 @@ enum PettyCashAction {
 
 ---
 
-## 7.1 Cron Jobs (Scheduled Tasks)
+### Phase 12: HR Employee Profile — International-Grade Upgrade ⬜ TODO
+
+> **Priority: Transform basic employee detail page into a world-class NGO HRIS employee profile**
+> **Benchmarks: Odoo 19 HR, BambooHR, SAP SuccessFactors People Profile, OrangeHRM PIM, Unit4 ERP**
+> **Compliance: Bangladesh Labour Act 2006, NGOAB FD-4/FD-6, USAID PSEA/MDS, Income Tax Ordinance 1984**
+> **Dependencies:** Phase 8 (✅), Phase 8b (✅), Phase 5 HR basics (✅)
+> **Scope:** Employee data model expansion, employee detail page rebuild (tabbed UI), edit form completion, seed data fix, cross-module data surfacing
+
+---
+
+#### 12.0 Bug Fixes — Critical Issues in Current Employee Module
+
+##### Fix 12-A: Gender Display Bug (Translation Key Mismatch)
+
+**Root Cause:** Seed data stores gender as `'Male'` (Title Case) but i18n translation keys are `MALE`, `FEMALE`, `OTHER` (UPPERCASE). `t('form.genders.Male')` returns raw key path `hr.form.genders.Male` because key doesn't exist.
+
+**Impact:** Employee detail page shows raw translation key instead of translated value for gender and potentially marital status.
+
+**Fix:**
+1. Update all seed files (`seed-phase5.ts`, `seed-phase8-hr.ts`) to use UPPERCASE: `gender: 'MALE'` instead of `gender: 'Male'`
+2. Verify `employees/new/page.tsx` already uses `['MALE', 'FEMALE', 'OTHER']` (✅ confirmed)
+3. Add data migration script to fix existing DB records: `UPDATE "Employee" SET gender = UPPER(gender) WHERE gender IS NOT NULL`
+4. Same check for `maritalStatus` — ensure seed uses `SINGLE`, `MARRIED`, etc. (UPPERCASE)
+5. Same check for `Beneficiary.gender` in `seed-phase4.ts` — ensure consistency
+
+**Files affected:**
+- `prisma/seed-phase5.ts` — Employee gender values
+- `prisma/seed-phase8-hr.ts` — Employee gender values
+- `prisma/seed-phase4.ts` — Beneficiary gender values (if applicable)
+- New: `prisma/migration-fix-gender-case.ts` — One-time data fix script
+
+##### Fix 12-B: Employee Edit Form — Missing Fields
+
+**Root Cause:** Edit mode in `employees/[id]/page.tsx` only exposes 10 fields (fullName, email, phone, emergencyContact, department, designation, employmentType, status, basicSalary, presentAddress, notes). Many fields visible in view mode are not editable, and several schema fields are completely hidden.
+
+**Fix:** Rebuild edit form to include ALL employee fields grouped by section:
+
+| Section | Fields to Add to Edit Form | Currently in Edit? |
+|---------|---------------------------|-------------------|
+| **Personal** | localizedName, dateOfBirth, gender, maritalStatus, nidNumber, fatherName, motherName, passport, photo (upload) | ❌ All missing |
+| **Employment** | joiningDate, confirmationDate, endDate, reportingTo (SearchableSelect) | ❌ All missing |
+| **Contact** | permanentAddress, bankName, bankAccountNo, tinNumber | ❌ All missing |
+| **New fields** | (See 12.1 schema expansion below) | N/A — new |
+
+**Files affected:**
+- `src/app/(dashboard)/hr/employees/[id]/page.tsx` — Edit form section rebuild
+
+##### Fix 12-C: Employee Detail View — Hidden Schema Fields
+
+**Root Cause:** Several fields that exist in Prisma schema are not shown in view mode.
+
+**Missing from view:**
+- `fatherName`, `motherName` — exist in schema, not rendered
+- `passport` — exists in schema, not rendered
+- `tinNumber` — exists in schema, not rendered
+- `confirmationDate`, `endDate` — exist in schema, not rendered
+- `photo` — exists in schema, not rendered as avatar
+- `convertedFromApplicationId` — exists, could show recruitment origin link
+
+**Fix:** Add all missing fields to their respective view cards. Show `photo` as profile avatar in page header.
+
+**Files affected:**
+- `src/app/(dashboard)/hr/employees/[id]/page.tsx` — View mode sections
+
+---
+
+#### 12.1 Schema Expansion — New Employee Fields & Related Models
+
+> **Context:** International-grade HRIS (Odoo, BambooHR, SAP SF) require structured data for emergency contacts, education, work history, dependents, skills, and compliance tracking. Current `Employee` model has basic fields only.
+
+##### 12.1a New Fields on Existing `Employee` Model
+
+Add to `prisma/schema/hr.prisma` → `Employee` model:
+
+```prisma
+// ── Personal (new fields) ──
+spouseName        String?
+numberOfDependents Int?
+nationality       String?        @default("Bangladeshi")
+religion          String?
+bloodGroup        String?        // A+, A-, B+, B-, AB+, AB-, O+, O-
+birthPlace        String?
+disability        String?        // null = no disability, else description
+
+// ── Employment (new fields) ──
+dutyStation       String?        // Work location / field office name
+probationEndDate  DateTime?
+gradeLevel        String?        // Pay grade / band
+costCenter        String?        // Financial cost allocation
+workingHoursPerWeek Decimal?     @db.Decimal(4, 1) @default(40)
+noticePeriodDays  Int?           @default(30)
+isExpatriate      Boolean        @default(false)
+shiftSchedule     String?        // Day / Night / Rotational
+
+// ── Bank (new fields) ──
+bankBranch        String?
+bankRoutingNo     String?
+mobileBankingProvider String?    // bKash, Nagad, Rocket
+mobileBankingNumber   String?
+paymentMethod     String?        @default("BANK_TRANSFER") // BANK_TRANSFER, MOBILE_BANKING, CHECK, CASH
+taxCircle         String?
+taxZone           String?
+
+// ── Compensation (new fields) ──
+houseRentAllowance    Decimal?   @db.Decimal(18, 2)
+medicalAllowance      Decimal?   @db.Decimal(18, 2)
+transportAllowance    Decimal?   @db.Decimal(18, 2)
+otherAllowances       Json?      // [{name: "Food", amount: 3000}, ...]
+grossSalary           Decimal?   @db.Decimal(18, 2) // Computed: basic + all allowances
+payFrequency          String?    @default("MONTHLY") // MONTHLY, BI_WEEKLY, WEEKLY
+
+// ── NGOAB Compliance (new fields) ──
+ngoabNotified         Boolean    @default(false)
+fd4ReferenceNo        String?
+fd4SubmissionDate     DateTime?
+fd4ApprovalStatus     String?    // PENDING, APPROVED, REJECTED
+
+// ── Safeguarding (new fields) ──
+codeOfConductSigned   Boolean    @default(false)
+codeOfConductDate     DateTime?
+pseaDeclarationSigned Boolean    @default(false)
+safeguardingTrainingDate    DateTime?
+safeguardingTrainingExpiry  DateTime?
+backgroundCheckStatus String?    // PENDING, CLEARED, FLAGGED
+backgroundCheckDate   DateTime?
+mdsCheckCompleted     Boolean    @default(false) // Misconduct Disclosure Scheme (USAID/DFID)
+
+// ── Relations (new) ──
+emergencyContacts     EmployeeEmergencyContact[]
+educationHistory      EmployeeEducation[]
+workHistory           EmployeeWorkHistory[]
+dependents            EmployeeDependent[]
+skills                EmployeeSkill[]
+languages             EmployeeLanguage[]
+certifications        EmployeeCertification[]
+```
+
+##### 12.1b New Model: `EmployeeEmergencyContact`
+
+```prisma
+model EmployeeEmergencyContact {
+  id             String   @id @default(uuid()) @db.Uuid
+  employeeId     String   @db.Uuid
+  contactName    String
+  relationship   String   // SPOUSE, PARENT, SIBLING, CHILD, FRIEND, OTHER
+  phone          String
+  alternatePhone String?
+  email          String?
+  address        String?
+  isPrimary      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+}
+```
+
+##### 12.1c New Model: `EmployeeEducation`
+
+```prisma
+model EmployeeEducation {
+  id            String   @id @default(uuid()) @db.Uuid
+  employeeId    String   @db.Uuid
+  degree        String   // SSC, HSC, Bachelor's, Master's, PhD, Diploma, Certificate
+  institution   String
+  fieldOfStudy  String?
+  startYear     Int?
+  endYear       Int?
+  grade         String?  // GPA, Class, Division
+  country       String?  @default("Bangladesh")
+  createdAt     DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+}
+```
+
+##### 12.1d New Model: `EmployeeWorkHistory`
+
+```prisma
+model EmployeeWorkHistory {
+  id             String    @id @default(uuid()) @db.Uuid
+  employeeId     String    @db.Uuid
+  employer       String
+  jobTitle       String
+  department     String?
+  startDate      DateTime
+  endDate        DateTime?
+  reasonForLeaving String?
+  responsibilities String?
+  location       String?
+  isCurrent      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+}
+```
+
+##### 12.1e New Model: `EmployeeDependent`
+
+```prisma
+model EmployeeDependent {
+  id             String   @id @default(uuid()) @db.Uuid
+  employeeId     String   @db.Uuid
+  name           String
+  relationship   String   // SPOUSE, CHILD, PARENT, SIBLING, OTHER
+  dateOfBirth    DateTime?
+  gender         String?  // MALE, FEMALE, OTHER
+  nidNumber      String?
+  occupation     String?
+  isNominee      Boolean  @default(false) // For PF/Gratuity
+  nomineePercentage Decimal? @db.Decimal(5, 2)
+  nomineeFor     String?  // PF, GRATUITY, INSURANCE, DEATH_BENEFIT
+  isInsuranceBeneficiary Boolean @default(false)
+  createdAt      DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+}
+```
+
+##### 12.1f New Model: `EmployeeSkill`
+
+```prisma
+model EmployeeSkill {
+  id          String   @id @default(uuid()) @db.Uuid
+  employeeId  String   @db.Uuid
+  skillName   String
+  proficiency String   // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+  yearsOfExp  Int?
+  createdAt   DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, skillName])
+  @@index([employeeId])
+}
+```
+
+##### 12.1g New Model: `EmployeeLanguage`
+
+```prisma
+model EmployeeLanguage {
+  id          String   @id @default(uuid()) @db.Uuid
+  employeeId  String   @db.Uuid
+  language    String   // Bengali, English, Arabic, Hindi, Urdu, etc.
+  readLevel   String?  // NONE, BASIC, FLUENT, NATIVE
+  writeLevel  String?
+  speakLevel  String?
+  createdAt   DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, language])
+  @@index([employeeId])
+}
+```
+
+##### 12.1h New Model: `EmployeeCertification`
+
+```prisma
+model EmployeeCertification {
+  id            String    @id @default(uuid()) @db.Uuid
+  employeeId    String    @db.Uuid
+  name          String
+  issuingOrg    String
+  issueDate     DateTime?
+  expiryDate    DateTime?
+  certificateNo String?
+  filePath      String?   // Uploaded certificate file
+  createdAt     DateTime  @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+}
+```
+
+##### 12.1i Enhanced `EmployeeDocument` Model
+
+Current model is very basic. Enhance with metadata:
+
+```prisma
+model EmployeeDocument {
+  id                String    @id @default(uuid()) @db.Uuid
+  employeeId        String    @db.Uuid
+  name              String
+  type              String    // NID_COPY, PHOTO, EDUCATIONAL_CERT, TIN_CERTIFICATE, etc.
+  filePath          String
+  uploadedAt        DateTime  @default(now())
+
+  // ── New fields ──
+  documentNumber    String?   // Reference number on the document
+  issuedDate        DateTime?
+  expiryDate        DateTime?
+  issuingAuthority  String?
+  verifiedBy        String?   @db.Uuid // User who verified
+  verifiedAt        DateTime?
+  verificationStatus String?  @default("PENDING") // PENDING, VERIFIED, REJECTED
+  notes             String?
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([type])
+  @@index([expiryDate]) // For expiry alert cron job
+}
+```
+
+**Schema Summary — 12.1 Total:**
+
+| Item | Count | Type |
+|------|-------|------|
+| New fields on Employee | ~35 | Fields |
+| New models | 7 | EmployeeEmergencyContact, EmployeeEducation, EmployeeWorkHistory, EmployeeDependent, EmployeeSkill, EmployeeLanguage, EmployeeCertification |
+| Enhanced models | 1 | EmployeeDocument (6 new fields) |
+| New indexes | 9 | On new models + document expiry |
+
+---
+
+#### 12.2 API Endpoints — Employee Sub-Resource CRUD
+
+> **Pattern:** Each new model gets standard CRUD under `/api/v1/hr/employees/:employeeId/[resource]`
+
+##### 12.2a Emergency Contacts API (4 endpoints)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/employees/:employeeId/emergency-contacts` | List all emergency contacts |
+| POST | `/api/v1/hr/employees/:employeeId/emergency-contacts` | Add emergency contact |
+| PATCH | `/api/v1/hr/employees/:employeeId/emergency-contacts/:id` | Update contact |
+| DELETE | `/api/v1/hr/employees/:employeeId/emergency-contacts/:id` | Remove contact |
+
+##### 12.2b Education History API (4 endpoints)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/employees/:employeeId/education` | List education records |
+| POST | `/api/v1/hr/employees/:employeeId/education` | Add education record |
+| PATCH | `/api/v1/hr/employees/:employeeId/education/:id` | Update record |
+| DELETE | `/api/v1/hr/employees/:employeeId/education/:id` | Remove record |
+
+##### 12.2c Work History API (4 endpoints)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/employees/:employeeId/work-history` | List work history |
+| POST | `/api/v1/hr/employees/:employeeId/work-history` | Add work history |
+| PATCH | `/api/v1/hr/employees/:employeeId/work-history/:id` | Update entry |
+| DELETE | `/api/v1/hr/employees/:employeeId/work-history/:id` | Remove entry |
+
+##### 12.2d Dependents API (4 endpoints)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/employees/:employeeId/dependents` | List dependents |
+| POST | `/api/v1/hr/employees/:employeeId/dependents` | Add dependent |
+| PATCH | `/api/v1/hr/employees/:employeeId/dependents/:id` | Update dependent |
+| DELETE | `/api/v1/hr/employees/:employeeId/dependents/:id` | Remove dependent |
+
+##### 12.2e Skills API (4 endpoints)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/employees/:employeeId/skills` | List skills |
+| POST | `/api/v1/hr/employees/:employeeId/skills` | Add skill |
+| PATCH | `/api/v1/hr/employees/:employeeId/skills/:id` | Update skill |
+| DELETE | `/api/v1/hr/employees/:employeeId/skills/:id` | Remove skill |
+
+##### 12.2f Languages API (4 endpoints)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/employees/:employeeId/languages` | List languages |
+| POST | `/api/v1/hr/employees/:employeeId/languages` | Add language |
+| PATCH | `/api/v1/hr/employees/:employeeId/languages/:id` | Update language |
+| DELETE | `/api/v1/hr/employees/:employeeId/languages/:id` | Remove language |
+
+##### 12.2g Certifications API (4 endpoints)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/employees/:employeeId/certifications` | List certifications |
+| POST | `/api/v1/hr/employees/:employeeId/certifications` | Add certification (with file upload) |
+| PATCH | `/api/v1/hr/employees/:employeeId/certifications/:id` | Update certification |
+| DELETE | `/api/v1/hr/employees/:employeeId/certifications/:id` | Remove certification |
+
+##### 12.2h Employee Document Enhancement API (3 new endpoints)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| PATCH | `/api/v1/hr/employees/:employeeId/documents/:id` | Update document metadata (number, dates, authority) |
+| POST | `/api/v1/hr/employees/:employeeId/documents/:id/verify` | Mark document as verified/rejected |
+| GET | `/api/v1/hr/employees/:employeeId/documents/expiring` | List documents expiring within N days |
+
+##### 12.2i Employee Profile Summary API (1 endpoint)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/employees/:employeeId/profile-summary` | Aggregated summary: leave balance, attendance stats, contract status, PF balance, gratuity accrual, training hours, project allocations, onboarding progress — single API call for profile smart buttons |
+
+**API Summary — 12.2 Total:**
+
+| Resource | Endpoints | Auth |
+|----------|-----------|------|
+| Emergency Contacts | 4 | Authenticated |
+| Education | 4 | Authenticated |
+| Work History | 4 | Authenticated |
+| Dependents | 4 | Authenticated |
+| Skills | 4 | Authenticated |
+| Languages | 4 | Authenticated |
+| Certifications | 4 | Authenticated |
+| Document Enhancement | 3 | Authenticated |
+| Profile Summary | 1 | Authenticated |
+| **Total** | **32** | |
+
+---
+
+#### 12.3 Employee Detail Page — Tabbed UI Rebuild
+
+> **Context:** Current page is a single-scroll layout with 3 cards + documents + attachments. International-grade HRIS (Odoo, SAP SF, BambooHR) all use tabbed layouts with smart buttons. This rebuild transforms the page into a professional employee profile.
+
+##### 12.3a Page Header (Always Visible)
+
+**UI/UX Research Reference:** Odoo Employee Profile header, BambooHR Employee Profile top bar
+
+**Layout:**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ [Photo/Avatar]  Imran Hossain (ইমরান হোসাইন)                   │
+│                 EMP-007 · Field Coordinator · Field Operations   │
+│                 📧 imran@shapla.org  📱 01413777888              │
+│                 [ACTIVE] [CONTRACT] [EXPATRIATE]                │
+│                                                                 │
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
+│ │ 12 days  │ │ Contract │ │ PF Bal   │ │ 3 Active │ │Onboard │ │
+│ │ Leave    │ │ 89 days  │ │ ৳45,200  │ │ Projects │ │ 76%    │ │
+│ │ Remaining│ │ left     │ │          │ │          │ │        │ │
+│ └──────────┘ └──────────┘ └──────────┘ └──────────┘ └────────┘ │
+│                                                   [← Back][Edit]│
+│ [Personal][Employment][Compensation][Documents][Leave][Projects] │
+│ [Training][Performance][Compliance][Contracts][Timeline]         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Smart Buttons** (data from `/profile-summary` API):
+1. **Leave Remaining** — Total annual leave balance → links to `/hr/leave?employee={id}`
+2. **Contract Days Left** — Active contract days until expiry → links to `/hr/contracts?employee={id}`
+3. **PF Balance** — Current PF balance (if enrolled) → links to `/hr/pension/provident-fund/enrollments/{id}`
+4. **Active Projects** — Count of current project allocations → scrolls to Projects tab
+5. **Onboarding %** — Onboarding progress (only if < 100%) → links to `/hr/onboarding/{id}`
+
+##### 12.3b Tab 1: Personal Information
+
+**Data source:** Employee model fields
+
+**Layout (2-column grid):**
+
+| Left Column | Right Column |
+|-------------|-------------|
+| Full Name | Localized Name (Bangla) |
+| Father's Name | Mother's Name |
+| Spouse Name | Date of Birth (age calculated) |
+| Gender | Marital Status |
+| Blood Group | Religion |
+| Nationality | Birth Place |
+| NID Number | Passport Number |
+| Disability Status | |
+
+**Emergency Contacts Sub-section** (inline table):
+| Contact Name | Relationship | Phone | Alt Phone | Primary? | Actions |
+|---|---|---|---|---|---|
+| Fatema Begum | SPOUSE | 01712... | — | ✅ | Edit / Delete |
+| Nurul Islam | FATHER | 01819... | 01612... | — | Edit / Delete |
++ [Add Contact] button
+
+**Edit mode:** All fields become editable inline. Emergency contacts have add/edit/delete within the tab.
+
+##### 12.3c Tab 2: Employment Information
+
+**Data source:** Employee model + Department + Designation + Employee (reportingTo)
+
+**Layout (2-column grid):**
+
+| Left Column | Right Column |
+|-------------|-------------|
+| Employee No | Status (badge) |
+| Department | Designation |
+| Employment Type (badge) | Grade/Pay Level |
+| Joining Date | Confirmation Date |
+| Probation End Date | End Date (contract) |
+| Duty Station | Cost Center |
+| Reporting To (link) | Shift Schedule |
+| Working Hours/Week | Notice Period (days) |
+| Is Expatriate (badge) | Converted From (recruitment link) |
+
+**Direct Reports Sub-section** (if any):
+- List of direct reports with name, designation, department → clickable to their profile
+
+##### 12.3d Tab 3: Compensation & Benefits
+
+**Data source:** Employee salary fields + Payroll summary + PF/Gratuity
+
+**Layout:**
+
+**Salary Breakdown Card:**
+| Component | Monthly (BDT) |
+|-----------|--------------|
+| Basic Salary | ৳38,000 |
+| House Rent Allowance | ৳15,200 |
+| Medical Allowance | ৳5,000 |
+| Transport Allowance | ৳3,000 |
+| Other Allowances | ৳2,000 |
+| **Gross Salary** | **৳63,200** |
+
+**Payment Details Card:**
+| Field | Value |
+|-------|-------|
+| Pay Frequency | Monthly |
+| Payment Method | Bank Transfer |
+| Bank Name | Dutch-Bangla Bank |
+| Bank Branch | Motijheel |
+| Account No | 123-456-7890 |
+| Routing No | 090261234 |
+| Mobile Banking | bKash — 01712345678 |
+| TIN Number | 123456789012 |
+| Tax Circle | Circle-12, Zone-6 |
+
+**Retirement Benefits Summary Card:**
+| Benefit | Status | Balance |
+|---------|--------|---------|
+| Provident Fund | Enrolled (since Jan 2023) | ৳45,200 |
+| Gratuity | Eligible (3.2 years) | ৳121,600 accrued |
+
+**Latest Payslip Link** → `/hr/payroll/payslips?employee={id}`
+
+##### 12.3e Tab 4: Documents
+
+**Data source:** EmployeeDocument model + REQUIRED_DOCUMENTS config
+
+**Layout:**
+
+**Required Documents Checklist (with upload):**
+
+| Document | Required | Status | Uploaded | Expiry | Verified | Actions |
+|----------|----------|--------|----------|--------|----------|---------|
+| NID / Birth Certificate | ✅ | ✅ Uploaded | 15 Jan 2023 | — | ✅ Verified | View / Replace |
+| Passport-size Photos | ✅ | ⚠️ Missing | — | — | — | Upload |
+| Educational Certificates | ✅ | ✅ Uploaded | 15 Jan 2023 | — | ⏳ Pending | View / Replace |
+| TIN Certificate | ✅ | ✅ Uploaded | 20 Jan 2023 | — | ✅ Verified | View / Replace |
+| Work Permit | For expat | ⚠️ Missing | — | — | — | Upload |
+| Passport Copy | For expat | ⚠️ Expiring | 10 Mar 2023 | 2026-05-15 | ✅ Verified | View / Replace |
+
+**Key features:**
+- Upload button directly on each document row (NOT only in onboarding page)
+- Document metadata form on upload: document number, issue date, expiry date, issuing authority
+- Expiry date color coding: green (>90 days), yellow (30-90 days), red (<30 days)
+- Verification workflow: Admin can mark Verified/Rejected with notes
+- View document opens in modal/new tab
+- Replace document keeps history (old version archived)
+- Conditional rows: "Work Permit" and "Passport Copy" only shown if `isExpatriate = true`
+
+**Additional Documents Section:**
+- Generic file upload for any other documents not in required list
+- Drag & drop area (existing FileUpload component)
+
+##### 12.3f Tab 5: Leave & Attendance (Summary)
+
+**Data source:** LeaveBalance, LeaveApplication, Attendance (existing models — no new schema needed)
+
+**Layout:**
+
+**Leave Balance Cards (current fiscal year):**
+| Leave Type | Entitled | Taken | Remaining |
+|------------|----------|-------|-----------|
+| Annual Leave | 15 | 3 | 12 |
+| Casual Leave | 10 | 5 | 5 |
+| Sick Leave | 14 | 2 | 12 |
+| Maternity Leave | 112 | 0 | 112 |
+
+**Recent Leave Applications (last 5):**
+| Type | From | To | Days | Status |
+|------|------|----|------|--------|
+| Casual | 15 Mar | 16 Mar | 2 | ✅ Approved |
+| Sick | 28 Feb | 28 Feb | 1 | ✅ Approved |
+
+**Attendance Summary (current month):**
+| Metric | Value |
+|--------|-------|
+| Working Days | 22 |
+| Present | 18 |
+| Absent | 1 |
+| Late | 2 |
+| On Leave | 1 |
+
+**Links:** "View Full Leave History" → `/hr/leave?employee={id}`, "View Attendance" → `/hr/attendance?employee={id}`
+
+**No new API needed** — uses existing `/api/v1/hr/leave/balances?employeeId=` and `/api/v1/hr/attendance?employeeId=`
+
+##### 12.3g Tab 6: Projects & Allocations (NGO-Specific)
+
+**Data source:** EmployeeProjectAllocation, ProjectTeamMember (existing models)
+
+**Layout:**
+
+**Current Project Assignments:**
+| Project | Role | Allocation % | Grant/Donor | Period | Budget Line |
+|---------|------|-------------|-------------|--------|-------------|
+| WASH Phase-II | Field Coordinator | 60% | UNICEF | Jan-Dec 2026 | 5.1.2 |
+| Education for All | M&E Support | 40% | Save the Children | Mar-Jun 2026 | 3.2.1 |
+| **Total Allocation** | | **100%** | | | |
+
+**Allocation History:**
+- Past project assignments with dates
+
+**Cost Allocation Pie Chart** (Recharts):
+- Visual breakdown of salary cost across projects/grants
+- Unfunded portion highlighted in red if total < 100%
+
+**Links:** Click project name → `/projects/{id}`, "View Timesheet" → `/hr/timesheet?employee={id}`
+
+**No new API needed** — uses existing `/api/v1/projects/team-members?employeeId=` and `/api/v1/projects/allocations?employeeId=`
+
+##### 12.3h Tab 7: Education, Skills & Training
+
+**Data source:** EmployeeEducation (new), EmployeeSkill (new), EmployeeLanguage (new), EmployeeCertification (new), TrainingParticipant (existing)
+
+**Layout:**
+
+**Education History (inline editable table):**
+| Degree | Institution | Field | Year | Grade | Country | Actions |
+|--------|------------|-------|------|-------|---------|---------|
+| Master's | University of Dhaka | Development Studies | 2018 | 3.45 GPA | Bangladesh | Edit / Delete |
+| Bachelor's | Chittagong University | Sociology | 2016 | 3.12 GPA | Bangladesh | Edit / Delete |
++ [Add Education] button
+
+**Work Experience (inline editable table):**
+| Employer | Title | Period | Location | Actions |
+|----------|-------|--------|----------|---------|
+| BRAC | Field Officer | 2018-2022 | Sylhet | Edit / Delete |
+| ASA | Program Assistant | 2016-2018 | Dhaka | Edit / Delete |
++ [Add Work Experience] button
+
+**Skills (tag-style display):**
+`WASH Programming [Expert]` `M&E [Advanced]` `Report Writing [Advanced]` `GIS [Intermediate]`
++ [Add Skill] button
+
+**Languages:**
+| Language | Read | Write | Speak |
+|----------|------|-------|-------|
+| Bengali | Native | Native | Native |
+| English | Fluent | Fluent | Fluent |
+| Hindi | Basic | None | Basic |
++ [Add Language] button
+
+**Certifications:**
+| Name | Issuer | Date | Expiry | File | Actions |
+|------|--------|------|--------|------|---------|
+| PMP | PMI | 2024-06 | 2027-06 | 📄 View | Edit / Delete |
+| WASH Specialist | UNICEF | 2023-01 | — | 📄 View | Edit / Delete |
++ [Add Certification] button
+
+**Training History** (from existing TrainingParticipant):
+| Training | Date | Score | Status |
+|----------|------|-------|--------|
+| Safeguarding & PSEA | 15 Jan 2026 | 92% | ✅ Completed |
+| First Aid | 10 Dec 2025 | Pass | ✅ Completed |
+
+##### 12.3i Tab 8: Performance (Summary)
+
+**Data source:** PerformanceReview (existing model)
+
+**Layout:**
+
+**Current Review Cycle:**
+| Field | Value |
+|-------|-------|
+| Period | Jan-Dec 2026 |
+| Status | Self-Review Pending |
+| Reviewer | Karim Ahmed (Finance Head) |
+
+**Performance History Chart** (Recharts line/bar):
+- X-axis: Review periods, Y-axis: Score
+- Shows trend over time
+
+**Recent Reviews:**
+| Period | Rating | Score | Reviewer |
+|--------|--------|-------|----------|
+| 2025 | Meets Expectations | 3.5/5 | Karim Ahmed |
+| 2024 | Exceeds Expectations | 4.2/5 | Fatema Begum |
+
+**Links:** "View Full Performance History" → `/hr/performance?employee={id}`
+
+**No new API needed** — uses existing `/api/v1/hr/performance?employeeId=`
+
+##### 12.3j Tab 9: Compliance & Legal
+
+**Data source:** New Employee fields (12.1a compliance/safeguarding fields)
+
+**Layout:**
+
+**NGOAB Compliance Card:**
+| Field | Value | Status |
+|-------|-------|--------|
+| NGOAB Notified | Yes | ✅ |
+| FD-4 Reference No | FD4-2023-1234 | — |
+| FD-4 Submission Date | 15 Jan 2023 | — |
+| FD-4 Approval Status | Approved | ✅ |
+
+**Safeguarding & PSEA Card:**
+| Field | Value | Status |
+|-------|-------|--------|
+| Code of Conduct Signed | Yes | ✅ |
+| Code of Conduct Date | 15 Jan 2023 | — |
+| PSEA Declaration | Yes | ✅ |
+| Safeguarding Training | 15 Jan 2026 | ✅ Current |
+| Training Expiry | 15 Jan 2027 | 🟢 289 days |
+| Background Check | Cleared | ✅ |
+| MDS Check | Completed | ✅ |
+
+**Expatriate Compliance Card** (only if `isExpatriate = true`):
+| Field | Value |
+|-------|-------|
+| Work Permit No | WP-2023-5678 |
+| Work Permit Expiry | 2026-12-31 |
+| Visa Type | E-Visa (Employment) |
+| BIDA Registration | BIDA-REG-1234 |
+| Security Clearance | Cleared |
+
+##### 12.3k Tab 10: Contracts
+
+**Data source:** EmployeeContract (existing model)
+
+**Layout:**
+
+**Active Contract** (highlighted card):
+```
+┌──────────────────────────────────────────────────┐
+│ CTR-2023-005  ·  CONTRACT  ·  🟢 ACTIVE          │
+│ 01 Jun 2023 → 31 May 2025  (730 days, 89 left)  │
+│ Basic: ৳38,000  ·  Funded by: UNICEF WASH-II     │
+│ [View Contract] [Download PDF]                    │
+└──────────────────────────────────────────────────┘
+```
+
+**Contract Timeline:**
+| # | Type | Period | Salary | Status | Funding Source |
+|---|------|--------|--------|--------|----------------|
+| CTR-003 | Contract | Jun 2023 - May 2025 | ৳38,000 | 🟢 Active | UNICEF WASH-II |
+| CTR-002 | Contract | Jun 2021 - May 2023 | ৳32,000 | Completed | DFID Education |
+| CTR-001 | Contract | Jun 2020 - May 2021 | ৳28,000 | Completed | Core Fund |
+
+**Links:** Click contract → `/hr/contracts/{id}`, "Create Renewal" → `/hr/contracts/new?renewalOf={id}`
+
+**No new API needed** — uses existing `/api/v1/hr/contracts?employeeId=`
+
+##### 12.3l Tab 11: Activity Timeline
+
+**Data source:** Aggregated from multiple models (onboarding, contracts, leave, performance, disciplinary, grievance)
+
+**Layout (reverse chronological):**
+```
+📅 2026-03-15 — Leave approved: Casual Leave (15-16 Mar 2026)
+📅 2026-03-01 — Performance review cycle started (2026 Annual)
+📅 2026-01-15 — Training completed: Safeguarding & PSEA (Score: 92%)
+📅 2025-12-01 — Salary revised: ৳35,000 → ৳38,000 (+8.6%)
+📅 2025-06-01 — Contract renewed: CTR-003 (Jun 2023 - May 2025)
+📅 2025-01-15 — Onboarding completed: All 17 tasks done ✅
+📅 2023-06-01 — Employee joined: EMP-007 (converted from recruitment)
+```
+
+**No new model needed** — API aggregates from existing models, sorted by date.
+
+**New API:**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/hr/employees/:employeeId/timeline` | Aggregated activity timeline (paginated, filterable by type) |
+
+---
+
+#### 12.4 Employee Edit Form Rebuild
+
+> **Context:** The edit form needs to support ALL fields across all tabs, not just the basic 10 fields currently available.
+
+##### 12.4a Edit Mode Architecture
+
+**Approach:** Each tab has its own edit capability (inline editing within the tab, not a separate page).
+
+**Pattern:**
+1. Tab header shows [Edit] button
+2. Click [Edit] → fields in that tab become editable
+3. [Save] / [Cancel] buttons appear at tab footer
+4. Save calls the appropriate API (PUT for Employee fields, POST/PATCH/DELETE for sub-resources)
+5. Sub-resources (education, skills, contacts, etc.) use inline add/edit/delete — no separate page
+
+**Edit APIs by tab:**
+
+| Tab | API | Method |
+|-----|-----|--------|
+| Personal | `/api/v1/hr/employees/:id` | PUT (employee fields) |
+| Personal → Emergency Contacts | `/api/v1/hr/employees/:id/emergency-contacts` | POST/PATCH/DELETE |
+| Employment | `/api/v1/hr/employees/:id` | PUT (employee fields) |
+| Compensation | `/api/v1/hr/employees/:id` | PUT (employee fields) |
+| Documents | `/api/v1/hr/employees/:id/documents` | POST (upload) / PATCH (metadata) |
+| Education & Skills | Sub-resource APIs | POST/PATCH/DELETE per resource |
+| Compliance | `/api/v1/hr/employees/:id` | PUT (compliance fields) |
+
+##### 12.4b Employee Create Form Update (`employees/new/page.tsx`)
+
+Add new fields to the create form, organized by section:
+
+**Section 1: Personal Information** (existing + new fields)
+- fullName*, localizedName, fatherName, motherName, dateOfBirth, gender, maritalStatus, nidNumber, passport
+- NEW: spouseName, nationality, bloodGroup, religion, disability
+
+**Section 2: Employment Information** (existing + new fields)
+- department*, designation*, employmentType*, joiningDate*, basicSalary
+- NEW: dutyStation, gradeLevel, costCenter, isExpatriate, shiftSchedule, workingHoursPerWeek, noticePeriodDays
+
+**Section 3: Contact & Bank** (existing + new fields)
+- email, phone, emergencyContact, presentAddress, permanentAddress, bankName, bankAccountNo
+- NEW: bankBranch, bankRoutingNo, mobileBankingProvider, mobileBankingNumber, paymentMethod, tinNumber, taxCircle, taxZone
+
+**Section 4: Compensation** (all new)
+- houseRentAllowance, medicalAllowance, transportAllowance, otherAllowances, payFrequency
+
+**Section 5: Emergency Contacts** (new — inline table)
+- Add at least 1 emergency contact during creation
+
+**Note:** Education, skills, work history, dependents, certifications, compliance — these are added AFTER employee creation via the detail page tabs (not in create form, to keep creation simple).
+
+---
+
+#### 12.5 i18n — Translation Keys
+
+> All new fields, tabs, labels, and messages need EN + BN translations.
+
+**New translation keys needed (estimated ~200 keys):**
+
+**Namespace: `hr` (add to existing `src/messages/en/hr.json` and `bn/hr.json`)**
+
+```
+hr.profile.tabs.personal
+hr.profile.tabs.employment
+hr.profile.tabs.compensation
+hr.profile.tabs.documents
+hr.profile.tabs.leave
+hr.profile.tabs.projects
+hr.profile.tabs.educationSkills
+hr.profile.tabs.performance
+hr.profile.tabs.compliance
+hr.profile.tabs.contracts
+hr.profile.tabs.timeline
+
+hr.profile.smartButtons.leaveRemaining
+hr.profile.smartButtons.contractDaysLeft
+hr.profile.smartButtons.pfBalance
+hr.profile.smartButtons.activeProjects
+hr.profile.smartButtons.onboardingProgress
+
+hr.form.spouseName
+hr.form.nationality
+hr.form.bloodGroup
+hr.form.religion
+hr.form.birthPlace
+hr.form.disability
+hr.form.dutyStation
+hr.form.probationEndDate
+hr.form.gradeLevel
+hr.form.costCenter
+hr.form.workingHours
+hr.form.noticePeriod
+hr.form.isExpatriate
+hr.form.shiftSchedule
+hr.form.bankBranch
+hr.form.bankRoutingNo
+hr.form.mobileBankingProvider
+hr.form.mobileBankingNumber
+hr.form.paymentMethod
+hr.form.taxCircle
+hr.form.taxZone
+hr.form.houseRentAllowance
+hr.form.medicalAllowance
+hr.form.transportAllowance
+hr.form.otherAllowances
+hr.form.grossSalary
+hr.form.payFrequency
+
+hr.form.bloodGroups.A_POSITIVE ... (8 types)
+hr.form.religions.ISLAM, HINDUISM, BUDDHISM, CHRISTIANITY, OTHER
+hr.form.paymentMethods.BANK_TRANSFER, MOBILE_BANKING, CHECK, CASH
+hr.form.payFrequencies.MONTHLY, BI_WEEKLY, WEEKLY
+hr.form.proficiencyLevels.BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+hr.form.languageLevels.NONE, BASIC, FLUENT, NATIVE
+hr.form.relationships.SPOUSE, PARENT, SIBLING, CHILD, FRIEND, OTHER
+hr.form.verificationStatuses.PENDING, VERIFIED, REJECTED
+
+hr.emergencyContacts.title, .add, .edit, .delete, .primary, .noPrimary
+hr.education.title, .add, .degree, .institution, .field, .year, .grade
+hr.workHistory.title, .add, .employer, .jobTitle, .period, .current
+hr.dependents.title, .add, .name, .relationship, .nominee, .percentage
+hr.skills.title, .add, .skillName, .proficiency, .years
+hr.languages.title, .add, .language, .read, .write, .speak
+hr.certifications.title, .add, .name, .issuer, .issueDate, .expiry
+hr.compliance.ngoab, .fd4, .safeguarding, .psea, .backgroundCheck, .mds
+hr.timeline.title, .noActivity
+
+... (~200 total keys)
+```
+
+---
+
+#### 12.6 Seed Data Update
+
+> **Context:** Fix existing gender casing bug + add rich demo data for all new models.
+
+##### 12.6a Gender/MaritalStatus Casing Fix
+
+Update all seed files to use UPPERCASE enum values:
+- `gender: 'MALE'` (not `'Male'`)
+- `gender: 'FEMALE'` (not `'Female'`)
+- `maritalStatus: 'MARRIED'` (not `'Married'`)
+
+##### 12.6b New Seed: `prisma/seed-phase12-hr-profile.ts`
+
+**Demo data to create:**
+
+| Model | Records | Example Data |
+|-------|---------|-------------|
+| EmployeeEmergencyContact | 10 (2 per employee for 5 employees) | Spouse, parent contacts with BD phone numbers |
+| EmployeeEducation | 12 (2-3 per employee) | SSC/HSC/Bachelor's/Master's from BD universities |
+| EmployeeWorkHistory | 10 (2 per employee) | Previous NGO employment (BRAC, ASA, Grameen) |
+| EmployeeDependent | 8 (1-2 per employee) | Spouse, children with nominee info for PF |
+| EmployeeSkill | 15 (3 per employee) | WASH, M&E, GIS, Report Writing, Data Analysis |
+| EmployeeLanguage | 12 (2-3 per employee) | Bengali (native), English (fluent), Hindi/Arabic (basic) |
+| EmployeeCertification | 6 (1-2 per employee) | PMP, WASH Specialist, First Aid, CPA |
+
+**Update existing employee records** with new fields:
+- Karim Ahmed: dutyStation="Dhaka HQ", gradeLevel="G-7", nationality="Bangladeshi", bloodGroup="O+", isExpatriate=false
+- Fatema Begum: dutyStation="Dhaka HQ", gradeLevel="G-6", nationality="Bangladeshi", bloodGroup="A+", maritalStatus="MARRIED"
+- Imran Hossain: dutyStation="Sylhet Field", gradeLevel="G-4", isExpatriate=false, ngoabNotified=true, fd4ReferenceNo="FD4-2023-1234"
+- (all 6 employees get new fields populated)
+
+---
+
+#### 12.7 Cross-Module Connections
+
+> **Context:** The employee profile must surface data from other modules. These connections use EXISTING APIs — no new backend work needed except the profile-summary endpoint.
+
+| Tab | Connected Module | API Used | Notes |
+|-----|-----------------|----------|-------|
+| Leave & Attendance | HR Leave | `GET /api/v1/hr/leave/balances?employeeId=` | Existing |
+| Leave & Attendance | HR Attendance | `GET /api/v1/hr/attendance?employeeId=` | Existing |
+| Projects | Project Management | `GET /api/v1/projects/allocations?employeeId=` | Existing |
+| Performance | HR Performance | `GET /api/v1/hr/performance?employeeId=` | Existing |
+| Contracts | HR Contracts | `GET /api/v1/hr/contracts?employeeId=` | Existing |
+| Training | HR Training | `GET /api/v1/hr/training/participants?employeeId=` | Existing |
+| Compensation → PF | HR Pension | `GET /api/v1/hr/pf/enrollments?employeeId=` | Existing |
+| Compensation → Gratuity | HR Pension | `GET /api/v1/hr/gratuity/ledgers?employeeId=` | Existing |
+| Smart Buttons | Aggregated | `GET /api/v1/hr/employees/:id/profile-summary` | **New (12.2i)** |
+| Timeline | Aggregated | `GET /api/v1/hr/employees/:id/timeline` | **New (12.3l)** |
+| Documents → Onboarding | HR Onboarding | `GET /api/v1/hr/onboarding/:employeeId` | Existing — link from Documents tab |
+
+---
+
+#### 12.8 Implementation Order
+
+> **Dependencies mapped to avoid conflicts. Each step depends on the previous unless noted.**
+
+| Step | Task | Dependencies | Estimated Scope |
+|------|------|-------------|-----------------|
+| **12.0** | Bug fixes (gender casing, seed updates) | None | 3 files + migration script |
+| **12.1** | Prisma schema expansion (Employee fields + 7 new models + EmployeeDocument enhancement) | None | `hr.prisma` + `db:push` |
+| **12.2a-g** | Sub-resource CRUD APIs (7 × 4 = 28 endpoints) | 12.1 | 7 API route directories |
+| **12.2h** | Document enhancement APIs (3 endpoints) | 12.1 | 1 API route directory |
+| **12.2i** | Profile summary API | 12.1 | 1 API route |
+| **12.3a** | Page header + smart buttons | 12.2i | Employee detail page rebuild start |
+| **12.3b-c** | Tabs 1-2: Personal + Employment | 12.2a (emergency contacts), 12.1 | Tab components |
+| **12.3d** | Tab 3: Compensation | 12.1 | Tab component |
+| **12.3e** | Tab 4: Documents (with inline upload) | 12.2h | Tab component |
+| **12.3f** | Tab 5: Leave & Attendance | None (uses existing APIs) | Tab component |
+| **12.3g** | Tab 6: Projects & Allocations | None (uses existing APIs) | Tab component |
+| **12.3h** | Tab 7: Education, Skills & Training | 12.2b, 12.2e, 12.2f, 12.2g | Tab component |
+| **12.3i** | Tab 8: Performance | None (uses existing APIs) | Tab component |
+| **12.3j** | Tab 9: Compliance | 12.1 | Tab component |
+| **12.3k** | Tab 10: Contracts | None (uses existing APIs) | Tab component |
+| **12.3l** | Tab 11: Timeline + API | 12.1 | Tab component + 1 API |
+| **12.4a** | Edit mode per-tab architecture | 12.3b-k | Edit functionality |
+| **12.4b** | Employee create form update | 12.1 | `employees/new/page.tsx` |
+| **12.5** | i18n translations (EN + BN) | 12.3, 12.4 | 2 JSON files |
+| **12.6** | Seed data (new models + fix gender casing) | 12.1 | 1 new seed file + fix existing |
+| **12.7** | Cross-module integration testing | All above | Verify all tab data loads |
+
+**Parallel tracks possible:**
+- **Track A (Schema + APIs):** Steps 12.0 → 12.1 → 12.2a-i (can run in parallel with Track B research)
+- **Track B (UI/UX Research):** Research Odoo/BambooHR profile UI patterns before starting 12.3
+- **Track C (UI Build):** Steps 12.3a → 12.3b-k → 12.4 (depends on Track A completion)
+- **Track D (i18n + Seed):** Steps 12.5 + 12.6 (can run after Track A, parallel with Track C)
+
+---
+
+#### 12.9 Testing Scenarios
+
+| # | Scenario | Steps |
+|---|----------|-------|
+| 1 | Gender displays correctly | Create employee with MALE gender → view detail → shows "Male" (translated) |
+| 2 | Edit form saves all fields | Edit every field in every tab → save → refresh → all values persisted |
+| 3 | Emergency contact CRUD | Add 2 contacts → set primary → delete 1 → verify list |
+| 4 | Education history CRUD | Add degree → edit grade → delete → verify list |
+| 5 | Document upload with metadata | Upload NID → fill document number, expiry → verify shown in Documents tab |
+| 6 | Document verification workflow | Upload doc → admin verifies → status changes to VERIFIED |
+| 7 | Document expiry alerts | Upload doc with expiry in 20 days → check expiring endpoint returns it |
+| 8 | Profile summary API | Call summary → verify leave balance, contract days, PF balance all returned |
+| 9 | Smart buttons render | Open employee profile → verify 5 smart buttons show correct data |
+| 10 | Tab navigation | Click through all 11 tabs → verify data loads in each |
+| 11 | Projects tab allocation total | Add 2 project allocations (60% + 40%) → verify 100% total shown |
+| 12 | Compliance tab NGOAB fields | Set fd4ReferenceNo, ngoabNotified → verify shown in Compliance tab |
+| 13 | Timeline aggregation | Employee with contract, leave, training → timeline shows all events sorted |
+| 14 | Create form new fields | Create employee with new fields (nationality, bloodGroup, etc.) → verify saved |
+| 15 | Seed data integrity | Run seed → verify all 6 employees have emergency contacts, education, skills |
+| 16 | Cross-module data display | Employee with PF enrollment → Compensation tab shows PF balance |
+| 17 | Expatriate conditional fields | Set isExpatriate=true → work permit, passport, BIDA fields appear |
+| 18 | Dependent nominee validation | Add dependent as PF nominee → verify percentages sum to 100% |
+| 19 | Inline edit per tab | Edit Personal tab → save → edit Employment tab → save → no data loss between tabs |
+| 20 | i18n switching | Switch to Bengali → all new labels show Bengali translations |
+
+---
+
+#### 12.10 Phase Summary
+
+| Item | Count |
+|------|-------|
+| Bug fixes | 3 (gender casing, edit form, hidden fields) |
+| New Employee fields | ~35 |
+| New Prisma models | 7 |
+| Enhanced Prisma models | 1 (EmployeeDocument) |
+| New API endpoints | 34 (32 sub-resource CRUD + profile-summary + timeline) |
+| UI tabs (detail page rebuild) | 11 |
+| Smart buttons | 5 |
+| i18n keys (estimated) | ~200 (EN + BN) |
+| Seed records | ~73 new records + 6 employee updates |
+| Test scenarios | 20 |
+
+**Files affected (estimated):**
+- `prisma/schema/hr.prisma` — Schema expansion
+- `src/app/(dashboard)/hr/employees/[id]/page.tsx` — Full page rebuild (tabbed UI)
+- `src/app/(dashboard)/hr/employees/new/page.tsx` — Create form expansion
+- `src/app/api/v1/hr/employees/[employeeId]/` — 9 new API route directories
+- `src/messages/en/hr.json` + `src/messages/bn/hr.json` — i18n
+- `prisma/seed-phase12-hr-profile.ts` — New seed file
+- `prisma/seed-phase5.ts`, `prisma/seed-phase8-hr.ts` — Gender casing fix
+- `prisma/migration-fix-gender-case.ts` — Data migration script
+
+---
 
 > **Adopted from LMS** — background tasks for SaaS operations
 
