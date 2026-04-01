@@ -56,6 +56,8 @@ export async function GET(request: NextRequest) {
           joiningDate: true,
           status: true,
           basicSalary: true,
+          photo: true,
+          dutyStation: true,
           localizedName: true,
           createdAt: true,
           department: { select: { id: true, name: true } },

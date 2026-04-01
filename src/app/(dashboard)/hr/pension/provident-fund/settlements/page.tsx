@@ -38,7 +38,7 @@ export default function PFSettlementsPage() {
   ]
 
   useEffect(() => {
-    fetch('/api/v1/hr/provident-fund/settlements?limit=100')
+    fetch('/api/v1/hr/pf/settlements?limit=100')
       .then(res => res.json())
       .then(json => { if (json.success) setSettlements(json.data) })
       .catch(console.error)

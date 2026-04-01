@@ -38,6 +38,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         ...(body.endYear !== undefined && { endYear: body.endYear ?? null }),
         ...(body.grade !== undefined && { grade: body.grade || null }),
         ...(body.country !== undefined && { country: body.country || null }),
+        ...(body.filePath !== undefined && { filePath: body.filePath || null }),
       },
     })
 
@@ -69,3 +70,5 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return handleRouteError(error)
   }
 }
+
+export { PATCH as PUT }

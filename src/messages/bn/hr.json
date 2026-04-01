@@ -205,7 +205,13 @@
     "kpis": "কেপিআই",
     "overallScore": "সামগ্রিক স্কোর",
     "selfAssessment": "স্ব-মূল্যায়ন",
-    "managerAssessment": "ব্যবস্থাপকের মূল্যায়ন"
+    "managerAssessment": "ব্যবস্থাপকের মূল্যায়ন",
+    "reviewType": "মূল্যায়ন ধরন",
+    "completedDate": "সম্পন্নের তারিখ",
+    "developmentPlan": "উন্নয়ন পরিকল্পনা",
+    "okrScore": "ওকেআর স্কোর",
+    "competencyScore": "দক্ষতা স্কোর",
+    "noReviews": "কোনো কর্মক্ষমতা মূল্যায়ন পাওয়া যায়নি"
   },
   "training": {
     "title": "প্রশিক্ষণ ও উন্নয়ন",
@@ -973,6 +979,7 @@
     },
     "noData": "কোনো তথ্য পাওয়া যায়নি",
     "salaryBreakdown": "বেতন বিভাজন",
+    "netSalary": "নিট বেতন",
     "component": "উপাদান",
     "paymentDetails": "পেমেন্ট বিবরণ",
     "retirementBenefits": "অবসর সুবিধা",
@@ -997,7 +1004,14 @@
     "certifications": "সনদপত্র",
     "performanceSummary": "কর্মদক্ষতার সারসংক্ষেপ",
     "viewPerformance": "পূর্ণ কর্মদক্ষতার ইতিহাস দেখুন",
-    "viewAll": "সব দেখুন"
+    "viewAll": "সব দেখুন",
+    "document": "ডকুমেন্ট",
+    "uploadDocument": "ডকুমেন্ট আপলোড",
+    "viewDocument": "ডকুমেন্ট দেখুন",
+    "removeDocument": "ডকুমেন্ট মুছুন",
+    "documentAttached": "ডকুমেন্ট সংযুক্ত",
+    "noDocument": "কোনো ডকুমেন্ট নেই",
+    "complianceDocuments": "কমপ্লায়েন্স ডকুমেন্ট"
   },
   "emergencyContacts": {
     "title": "জরুরি যোগাযোগ",
@@ -1103,7 +1117,12 @@
     "mdsCheck": "এমডিএস যাচাই (ইউএসএআইডি/ডিএফআইডি)",
     "expatriate": "প্রবাসী সম্মতি",
     "psea": "পিএসইএ ঘোষণা",
-    "safeguardingExpiry": "সেফগার্ডিং প্রশিক্ষণ মেয়াদোত্তীর্ণ"
+    "safeguardingExpiry": "সেফগার্ডিং প্রশিক্ষণ মেয়াদোত্তীর্ণ",
+    "uploadCoc": "আচরণবিধি আপলোড করুন",
+    "uploadPsea": "পিএসইএ ঘোষণা আপলোড করুন",
+    "uploadSafeguarding": "প্রশিক্ষণ সার্টিফিকেট আপলোড করুন",
+    "uploadBackgroundCheck": "ব্যাকগ্রাউন্ড চেক রিপোর্ট আপলোড করুন",
+    "uploadFd4": "এফডি-৪ ডকুমেন্ট আপলোড করুন"
   },
   "timeline": {
     "title": "কার্যকলাপের সময়রেখা",

@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { ArrowLeft, Loader2, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus, Trash2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/components/shared/page-header'
 
 interface Nominee {
@@ -18,6 +20,9 @@ interface Nominee {
   nidNumber: string
   phone: string
   address: string
+  photo?: string | null
+  nidDocPath?: string | null
+  otherDocPath?: string | null
 }
 
 export default function ManageNomineesPage() {
@@ -39,10 +44,13 @@ export default function ManageNomineesPage() {
   const [formNid, setFormNid] = useState('')
   const [formPhone, setFormPhone] = useState('')
   const [formAddress, setFormAddress] = useState('')
+  const [formPhoto, setFormPhoto] = useState<string | null>(null)
+  const [formNidDoc, setFormNidDoc] = useState<string | null>(null)
+  const [formOtherDoc, setFormOtherDoc] = useState<string | null>(null)
 
   useEffect(() => {
     if (!params.id) return
-    fetch(`/api/v1/hr/provident-fund/enrollments/${params.id}/nominees`)
+    fetch(`/api/v1/hr/pf/enrollments/${params.id}/nominees`)
       .then(res => res.json())
       .then(json => { if (json.success) setNominees(json.data) })
       .catch(() => setError('Failed to load nominees'))
@@ -58,6 +66,9 @@ export default function ManageNomineesPage() {
     setFormNid('')
     setFormPhone('')
     setFormAddress('')
+    setFormPhoto(null)
+    setFormNidDoc(null)
+    setFormOtherDoc(null)
     setEditId(null)
     setShowForm(false)
   }
@@ -70,6 +81,9 @@ export default function ManageNomineesPage() {
     setFormNid(nominee.nidNumber || '')
     setFormPhone(nominee.phone || '')
     setFormAddress(nominee.address || '')
+    setFormPhoto(nominee.photo || null)
+    setFormNidDoc(nominee.nidDocPath || null)
+    setFormOtherDoc(nominee.otherDocPath || null)
     setShowForm(true)
   }
 
@@ -88,12 +102,15 @@ export default function ManageNomineesPage() {
       nidNumber: formNid.trim(),
       phone: formPhone.trim(),
       address: formAddress.trim(),
+      photo: formPhoto,
+      nidDocPath: formNidDoc,
+      otherDocPath: formOtherDoc,
     }
 
     try {
       const url = editId
-        ? `/api/v1/hr/provident-fund/enrollments/${params.id}/nominees/${editId}`
-        : `/api/v1/hr/provident-fund/enrollments/${params.id}/nominees`
+        ? `/api/v1/hr/pf/enrollments/${params.id}/nominees/${editId}`
+        : `/api/v1/hr/pf/enrollments/${params.id}/nominees`
       const res = await fetch(url, {
         method: editId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -120,7 +137,7 @@ export default function ManageNomineesPage() {
   async function handleDelete(nomineeId: string) {
     if (!confirm('Are you sure you want to remove this nominee?')) return
     try {
-      const res = await fetch(`/api/v1/hr/provident-fund/enrollments/${params.id}/nominees/${nomineeId}`, { method: 'DELETE' })
+      const res = await fetch(`/api/v1/hr/pf/enrollments/${params.id}/nominees/${nomineeId}`, { method: 'DELETE' })
       const json = await res.json()
       if (res.ok && json.success) {
         setNominees(prev => prev.filter(n => n.id !== nomineeId))
@@ -238,6 +255,65 @@ export default function ManageNomineesPage() {
               <div className="space-y-2">
                 <Label>Address</Label>
                 <Input value={formAddress} onChange={(e) => setFormAddress(e.target.value)} placeholder="Address" />
+              </div>
+            </div>
+            <Separator className="my-2" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Photo</Label>
+                {formPhoto ? (
+                  <div className="flex items-center gap-2">
+                    <img src={formPhoto} alt="Nominee" className="h-12 w-12 rounded-full object-cover" />
+                    <Button size="sm" variant="ghost" onClick={() => setFormPhoto(null)}><X className="h-3 w-3" /></Button>
+                  </div>
+                ) : (
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm text-primary hover:underline">
+                    <Upload className="h-3.5 w-3.5" />Upload Photo
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                      const file = e.target.files?.[0]; if (!file) return
+                      const reader = new FileReader()
+                      reader.onload = () => setFormPhoto(reader.result as string)
+                      reader.readAsDataURL(file)
+                      e.target.value = ''
+                    }} />
+                  </label>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>NID / Birth Certificate</Label>
+                {formNidDoc ? (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">Document attached</Badge>
+                    <Button size="sm" variant="ghost" onClick={() => setFormNidDoc(null)}><X className="h-3 w-3" /></Button>
+                  </div>
+                ) : (
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm text-primary hover:underline">
+                    <Upload className="h-3.5 w-3.5" />Upload
+                    <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => {
+                      const file = e.target.files?.[0]; if (!file) return
+                      setFormNidDoc(`uploads/pf/nominees/${file.name}`)
+                      e.target.value = ''
+                    }} />
+                  </label>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Other Document</Label>
+                {formOtherDoc ? (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">Document attached</Badge>
+                    <Button size="sm" variant="ghost" onClick={() => setFormOtherDoc(null)}><X className="h-3 w-3" /></Button>
+                  </div>
+                ) : (
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm text-primary hover:underline">
+                    <Upload className="h-3.5 w-3.5" />Upload
+                    <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => {
+                      const file = e.target.files?.[0]; if (!file) return
+                      setFormOtherDoc(`uploads/pf/nominees/${file.name}`)
+                      e.target.value = ''
+                    }} />
+                  </label>
+                )}
               </div>
             </div>
           </CardContent>

@@ -37,7 +37,7 @@ export default function NewPFEnrollmentPage() {
       .then(json => { if (json.success) setEmployees(json.data) })
       .catch(() => {})
 
-    fetch('/api/v1/hr/provident-fund/policies?limit=100')
+    fetch('/api/v1/hr/pf/policies?limit=100')
       .then(res => res.json())
       .then(json => { if (json.success) setPolicies(json.data) })
       .catch(() => {})
@@ -61,7 +61,7 @@ export default function NewPFEnrollmentPage() {
     setSaving(true)
     setError('')
     try {
-      const res = await fetch('/api/v1/hr/provident-fund/enrollments', {
+      const res = await fetch('/api/v1/hr/pf/enrollments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

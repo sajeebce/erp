@@ -17,8 +17,8 @@ interface PFEnrollment {
   employeeName?: string
   departmentName?: string
   enrollmentDate: string
-  employeeContribRate: number
-  employerContribRate: number
+  employeeRate: number
+  employerRate: number
   currentBalance: number
   status: string
 }
@@ -35,14 +35,14 @@ export default function PFEnrollmentsPage() {
     { id: 'employeeName', header: 'Employee', accessorFn: (row) => row.employee?.fullName || row.employeeName || '\u2014', cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span> },
     { id: 'department', header: 'Department', accessorFn: (row) => row.employee?.department?.name || row.departmentName || '\u2014' },
     { accessorKey: 'enrollmentDate', header: 'Enrollment Date', cell: ({ row }) => formatDate(row.getValue('enrollmentDate')) },
-    { accessorKey: 'employeeContribRate', header: 'Employee Rate', cell: ({ row }) => <span className="font-mono text-sm">{row.getValue('employeeContribRate')}%</span> },
-    { accessorKey: 'employerContribRate', header: 'Employer Rate', cell: ({ row }) => <span className="font-mono text-sm">{row.getValue('employerContribRate')}%</span> },
+    { accessorKey: 'employeeRate', header: 'Employee Rate', cell: ({ row }) => <span className="font-mono text-sm">{row.getValue('employeeRate')}%</span> },
+    { accessorKey: 'employerRate', header: 'Employer Rate', cell: ({ row }) => <span className="font-mono text-sm">{row.getValue('employerRate')}%</span> },
     { accessorKey: 'currentBalance', header: 'Balance', cell: ({ row }) => <span className="font-mono text-sm font-medium">{formatCurrency(row.getValue('currentBalance'))}</span> },
     { accessorKey: 'status', header: tc('labels.status'), cell: ({ row }) => <StatusBadge status={row.getValue('status')} /> },
   ]
 
   useEffect(() => {
-    fetch('/api/v1/hr/provident-fund/enrollments?limit=200')
+    fetch('/api/v1/hr/pf/enrollments?limit=200')
       .then(res => res.json())
       .then(json => { if (json.success) setEnrollments(json.data) })
       .catch(console.error)

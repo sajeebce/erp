@@ -44,7 +44,7 @@ export default function PFInterestPage() {
   const [periodEnd, setPeriodEnd] = useState(`${now.getFullYear()}-06-30`)
 
   useEffect(() => {
-    fetch('/api/v1/hr/provident-fund/interest/postings?limit=50')
+    fetch('/api/v1/hr/pf/interest/postings?limit=50')
       .then(res => res.json())
       .then(json => { if (json.success) setPostings(json.data) })
       .catch(console.error)
@@ -56,7 +56,7 @@ export default function PFInterestPage() {
     setError('')
     setPreviewData(null)
     try {
-      const res = await fetch(`/api/v1/hr/provident-fund/interest/preview?periodStart=${periodStart}&periodEnd=${periodEnd}`)
+      const res = await fetch(`/api/v1/hr/pf/interest/preview?periodStart=${periodStart}&periodEnd=${periodEnd}`)
       const json = await res.json()
       if (json.success) setPreviewData(json.data)
       else setError(json.error || 'Failed to calculate preview')
@@ -72,7 +72,7 @@ export default function PFInterestPage() {
     setPostLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/v1/hr/provident-fund/interest/post', {
+      const res = await fetch('/api/v1/hr/pf/interest/post', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ periodStart, periodEnd }),

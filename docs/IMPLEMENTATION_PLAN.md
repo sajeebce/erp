@@ -59,13 +59,15 @@
 | | **Phase 11: Daily Expense Management** | 8103–8778 | Petty Cash, Expense Claims, Advances, Per Diem, TDS/VDS, 7 reports, fixes |
 | | **Phase 12: HR Employee Profile Upgrade** | 8780–9838 | Schema expansion (7 models, ~35 fields), tabbed profile UI, 34 APIs, documents, compliance |
 | | **Phase 8c: HR Deferred + Cross-Module HR** | 9841–11017 | Salary grades, payslip PDF, team leave calendar, OKR, personnel cost tracking, dashboard HR KPIs |
-| 7.1 | Cron Jobs | 11019–11042 | Scheduled tasks (token cleanup, depreciation, etc.) |
-| **8** | **Testing Guidelines** | **11045–11336** | Testing strategy, module-wise tests, integration scenarios |
-| — | **Verification Checklist** | **11338–11366** | Pre-launch validation checklist |
-| — | **Critical Fixes (Post-Audit)** | **11368–11456** | Fix 1–9: journal auto-create, indexes, file upload |
-| — | **Important Features** | **11458–11471** | International-grade enhancements |
-| — | **New Dependencies** | **11473–11502** | Required npm packages |
-| **9** | **Internationalization (i18n)** | **11505–11614** | next-intl, EN + BN, message files, locale resolution |
+| | **Phase 8c-fix: HR Wiring & Bug Fixes** | 11022–11193 | Salary grades 500, dynamic compensation, avatar+filters, photo upload, tab scroll, PF URL bulk fix |
+| | **Phase 8b-fix: Pension (PF + Gratuity) Fixes** | 11196–11327 | PF enrollments/dashboard/detail, Gratuity BDTNaN, pension i18n, 22 URL fixes |
+| 7.1 | Cron Jobs | 11330–11352 | Scheduled tasks (token cleanup, depreciation, etc.) |
+| **8** | **Testing Guidelines** | **11354–11645** | Testing strategy, module-wise tests, integration scenarios |
+| — | **Verification Checklist** | **11647–11675** | Pre-launch validation checklist |
+| — | **Critical Fixes (Post-Audit)** | **11677–11765** | Fix 1–9: journal auto-create, indexes, file upload |
+| — | **Important Features** | **11767–11780** | International-grade enhancements |
+| — | **New Dependencies** | **11782–11811** | Required npm packages |
+| **9** | **Internationalization (i18n)** | **11814–11923** | next-intl, EN + BN, message files, locale resolution |
 
 ---
 
@@ -11014,6 +11016,314 @@ HR & Payroll
 - `src/data/navigation.ts` — 6 new items
 - `src/messages/en/hr.json` + `src/messages/bn/hr.json` — ~300 new keys
 - `prisma/seed-phase8c.ts` — New seed file
+
+---
+
+### Phase 8c-fix: HR Cross-Module Wiring & Bug Fixes ⬜ TODO
+
+> **Priority: Fix broken connections between Salary Grades ↔ Salary Structures ↔ Employee Compensation ↔ Payroll. Ensure all HR data flows dynamically end-to-end.**
+> **Root cause: Phase 8c implemented models + APIs + UI independently but did not wire them together. Flat employee salary fields duplicate what salary structures already define.**
+
+---
+
+#### 8c-fix.1 Salary Grades Page 500 Error
+
+**Problem:** `GET /api/v1/hr/salary-grades` returns only `_count: { steps: N }` but the page expects `steps: SalaryGradeStep[]` array. Also returns `isActive` (boolean) but page expects `status` (string).
+
+**Fix (API):**
+- Change `select` → `include` to return full `steps` array
+- Map `isActive` → `status: 'ACTIVE' | 'INACTIVE'` in response
+
+**File:** `src/app/api/v1/hr/salary-grades/route.ts`
+
+---
+
+#### 8c-fix.2 Compensation Tab — Static → Dynamic
+
+**Problem:** Employee detail page Compensation & Benefits tab shows hardcoded flat fields (`Employee.basicSalary`, `houseRentAllowance`, `medicalAllowance`, `transportAllowance`). These are duplicates of what `SalaryGradeStep` + `SalaryStructureLine` already define. Changes to salary structures don't reflect on the employee.
+
+**Current (static):**
+```
+Employee.basicSalary        → "BDT 22,000"
+Employee.houseRentAllowance → "BDT 20,000" (where does 20,000 come from?)
+Employee.grossSalary        → "BDT 78,500"
+```
+
+**Expected (dynamic):**
+```
+SalaryGradeStep.basicSalary (via Employee.salaryGradeId + salaryStepNo) → Basic: 55,000
+SalaryStructureLine[HRA] = 40% of Basic → HRA: 22,000
+SalaryStructureLine[MEDICAL] = 15% of Basic → Medical: 8,250
+SalaryStructureLine[TRANSPORT] = Fixed 5,000 → Transport: 5,000
+Gross = Basic + Earnings = 90,250
+Deductions (PF 10%, TDS 5%) from structure lines
+Net = Gross - Deductions
+```
+
+**Fix (UI):**
+- If `employee.salaryGradeId` && `employee.salaryStructureId` exist:
+  - Fetch grade step → get `basicSalary`
+  - Fetch structure lines → compute each component (PERCENT_OF_BASIC, FIXED, PERCENT_OF_GROSS)
+  - Show dynamic breakdown with component names from `SalaryComponent`
+  - Show "Salary Grade: G-5, Step: 3" header with link to `/hr/salary-grades`
+- Fallback: if no grade/structure assigned, show legacy flat fields (backward compatible)
+
+**Cross-module impact:**
+- Employee detail page → reads from SalaryGrade + SalaryStructure
+- Payroll process → already reads from structures (Phase 8c implemented this)
+- Salary revision API → already creates revision history
+
+**Files:**
+- `src/app/(dashboard)/hr/employees/[id]/page.tsx` — Compensation tab section
+- `src/app/api/v1/hr/employees/[id]/route.ts` — Include salaryGrade + salaryStructure in GET
+
+---
+
+#### 8c-fix.3 Employment Information View/Edit Parity
+
+**Problem:** View mode shows 10 fields but Edit mode shows 15 fields in different order. Key mismatches:
+- `Employee No` — in View, missing from Edit (should show as disabled)
+- `Joining Date` — in View, missing from Edit (should be editable)
+- `Reporting To` — missing from both View and Edit
+- Fields in Edit but hidden in View when null: Confirmation Date, Probation End Date, End Date, Cost Center, Shift Schedule, Expatriate
+
+**Fix:**
+- View mode: Show all fields (use "—" for empty instead of hiding)
+- Edit mode: Add Employee No (disabled), Joining Date, Reporting To dropdown
+- Both modes: Same field order
+- Reporting To: Fetch employees list for dropdown
+
+**File:** `src/app/(dashboard)/hr/employees/[id]/page.tsx` — Employment tab
+
+---
+
+#### 8c-fix.4 i18n Key Mismatches
+
+**Problem:** 3 pages use `tc('actions.cancel')` / `tc('actions.save')` but `common.json` has these under `buttons`, not `actions`.
+
+**Affected files:**
+| File | Wrong Key | Correct Key |
+|------|-----------|-------------|
+| `src/app/(dashboard)/hr/salary-structures/page.tsx` | `tc('actions.cancel')`, `tc('actions.save')` | `tc('buttons.cancel')`, `tc('buttons.save')` |
+| `src/app/(dashboard)/hr/payslip-templates/page.tsx` | `tc('actions.create')`, `tc('actions.cancel')`, `tc('actions.save')` | `tc('buttons.create')`, `tc('buttons.cancel')`, `tc('buttons.save')` |
+| `src/app/(dashboard)/hr/project-allocations/page.tsx` | `tc('actions.cancel')`, `tc('actions.save')` | `tc('buttons.cancel')`, `tc('buttons.save')` |
+
+**Fix:** Replace `actions.X` → `buttons.X` in all 3 files.
+
+---
+
+#### 8c-fix.5 Leave & Attendance Tab — API Route Mismatch ✅ DONE
+
+**Problem:** Frontend called `/api/v1/hr/leave/balances?employeeId=X` and `/api/v1/hr/leave/applications?employeeId=X` but routes didn't exist.
+
+**Fix:** Created:
+- `src/app/api/v1/hr/leave/balances/route.ts` — returns flat array with `leaveType` as string name
+- `src/app/api/v1/hr/leave/applications/route.ts` — returns flat array with `leaveType` as string name
+- `prisma/seed-leave-balances.ts` — 21 leave balances + 13 leave applications
+
+---
+
+#### 8c-fix.6 Projects Tab — Missing Include ✅ DONE
+
+**Problem:** Employee GET API didn't include `projectAllocations` relation.
+
+**Fix:** Added `projectAllocations: { include: { project: { select: { id, name, projectNo } } } }` to employee GET.
+
+---
+
+#### 8c-fix.7 Employee Profile Document Upload ✅ DONE
+
+**Problem:** Education, Work History, Certifications, and Compliance tabs had no document upload capability.
+
+**Fix:**
+- Added `filePath` to `EmployeeEducation` and `EmployeeWorkHistory` models
+- Added 5 compliance document fields to `Employee` model
+- Added Document column with upload/view/remove to Education, Work, Cert tables
+- Added compliance document upload buttons
+- Performance tab: replaced empty placeholder with actual reviews table
+
+---
+
+#### 8c-fix.8 PUT/PATCH Method Mismatch ✅ DONE
+
+**Problem:** Frontend sends `PUT` but APIs only export `PATCH`, causing silent 405 errors on edit.
+
+**Fix:** Added `export { PATCH as PUT }` to 6 sub-resource route files.
+
+---
+
+#### 8c-fix Implementation Order
+
+| Step | Task | Status |
+|------|------|--------|
+| 8c-fix.1 | Salary Grades API — steps include + status mapping | ✅ DONE |
+| 8c-fix.2 | Compensation tab — dynamic salary structure display | ✅ DONE |
+| 8c-fix.3 | Employment Info — view/edit field parity | ✅ DONE |
+| 8c-fix.4 | i18n key fixes (3 pages) | ✅ DONE |
+| 8c-fix.5 | Leave tab — API route + seed data | ✅ DONE |
+| 8c-fix.6 | Projects tab — missing include | ✅ DONE |
+| 8c-fix.7 | Document upload — education/work/cert/compliance | ✅ DONE |
+| 8c-fix.8 | PUT/PATCH method mismatch (6 routes) | ✅ DONE |
+| 8c-fix.9 | Employee list page — avatar column + 4 filters | ✅ DONE |
+| 8c-fix.10 | Employee profile photo upload (avatar hover) | ✅ DONE |
+| 8c-fix.11 | PF Nominee — photo + document upload (3 new schema fields) | ✅ DONE |
+| 8c-fix.12 | Scrollable tab bar — wheel scroll fix (passive listener) | ✅ DONE |
+| 8c-fix.13 | PF pages — bulk URL fix (22 files: /provident-fund/ → /pf/) | ✅ DONE |
+| 8c-fix.14 | PF Member Detail — enriched API (policy, balanceBreakdown, contributions) | ✅ DONE |
+
+---
+
+#### 8c-fix.9 Employee List Page — Avatar + Filters
+
+**Enhancement to `/hr` employee directory page:**
+
+**New avatar column:** First column shows employee photo (if uploaded) or initials circle. API updated to return `photo` and `dutyStation` fields.
+
+**4 new filter dropdowns:**
+| Filter | Source | Type |
+|--------|--------|------|
+| Department | `/api/v1/hr/departments` | Dynamic dropdown |
+| Status | ACTIVE, INACTIVE, ON_LEAVE, SUSPENDED | Static dropdown |
+| Employment Type | FULL_TIME, PART_TIME, CONTRACT, etc. | Static dropdown |
+| Duty Station | Derived from employee data | Dynamic dropdown |
+
+**Also added:** Duty Station column, filter count badge, clear filters button.
+
+**Files:** `src/app/(dashboard)/hr/page.tsx`, `src/app/api/v1/hr/employees/route.ts`
+
+---
+
+### Phase 8b-fix: Pension Management (PF + Gratuity) Bug Fixes ⬜ TODO
+
+> **Priority: Fix broken Provident Fund and Gratuity pages — wrong API URLs, missing endpoints, field mismatches, NaN values**
+> **Root cause: Phase 8b implemented PF/Gratuity models and APIs under `/api/v1/hr/pf/` and `/api/v1/hr/gratuity/` but pages call different URL paths (e.g., `/api/v1/hr/provident-fund/`). Multiple API response field names don't match page interfaces.**
+> **Reference: Bangladesh Provident Fund Rules 2023, Labour Act 2006 §§27-28 (Gratuity), ILO Social Security Standards**
+
+---
+
+#### 8b-fix.1 PF Enrollments Page — Wrong API URL + Field Mismatch
+
+**Problem:** Page at `/hr/pension/provident-fund/enrollments` calls:
+- `GET /api/v1/hr/provident-fund/enrollments` — but API exists at `/api/v1/hr/pf/enrollments`
+
+Page expects `employeeContribRate` / `employerContribRate` / `currentBalance` — but API returns `employeeRate` / `employerRate` / `totalBalance`.
+
+**Fix:**
+- Change API URL in page from `/api/v1/hr/provident-fund/enrollments` → `/api/v1/hr/pf/enrollments`
+- Map API response fields to page interface OR update page interface
+
+**File:** `src/app/(dashboard)/hr/pension/provident-fund/enrollments/page.tsx`
+
+---
+
+#### 8b-fix.2 PF Dashboard — Missing API Endpoint
+
+**Problem:** PF main page at `/hr/pension/provident-fund` calls `GET /api/v1/hr/provident-fund/dashboard` — endpoint doesn't exist.
+
+**Expected response:**
+```typescript
+{
+  totalFundBalance: number    // From PFTrust.currentBalance
+  enrolledMembers: number     // Count of active PFEnrollment
+  monthlyContribution: number // Sum of latest month's PFContribution
+  activeLoans: number         // Count of PFLoan with status=ACTIVE
+  investmentReturns: number   // Sum of PFInvestmentIncome (current FY)
+  recentContributions: Array<{
+    id: string; employeeName: string; month: string
+    employeeAmount: number; employerAmount: number; total: number
+  }>
+}
+```
+
+**Fix:** Create API at `src/app/api/v1/hr/pf/dashboard/route.ts` — aggregate from PFTrust, PFEnrollment, PFContribution, PFLoan, PFInvestmentIncome.
+
+---
+
+#### 8b-fix.3 Gratuity Page — Missing Fields (BDTNaN)
+
+**Problem:** Gratuity page at `/hr/pension/gratuity` calls `GET /api/v1/hr/gratuity/reports/liability` which returns:
+```
+{ totalLiability, totalAccrued, totalPaid, employeeCount, vestedCount, employees[] }
+```
+But page expects:
+```
+{ totalLiability, monthlyAccrual, fundBalance, vestedEmployees, recentAccruals[], recentPayments[] }
+```
+
+Missing `monthlyAccrual` and `fundBalance` → passed as `undefined` to `formatCurrency()` → "BDTNaN"
+
+**Fix:**
+- Add `monthlyAccrual`: Calculate from `GratuityAccrual` for current month
+- Add `fundBalance`: Get from `GratuityFund.currentBalance`
+- Rename `vestedCount` → `vestedEmployees`
+- Replace `employees[]` with `recentAccruals[]` (last 10 GratuityAccrual) and `recentPayments[]` (last 10 GratuityPayment)
+
+**File:** `src/app/api/v1/hr/gratuity/reports/liability/route.ts`
+
+---
+
+#### 8b-fix.4 Pension Overview — i18n Missing Keys
+
+**Problem:** Page shows raw keys: `common.labels.summary`, `common.labels.average`
+
+**Fix:** Add to `src/messages/en/common.json` → `labels`:
+```json
+"summary": "Summary",
+"average": "Average"
+```
+And to `src/messages/bn/common.json` → `labels`:
+```json
+"summary": "সারসংক্ষেপ",
+"average": "গড়"
+```
+
+---
+
+#### 8b-fix.5 Pension Calculation Accuracy
+
+**PF Monthly Flow (correct):**
+```
+1. Employee monthly contribution = basicSalary × employeeRate%
+2. Employer monthly contribution = basicSalary × employerRate%
+3. Both deposited into PF Trust
+4. Interest declared annually (rate from PFPolicy.interestRate)
+5. Balance = employeeContrib + employerContrib + interestAccrued - withdrawals - loans
+```
+
+**Gratuity Monthly Accrual (correct per Bangladesh Labour Act 2006 §27):**
+```
+Monthly accrual = (lastBasicSalary × 1) / 12
+Annual gratuity = lastBasicSalary × completedYears × 1
+Vesting: minimum 5 years continuous service
+Payment: on separation (resignation after 5yr, retirement, death, retrenchment)
+```
+
+**Fund Adequacy Ratio:**
+```
+FAR = (PFTrust.currentBalance + GratuityFund.currentBalance) / (totalPFLiability + totalGratuityLiability) × 100%
+Target: >100% means fully funded
+```
+
+**Pension Overview KPIs (should show):**
+- Total Retirement Liability = sum(PFEnrollment.totalBalance) + sum(GratuityLedger.accruedAmount)
+- PF Balance = PFTrust.currentBalance (fund-level, not individual)
+- Gratuity Liability = sum(GratuityLedger.accruedAmount)
+- Monthly Contribution = sum of latest PFContribution (employee + employer)
+- Fund Adequacy = (PFTrust.currentBalance + GratuityFund.currentBalance) / totalLiability × 100%
+
+---
+
+#### 8b-fix Implementation Order
+
+| Step | Task | Status |
+|------|------|--------|
+| 8b-fix.1 | PF enrollments — fix API URL + field mapping | ✅ DONE |
+| 8b-fix.2 | PF dashboard — create missing API | ✅ DONE |
+| 8b-fix.3 | Gratuity page — fix missing fields (BDTNaN) | ✅ DONE |
+| 8b-fix.4 | Pension i18n — add missing keys | ✅ DONE |
+| 8b-fix.5 | Pension overview — fix API field mapping | ✅ DONE |
+| 8b-fix.6 | PF bulk URL fix — 22 pages /provident-fund/ → /pf/ | ✅ DONE |
+| 8b-fix.7 | PF Member Detail — enriched API + schema relation fix | ✅ DONE |
 
 ---
 

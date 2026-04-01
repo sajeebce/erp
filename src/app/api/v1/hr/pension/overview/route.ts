@@ -17,8 +17,11 @@ export async function GET(request: NextRequest) {
       _count: true,
     })
 
-    const totalPfBalance = pfAgg._sum.currentBalance?.toString() || '0'
-    const pfEnrolledCount = pfAgg._count
+    const pfBalance = Number(pfAgg._sum.currentBalance ?? 0)
+    const pfMembers = pfAgg._count
+
+    // PF average balance
+    const pfAvgBalance = pfMembers > 0 ? pfBalance / pfMembers : 0
 
     // Gratuity totals
     const gratuityAgg = await prisma.gratuityLedger.aggregate({
@@ -27,12 +30,19 @@ export async function GET(request: NextRequest) {
       _count: true,
     })
 
-    const totalGratuityLiability = gratuityAgg._sum.currentBalance?.toString() || '0'
+    const gratuityLiability = Number(gratuityAgg._sum.currentBalance ?? 0)
+    const gratuityEmployees = gratuityAgg._count
 
-    // Total retirement benefits
-    const totalPf = Number(totalPfBalance)
-    const totalGratuity = Number(totalGratuityLiability)
-    const totalRetirementBenefits = (totalPf + totalGratuity).toString()
+    // Gratuity vested count
+    const vestedCount = await prisma.gratuityLedger.count({
+      where: { organizationId: orgId, isActive: true, isVested: true },
+    })
+
+    // Total retirement liability
+    const totalRetirementLiability = pfBalance + gratuityLiability
+
+    // Total enrolled employees (unique across PF and gratuity)
+    const enrolledEmployees = pfMembers + gratuityEmployees
 
     // Last month's PF contributions
     const now = new Date()
@@ -48,28 +58,36 @@ export async function GET(request: NextRequest) {
       _sum: { totalAmount: true },
     })
 
-    const monthlyContributionTotal = lastMonthContribs._sum.totalAmount?.toString() || '0'
+    const monthlyContribution = Number(lastMonthContribs._sum.totalAmount ?? 0)
 
-    // Fund adequacy (PF trust balance / total member balance)
+    // Fund adequacy (PF trust balance / total liability)
     const trust = await prisma.pFTrust.findFirst({
       where: { organizationId: orgId, isActive: true },
       select: { currentBalance: true },
     })
 
-    const fundBalance = Number(trust?.currentBalance || 0)
-    const totalLiability = totalPf + totalGratuity
-    const fundAdequacyRatio = totalLiability > 0
-      ? (fundBalance / totalLiability * 100).toFixed(2)
-      : '0'
+    const fundBalance = Number(trust?.currentBalance ?? 0)
+    const fundAdequacyRatio = totalRetirementLiability > 0
+      ? Number((fundBalance / totalRetirementLiability * 100).toFixed(2))
+      : 0
 
     return apiSuccess({
-      totalPfBalance,
-      totalGratuityLiability,
-      totalRetirementBenefits,
-      pfEnrolledCount,
-      gratuityEnrolledCount: gratuityAgg._count,
-      monthlyContributionTotal,
-      fundAdequacyRatio: `${fundAdequacyRatio}%`,
+      totalRetirementLiability,
+      pfBalance,
+      gratuityLiability,
+      enrolledEmployees,
+      monthlyContribution,
+      fundAdequacyRatio,
+      pfSummary: {
+        members: pfMembers,
+        totalBalance: pfBalance,
+        avgBalance: Number(pfAvgBalance.toFixed(2)),
+      },
+      gratuitySummary: {
+        employees: gratuityEmployees,
+        totalLiability: gratuityLiability,
+        vestedCount,
+      },
     })
   } catch (error) {
     return handleRouteError(error)

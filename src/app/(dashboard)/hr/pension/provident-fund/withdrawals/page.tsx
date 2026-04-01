@@ -39,7 +39,7 @@ export default function PFWithdrawalsPage() {
   ]
 
   useEffect(() => {
-    fetch('/api/v1/hr/provident-fund/withdrawals?limit=100')
+    fetch('/api/v1/hr/pf/withdrawals?limit=100')
       .then(res => res.json())
       .then(json => { if (json.success) setWithdrawals(json.data) })
       .catch(console.error)

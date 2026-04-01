@@ -40,7 +40,7 @@ export default function PFLoansPage() {
   ]
 
   useEffect(() => {
-    fetch('/api/v1/hr/provident-fund/loans?limit=100')
+    fetch('/api/v1/hr/pf/loans?limit=100')
       .then(res => res.json())
       .then(json => { if (json.success) setLoans(json.data) })
       .catch(console.error)

@@ -40,6 +40,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         ...(body.responsibilities !== undefined && { responsibilities: body.responsibilities || null }),
         ...(body.location !== undefined && { location: body.location || null }),
         ...(body.isCurrent !== undefined && { isCurrent: body.isCurrent }),
+        ...(body.filePath !== undefined && { filePath: body.filePath || null }),
       },
     })
 
@@ -71,3 +72,5 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return handleRouteError(error)
   }
 }
+
+export { PATCH as PUT }

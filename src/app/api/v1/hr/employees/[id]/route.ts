@@ -37,6 +37,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         languages: true,
         certifications: { orderBy: { issueDate: 'desc' } },
         documents: { orderBy: { uploadedAt: 'desc' } },
+        projectAllocations: {
+          include: { project: { select: { id: true, name: true, projectNo: true } } },
+          orderBy: { startDate: 'desc' },
+        },
+        salaryGrade: {
+          include: { steps: { orderBy: { stepNumber: 'asc' } } },
+        },
+        salaryStructure: {
+          include: {
+            lines: {
+              where: { isActive: true },
+              include: { component: true },
+              orderBy: { sortOrder: 'asc' },
+            },
+          },
+        },
       },
     })
 
@@ -113,6 +129,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (body.fd4ApprovalStatus !== undefined) data.fd4ApprovalStatus = body.fd4ApprovalStatus || null
     if (body.backgroundCheckStatus !== undefined) data.backgroundCheckStatus = body.backgroundCheckStatus || null
 
+    // Phase 12 fix — Compliance document file paths
+    if (body.codeOfConductFilePath !== undefined) data.codeOfConductFilePath = body.codeOfConductFilePath || null
+    if (body.pseaDeclarationFilePath !== undefined) data.pseaDeclarationFilePath = body.pseaDeclarationFilePath || null
+    if (body.safeguardingCertFilePath !== undefined) data.safeguardingCertFilePath = body.safeguardingCertFilePath || null
+    if (body.backgroundCheckFilePath !== undefined) data.backgroundCheckFilePath = body.backgroundCheckFilePath || null
+    if (body.fd4DocumentFilePath !== undefined) data.fd4DocumentFilePath = body.fd4DocumentFilePath || null
+
     // Phase 12 — Int fields
     if (body.numberOfDependents !== undefined) data.numberOfDependents = body.numberOfDependents !== null ? parseInt(body.numberOfDependents, 10) : null
     if (body.noticePeriodDays !== undefined) data.noticePeriodDays = body.noticePeriodDays !== null ? parseInt(body.noticePeriodDays, 10) : null
@@ -125,6 +148,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (body.mdsCheckCompleted !== undefined) data.mdsCheckCompleted = Boolean(body.mdsCheckCompleted)
 
     // Phase 12 — DateTime fields
+    if (body.joiningDate !== undefined) data.joiningDate = body.joiningDate ? new Date(body.joiningDate) : undefined
     if (body.probationEndDate !== undefined) data.probationEndDate = body.probationEndDate ? new Date(body.probationEndDate) : null
     if (body.fd4SubmissionDate !== undefined) data.fd4SubmissionDate = body.fd4SubmissionDate ? new Date(body.fd4SubmissionDate) : null
     if (body.codeOfConductDate !== undefined) data.codeOfConductDate = body.codeOfConductDate ? new Date(body.codeOfConductDate) : null

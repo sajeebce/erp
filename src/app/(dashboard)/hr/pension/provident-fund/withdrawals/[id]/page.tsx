@@ -37,7 +37,7 @@ export default function PFWithdrawalDetailPage() {
 
   useEffect(() => {
     if (!params.id) return
-    fetch(`/api/v1/hr/provident-fund/withdrawals/${params.id}`)
+    fetch(`/api/v1/hr/pf/withdrawals/${params.id}`)
       .then(res => res.json())
       .then(json => {
         if (json.success) setData(json.data)
@@ -51,7 +51,7 @@ export default function PFWithdrawalDetailPage() {
     setActionLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/v1/hr/provident-fund/withdrawals/${params.id}/${action}`, {
+      const res = await fetch(`/api/v1/hr/pf/withdrawals/${params.id}/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       })

@@ -39,7 +39,7 @@ export default function NewPFLoanPage() {
 
   useEffect(() => {
     if (employeeId) {
-      fetch(`/api/v1/hr/provident-fund/loans/eligibility/${employeeId}`)
+      fetch(`/api/v1/hr/pf/loans/eligibility/${employeeId}`)
         .then(res => res.json())
         .then(json => { if (json.success) setBalanceInfo(json.data) })
         .catch(() => setBalanceInfo(null))
@@ -71,7 +71,7 @@ export default function NewPFLoanPage() {
     setSaving(true)
     setError('')
     try {
-      const res = await fetch('/api/v1/hr/provident-fund/loans', {
+      const res = await fetch('/api/v1/hr/pf/loans', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

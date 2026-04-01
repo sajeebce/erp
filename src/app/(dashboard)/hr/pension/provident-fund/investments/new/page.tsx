@@ -33,7 +33,7 @@ export default function NewPFInvestmentPage() {
     setSaving(true)
     setError('')
     try {
-      const res = await fetch('/api/v1/hr/provident-fund/investments', {
+      const res = await fetch('/api/v1/hr/pf/investments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

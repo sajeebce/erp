@@ -152,7 +152,7 @@ export default function PayslipTemplatesPage() {
     <div className="space-y-6">
       <PageHeader title={t('payslip.templates')} description={t('salaryStructures.description')}>
         <Button size="sm" onClick={openCreateDialog}>
-          <Plus className="h-4 w-4 mr-2" />{tc('actions.create')}
+          <Plus className="h-4 w-4 mr-2" />{tc('buttons.create')}
         </Button>
       </PageHeader>
 
@@ -210,7 +210,7 @@ export default function PayslipTemplatesPage() {
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingTemplate ? t('payslip.templateName') : tc('actions.create')}
+              {editingTemplate ? t('payslip.templateName') : tc('buttons.create')}
             </DialogTitle>
             <DialogDescription>{t('payslip.templates')}</DialogDescription>
           </DialogHeader>
@@ -287,10 +287,10 @@ export default function PayslipTemplatesPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm() }}>
-              {tc('actions.cancel')}
+              {tc('buttons.cancel')}
             </Button>
             <Button onClick={handleSave} disabled={saving || !formName.trim()}>
-              {saving ? tc('labels.loading') : tc('actions.save')}
+              {saving ? tc('labels.loading') : tc('buttons.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

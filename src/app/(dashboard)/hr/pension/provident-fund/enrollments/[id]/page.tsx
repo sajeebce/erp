@@ -60,7 +60,7 @@ export default function PFEnrollmentDetailPage() {
 
   useEffect(() => {
     if (!params.id) return
-    fetch(`/api/v1/hr/provident-fund/enrollments/${params.id}`)
+    fetch(`/api/v1/hr/pf/enrollments/${params.id}`)
       .then(res => res.json())
       .then(json => {
         if (json.success) setData(json.data)

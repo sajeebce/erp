@@ -49,7 +49,7 @@ export default function PFRegisterPage() {
   ]
 
   useEffect(() => {
-    fetch('/api/v1/hr/provident-fund/reports/register?limit=500')
+    fetch('/api/v1/hr/pf/reports/register?limit=500')
       .then(res => res.json())
       .then(json => { if (json.success) setEntries(json.data) })
       .catch(console.error)

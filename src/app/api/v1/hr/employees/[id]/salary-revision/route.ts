@@ -10,13 +10,13 @@ import {
 } from '@/lib/api-response'
 
 interface RouteParams {
-  params: Promise<{ employeeId: string }>
+  params: Promise<{ id: string }>
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const auth = await requireAuthFromRequest(request)
-    const { employeeId } = await params
+    const { id: employeeId } = await params
     const body = await request.json()
 
     const { newGradeId, newStepNo, effectiveDate, revisionType, reason, remarks } = body

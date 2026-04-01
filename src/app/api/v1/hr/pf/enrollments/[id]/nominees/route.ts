@@ -48,7 +48,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return apiNotFound('PF enrollment not found')
     }
 
-    const { name, relationship, percentage, nidNumber, phone, address } = body
+    const { name, relationship, percentage, nidNumber, phone, address, photo, nidDocPath, otherDocPath } = body
 
     if (!name || !relationship || percentage === undefined) {
       return apiBadRequest('name, relationship, and percentage are required')
@@ -73,6 +73,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         nidNumber: nidNumber || null,
         phone: phone || null,
         address: address || null,
+        photo: photo || null,
+        nidDocPath: nidDocPath || null,
+        otherDocPath: otherDocPath || null,
       },
     })
 

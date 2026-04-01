@@ -146,7 +146,14 @@
     "averageScore": "Average Score",
     "outstanding": "Outstanding",
     "needsImprovement": "Needs Improvement",
-    "performanceReviews": "Performance Reviews"
+    "performanceReviews": "Performance Reviews",
+    "reviewPeriod": "Review Period",
+    "reviewType": "Review Type",
+    "completedDate": "Completed Date",
+    "developmentPlan": "Development Plan",
+    "okrScore": "OKR Score",
+    "competencyScore": "Competency Score",
+    "noReviews": "No performance reviews found"
   },
   "training": {
     "title": "Training & Development",
@@ -905,6 +912,7 @@
     },
     "noData": "No data available",
     "salaryBreakdown": "Salary Breakdown",
+    "netSalary": "Net Salary",
     "component": "Component",
     "paymentDetails": "Payment Details",
     "retirementBenefits": "Retirement Benefits",
@@ -929,7 +937,14 @@
     "certifications": "Certifications",
     "performanceSummary": "Performance Summary",
     "viewPerformance": "View Full Performance History",
-    "viewAll": "View All"
+    "viewAll": "View All",
+    "document": "Document",
+    "uploadDocument": "Upload Document",
+    "viewDocument": "View Document",
+    "removeDocument": "Remove Document",
+    "documentAttached": "Document attached",
+    "noDocument": "No document",
+    "complianceDocuments": "Compliance Documents"
   },
   "emergencyContacts": {
     "title": "Emergency Contacts",
@@ -1035,7 +1050,12 @@
     "mdsCheck": "MDS Check (USAID/DFID)",
     "expatriate": "Expatriate Compliance",
     "psea": "PSEA Declaration",
-    "safeguardingExpiry": "Safeguarding Training Expiry"
+    "safeguardingExpiry": "Safeguarding Training Expiry",
+    "uploadCoc": "Upload Code of Conduct",
+    "uploadPsea": "Upload PSEA Declaration",
+    "uploadSafeguarding": "Upload Training Certificate",
+    "uploadBackgroundCheck": "Upload Background Check Report",
+    "uploadFd4": "Upload FD-4 Document"
   },
   "timeline": {
     "title": "Activity Timeline",

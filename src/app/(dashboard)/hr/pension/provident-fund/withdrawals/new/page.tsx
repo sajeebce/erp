@@ -41,7 +41,7 @@ export default function NewPFWithdrawalPage() {
 
   useEffect(() => {
     if (employeeId) {
-      fetch(`/api/v1/hr/provident-fund/enrollments/balance/${employeeId}`)
+      fetch(`/api/v1/hr/pf/enrollments/balance/${employeeId}`)
         .then(res => res.json())
         .then(json => { if (json.success) setBalanceInfo(json.data) })
         .catch(() => setBalanceInfo(null))
@@ -58,7 +58,7 @@ export default function NewPFWithdrawalPage() {
     setSaving(true)
     setError('')
     try {
-      const res = await fetch('/api/v1/hr/provident-fund/withdrawals', {
+      const res = await fetch('/api/v1/hr/pf/withdrawals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

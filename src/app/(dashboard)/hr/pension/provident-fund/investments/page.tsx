@@ -40,7 +40,7 @@ export default function PFInvestmentsPage() {
   ]
 
   useEffect(() => {
-    fetch('/api/v1/hr/provident-fund/investments?limit=100')
+    fetch('/api/v1/hr/pf/investments?limit=100')
       .then(res => res.json())
       .then(json => { if (json.success) setInvestments(json.data) })
       .catch(console.error)

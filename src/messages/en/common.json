@@ -30,7 +30,8 @@
     "view": "View",
     "print": "Print",
     "copy": "Copy",
-    "all": "All"
+    "all": "All",
+    "more": "More"
   },
   "status": {
     "DRAFT": "Draft",
@@ -179,7 +180,9 @@
     "signed": "Signed",
     "notSigned": "Not Signed",
     "pending": "Pending",
-    "completed": "Completed"
+    "completed": "Completed",
+    "summary": "Summary",
+    "average": "Average"
   },
   "search": {
     "placeholder": "Search..."

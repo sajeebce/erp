@@ -11,13 +11,13 @@ import {
 import { buildPayslipData } from '@/app/api/v1/hr/payroll/entries/[entryId]/payslip/route'
 
 interface RouteParams {
-  params: Promise<{ employeeId: string }>
+  params: Promise<{ id: string }>
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const auth = await requireAuthFromRequest(request)
-    const { employeeId } = await params
+    const { id: employeeId } = await params
 
     // Verify employee belongs to org
     const employee = await prisma.employee.findFirst({

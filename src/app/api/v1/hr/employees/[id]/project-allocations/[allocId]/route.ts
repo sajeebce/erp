@@ -11,13 +11,13 @@ import {
 import { Prisma } from '@prisma/client'
 
 interface RouteParams {
-  params: Promise<{ employeeId: string; allocId: string }>
+  params: Promise<{ id: string; allocId: string }>
 }
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const auth = await requireAuthFromRequest(request)
-    const { employeeId, allocId } = await params
+    const { id: employeeId, allocId } = await params
     const body = await request.json()
 
     // Verify employee belongs to org
@@ -99,7 +99,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const auth = await requireAuthFromRequest(request)
-    const { employeeId, allocId } = await params
+    const { id: employeeId, allocId } = await params
 
     // Verify employee belongs to org
     const employee = await prisma.employee.findFirst({

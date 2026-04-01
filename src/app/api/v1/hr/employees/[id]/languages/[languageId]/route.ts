@@ -74,3 +74,5 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return handleRouteError(error)
   }
 }
+
+export { PATCH as PUT }

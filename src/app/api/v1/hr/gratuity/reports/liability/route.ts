@@ -9,55 +9,93 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuthFromRequest(request)
 
-    const ledgers = await prisma.gratuityLedger.findMany({
+    const now = new Date()
+    const currentMonth = now.getMonth() + 1
+    const currentYear = now.getFullYear()
+
+    // Aggregate liability
+    const aggregate = await prisma.gratuityLedger.aggregate({
       where: { organizationId: auth.organizationId, isActive: true },
+      _sum: { currentBalance: true },
+    })
+
+    // Monthly accrual: sum accrual amounts for the current month
+    const monthlyAccrualAgg = await prisma.gratuityAccrual.aggregate({
+      where: {
+        organizationId: auth.organizationId,
+        accrualMonth: currentMonth,
+        accrualYear: currentYear,
+      },
+      _sum: { accrualAmount: true },
+    })
+    const monthlyAccrual = monthlyAccrualAgg._sum.accrualAmount
+      ? Number(monthlyAccrualAgg._sum.accrualAmount)
+      : 0
+
+    // Fund balance: sum of all active fund balances
+    const fundAgg = await prisma.gratuityFund.aggregate({
+      where: { organizationId: auth.organizationId, isActive: true },
+      _sum: { currentBalance: true },
+    })
+    const fundBalance = fundAgg._sum.currentBalance
+      ? Number(fundAgg._sum.currentBalance)
+      : 0
+
+    // Vested employee count
+    const vestedEmployees = await prisma.gratuityLedger.count({
+      where: { organizationId: auth.organizationId, isActive: true, isVested: true },
+    })
+
+    // Recent accruals (last 10)
+    const recentAccruals = await prisma.gratuityAccrual.findMany({
+      where: { organizationId: auth.organizationId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
       include: {
-        employee: {
-          select: {
-            id: true,
-            employeeNo: true,
-            fullName: true,
-            basicSalary: true,
-            department: { select: { id: true, name: true } },
+        ledger: {
+          include: {
+            employee: { select: { fullName: true } },
           },
         },
       },
     })
 
-    const now = new Date()
-    const employeeDetails = ledgers.map((l) => {
-      const serviceMs = now.getTime() - new Date(l.serviceStartDate).getTime()
-      const serviceYears = Math.floor(serviceMs / (365.25 * 24 * 60 * 60 * 1000) * 100) / 100
-      return {
-        employeeId: l.employeeId,
-        employeeNo: l.employee.employeeNo,
-        fullName: l.employee.fullName,
-        department: l.employee.department?.name || null,
-        serviceYears,
-        totalAccrued: l.totalAccrued.toString(),
-        totalPaid: l.totalPaid.toString(),
-        currentBalance: l.currentBalance.toString(),
-        isVested: l.isVested,
-      }
-    })
-
-    const aggregate = await prisma.gratuityLedger.aggregate({
-      where: { organizationId: auth.organizationId, isActive: true },
-      _sum: { currentBalance: true, totalAccrued: true, totalPaid: true },
-      _count: true,
-    })
-
-    const vestedCount = await prisma.gratuityLedger.count({
-      where: { organizationId: auth.organizationId, isActive: true, isVested: true },
+    // Recent payments (last 10)
+    const recentPayments = await prisma.gratuityPayment.findMany({
+      where: { organizationId: auth.organizationId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      include: {
+        ledger: {
+          include: {
+            employee: { select: { fullName: true } },
+          },
+        },
+      },
     })
 
     return apiSuccess({
-      totalLiability: aggregate._sum.currentBalance?.toString() || '0',
-      totalAccrued: aggregate._sum.totalAccrued?.toString() || '0',
-      totalPaid: aggregate._sum.totalPaid?.toString() || '0',
-      employeeCount: aggregate._count,
-      vestedCount,
-      employees: employeeDetails,
+      totalLiability: Number(aggregate._sum.currentBalance ?? 0),
+      monthlyAccrual,
+      fundBalance,
+      vestedEmployees,
+      recentAccruals: recentAccruals.map((a) => ({
+        id: a.id,
+        employeeName: a.ledger.employee.fullName,
+        month: a.accrualMonth,
+        year: a.accrualYear,
+        accrualAmount: Number(a.accrualAmount),
+        createdAt: a.createdAt.toISOString(),
+      })),
+      recentPayments: recentPayments.map((p) => ({
+        id: p.id,
+        paymentNo: p.paymentNo,
+        employeeName: p.ledger.employee.fullName,
+        paymentType: p.paymentType,
+        amount: Number(p.amount),
+        status: p.status,
+        paidAt: p.paidAt?.toISOString() ?? null,
+      })),
     })
   } catch (error) {
     return handleRouteError(error)

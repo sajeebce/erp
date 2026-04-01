@@ -58,6 +58,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         endYear: body.endYear ?? null,
         grade: body.grade || null,
         country: body.country || null,
+        filePath: body.filePath || null,
       },
     })
 

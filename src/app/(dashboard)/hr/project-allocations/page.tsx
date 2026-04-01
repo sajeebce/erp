@@ -409,13 +409,13 @@ export default function ProjectAllocationsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              {tc('actions.cancel')}
+              {tc('buttons.cancel')}
             </Button>
             <Button
               onClick={handleSave}
               disabled={saving || !formEmployeeId || !formProjectId || !formPercentage || !formStartDate}
             >
-              {saving ? tc('labels.loading') : tc('actions.save')}
+              {saving ? tc('labels.loading') : tc('buttons.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

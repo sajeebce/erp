@@ -41,7 +41,7 @@ export default function TrustTransactionsPage() {
   ]
 
   useEffect(() => {
-    fetch('/api/v1/hr/provident-fund/trust/transactions?limit=200')
+    fetch('/api/v1/hr/pf/trust/transactions?limit=200')
       .then(res => res.json())
       .then(json => { if (json.success) setTransactions(json.data) })
       .catch(console.error)

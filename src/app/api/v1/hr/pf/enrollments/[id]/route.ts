@@ -30,6 +30,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             designation: { select: { id: true, title: true } },
           },
         },
+        policy: true,
         nominees: true,
       },
     })
@@ -38,7 +39,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return apiNotFound('PF enrollment not found')
     }
 
-    return apiSuccess(enrollment)
+    const balanceBreakdown = {
+      employeeContrib: Number(enrollment.totalEmployeeContrib || 0),
+      employerContrib: Number(enrollment.totalEmployerContrib || 0),
+      interestEarned: Number(enrollment.totalInterest || 0),
+      withdrawals: Number(enrollment.totalWithdrawals || 0),
+      loanOutstanding: Number(enrollment.totalLoanOutstanding || 0),
+      netBalance: Number(enrollment.currentBalance || 0),
+    }
+
+    const contributions = await prisma.pFContribution.findMany({
+      where: { enrollmentId: enrollment.id },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+    })
+
+    return apiSuccess({ ...enrollment, balanceBreakdown, contributions })
   } catch (error) {
     return handleRouteError(error)
   }

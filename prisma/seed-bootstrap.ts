@@ -58,14 +58,14 @@ async function main() {
   }
 
   // Upsert user
-  let user = await prisma.user.findFirst({ where: { email: 'admin@shapla.org' } })
+  let user = await prisma.user.findFirst({ where: { email: 'rahim@shapla.org' } })
   if (!user) {
     user = await prisma.user.create({
     data: {
-      email: 'admin@shapla.org',
-      passwordHash: hashSync('Admin@2026', 10),
-      fullName: 'Kamal Hossain',
-      phone: '+880-1711-000001',
+      email: 'rahim@shapla.org',
+      passwordHash: hashSync('SecurePass@2026!', 10),
+      fullName: 'Abdur Rahim',
+      phone: '+8801712345678',
       organizationId: org.id,
       roleId: role.id,
       status: 'ACTIVE',

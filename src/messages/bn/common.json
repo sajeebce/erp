@@ -30,7 +30,8 @@
     "view": "দেখুন",
     "print": "প্রিন্ট",
     "copy": "কপি",
-    "all": "সব"
+    "all": "সব",
+    "more": "আরো"
   },
   "status": {
     "DRAFT": "খসড়া",
@@ -179,7 +180,9 @@
     "signed": "স্বাক্ষরিত",
     "notSigned": "স্বাক্ষরিত নয়",
     "pending": "মুলতুবি",
-    "completed": "সম্পন্ন"
+    "completed": "সম্পন্ন",
+    "summary": "সারসংক্ষেপ",
+    "average": "গড়"
   },
   "combobox": {
     "select": "নির্বাচন করুন...",

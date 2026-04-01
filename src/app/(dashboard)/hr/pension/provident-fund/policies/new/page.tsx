@@ -45,7 +45,7 @@ export default function NewPFPolicyPage() {
     setError('')
 
     try {
-      const res = await fetch('/api/v1/hr/provident-fund/policies', {
+      const res = await fetch('/api/v1/hr/pf/policies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

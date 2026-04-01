@@ -39,7 +39,7 @@ export default function EmployeeContributionHistoryPage() {
 
   useEffect(() => {
     if (!params.employeeId) return
-    fetch(`/api/v1/hr/provident-fund/contributions/employee/${params.employeeId}`)
+    fetch(`/api/v1/hr/pf/contributions/employee/${params.employeeId}`)
       .then(res => res.json())
       .then(json => {
         if (json.success) {

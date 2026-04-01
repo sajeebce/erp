@@ -39,7 +39,7 @@ export default function PFPoliciesPage() {
   ]
 
   useEffect(() => {
-    fetch('/api/v1/hr/provident-fund/policies?limit=100')
+    fetch('/api/v1/hr/pf/policies?limit=100')
       .then(res => res.json())
       .then(json => { if (json.success) setPolicies(json.data) })
       .catch(console.error)

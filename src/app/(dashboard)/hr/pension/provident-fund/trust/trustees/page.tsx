@@ -39,7 +39,7 @@ export default function TrusteesPage() {
   const [formIsActive, setFormIsActive] = useState(true)
 
   useEffect(() => {
-    fetch('/api/v1/hr/provident-fund/trust/trustees')
+    fetch('/api/v1/hr/pf/trust/trustees')
       .then(res => res.json())
       .then(json => { if (json.success) setTrustees(json.data) })
       .catch(console.error)
@@ -73,8 +73,8 @@ export default function TrusteesPage() {
     setError('')
     try {
       const url = editId
-        ? `/api/v1/hr/provident-fund/trust/trustees/${editId}`
-        : '/api/v1/hr/provident-fund/trust/trustees'
+        ? `/api/v1/hr/pf/trust/trustees/${editId}`
+        : '/api/v1/hr/pf/trust/trustees'
       const res = await fetch(url, {
         method: editId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },

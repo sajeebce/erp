@@ -55,7 +55,7 @@ export default function PFPolicyDetailPage() {
 
   useEffect(() => {
     if (!params.id) return
-    fetch(`/api/v1/hr/provident-fund/policies/${params.id}`)
+    fetch(`/api/v1/hr/pf/policies/${params.id}`)
       .then(res => res.json())
       .then(json => {
         if (json.success && json.data) {
@@ -88,7 +88,7 @@ export default function PFPolicyDetailPage() {
     setSaving(true)
     setError('')
     try {
-      const res = await fetch(`/api/v1/hr/provident-fund/policies/${params.id}`, {
+      const res = await fetch(`/api/v1/hr/pf/policies/${params.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

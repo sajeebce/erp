@@ -58,7 +58,7 @@ export default function PFLoanDetailPage() {
 
   useEffect(() => {
     if (!params.id) return
-    fetch(`/api/v1/hr/provident-fund/loans/${params.id}`)
+    fetch(`/api/v1/hr/pf/loans/${params.id}`)
       .then(res => res.json())
       .then(json => {
         if (json.success) setData(json.data)

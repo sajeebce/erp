@@ -132,6 +132,13 @@ model Employee {
   backgroundCheckDate   DateTime?
   mdsCheckCompleted     Boolean    @default(false) // Misconduct Disclosure Scheme (USAID/DFID)
 
+  // ── Compliance Documents (Phase 12 fix) ──
+  codeOfConductFilePath     String?  // Uploaded signed Code of Conduct
+  pseaDeclarationFilePath   String?  // Uploaded PSEA declaration
+  safeguardingCertFilePath  String?  // Uploaded safeguarding training certificate
+  backgroundCheckFilePath   String?  // Uploaded background check report
+  fd4DocumentFilePath       String?  // Uploaded FD-4 notification document
+
   notes             String?
   convertedFromApplicationId String? @db.Uuid // If hired via recruitment, link to JobApplication
   createdAt         DateTime       @default(now())
@@ -239,6 +246,7 @@ model EmployeeEducation {
   endYear       Int?
   grade         String?  // GPA, Class, Division
   country       String?  @default("Bangladesh")
+  filePath      String?  // Uploaded degree/certificate document
   createdAt     DateTime @default(now())
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
@@ -258,6 +266,7 @@ model EmployeeWorkHistory {
   responsibilities String?
   location         String?
   isCurrent        Boolean   @default(false)
+  filePath         String?   // Uploaded experience certificate
   createdAt        DateTime  @default(now())
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)

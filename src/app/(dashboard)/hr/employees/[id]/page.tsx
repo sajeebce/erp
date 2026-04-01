@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import {
@@ -8,7 +8,7 @@ import {
   Plus, Trash2, Save, User, Briefcase, DollarSign,
   FileText, Calendar, FolderOpen, GraduationCap,
   Award, Shield, ScrollText, Clock, ExternalLink,
-  Phone, Mail, MapPin, ChevronRight,
+  Phone, Mail, MapPin, ChevronLeft, ChevronRight, Upload, Eye,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +27,7 @@ import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { FileUpload } from '@/components/shared/file-upload'
 import { useFormatters } from '@/hooks/use-formatters'
+import { cn } from '@/lib/utils'
 
 // ─── Constants ──────────────────────────────────────────────────────
 
@@ -61,6 +62,21 @@ const LANGUAGE_LEVELS = ['NONE', 'BASIC', 'FLUENT', 'NATIVE'] as const
 
 const READ_ONLY_TABS = new Set(['leave', 'projects', 'performance', 'contracts', 'timeline'])
 
+// Tab definitions for scrollable tab bar
+const TAB_ITEMS: { value: string; labelKey: string; icon: typeof User }[] = [
+  { value: 'personal', labelKey: 'profile.tabs.personal', icon: User },
+  { value: 'employment', labelKey: 'profile.tabs.employment', icon: Briefcase },
+  { value: 'compensation', labelKey: 'profile.tabs.compensation', icon: DollarSign },
+  { value: 'documents', labelKey: 'profile.tabs.documents', icon: FileText },
+  { value: 'leave', labelKey: 'profile.tabs.leave', icon: Calendar },
+  { value: 'projects', labelKey: 'profile.tabs.projects', icon: FolderOpen },
+  { value: 'education', labelKey: 'profile.tabs.education', icon: GraduationCap },
+  { value: 'performance', labelKey: 'profile.tabs.performance', icon: Award },
+  { value: 'compliance', labelKey: 'profile.tabs.compliance', icon: Shield },
+  { value: 'contracts', labelKey: 'profile.tabs.contracts', icon: ScrollText },
+  { value: 'timeline', labelKey: 'profile.tabs.timeline', icon: Clock },
+]
+
 // ─── Types ──────────────────────────────────────────────────────────
 
 interface Department { id: string; name: string; code?: string }
@@ -75,13 +91,15 @@ interface EmergencyContact {
 interface Education {
   id: string; degree: string; institution: string;
   fieldOfStudy?: string | null; startYear?: number | null;
-  endYear?: number | null; grade?: string | null; country?: string | null
+  endYear?: number | null; grade?: string | null; country?: string | null;
+  filePath?: string | null
 }
 
 interface WorkHistory {
   id: string; employer: string; jobTitle: string; department?: string | null;
   startDate: string; endDate?: string | null; reasonForLeaving?: string | null;
-  responsibilities?: string | null; location?: string | null; isCurrent: boolean
+  responsibilities?: string | null; location?: string | null; isCurrent: boolean;
+  filePath?: string | null
 }
 
 interface Skill {
@@ -126,6 +144,15 @@ interface LeaveApplication { id: string; leaveType: string; startDate: string; e
 
 interface TimelineEvent {
   date: string; type: string; title: string; description: string; icon: string
+}
+
+interface PerformanceReview {
+  id: string; reviewPeriod: string; reviewType: string;
+  selfScore?: number | null; supervisorScore?: number | null; finalScore?: number | null;
+  rating?: string | null; status: string; completedAt?: string | null;
+  okrScore?: number | null; competencyScore?: number | null;
+  selfComments?: string | null; supervisorComments?: string | null;
+  developmentPlan?: string | null
 }
 
 interface Contract {
@@ -204,6 +231,11 @@ interface Employee {
   backgroundCheckStatus?: string | null
   backgroundCheckDate?: string | null
   mdsCheckCompleted?: boolean
+  codeOfConductFilePath?: string | null
+  pseaDeclarationFilePath?: string | null
+  safeguardingCertFilePath?: string | null
+  backgroundCheckFilePath?: string | null
+  fd4DocumentFilePath?: string | null
   notes?: string | null
   department?: Department
   designation?: Designation
@@ -218,6 +250,21 @@ interface Employee {
   certifications?: Certification[]
   documents?: EmployeeDocument[]
   projectAllocations?: ProjectAllocation[]
+  salaryGradeId?: string | null
+  salaryStepNo?: number | null
+  salaryStructureId?: string | null
+  salaryGrade?: {
+    id: string; code: string; name: string; currency: string
+    steps: { id: string; stepNumber: number; basicSalary: string | number }[]
+  } | null
+  salaryStructure?: {
+    id: string; name: string
+    lines: {
+      id: string; calculationType: string; amount?: string | number | null
+      percentage?: string | number | null; sortOrder: number
+      component: { id: string; code: string; name: string; type: string }
+    }[]
+  } | null
   createdAt: string
 }
 
@@ -266,6 +313,130 @@ function Field({ label, value, mono }: { label: string; value: React.ReactNode; 
   )
 }
 
+// ─── Scrollable Tab Navigation (Material UI / Ant Design pattern) ───
+
+function ScrollableTabBar({
+  activeTab,
+  t,
+}: {
+  activeTab: string
+  t: ReturnType<typeof useTranslations>
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+  const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const updateScrollState = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 2)
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2)
+  }, [])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    updateScrollState()
+    el.addEventListener('scroll', updateScrollState, { passive: true })
+    const ro = new ResizeObserver(updateScrollState)
+    ro.observe(el)
+
+    // Native wheel listener (non-passive) to prevent page scroll when hovering tab bar
+    const handleWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault()
+        el.scrollLeft += e.deltaY
+      }
+    }
+    el.addEventListener('wheel', handleWheel, { passive: false })
+
+    return () => {
+      el.removeEventListener('scroll', updateScrollState)
+      el.removeEventListener('wheel', handleWheel)
+      ro.disconnect()
+    }
+  }, [updateScrollState])
+
+  const startAutoScroll = useCallback((direction: 'left' | 'right') => {
+    stopAutoScroll()
+    scrollIntervalRef.current = setInterval(() => {
+      const el = scrollRef.current
+      if (!el) return
+      el.scrollLeft += direction === 'right' ? 3 : -3
+    }, 8)
+  }, [])
+
+  const stopAutoScroll = useCallback(() => {
+    if (scrollIntervalRef.current) { clearInterval(scrollIntervalRef.current); scrollIntervalRef.current = null }
+  }, [])
+
+  useEffect(() => () => stopAutoScroll(), [stopAutoScroll])
+
+  // Scroll active tab into view on tab change
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const activeEl = el.querySelector('[data-state="active"]') as HTMLElement | null
+    if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+  }, [activeTab])
+
+  return (
+    <div className="relative flex items-center">
+      {/* Left arrow */}
+      <div className={cn(
+        'absolute left-0 z-20 h-full flex items-center transition-opacity duration-200',
+        canScrollLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      )}>
+        <div className="flex items-center h-full bg-gradient-to-r from-background via-background to-transparent pr-3 pl-0.5">
+          <button
+            className="flex items-center justify-center h-7 w-7 rounded-full border bg-background shadow-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onMouseEnter={() => startAutoScroll('left')}
+            onMouseLeave={stopAutoScroll}
+            onClick={() => scrollRef.current?.scrollBy({ left: -200, behavior: 'smooth' })}
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Scrollable tab list */}
+      <div ref={scrollRef} className="flex-1 overflow-x-auto scrollbar-none">
+        <TabsList variant="line" className="w-max justify-start flex-nowrap border-b px-8">
+          {TAB_ITEMS.map(tab => {
+            const Icon = tab.icon
+            return (
+              <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 shrink-0">
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                {t(tab.labelKey)}
+              </TabsTrigger>
+            )
+          })}
+        </TabsList>
+      </div>
+
+      {/* Right arrow */}
+      <div className={cn(
+        'absolute right-0 z-20 h-full flex items-center transition-opacity duration-200',
+        canScrollRight ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      )}>
+        <div className="flex items-center h-full bg-gradient-to-l from-background via-background to-transparent pl-3 pr-0.5">
+          <button
+            className="flex items-center justify-center h-7 w-7 rounded-full border bg-background shadow-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onMouseEnter={() => startAutoScroll('right')}
+            onMouseLeave={stopAutoScroll}
+            onClick={() => scrollRef.current?.scrollBy({ left: 200, behavior: 'smooth' })}
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // Main Component
 // ═══════════════════════════════════════════════════════════════════
@@ -302,6 +473,7 @@ export default function EmployeeDetailPage() {
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[] | null>(null)
   const [contracts, setContracts] = useState<Contract[] | null>(null)
   const [timeline, setTimeline] = useState<TimelineEvent[] | null>(null)
+  const [performanceReviews, setPerformanceReviews] = useState<PerformanceReview[] | null>(null)
 
   // ── Inline CRUD state ──
   const [editingContactId, setEditingContactId] = useState<string | null>(null)
@@ -374,6 +546,11 @@ export default function EmployeeDetailPage() {
         else setLeaveBalances([])
         if (appRes.success) setLeaveApplications(Array.isArray(appRes.data) ? appRes.data : appRes.data?.items || [])
         else setLeaveApplications([])
+        break
+      }
+      case 'performance': {
+        const res = await fetch(`/api/v1/hr/employees/${employeeId}/performance-reviews`).then(r => r.json()).catch(() => ({ success: false }))
+        setPerformanceReviews(res.success ? (Array.isArray(res.data) ? res.data : []) : [])
         break
       }
       case 'contracts': {
@@ -751,6 +928,74 @@ export default function EmployeeDetailPage() {
   }, [apiSubResource, fetchEmployee])
 
   // Certification CRUD
+  // Document upload helper for education/work/cert rows
+  const uploadRowDocument = useCallback(async (
+    resource: 'education' | 'work-history' | 'certifications',
+    recordId: string,
+    docType: string,
+    file: File,
+  ) => {
+    // 1. Upload file via documents API
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('type', docType)
+    formData.append('name', `${docType} - ${file.name}`)
+    try {
+      const uploadRes = await fetch(`/api/v1/hr/employees/${employeeId}/documents`, {
+        method: 'POST',
+        body: formData,
+      })
+      const uploadJson = await uploadRes.json()
+      if (!uploadJson.success) return
+      // 2. Update the record's filePath
+      const filePath = uploadJson.data.filePath
+      await fetch(`/api/v1/hr/employees/${employeeId}/${resource}/${recordId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePath }),
+      })
+      await fetchEmployee()
+    } catch { /* silently fail */ }
+  }, [employeeId, fetchEmployee])
+
+  const removeRowDocument = useCallback(async (
+    resource: 'education' | 'work-history' | 'certifications',
+    recordId: string,
+  ) => {
+    await fetch(`/api/v1/hr/employees/${employeeId}/${resource}/${recordId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath: null }),
+    })
+    await fetchEmployee()
+  }, [employeeId, fetchEmployee])
+
+  // Compliance document upload helper
+  const uploadComplianceDoc = useCallback(async (
+    field: string,
+    docType: string,
+    file: File,
+  ) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('type', docType)
+    formData.append('name', `${docType} - ${file.name}`)
+    try {
+      const uploadRes = await fetch(`/api/v1/hr/employees/${employeeId}/documents`, {
+        method: 'POST',
+        body: formData,
+      })
+      const uploadJson = await uploadRes.json()
+      if (!uploadJson.success) return
+      await fetch(`/api/v1/hr/employees/${employeeId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: uploadJson.data.filePath }),
+      })
+      await fetchEmployee()
+    } catch { /* silently fail */ }
+  }, [employeeId, fetchEmployee])
+
   const saveCert = useCallback(async (isNew: boolean) => {
     if (!certForm.name?.trim() || !certForm.issuingOrg?.trim()) return
     const body = {
@@ -857,8 +1102,38 @@ export default function EmployeeDetailPage() {
           <div className="flex flex-col md:flex-row gap-6">
             {/* Avatar */}
             <div className="flex-shrink-0">
-              <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold">
-                {getInitials(employee.fullName)}
+              <div className="relative h-20 w-20 shrink-0 group">
+                {employee.photo ? (
+                  <img src={employee.photo} alt={employee.fullName} className="h-20 w-20 rounded-full object-cover" />
+                ) : (
+                  <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold">
+                    {getInitials(employee.fullName)}
+                  </div>
+                )}
+                <label className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  <Upload className="h-5 w-5" />
+                  <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const formData = new FormData()
+                    formData.append('file', file)
+                    formData.append('type', 'PHOTO')
+                    formData.append('name', 'Profile Photo')
+                    try {
+                      const uploadRes = await fetch(`/api/v1/hr/employees/${employeeId}/documents`, { method: 'POST', body: formData })
+                      const uploadJson = await uploadRes.json()
+                      if (uploadJson.success) {
+                        await fetch(`/api/v1/hr/employees/${employeeId}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ photo: uploadJson.data.filePath }),
+                        })
+                        await fetchEmployee()
+                      }
+                    } catch {}
+                    e.target.value = ''
+                  }} />
+                </label>
               </div>
             </div>
 
@@ -936,21 +1211,9 @@ export default function EmployeeDetailPage() {
         </CardContent>
       </Card>
 
-      {/* ── Tabs ── */}
+      {/* ── Tabs with scroll + arrow buttons ── */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
-          <TabsTrigger value="personal" className="gap-1"><User className="h-3.5 w-3.5" />{t('profile.tabs.personal')}</TabsTrigger>
-          <TabsTrigger value="employment" className="gap-1"><Briefcase className="h-3.5 w-3.5" />{t('profile.tabs.employment')}</TabsTrigger>
-          <TabsTrigger value="compensation" className="gap-1"><DollarSign className="h-3.5 w-3.5" />{t('profile.tabs.compensation')}</TabsTrigger>
-          <TabsTrigger value="documents" className="gap-1"><FileText className="h-3.5 w-3.5" />{t('profile.tabs.documents')}</TabsTrigger>
-          <TabsTrigger value="leave" className="gap-1"><Calendar className="h-3.5 w-3.5" />{t('profile.tabs.leave')}</TabsTrigger>
-          <TabsTrigger value="projects" className="gap-1"><FolderOpen className="h-3.5 w-3.5" />{t('profile.tabs.projects')}</TabsTrigger>
-          <TabsTrigger value="education" className="gap-1"><GraduationCap className="h-3.5 w-3.5" />{t('profile.tabs.education')}</TabsTrigger>
-          <TabsTrigger value="performance" className="gap-1"><Award className="h-3.5 w-3.5" />{t('profile.tabs.performance')}</TabsTrigger>
-          <TabsTrigger value="compliance" className="gap-1"><Shield className="h-3.5 w-3.5" />{t('profile.tabs.compliance')}</TabsTrigger>
-          <TabsTrigger value="contracts" className="gap-1"><ScrollText className="h-3.5 w-3.5" />{t('profile.tabs.contracts')}</TabsTrigger>
-          <TabsTrigger value="timeline" className="gap-1"><Clock className="h-3.5 w-3.5" />{t('profile.tabs.timeline')}</TabsTrigger>
-        </TabsList>
+        <ScrollableTabBar activeTab={activeTab} t={t} />
 
         {/* ══════════════════════════════════════════════════════════ */}
         {/* Tab 1: Personal Information                               */}
@@ -1219,6 +1482,11 @@ export default function EmployeeDetailPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Employee No — read-only */}
+                  <div className="space-y-2">
+                    <Label>{t('fields.employeeNo')}</Label>
+                    <Input value={employee.employeeNo} disabled className="bg-muted" />
+                  </div>
                   <div className="space-y-2">
                     <Label>{t('fields.status')}</Label>
                     <SearchableSelect
@@ -1256,6 +1524,10 @@ export default function EmployeeDetailPage() {
                     <Input value={String(employmentForm.gradeLevel || '')} onChange={e => setEmploymentForm(p => ({ ...p, gradeLevel: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
+                    <Label>{t('fields.joiningDate')}</Label>
+                    <Input type="date" value={String(employmentForm.joiningDate || '')} onChange={e => setEmploymentForm(p => ({ ...p, joiningDate: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
                     <Label>{t('form.confirmationDate')}</Label>
                     <Input type="date" value={String(employmentForm.confirmationDate || '')} onChange={e => setEmploymentForm(p => ({ ...p, confirmationDate: e.target.value }))} />
                   </div>
@@ -1266,6 +1538,22 @@ export default function EmployeeDetailPage() {
                   <div className="space-y-2">
                     <Label>{t('form.endDate')}</Label>
                     <Input type="date" value={String(employmentForm.endDate || '')} onChange={e => setEmploymentForm(p => ({ ...p, endDate: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t('form.reportingTo')}</Label>
+                    <SearchableSelect
+                      options={[
+                        { value: '', label: '— None —' },
+                        ...(employee.directReports || []).length === 0
+                          ? departments.length > 0
+                            ? [{ value: employee.reportingTo?.id || '', label: employee.reportingTo?.fullName || '' }].filter(o => o.value)
+                            : []
+                          : [],
+                        ...(employee.reportingTo ? [{ value: employee.reportingTo.id, label: `${employee.reportingTo.fullName} (${employee.reportingTo.employeeNo})` }] : []),
+                      ].filter((o, i, arr) => arr.findIndex(x => x.value === o.value) === i)}
+                      value={String(employmentForm.reportingToId || '')}
+                      onValueChange={v => setEmploymentForm(p => ({ ...p, reportingToId: v }))}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>{t('form.dutyStation')}</Label>
@@ -1332,50 +1620,130 @@ export default function EmployeeDetailPage() {
             <>
               {/* Salary Breakdown */}
               <Card>
-                <CardHeader><CardTitle>{t('profile.salaryBreakdown')}</CardTitle></CardHeader>
+                <CardHeader>
+                  <CardTitle>{t('profile.salaryBreakdown')}</CardTitle>
+                  {employee.salaryGrade && (
+                    <p className="text-sm text-muted-foreground">
+                      {employee.salaryGrade.code} — Step {employee.salaryStepNo || 1}
+                      {employee.salaryStructure && <> &middot; {employee.salaryStructure.name}</>}
+                    </p>
+                  )}
+                </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t('profile.component')}</TableHead>
-                        <TableHead className="text-right">{t('fields.amount')}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell>{t('fields.basicSalary')}</TableCell>
-                        <TableCell className="text-right font-mono">{formatCurrency(num(employee.basicSalary))}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>{t('form.houseRentAllowance')}</TableCell>
-                        <TableCell className="text-right font-mono">{formatCurrency(num(employee.houseRentAllowance))}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>{t('form.medicalAllowance')}</TableCell>
-                        <TableCell className="text-right font-mono">{formatCurrency(num(employee.medicalAllowance))}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell>{t('form.transportAllowance')}</TableCell>
-                        <TableCell className="text-right font-mono">{formatCurrency(num(employee.transportAllowance))}</TableCell>
-                      </TableRow>
-                      {employee.otherAllowances && Array.isArray(employee.otherAllowances) && employee.otherAllowances.map((a, i) => (
-                        <TableRow key={i}>
-                          <TableCell>{a.name}</TableCell>
-                          <TableCell className="text-right font-mono">{formatCurrency(a.amount)}</TableCell>
+                  {employee.salaryGrade && employee.salaryStructure && employee.salaryStepNo ? (() => {
+                    const step = employee.salaryGrade!.steps.find(s => s.stepNumber === employee.salaryStepNo)
+                    const basic = step ? num(step.basicSalary) : num(employee.basicSalary)
+                    const lines = employee.salaryStructure!.lines
+                    const earnings: { name: string; amount: number }[] = []
+                    const deductions: { name: string; amount: number }[] = []
+                    let gross = basic
+
+                    for (const line of lines) {
+                      let amt = 0
+                      if (line.calculationType === 'FIXED') amt = num(line.amount)
+                      else if (line.calculationType === 'PERCENT_OF_BASIC') amt = basic * num(line.percentage) / 100
+                      else if (line.calculationType === 'PERCENT_OF_GROSS') amt = 0 // computed after
+
+                      const entry = { name: line.component.name, amount: Math.round(amt) }
+                      if (line.component.type === 'EARNING') { earnings.push(entry); gross += entry.amount }
+                      else if (line.component.type === 'DEDUCTION') deductions.push(entry)
+                    }
+
+                    // Now compute PERCENT_OF_GROSS lines
+                    for (const line of lines) {
+                      if (line.calculationType === 'PERCENT_OF_GROSS') {
+                        const amt = Math.round(gross * num(line.percentage) / 100)
+                        const entry = { name: line.component.name, amount: amt }
+                        if (line.component.type === 'EARNING') { earnings.push(entry); gross += amt }
+                        else if (line.component.type === 'DEDUCTION') deductions.push(entry)
+                      }
+                    }
+
+                    const totalDeductions = deductions.reduce((s, d) => s + d.amount, 0)
+                    const net = gross - totalDeductions
+
+                    return (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>{t('profile.component')}</TableHead>
+                            <TableHead className="text-right">{t('fields.amount')}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <TableRow className="bg-muted/30">
+                            <TableCell className="font-medium">{t('fields.basicSalary')}</TableCell>
+                            <TableCell className="text-right font-mono">{formatCurrency(basic)}</TableCell>
+                          </TableRow>
+                          {earnings.length > 0 && earnings.map((e, i) => (
+                            <TableRow key={`e-${i}`}>
+                              <TableCell className="text-green-700 dark:text-green-400">(+) {e.name}</TableCell>
+                              <TableCell className="text-right font-mono">{formatCurrency(e.amount)}</TableCell>
+                            </TableRow>
+                          ))}
+                          <TableRow className="font-bold border-t-2">
+                            <TableCell>{t('form.grossSalary')}</TableCell>
+                            <TableCell className="text-right font-mono">{formatCurrency(gross)}</TableCell>
+                          </TableRow>
+                          {deductions.length > 0 && deductions.map((d, i) => (
+                            <TableRow key={`d-${i}`}>
+                              <TableCell className="text-red-600 dark:text-red-400">(-) {d.name}</TableCell>
+                              <TableCell className="text-right font-mono">{formatCurrency(d.amount)}</TableCell>
+                            </TableRow>
+                          ))}
+                          {deductions.length > 0 && (
+                            <TableRow className="font-bold border-t-2">
+                              <TableCell>{t('profile.netSalary') || 'Net Salary'}</TableCell>
+                              <TableCell className="text-right font-mono text-primary">{formatCurrency(net)}</TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    )
+                  })() : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{t('profile.component')}</TableHead>
+                          <TableHead className="text-right">{t('fields.amount')}</TableHead>
                         </TableRow>
-                      ))}
-                      <TableRow className="font-bold border-t-2">
-                        <TableCell>{t('form.grossSalary')}</TableCell>
-                        <TableCell className="text-right font-mono">{formatCurrency(
-                          num(employee.grossSalary) || (
-                            num(employee.basicSalary) + num(employee.houseRentAllowance) +
-                            num(employee.medicalAllowance) + num(employee.transportAllowance) +
-                            (employee.otherAllowances || []).reduce((sum, a) => sum + (a.amount || 0), 0)
-                          )
-                        )}</TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell>{t('fields.basicSalary')}</TableCell>
+                          <TableCell className="text-right font-mono">{formatCurrency(num(employee.basicSalary))}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>{t('form.houseRentAllowance')}</TableCell>
+                          <TableCell className="text-right font-mono">{formatCurrency(num(employee.houseRentAllowance))}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>{t('form.medicalAllowance')}</TableCell>
+                          <TableCell className="text-right font-mono">{formatCurrency(num(employee.medicalAllowance))}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>{t('form.transportAllowance')}</TableCell>
+                          <TableCell className="text-right font-mono">{formatCurrency(num(employee.transportAllowance))}</TableCell>
+                        </TableRow>
+                        {employee.otherAllowances && Array.isArray(employee.otherAllowances) && employee.otherAllowances.map((a, i) => (
+                          <TableRow key={i}>
+                            <TableCell>{a.name}</TableCell>
+                            <TableCell className="text-right font-mono">{formatCurrency(a.amount)}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="font-bold border-t-2">
+                          <TableCell>{t('form.grossSalary')}</TableCell>
+                          <TableCell className="text-right font-mono">{formatCurrency(
+                            num(employee.grossSalary) || (
+                              num(employee.basicSalary) + num(employee.houseRentAllowance) +
+                              num(employee.medicalAllowance) + num(employee.transportAllowance) +
+                              (employee.otherAllowances || []).reduce((sum, a) => sum + (a.amount || 0), 0)
+                            )
+                          )}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
 
@@ -1785,6 +2153,7 @@ export default function EmployeeDetailPage() {
                     <TableHead>{t('education.field')}</TableHead>
                     <TableHead>{t('education.year')}</TableHead>
                     <TableHead>{t('education.grade')}</TableHead>
+                    <TableHead className="w-20">{t('profile.document')}</TableHead>
                     <TableHead className="w-24">{tc('labels.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1802,6 +2171,7 @@ export default function EmployeeDetailPage() {
                           </div>
                         </TableCell>
                         <TableCell><Input value={educationForm.grade || ''} onChange={e => setEducationForm(f => ({ ...f, grade: e.target.value }))} /></TableCell>
+                        <TableCell />
                         <TableCell>
                           <div className="flex gap-1">
                             <Button size="icon" variant="ghost" onClick={() => saveEducation(false)}><Save className="h-4 w-4" /></Button>
@@ -1817,6 +2187,19 @@ export default function EmployeeDetailPage() {
                         <TableCell>{edu.startYear && edu.endYear ? `${edu.startYear}-${edu.endYear}` : edu.endYear || '\u2014'}</TableCell>
                         <TableCell>{edu.grade || '\u2014'}</TableCell>
                         <TableCell>
+                          {edu.filePath ? (
+                            <div className="flex gap-1">
+                              <Button size="icon" variant="ghost" title={t('profile.viewDocument')} onClick={() => window.open(edu.filePath!, '_blank')}><Eye className="h-4 w-4 text-green-600" /></Button>
+                              <Button size="icon" variant="ghost" title={t('profile.removeDocument')} onClick={() => removeRowDocument('education', edu.id)}><X className="h-3 w-3 text-muted-foreground" /></Button>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer" title={t('profile.uploadDocument')}>
+                              <Upload className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                              <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => { const f = e.target.files?.[0]; if (f) uploadRowDocument('education', edu.id, 'EDUCATIONAL_CERT', f); e.target.value = '' }} />
+                            </label>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <div className="flex gap-1">
                             <Button size="icon" variant="ghost" onClick={() => { setEditingEducationId(edu.id); setEducationForm({ ...edu }) }}><Pencil className="h-4 w-4" /></Button>
                             <Button size="icon" variant="ghost" onClick={() => deleteEducation(edu.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -1826,7 +2209,7 @@ export default function EmployeeDetailPage() {
                     )
                   ))}
                   {(employee.educationHistory || []).length === 0 && !showAddEducation && (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">{tc('labels.noData')}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">{tc('labels.noData')}</TableCell></TableRow>
                   )}
                   {showAddEducation && (
                     <TableRow>
@@ -1840,6 +2223,7 @@ export default function EmployeeDetailPage() {
                         </div>
                       </TableCell>
                       <TableCell><Input placeholder={t('education.grade')} value={educationForm.grade || ''} onChange={e => setEducationForm(f => ({ ...f, grade: e.target.value }))} /></TableCell>
+                      <TableCell />
                       <TableCell>
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" onClick={() => saveEducation(true)}><Save className="h-4 w-4" /></Button>
@@ -1870,6 +2254,7 @@ export default function EmployeeDetailPage() {
                     <TableHead>{t('fields.startDate')}</TableHead>
                     <TableHead>{t('fields.endDate')}</TableHead>
                     <TableHead>{t('work.location')}</TableHead>
+                    <TableHead className="w-20">{t('profile.document')}</TableHead>
                     <TableHead className="w-24">{tc('labels.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1882,6 +2267,7 @@ export default function EmployeeDetailPage() {
                         <TableCell><Input type="date" value={dateStr(workForm.startDate)} onChange={e => setWorkForm(f => ({ ...f, startDate: e.target.value }))} /></TableCell>
                         <TableCell><Input type="date" value={dateStr(workForm.endDate)} onChange={e => setWorkForm(f => ({ ...f, endDate: e.target.value }))} /></TableCell>
                         <TableCell><Input value={workForm.location || ''} onChange={e => setWorkForm(f => ({ ...f, location: e.target.value }))} /></TableCell>
+                        <TableCell />
                         <TableCell>
                           <div className="flex gap-1">
                             <Button size="icon" variant="ghost" onClick={() => saveWork(false)}><Save className="h-4 w-4" /></Button>
@@ -1897,6 +2283,19 @@ export default function EmployeeDetailPage() {
                         <TableCell>{wh.endDate ? formatDate(wh.endDate) : <Badge variant="outline">Current</Badge>}</TableCell>
                         <TableCell>{wh.location || '\u2014'}</TableCell>
                         <TableCell>
+                          {wh.filePath ? (
+                            <div className="flex gap-1">
+                              <Button size="icon" variant="ghost" title={t('profile.viewDocument')} onClick={() => window.open(wh.filePath!, '_blank')}><Eye className="h-4 w-4 text-green-600" /></Button>
+                              <Button size="icon" variant="ghost" title={t('profile.removeDocument')} onClick={() => removeRowDocument('work-history', wh.id)}><X className="h-3 w-3 text-muted-foreground" /></Button>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer" title={t('profile.uploadDocument')}>
+                              <Upload className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                              <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => { const f = e.target.files?.[0]; if (f) uploadRowDocument('work-history', wh.id, 'EXPERIENCE_CERT', f); e.target.value = '' }} />
+                            </label>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <div className="flex gap-1">
                             <Button size="icon" variant="ghost" onClick={() => { setEditingWorkId(wh.id); setWorkForm({ ...wh }) }}><Pencil className="h-4 w-4" /></Button>
                             <Button size="icon" variant="ghost" onClick={() => deleteWork(wh.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -1906,7 +2305,7 @@ export default function EmployeeDetailPage() {
                     )
                   ))}
                   {(employee.workHistory || []).length === 0 && !showAddWork && (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">{tc('labels.noData')}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">{tc('labels.noData')}</TableCell></TableRow>
                   )}
                   {showAddWork && (
                     <TableRow>
@@ -1915,6 +2314,7 @@ export default function EmployeeDetailPage() {
                       <TableCell><Input type="date" value={dateStr(workForm.startDate)} onChange={e => setWorkForm(f => ({ ...f, startDate: e.target.value }))} /></TableCell>
                       <TableCell><Input type="date" value={dateStr(workForm.endDate)} onChange={e => setWorkForm(f => ({ ...f, endDate: e.target.value }))} /></TableCell>
                       <TableCell><Input placeholder={t('work.location')} value={workForm.location || ''} onChange={e => setWorkForm(f => ({ ...f, location: e.target.value }))} /></TableCell>
+                      <TableCell />
                       <TableCell>
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" onClick={() => saveWork(true)}><Save className="h-4 w-4" /></Button>
@@ -2075,6 +2475,7 @@ export default function EmployeeDetailPage() {
                     <TableHead>{t('certifications.issueDate')}</TableHead>
                     <TableHead>{t('certifications.expiryDate')}</TableHead>
                     <TableHead>{t('certifications.certNo')}</TableHead>
+                    <TableHead className="w-20">{t('profile.document')}</TableHead>
                     <TableHead className="w-24">{tc('labels.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -2087,6 +2488,7 @@ export default function EmployeeDetailPage() {
                         <TableCell><Input type="date" value={dateStr(certForm.issueDate)} onChange={e => setCertForm(f => ({ ...f, issueDate: e.target.value }))} /></TableCell>
                         <TableCell><Input type="date" value={dateStr(certForm.expiryDate)} onChange={e => setCertForm(f => ({ ...f, expiryDate: e.target.value }))} /></TableCell>
                         <TableCell><Input value={certForm.certificateNo || ''} onChange={e => setCertForm(f => ({ ...f, certificateNo: e.target.value }))} /></TableCell>
+                        <TableCell />
                         <TableCell>
                           <div className="flex gap-1">
                             <Button size="icon" variant="ghost" onClick={() => saveCert(false)}><Save className="h-4 w-4" /></Button>
@@ -2102,6 +2504,19 @@ export default function EmployeeDetailPage() {
                         <TableCell>{cert.expiryDate ? formatDate(cert.expiryDate) : '\u2014'}</TableCell>
                         <TableCell className="font-mono text-xs">{cert.certificateNo || '\u2014'}</TableCell>
                         <TableCell>
+                          {cert.filePath ? (
+                            <div className="flex gap-1">
+                              <Button size="icon" variant="ghost" title={t('profile.viewDocument')} onClick={() => window.open(cert.filePath!, '_blank')}><Eye className="h-4 w-4 text-green-600" /></Button>
+                              <Button size="icon" variant="ghost" title={t('profile.removeDocument')} onClick={() => removeRowDocument('certifications', cert.id)}><X className="h-3 w-3 text-muted-foreground" /></Button>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer" title={t('profile.uploadDocument')}>
+                              <Upload className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                              <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => { const f = e.target.files?.[0]; if (f) uploadRowDocument('certifications', cert.id, 'CERTIFICATION', f); e.target.value = '' }} />
+                            </label>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <div className="flex gap-1">
                             <Button size="icon" variant="ghost" onClick={() => { setEditingCertId(cert.id); setCertForm({ ...cert }) }}><Pencil className="h-4 w-4" /></Button>
                             <Button size="icon" variant="ghost" onClick={() => deleteCert(cert.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -2111,7 +2526,7 @@ export default function EmployeeDetailPage() {
                     )
                   ))}
                   {(employee.certifications || []).length === 0 && !showAddCert && (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">{tc('labels.noData')}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">{tc('labels.noData')}</TableCell></TableRow>
                   )}
                   {showAddCert && (
                     <TableRow>
@@ -2120,6 +2535,7 @@ export default function EmployeeDetailPage() {
                       <TableCell><Input type="date" value={dateStr(certForm.issueDate)} onChange={e => setCertForm(f => ({ ...f, issueDate: e.target.value }))} /></TableCell>
                       <TableCell><Input type="date" value={dateStr(certForm.expiryDate)} onChange={e => setCertForm(f => ({ ...f, expiryDate: e.target.value }))} /></TableCell>
                       <TableCell><Input placeholder={t('certifications.certNo')} value={certForm.certificateNo || ''} onChange={e => setCertForm(f => ({ ...f, certificateNo: e.target.value }))} /></TableCell>
+                      <TableCell />
                       <TableCell>
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" onClick={() => saveCert(true)}><Save className="h-4 w-4" /></Button>
@@ -2139,15 +2555,50 @@ export default function EmployeeDetailPage() {
         {/* ══════════════════════════════════════════════════════════ */}
         <TabsContent value="performance" className="space-y-6 mt-6">
           <Card>
-            <CardHeader><CardTitle>{t('profile.tabs.performance')}</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>{t('performance.performanceReviews')}</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => router.push(`/hr/performance?employeeId=${employeeId}`)}>
+                {t('profile.viewPerformance')} <ExternalLink className="h-3.5 w-3.5 ml-1" />
+              </Button>
+            </CardHeader>
             <CardContent>
-              <div className="text-center py-10">
-                <Award className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
-                <p className="text-sm text-muted-foreground mb-2">{t('profile.performanceSummary')}</p>
-                <Button variant="outline" size="sm" onClick={() => router.push(`/hr/performance?employeeId=${employeeId}`)}>
-                  {t('profile.viewPerformance')} <ExternalLink className="h-3.5 w-3.5 ml-1" />
-                </Button>
-              </div>
+              {performanceReviews === null ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              ) : performanceReviews.length === 0 ? (
+                <div className="text-center py-10">
+                  <Award className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
+                  <p className="text-sm text-muted-foreground">{t('performance.noReviews')}</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('performance.reviewPeriod')}</TableHead>
+                      <TableHead>{t('performance.reviewType')}</TableHead>
+                      <TableHead className="text-center">{t('performance.selfScore')}</TableHead>
+                      <TableHead className="text-center">{t('performance.supervisorScore')}</TableHead>
+                      <TableHead className="text-center">{t('performance.finalScore')}</TableHead>
+                      <TableHead>{t('performance.rating')}</TableHead>
+                      <TableHead>{t('performance.status')}</TableHead>
+                      <TableHead>{t('performance.completedDate')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {performanceReviews.map(review => (
+                      <TableRow key={review.id}>
+                        <TableCell className="font-medium">{review.reviewPeriod}</TableCell>
+                        <TableCell><Badge variant="outline">{review.reviewType}</Badge></TableCell>
+                        <TableCell className="text-center">{review.selfScore != null ? Number(review.selfScore).toFixed(1) : '\u2014'}</TableCell>
+                        <TableCell className="text-center">{review.supervisorScore != null ? Number(review.supervisorScore).toFixed(1) : '\u2014'}</TableCell>
+                        <TableCell className="text-center font-semibold">{review.finalScore != null ? Number(review.finalScore).toFixed(1) : '\u2014'}</TableCell>
+                        <TableCell>{review.rating ? <StatusBadge status={review.rating} /> : '\u2014'}</TableCell>
+                        <TableCell><StatusBadge status={review.status} /></TableCell>
+                        <TableCell>{review.completedAt ? formatDate(review.completedAt) : '\u2014'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -2170,6 +2621,20 @@ export default function EmployeeDetailPage() {
                     <Field label={t('compliance.fd4ReferenceNo')} value={employee.fd4ReferenceNo} mono />
                     <Field label={t('compliance.fd4SubmissionDate')} value={employee.fd4SubmissionDate ? formatDate(employee.fd4SubmissionDate) : null} />
                     <Field label={t('compliance.fd4ApprovalStatus')} value={employee.fd4ApprovalStatus ? <StatusBadge status={employee.fd4ApprovalStatus} /> : null} />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground">{t('compliance.uploadFd4')}</span>
+                      {employee.fd4DocumentFilePath ? (
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" onClick={() => window.open(employee.fd4DocumentFilePath!, '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
+                          <Button size="sm" variant="ghost" onClick={() => uploadComplianceDoc('fd4DocumentFilePath', 'NGOAB_FD4_NOTIFICATION', new File([], ''))}><X className="h-3 w-3" /></Button>
+                        </div>
+                      ) : (
+                        <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm text-primary hover:underline">
+                          <Upload className="h-3.5 w-3.5" />{t('profile.uploadDocument')}
+                          <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => { const f = e.target.files?.[0]; if (f) uploadComplianceDoc('fd4DocumentFilePath', 'NGOAB_FD4_NOTIFICATION', f); e.target.value = '' }} />
+                        </label>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -2183,14 +2648,65 @@ export default function EmployeeDetailPage() {
                       label={t('compliance.codeOfConduct')}
                       value={<Badge variant={employee.codeOfConductSigned ? 'default' : 'secondary'}>{employee.codeOfConductSigned ? tc('labels.signed') : tc('labels.notSigned')}</Badge>}
                     />
-                    <Field label={t('compliance.codeOfConductDate')} value={employee.codeOfConductDate ? formatDate(employee.codeOfConductDate) : null} />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground">{t('compliance.uploadCoc')}</span>
+                      {employee.codeOfConductFilePath ? (
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" onClick={() => window.open(employee.codeOfConductFilePath!, '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
+                        </div>
+                      ) : (
+                        <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm text-primary hover:underline">
+                          <Upload className="h-3.5 w-3.5" />{t('profile.uploadDocument')}
+                          <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => { const f = e.target.files?.[0]; if (f) uploadComplianceDoc('codeOfConductFilePath', 'CODE_OF_CONDUCT', f); e.target.value = '' }} />
+                        </label>
+                      )}
+                    </div>
                     <Field
                       label={t('compliance.psea')}
                       value={<Badge variant={employee.pseaDeclarationSigned ? 'default' : 'secondary'}>{employee.pseaDeclarationSigned ? tc('labels.signed') : tc('labels.notSigned')}</Badge>}
                     />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground">{t('compliance.uploadPsea')}</span>
+                      {employee.pseaDeclarationFilePath ? (
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" onClick={() => window.open(employee.pseaDeclarationFilePath!, '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
+                        </div>
+                      ) : (
+                        <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm text-primary hover:underline">
+                          <Upload className="h-3.5 w-3.5" />{t('profile.uploadDocument')}
+                          <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => { const f = e.target.files?.[0]; if (f) uploadComplianceDoc('pseaDeclarationFilePath', 'PSEA_DECLARATION', f); e.target.value = '' }} />
+                        </label>
+                      )}
+                    </div>
                     <Field label={t('compliance.safeguardingTraining')} value={employee.safeguardingTrainingDate ? formatDate(employee.safeguardingTrainingDate) : null} />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground">{t('compliance.uploadSafeguarding')}</span>
+                      {employee.safeguardingCertFilePath ? (
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" onClick={() => window.open(employee.safeguardingCertFilePath!, '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
+                        </div>
+                      ) : (
+                        <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm text-primary hover:underline">
+                          <Upload className="h-3.5 w-3.5" />{t('profile.uploadDocument')}
+                          <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => { const f = e.target.files?.[0]; if (f) uploadComplianceDoc('safeguardingCertFilePath', 'SAFEGUARDING_CERT', f); e.target.value = '' }} />
+                        </label>
+                      )}
+                    </div>
                     <Field label={t('compliance.safeguardingExpiry')} value={employee.safeguardingTrainingExpiry ? formatDate(employee.safeguardingTrainingExpiry) : null} />
                     <Field label={t('compliance.backgroundCheck')} value={employee.backgroundCheckStatus ? <StatusBadge status={employee.backgroundCheckStatus} /> : null} />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground">{t('compliance.uploadBackgroundCheck')}</span>
+                      {employee.backgroundCheckFilePath ? (
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" onClick={() => window.open(employee.backgroundCheckFilePath!, '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
+                        </div>
+                      ) : (
+                        <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm text-primary hover:underline">
+                          <Upload className="h-3.5 w-3.5" />{t('profile.uploadDocument')}
+                          <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onChange={e => { const f = e.target.files?.[0]; if (f) uploadComplianceDoc('backgroundCheckFilePath', 'BACKGROUND_CHECK', f); e.target.value = '' }} />
+                        </label>
+                      )}
+                    </div>
                     <Field label={t('compliance.backgroundCheckDate')} value={employee.backgroundCheckDate ? formatDate(employee.backgroundCheckDate) : null} />
                     <Field
                       label={t('compliance.mdsCheck')}

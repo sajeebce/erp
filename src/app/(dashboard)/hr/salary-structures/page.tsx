@@ -453,10 +453,10 @@ export default function SalaryStructuresPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm() }}>
-              {tc('actions.cancel')}
+              {tc('buttons.cancel')}
             </Button>
             <Button onClick={handleSave} disabled={saving || !formName.trim()}>
-              {saving ? tc('labels.loading') : tc('actions.save')}
+              {saving ? tc('labels.loading') : tc('buttons.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

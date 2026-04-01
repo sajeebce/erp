@@ -61,6 +61,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         responsibilities: body.responsibilities || null,
         location: body.location || null,
         isCurrent: body.isCurrent ?? false,
+        filePath: body.filePath || null,
       },
     })
 

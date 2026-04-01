@@ -58,7 +58,7 @@ export default function PFContributionsPage() {
   ]
 
   useEffect(() => {
-    fetch('/api/v1/hr/provident-fund/contributions/runs?limit=50')
+    fetch('/api/v1/hr/pf/contributions/runs?limit=50')
       .then(res => res.json())
       .then(json => { if (json.success) setRuns(json.data) })
       .catch(console.error)
@@ -70,7 +70,7 @@ export default function PFContributionsPage() {
     setError('')
     setPreviewData(null)
     try {
-      const res = await fetch(`/api/v1/hr/provident-fund/contributions/preview?month=${month}&year=${year}`)
+      const res = await fetch(`/api/v1/hr/pf/contributions/preview?month=${month}&year=${year}`)
       const json = await res.json()
       if (json.success) setPreviewData(json.data)
       else setError(json.error || 'Failed to load preview')
@@ -85,7 +85,7 @@ export default function PFContributionsPage() {
     setRunLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/v1/hr/provident-fund/contributions/run', {
+      const res = await fetch('/api/v1/hr/pf/contributions/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ month: parseInt(month), year: parseInt(year) }),

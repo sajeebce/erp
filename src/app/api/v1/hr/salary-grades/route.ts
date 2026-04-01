@@ -38,23 +38,7 @@ export async function GET(request: NextRequest) {
     const [grades, total] = await Promise.all([
       prisma.salaryGrade.findMany({
         where,
-        select: {
-          id: true,
-          code: true,
-          name: true,
-          level: true,
-          description: true,
-          minSalary: true,
-          midSalary: true,
-          maxSalary: true,
-          currency: true,
-          effectiveFrom: true,
-          effectiveTo: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-          _count: { select: { steps: true } },
-        },
+        include: { steps: { orderBy: { stepNumber: 'asc' } } },
         orderBy: { level: 'asc' },
         skip,
         take: limit,
@@ -62,7 +46,12 @@ export async function GET(request: NextRequest) {
       prisma.salaryGrade.count({ where }),
     ])
 
-    return apiPaginated(grades, total, page, limit)
+    const mapped = grades.map((grade) => ({
+      ...grade,
+      status: grade.isActive ? 'ACTIVE' : 'INACTIVE',
+    }))
+
+    return apiPaginated(mapped, total, page, limit)
   } catch (error) {
     return handleRouteError(error)
   }
@@ -125,7 +114,10 @@ export async function POST(request: NextRequest) {
       ...auditCtx,
     })
 
-    return apiCreated(grade)
+    return apiCreated({
+      ...grade,
+      status: grade.isActive ? 'ACTIVE' : 'INACTIVE',
+    })
   } catch (error) {
     return handleRouteError(error)
   }

@@ -36,7 +36,7 @@ export default function ProvidentFundDashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/v1/hr/provident-fund/dashboard')
+    fetch('/api/v1/hr/pf/dashboard')
       .then(res => res.json())
       .then(json => { if (json.success) setData(json.data) })
       .catch(console.error)

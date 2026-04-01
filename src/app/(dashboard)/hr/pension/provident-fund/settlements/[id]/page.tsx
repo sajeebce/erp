@@ -42,7 +42,7 @@ export default function PFSettlementDetailPage() {
 
   useEffect(() => {
     if (!params.id) return
-    fetch(`/api/v1/hr/provident-fund/settlements/${params.id}`)
+    fetch(`/api/v1/hr/pf/settlements/${params.id}`)
       .then(res => res.json())
       .then(json => {
         if (json.success) setData(json.data)
