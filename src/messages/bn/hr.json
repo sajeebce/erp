@@ -68,7 +68,8 @@
     "orientation": "ওরিয়েন্টেশন",
     "trainingPlan": "প্রশিক্ষণ পরিকল্পনা",
     "mentorAssignment": "মেন্টর নিয়োগ",
-    "completionStatus": "সম্পন্নের অবস্থা"
+    "completionStatus": "সম্পন্নের অবস্থা",
+    "searchPlaceholder": "কর্মী খুঁজুন..."
   },
   "attendance": {
     "title": "উপস্থিতি",

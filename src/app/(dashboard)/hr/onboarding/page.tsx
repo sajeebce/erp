@@ -14,22 +14,21 @@ import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
 
 interface OnboardingEmployee {
-  employeeId: string
+  id: string
+  employeeNo: string
   fullName: string
-  department: string
-  designation: string
+  department: { id: string; name: string } | null
+  designation: { id: string; title: string } | null
   joiningDate: string
   totalTasks: number
   completedTasks: number
+  percentage: number
   status: string
 }
 
-function deriveStatus(emp: OnboardingEmployee): string {
-  if (emp.totalTasks > 0 && emp.completedTasks >= emp.totalTasks) return 'Completed'
-  const joining = new Date(emp.joiningDate)
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-  if (joining < thirtyDaysAgo && emp.completedTasks < emp.totalTasks) return 'Overdue'
+function normalizeStatus(status: string): string {
+  if (status === 'completed') return 'Completed'
+  if (status === 'overdue') return 'Overdue'
   return 'In Progress'
 }
 
@@ -54,7 +53,9 @@ export default function OnboardingPage() {
 
   const enriched = employees.map(emp => ({
     ...emp,
-    derivedStatus: emp.status || deriveStatus(emp),
+    departmentName: emp.department?.name ?? '—',
+    designationTitle: emp.designation?.title ?? '—',
+    derivedStatus: normalizeStatus(emp.status),
   }))
 
   const totalNew = enriched.length
@@ -71,11 +72,11 @@ export default function OnboardingPage() {
       ),
     },
     {
-      accessorKey: 'department',
+      accessorKey: 'departmentName',
       header: t('fields.department'),
     },
     {
-      accessorKey: 'designation',
+      accessorKey: 'designationTitle',
       header: t('fields.designation'),
     },
     {
@@ -169,7 +170,7 @@ export default function OnboardingPage() {
         data={enriched}
         searchKey="fullName"
         searchPlaceholder={t('onboarding.searchPlaceholder')}
-        onRowClick={(row) => router.push(`/hr/onboarding/${row.employeeId}`)}
+        onRowClick={(row) => router.push(`/hr/onboarding/${row.id}`)}
       />
     </div>
   )

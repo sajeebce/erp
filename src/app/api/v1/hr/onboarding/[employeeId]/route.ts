@@ -77,11 +77,31 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
     return apiSuccess({
-      employee,
+      employeeId: employee.id,
+      employeeNo: employee.employeeNo,
+      fullName: employee.fullName,
+      department: employee.department?.name ?? '—',
+      designation: employee.designation?.title ?? '—',
+      joiningDate: employee.joiningDate,
+      employmentType: 'FULL_TIME',
       totalTasks,
       completedTasks,
       percentage,
-      tasks,
+      tasks: tasks.map((t) => ({
+        checklistId: t.checklistId,
+        isCompleted: t.isCompleted,
+        completedAt: t.completedAt,
+        documentId: t.documentId,
+        notes: t.notes,
+        checklist: {
+          name: t.name,
+          description: t.description,
+          category: t.category,
+          isRequired: t.isRequired,
+          requiresDocument: t.requiresDocument,
+          documentType: t.documentType,
+        },
+      })),
     })
   } catch (error) {
     return handleRouteError(error)

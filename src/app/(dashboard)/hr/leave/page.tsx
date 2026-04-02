@@ -15,7 +15,7 @@ interface LeaveApplication {
   applicationNo: string
   employee?: { fullName: string }
   employeeName?: string
-  leaveType: string
+  leaveType: { id: string; name: string; code: string } | string
   startDate: string
   endDate: string
   days: number
@@ -32,7 +32,7 @@ export default function LeavePage() {
   const columns: ColumnDef<LeaveApplication>[] = [
     { accessorKey: 'applicationNo', header: t('leave.applicationNo'), cell: ({ row }) => <span className="font-mono text-sm font-medium">{row.getValue('applicationNo')}</span> },
     { id: 'employeeName', header: t('leave.employee'), accessorFn: (row) => row.employee?.fullName || row.employeeName || '\u2014', cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span> },
-    { accessorKey: 'leaveType', header: t('leave.leaveType'), cell: ({ row }) => <StatusBadge status={row.getValue('leaveType')} /> },
+    { id: 'leaveType', header: t('leave.leaveType'), accessorFn: (row) => typeof row.leaveType === 'object' ? row.leaveType?.name : row.leaveType, cell: ({ getValue }) => <StatusBadge status={getValue() as string} /> },
     { accessorKey: 'startDate', header: t('leave.startDate'), cell: ({ row }) => new Date(row.getValue('startDate') as string).toLocaleDateString() },
     { accessorKey: 'endDate', header: t('leave.endDate'), cell: ({ row }) => new Date(row.getValue('endDate') as string).toLocaleDateString() },
     { accessorKey: 'days', header: t('leave.days'), cell: ({ row }) => <span className="font-mono text-sm">{row.getValue('days')}</span> },

@@ -15,10 +15,23 @@ interface Holiday {
   id: string
   date: string
   name: string
-  localizedName?: string | null
+  localizedName?: string | Record<string, string> | null
   type: string
   description?: string | null
   isRecurring?: boolean
+}
+
+function getLocalizedName(localizedName: string | Record<string, string> | null | undefined): string | null {
+  if (!localizedName) return null
+  if (typeof localizedName === 'string') {
+    try {
+      const parsed = JSON.parse(localizedName)
+      return parsed.bn || parsed.en || Object.values(parsed)[0] as string || null
+    } catch {
+      return localizedName
+    }
+  }
+  return localizedName.bn || localizedName.en || Object.values(localizedName)[0] || null
 }
 
 interface HolidayCalendar {
@@ -146,7 +159,7 @@ export default function HolidaysPage() {
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-sm">{holiday.name}</p>
-                      {holiday.localizedName && <p className="text-xs text-muted-foreground">{holiday.localizedName}</p>}
+                      {getLocalizedName(holiday.localizedName) && <p className="text-xs text-muted-foreground">{getLocalizedName(holiday.localizedName)}</p>}
                       {holiday.description && <p className="text-xs text-muted-foreground mt-1">{holiday.description}</p>}
                     </div>
                     <Badge variant={getTypeBadgeVariant(holiday.type)}>{t(`holidays.types.${holiday.type}`)}</Badge>

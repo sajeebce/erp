@@ -31,6 +31,18 @@ export async function GET(request: NextRequest) {
       prisma.holidayCalendar.findMany({
         where,
         include: {
+          holidays: {
+            orderBy: { date: 'asc' },
+            select: {
+              id: true,
+              date: true,
+              name: true,
+              localizedName: true,
+              type: true,
+              description: true,
+              isRecurring: true,
+            },
+          },
           _count: { select: { holidays: true } },
         },
         orderBy: { [sort]: order },

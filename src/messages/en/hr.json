@@ -36,7 +36,8 @@
     "completed": "Completed",
     "inProgress": "In Progress",
     "overdue": "Overdue",
-    "onboardingTracker": "Onboarding Tracker"
+    "onboardingTracker": "Onboarding Tracker",
+    "searchPlaceholder": "Search employees..."
   },
   "attendance": {
     "title": "Attendance",

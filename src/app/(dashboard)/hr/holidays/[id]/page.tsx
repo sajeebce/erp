@@ -23,10 +23,23 @@ interface Holiday {
   date: string
   endDate?: string | null
   name: string
-  localizedName?: string | null
+  localizedName?: string | Record<string, string> | null
   type: string
   description?: string | null
   isRecurring?: boolean
+}
+
+function getLocalizedName(val: string | Record<string, string> | null | undefined): string {
+  if (!val) return ''
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val)
+      return parsed.bn || parsed.en || (Object.values(parsed)[0] as string) || ''
+    } catch {
+      return val
+    }
+  }
+  return val.bn || val.en || (Object.values(val)[0] as string) || ''
 }
 
 interface HolidayCalendar {
@@ -94,7 +107,7 @@ export default function HolidayCalendarDetailPage() {
     setHolidayDate(holiday.date?.split('T')[0] || '')
     setHolidayEndDate(holiday.endDate?.split('T')[0] || '')
     setHolidayType(holiday.type)
-    setLocalizedName(holiday.localizedName || '')
+    setLocalizedName(getLocalizedName(holiday.localizedName))
     setDescription(holiday.description || '')
     setIsRecurring(holiday.isRecurring || false)
     setShowForm(true)
@@ -170,7 +183,7 @@ export default function HolidayCalendarDetailPage() {
   const columns: ColumnDef<Holiday>[] = [
     { accessorKey: 'date', header: t('holidays.fields.date'), cell: ({ row }) => formatDate(row.getValue('date')) },
     { accessorKey: 'name', header: t('holidays.fields.name'), cell: ({ row }) => <span className="font-medium">{row.getValue('name')}</span> },
-    { accessorKey: 'localizedName', header: t('holidays.fields.localizedName'), cell: ({ row }) => row.getValue('localizedName') || '\u2014' },
+    { accessorKey: 'localizedName', header: t('holidays.fields.localizedName'), cell: ({ row }) => getLocalizedName(row.getValue('localizedName')) || '\u2014' },
     { accessorKey: 'type', header: tc('labels.type'), cell: ({ row }) => <Badge variant="outline">{t(`holidays.types.${row.getValue('type')}`)}</Badge> },
     { accessorKey: 'isRecurring', header: t('holidays.fields.isRecurring'), cell: ({ row }) => row.getValue('isRecurring') ? tc('labels.yes') : tc('labels.no') },
     {
