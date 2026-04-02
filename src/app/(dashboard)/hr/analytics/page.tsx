@@ -30,7 +30,21 @@ export default function HRAnalyticsPage() {
   useEffect(() => {
     fetch('/api/v1/hr/analytics/overview')
       .then(res => res.json())
-      .then(json => { if (json.success) setData(json.data) })
+      .then(json => {
+        if (json.success) {
+          const d = json.data
+          setData({
+            totalEmployees: d.totalActiveEmployees ?? 0,
+            newHires: d.newHiresThisMonth ?? 0,
+            exits: d.exitsThisMonth ?? 0,
+            expiringContracts: d.expiringContracts ?? 0,
+            pendingGrievances: d.pendingGrievances ?? 0,
+            genderDistribution: (d.genderDistribution ?? []).map((g: { gender: string; count: number }) => ({ name: g.gender, value: g.count })),
+            departmentDistribution: (d.departmentDistribution ?? []).map((dep: { departmentName: string; count: number }) => ({ name: dep.departmentName, value: dep.count })),
+            employmentTypeDistribution: (d.employmentTypeDistribution ?? []).map((e: { type: string; count: number }) => ({ name: e.type, value: e.count })),
+          })
+        }
+      })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])

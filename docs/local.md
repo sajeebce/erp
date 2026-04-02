@@ -78,6 +78,12 @@ pnpm db:generate
 
 Seeding happens in multiple phases:
 
+### Phase 0: Bootstrap (Organization, Admin User, Role, Fiscal Year)
+
+```bash
+npx tsx prisma/seed-bootstrap.ts
+```
+
 ### Phase 1: Base seed (Super Admin, Currencies, Plans, Permissions)
 
 ```bash
@@ -180,6 +186,30 @@ pnpm tsx prisma/seed-phase8b.ts
 
 ```bash
 pnpm tsx prisma/seed-phase12-hr-profile.ts
+```
+
+### Phase 13: HR Employee Detail Tabs (Performance Reviews, Documents, Audit Log, Contracts gap-fill)
+
+```bash
+pnpm tsx prisma/seed-phase12b-employee-tabs.ts
+```
+
+### Phase 14: Salary Grades, OKR, Payslip, Team Leave Calendar, Project Allocations, Dashboard HR KPIs
+
+```bash
+pnpm tsx prisma/seed-phase8c.ts
+```
+
+### Phase 15: Leave Balances & Additional Leave Applications
+
+```bash
+pnpm tsx prisma/seed-leave-balances.ts
+```
+
+### Phase 16: Budget Revisions & Cost Allocation Rules
+
+```bash
+pnpm tsx prisma/seed-budget-extras.ts
 ```
 
 ---

@@ -21,7 +21,8 @@ async function main() {
   const org = await prisma.organization.findUnique({ where: { slug: 'shapla-foundation' } })
   if (!org) throw new Error('Organization not found. Run seed-bootstrap first.')
 
-  const adminUser = await prisma.user.findFirst({ where: { organizationId: org.id } })
+  const adminUser = await prisma.user.findFirst({ where: { organizationId: org.id, email: 'rahim@shapla.org' } })
+    ?? await prisma.user.findFirst({ where: { organizationId: org.id } })
   if (!adminUser) throw new Error('Admin user not found')
 
   const employees = await prisma.employee.findMany({
@@ -30,6 +31,14 @@ async function main() {
     orderBy: { employeeNo: 'asc' },
   })
   if (employees.length === 0) throw new Error('No employees found. Run seed-phase5 first.')
+
+  // Link admin user to first employee so "My OKRs" works on login
+  if (employees[0] && !employees[0].userId) {
+    await prisma.employee.update({
+      where: { id: employees[0].id },
+      data: { userId: adminUser.id },
+    })
+  }
 
   const departments = await prisma.department.findMany({ where: { organizationId: org.id } })
   const projects = await prisma.project.findMany({ where: { organizationId: org.id }, take: 3 })

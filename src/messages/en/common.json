@@ -227,5 +227,14 @@
     "uploading": "Uploading...",
     "pendingSave": "Will upload after save",
     "deleteConfirm": "Delete this file?"
+  },
+  "filters": {
+    "all": "All",
+    "active": "Active",
+    "inactive": "Inactive"
+  },
+  "demoBanner": {
+    "message": "You are viewing demo data. Editing and deletion are disabled in demo mode.",
+    "badge": "Demo Mode"
   }
 }

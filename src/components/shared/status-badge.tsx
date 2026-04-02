@@ -160,7 +160,7 @@ interface StatusBadgeProps {
 export function StatusBadge({ status, className }: StatusBadgeProps) {
   const t = useTranslations('common')
   const style = statusStyles[status] || 'bg-gray-100 text-gray-700'
-  const label = t.has(`status.${status}`) ? t(`status.${status}`) : status.replace(/_/g, ' ')
+  const label = !status ? '—' : t.has(`status.${status}`) ? t(`status.${status}`) : status.replace(/_/g, ' ')
   return (
     <Badge variant="secondary" className={cn('font-medium text-[11px] px-2 py-0.5', style, className)}>
       {label}
