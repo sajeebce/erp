@@ -1,11 +1,11 @@
 # NGO ERP System - Complete Module & Feature Report
 
 > **Document Type:** Client Presentation & Feature Overview
-> **Prepared:** February 2026
-> **Version:** 2.0
-> **Total Modules:** 12 | **Total Pages/Screens:** 84 | **Navigation Menu Items:** 76
+> **Prepared:** February 2026 | **Updated:** April 2026
+> **Version:** 3.0
+> **Total Modules:** 13 | **Total Pages/Screens:** 200+ | **API Endpoints:** 350+ | **Navigation Menu Items:** 90+
 > **Target:** NGO Organizations Operating in Bangladesh
-> **Compliance:** NGOAB, FDRA 2016, MRA, Bangladesh Labour Act
+> **Compliance:** NGOAB, FDRA 2016, MRA, Bangladesh Labour Act 2006
 
 ---
 
@@ -25,6 +25,7 @@
    - 2.10 [Microfinance (MFI)](#210-microfinance-mfi)
    - 2.11 [Reports & Analytics](#211-reports--analytics)
    - 2.12 [Settings & Administration](#212-settings--administration)
+   - 2.13 [Super Admin Panel](#213-super-admin-panel)
 3. [Regulatory Compliance Summary](#3-regulatory-compliance-summary)
 4. [Technology Stack](#4-technology-stack)
 5. [Why This System](#5-why-this-system)
@@ -39,12 +40,13 @@ This ERP system is purpose-built for **Bangladeshi NGOs, Development Organizatio
 
 | Metric | Value |
 |--------|-------|
-| Total Modules | 12 |
-| Total Screens/Pages | 84 |
-| Navigation Menu Items | 76 |
+| Total Modules | 13 (including Super Admin Panel) |
+| Total Screens/Pages | 200+ |
+| API Endpoints | 350+ |
+| Navigation Menu Items | 90+ |
 | Compliance Frameworks | NGOAB, FDRA 2016, MRA, BLA 2006 |
 | Currency | BDT (with multi-currency support for USD, EUR, GBP) |
-| Language Support | English (Bangla UI planned) |
+| Language Support | English & Bangla (fully implemented with next-intl) |
 | Deployment | Cloud (VPS) or On-premise |
 | Dark/Light Mode | Yes |
 | Mobile Responsive | Yes |
@@ -184,6 +186,71 @@ Complete double-entry accounting system designed for NGO fund accounting with do
 
 ---
 
+#### 10. Expense Dashboard
+**Route:** `/finance/expenses`
+
+**What it does:** Central hub for all daily expense management activities — petty cash, staff expense claims, travel advances, per diem rates, and expense categories. Provides KPI cards for total expenses, pending claims, outstanding advances, and petty cash balances.
+
+**Example Case:** The Finance Head opens the Expense Dashboard and sees: BDT 2,35,000 in pending expense claims (4 claims awaiting her approval), BDT 1,80,000 in outstanding travel advances (3 staff haven't settled yet), and Petty Cash balance at BDT 12,000 (needs top-up). She approves 3 legitimate claims, sends a reminder to the 3 staff with outstanding advances, and processes a BDT 50,000 petty cash replenishment — all from one screen.
+
+**When to use:** Daily by finance teams to manage expense workflows. Before month-end closing to ensure all claims are processed and advances settled.
+
+**Benefit:** Consolidates all daily expense operations in one place, replacing scattered Excel files and paper-based claim forms. Real-time visibility on pending claims and outstanding advances prevents month-end surprises.
+
+---
+
+#### 11. Petty Cash Management
+**Route:** `/finance/expenses/petty-cash`
+
+**What it does:** Multi-fund petty cash management with transaction recording, reconciliation, and top-up workflow. Each fund tracks opening balance, transactions (in/out), running balance, and custodian. Supports reconciliation with physical cash count.
+
+**Example Case:** Each of the 5 field offices has a BDT 50,000 petty cash fund. The Sylhet office custodian records daily transactions: BDT 500 for auto-rickshaw, BDT 1,200 for stationery, BDT 3,500 for office snacks for a training session. At month-end, physical cash count shows BDT 28,300 — matches the system balance exactly. The custodian submits a top-up request for BDT 21,700 to restore the fund to BDT 50,000. Finance approves and processes the replenishment.
+
+**When to use:** Daily for recording petty cash transactions, weekly/monthly for reconciliation, and when the fund needs replenishment.
+
+**Benefit:** Eliminates the most common source of small-scale financial irregularities. Physical cash handling without systematic recording leads to unexplained shortages. Digital petty cash with custodian accountability and reconciliation ensures every taka is accounted for.
+
+---
+
+#### 12. Expense Claims
+**Route:** `/finance/expenses/claims`
+
+**What it does:** Staff expense claim submission with multi-level approval workflow (supervisor approval → finance approval), receipt/document attachments, reimbursement tracking, and payment status. Supports itemized claims with expense categories and project linkage.
+
+**Example Case:** Field Coordinator Mahbub returns from a 3-day field visit to Cox's Bazar. He submits an expense claim: Bus fare BDT 2,400, Hotel BDT 4,500 (2 nights), Meals BDT 3,600 (3 days × BDT 1,200 per diem), Local transport BDT 1,800, Mobile recharge BDT 500 — Total BDT 12,800. He attaches scanned receipts for each item and tags it to the "Climate Adaptation" project. His supervisor reviews and approves within 2 days. Finance verifies receipts, confirms per diem rates match policy, and marks it for payment. Mahbub receives BDT 12,800 in his next salary.
+
+**When to use:** After any business-related out-of-pocket expenditure — travel, meetings, supplies, etc.
+
+**Benefit:** Transparent, auditable expense management with policy enforcement. The multi-level approval prevents inflated claims. Receipt attachment requirement ensures documentation. Project linkage enables accurate donor cost reporting.
+
+---
+
+#### 13. Travel Advances
+**Route:** `/finance/expenses/advances`
+
+**What it does:** Pre-trip advance request system with approval, disbursement, and settlement workflow. Tracks advance amount, purpose, trip dates, disbursement mode, outstanding balance, and settlement status. Automatically calculates outstanding advances per employee.
+
+**Example Case:** Before a week-long field monitoring visit, M&E Officer Nasima requests a BDT 25,000 advance for travel, accommodation, and per diem. Her supervisor approves. Finance disburses BDT 25,000 via bank transfer. After the trip, Nasima submits her settlement: actual expenses were BDT 22,300 with receipts. She returns BDT 2,700 to finance. The advance is marked "Settled." If she doesn't settle within 30 days, the system flags it for payroll deduction.
+
+**When to use:** Before any business travel requiring upfront funds. Settlement immediately after travel completion.
+
+**Benefit:** Controlled advance disbursement with accountability. The settlement requirement ensures advances are properly accounted for. Outstanding advance tracking prevents the common problem of staff accumulating multiple unsettled advances.
+
+---
+
+#### 14. Per Diem Rate Configuration
+**Route:** `/finance/expenses/per-diem`
+
+**What it does:** Location-based per diem rate configuration with automatic calculation for travel claims. Define daily allowance rates by destination (Dhaka, district towns, field areas, international) with breakdown for accommodation, meals, and incidentals.
+
+**Example Case:** The organization defines per diem rates: Dhaka BDT 3,500/day (no accommodation — day trip), District towns BDT 2,500/day, Rural field areas BDT 1,800/day. When Mahbub submits his Cox's Bazar claim, the system auto-calculates: 3 days × BDT 2,500 (district town rate) = BDT 7,500 maximum per diem. His actual claim of BDT 3,600 for meals is within limits. No manual checking needed.
+
+**When to use:** During policy setup and whenever per diem rates are revised (typically annually).
+
+**Benefit:** Eliminates per diem disputes. Standard rates applied consistently across all staff. Automatic calculation prevents both over-claiming and under-paying.
+
+---
+
 ### 2.3 Budget Management
 
 Project-wise budgeting with real-time variance tracking and donor-format budget generation.
@@ -255,13 +322,39 @@ Project-wise budgeting with real-time variance tracking and donor-format budget 
 
 ---
 
+#### 15. Budget Analytics
+**Route:** `/budget/analytics`
+
+**What it does:** Visual budget analytics dashboard with spending trends, burn rate analysis, variance charts, and cross-project budget comparison. Interactive charts for monthly spending patterns, category-wise allocation, and budget health indicators.
+
+**Example Case:** The Finance Head prepares for the quarterly board meeting. She opens Budget Analytics and sees: overall organization burn rate is 42% at mid-year (healthy), but the Education project is at only 18% burn rate (critically underspending — risk of fund return). The spending trend chart shows a sharp dip in March (Ramadan slowdown, expected). She exports these charts for the board presentation, highlighting which projects need attention.
+
+**When to use:** During financial reviews, board meetings, and donor reporting. For strategic budget planning and reallocation decisions.
+
+**Benefit:** Visual analytics make budget data instantly understandable to non-finance stakeholders like board members and donors. Trend analysis reveals spending patterns that raw numbers hide.
+
+---
+
+#### 16. Budget Templates
+**Route:** `/budget/templates`
+
+**What it does:** Reusable budget templates for recurring project types. Save a budget structure (categories, line items, percentages) as a template that can be cloned for new projects — saving hours of repetitive setup.
+
+**Example Case:** Your organization frequently runs WASH projects with similar budget structures. The Finance Manager creates a "WASH Project Template" with standard line items: Water Testing Equipment (15%), Field Staff (30%), Community Training (20%), M&E (10%), Admin (8%), Contingency (5%). When a new WASH grant is awarded from UNICEF, she clones this template, adjusts amounts to match the grant size, and the budget is 80% complete in 5 minutes instead of 2 hours.
+
+**When to use:** When creating budgets for recurring project types. During proposal writing when a quick budget estimate is needed.
+
+**Benefit:** Standardizes budget structures across similar projects, ensures no common line items are forgotten, and dramatically reduces budget preparation time.
+
+---
+
 ### 2.4 Donor & Grant Management
 
 End-to-end donor relationship and grant lifecycle management with restricted fund tracking.
 
 ---
 
-#### 15. Donor Directory
+#### 17. Donor Directory
 **Route:** `/donors`
 
 **What it does:** Complete donor database with profiles for all funding partners. Tracks Donor Name, Type (Bilateral/Multilateral/Foundation/Corporate), Country, Total Grants, Active Grants, Total Funded Amount, Contact Person, and Relationship Status.
@@ -800,6 +893,149 @@ Complete HR management from recruitment to performance evaluation with Banglades
 
 ---
 
+#### Recruitment & Applicant Tracking System (ATS)
+**Route:** `/hr/recruitment`
+
+**What it does:** Full recruitment pipeline — from job posting creation to candidate hiring. Publish job openings with auto-generated career page URLs, receive applications, auto-score CVs (education match, experience, skills, language, certifications — 100-point scale), manage interview scheduling with panel members, and convert hired applicants directly to employee records with pre-filled data.
+
+**Example Case:** The HR Manager creates a "Field Coordinator" job posting for the new Climate Adaptation project. The system generates a public career page link: `careers/shapla-foundation/field-coordinator-climate-2026`. 45 applications come in. The auto-scoring ranks candidates: top scorer Rashid (82/100 — matching degree, 5 years experience, fluent in Bangla+English). HR schedules interviews with a 3-member panel. After interviews, Rashid is selected. HR clicks "Convert to Employee" — his name, email, phone, and education from the application auto-fill the employee creation form. In 2 minutes, he has an employee record (EMP-089), a draft contract, and 17 onboarding tasks ready.
+
+**When to use:** For all staff recruitment — both project-based and organizational positions. The public career page can be shared on social media and job portals.
+
+**Benefit:** Eliminates manual CV screening. Auto-scoring ensures no qualified candidate is overlooked due to bias. The recruitment-to-employee pipeline removes duplicate data entry. Interview panel documentation provides evidence for selection decisions — important when donors fund specific positions and want to see a transparent hiring process.
+
+---
+
+#### Employment Contracts
+**Route:** `/hr/contracts`
+
+**What it does:** Employment contract lifecycle management — create, activate, renew, and terminate contracts. Tracks contract type (permanent, fixed-term, consultancy, project-based), start/end dates, salary details, renewal history, and status. Auto-alerts for contracts nearing expiry.
+
+**Example Case:** The HR Officer reviews expiring contracts: 5 contracts ending this month. 3 are project-based staff whose projects are continuing — she initiates renewals with updated salary (annual increment applied). 1 is a consultant whose engagement is complete — marked as "Completed." 1 is a staff whose project just ended — she initiates the offboarding process. Without this system, contract expirations often go unnoticed until the employee asks "my contract ended 2 months ago, am I still employed?"
+
+**When to use:** When hiring new staff (create contract), at contract renewal time, when projects end (contract termination), and for compliance reporting.
+
+**Benefit:** Prevents the embarrassingly common NGO problem of staff working without valid contracts. Auto-expiry alerts ensure timely renewals. Contract history per employee provides complete employment documentation for audits and legal compliance.
+
+---
+
+#### Holiday Calendar
+**Route:** `/hr/holidays`
+
+**What it does:** Organizational holiday calendar management with year-wise calendar creation. Supports holiday types: Public, Organizational, Restricted, and Optional. Each holiday has English name, localized Bengali name, date, and optional description. Year navigation to view historical and future holidays.
+
+**Example Case:** The HR Manager configures the 2026 holiday calendar: 10 public holidays (International Mother Language Day, Independence Day, Eid ul-Fitr, Eid ul-Adha, Victory Day, etc.), 2 organizational holidays (Shapla Foundation Anniversary, Annual Staff Retreat). Each holiday shows the Bengali name alongside English (e.g., "Independence Day / স্বাধীনতা দিবস"). When field staff ask "is Shab-e-Qadr a holiday?" — the calendar is the definitive answer.
+
+**When to use:** At the start of each year for calendar setup. Referenced throughout the year for leave planning and payroll calculation.
+
+**Benefit:** Centralized holiday management ensures all offices follow the same calendar. Holidays automatically integrate with leave management and attendance — no manual adjustment needed.
+
+---
+
+#### Salary Grades & Structures
+**Routes:** `/hr/salary-grades`, `/hr/salary-structures`
+
+**What it does:** Configurable salary grade/step matrix defining organizational pay scales. Each grade has a minimum, midpoint, and maximum salary with annual increment steps. Salary structures define the breakdown of gross salary into components (basic, house rent, medical, transport, etc.) with percentage or fixed allocation.
+
+**Example Case:** The organization defines 6 salary grades: Grade 1 (Support Staff) BDT 18,000-25,000, up to Grade 6 (Executive Director) BDT 1,50,000-2,50,000. Each grade has 5 steps (annual increments). The salary structure for all grades: Basic 60%, House Rent 25%, Medical 10%, Transport 5%. When a new employee joins at Grade 3 Step 1, the system auto-calculates: Basic BDT 30,000, House Rent BDT 12,500, Medical BDT 5,000, Transport BDT 2,500 = Gross BDT 50,000.
+
+**When to use:** During organizational pay scale design, annual increment processing, and new employee salary determination.
+
+**Benefit:** Standardized pay scales eliminate salary negotiation inconsistencies. Grade/step structure ensures fair, transparent compensation. When donors ask "what's your salary scale?" — you have a documented, board-approved structure.
+
+---
+
+#### Pension Management — Provident Fund
+**Route:** `/hr/pension/provident-fund`
+
+**What it does:** Complete Provident Fund (PF) management system with 14 dedicated sub-pages. Includes: PF policy configuration (contribution rates, vesting schedules), employee enrollment with nominee designation, monthly contribution processing, annual interest calculation, PF loans (approval, disbursement, repayment tracking), partial withdrawals, final settlements on separation, and trust fund management with investment tracking and trustee governance.
+
+**Example Case:** Employee Fatema has been contributing BDT 5,000/month (10% of basic) to PF for 6 years. The organization matches with BDT 5,000. Her PF balance: Employee BDT 3,60,000 + Employer BDT 3,60,000 + Interest BDT 86,400 = Total BDT 8,06,400. She applies for a PF loan of BDT 2,00,000 for her daughter's education. The system checks: loan cannot exceed 80% of employee's own contribution (BDT 2,88,000) — she qualifies. The PF Committee approves. BDT 2,00,000 is disbursed from the trust fund. Monthly installment of BDT 8,500 is deducted from her salary for 24 months.
+
+**When to use:** Monthly for contribution processing, annually for interest calculation, on-demand for loans/withdrawals, and at separation for final settlement.
+
+**Benefit:** PF is a major employee benefit and retention tool. Manual PF management in Excel is error-prone and risky (employees' retirement savings are at stake). Automated contribution tracking, interest calculation, and trust fund management ensures accuracy and transparency. Nominee management ensures benefits reach the right family members.
+
+---
+
+#### Pension Management — Gratuity Fund
+**Route:** `/hr/pension/gratuity`
+
+**What it does:** Gratuity accrual, fund management, and payment processing per Bangladesh Labour Act 2006. Slab-based calculation: 30 days salary per year of service (for 5+ years), with higher rates for 10+ and 15+ years. Monthly accrual runs track organizational liability. Dedicated gratuity fund with transaction history. Individual employee gratuity ledgers showing accrued amounts.
+
+**Example Case:** Senior staff Karim Ahmed has completed 12 years of service. His last basic salary was BDT 45,000. Gratuity calculation: 12 years × 30 days × (BDT 45,000 ÷ 30) = BDT 5,40,000. The gratuity ledger shows this amount has been accruing monthly. When Karim retires, the Gratuity Fund has BDT 5,40,000 reserved for him. Combined with his PF balance, his total retirement package is over BDT 13 lakh. The Finance team doesn't need to scramble for funds — the gratuity was accrued monthly and the money is ready.
+
+**When to use:** Monthly for accrual processing, at employee separation for payment calculation, and during financial reporting for liability disclosure.
+
+**Benefit:** Gratuity is a legal obligation under Bangladesh Labour Act. Without systematic accrual tracking, organizations face sudden large payouts when senior staff leave — potentially causing cash flow crises. Monthly accrual spreads the cost evenly and ensures the organization is always prepared.
+
+---
+
+#### Objectives & Key Results (OKR)
+**Route:** `/hr/okr`
+
+**What it does:** Goal management system with quarterly/annual OKR cycles. Create objectives at three levels — Organization, Department, and Individual — with cascading alignment. Each objective has measurable Key Results (metric, percentage, or milestone-based) with target values and progress tracking. Regular check-ins allow staff to update progress with notes. Alignment tree visualizes how individual goals connect to organizational strategy. Personal "My OKRs" dashboard for each employee.
+
+**Example Case:** Q1 2026 OKR cycle: The Executive Director sets an organizational objective "Secure 3 new donor partnerships for FY 2026-27." Key Results: (1) 12 donor meetings held — currently at 8 (67%), (2) 5 proposals submitted — at 3 (60%), (3) 3 MoUs signed — at 1 (33%). This cascades to the Programs department: "Deliver WASH services to 200 households" which further cascades to individual Field Coordinators. The OKR dashboard shows: 6 total objectives, 2 on-track, 4 at-risk, 0 behind. The ED can see exactly where attention is needed.
+
+**When to use:** Quarterly for OKR planning and review. Weekly for check-ins. During performance reviews (OKR scores link to performance ratings).
+
+**Benefit:** Connects every employee's daily work to organizational strategy. When a field officer updates "5 more tube wells installed," it ripples up to show progress on the department's WASH goal and the organization's beneficiary reach target. OKR methodology is used by leading organizations worldwide and demonstrates strategic management maturity to donors.
+
+---
+
+#### Project Allocations
+**Route:** `/hr/project-allocations`
+
+**What it does:** Track staff allocation across multiple projects with percentage-based assignment. Shows which employees are assigned to which projects, their allocation percentage, and time period. Enables accurate project-wise salary cost distribution for donor reporting.
+
+**Example Case:** Senior accountant Nasima works on 3 projects simultaneously: WASH (40%), Education (40%), and Admin (20%). Her salary of BDT 60,000 is automatically distributed: WASH bears BDT 24,000, Education BDT 24,000, Admin BDT 12,000. When USAID asks "how much of Nasima's salary does our WASH grant fund?" — the answer is documented and verifiable.
+
+**When to use:** When assigning staff to projects, during payroll for salary distribution, and for donor cost reporting.
+
+**Benefit:** Solves the biggest challenge in NGO HR-finance integration — fair and transparent salary allocation across projects.
+
+---
+
+#### Offboarding
+**Route:** `/hr/offboarding`
+
+**What it does:** Structured employee separation process with checklist: asset return, IT access revocation, security clearance, exit interview, final settlement calculation (pending salary, leave encashment, PF settlement, gratuity), and documentation (experience certificate, relieving letter, NOC).
+
+**Example Case:** Staff member Taslima resigns after 5 years. HR initiates offboarding: (1) Asset return — laptop, ID card returned ✅, (2) IT access — email and system access revoked ✅, (3) Exit interview — conducted, feedback documented ✅, (4) Final settlement — pending salary BDT 35,000 + 12 days leave encashment BDT 14,000 + PF BDT 4,20,000 + Gratuity BDT 2,25,000 = Total BDT 6,94,000. All paid within 30 days as required by law.
+
+**When to use:** Whenever an employee leaves — resignation, contract end, retirement, or termination.
+
+**Benefit:** Ensures nothing is missed during separation. Asset return tracking prevents losses. IT access revocation is critical for security. Final settlement calculation ensures legal compliance and prevents disputes.
+
+---
+
+#### Grievance & Disciplinary Management
+**Routes:** `/hr/grievances`, `/hr/disciplinary`
+
+**What it does:** Employee grievance filing and resolution system with category classification, priority levels, investigation workflow, and escalation. Disciplinary case management with incident recording, evidence documentation, hearing scheduling, and outcome tracking. Appeal process for employees to contest decisions.
+
+**Example Case:** Field officer Imran files a grievance: "Not receiving field allowance for the last 2 months." Category: Compensation. Priority: High. HR investigates — finds a payroll configuration error. Resolved in 5 days with back-payment processed. Separately, a disciplinary case is filed against a staff member for attendance fraud — evidence documented, hearing conducted with employee present, written warning issued with improvement plan.
+
+**When to use:** When employees raise complaints or when policy violations are identified.
+
+**Benefit:** Formal grievance mechanism is a donor requirement (especially for safeguarding-related concerns). Documented disciplinary process protects the organization legally — "we followed due process." Without formal systems, grievances are handled informally and inconsistently, leading to staff dissatisfaction and legal risk.
+
+---
+
+#### HR Analytics
+**Route:** `/hr/analytics`
+
+**What it does:** Comprehensive HR analytics dashboard with headcount trends, department distribution, turnover rate analysis, personnel cost tracking by department/project/funding source, employment type breakdown, tenure analysis, and gender diversity metrics.
+
+**Example Case:** The HR Director prepares the annual HR report: Total staff 92 (up from 87 — 5.7% growth), turnover rate 8.2% (within healthy range), average tenure 4.3 years, gender ratio 42% female / 58% male (improving from 38%/62% last year), total personnel cost BDT 5.1 Crore (65% donor-funded, 35% own funds). Department breakdown shows Programs is the largest (38 staff) while IT is understaffed (3 staff supporting 92 users). This data drives the HR budget and staffing plan for next year.
+
+**When to use:** During HR planning, board reporting, donor capacity assessments, and organizational reviews.
+
+**Benefit:** Data-driven HR decisions instead of gut feel. Turnover analysis identifies retention problems early. Personnel cost analysis by funding source helps with sustainability planning — if 90% of staff costs are donor-funded, the organization is vulnerable to grant endings.
+
+---
+
 ### 2.10 Microfinance (MFI)
 
 Complete microfinance operations module following MRA (Microcredit Regulatory Authority) guidelines.
@@ -1117,6 +1353,40 @@ System configuration, user management, and organizational setup.
 
 ---
 
+### 2.13 Super Admin Panel (Platform Management)
+
+Multi-tenant SaaS platform administration panel for managing organizations, subscriptions, and platform-wide settings.
+
+---
+
+#### Platform Dashboard
+**Route:** `/admin/dashboard`
+
+**What it does:** Platform-level overview showing total registered organizations, active subscriptions, revenue metrics, and system health. Separate authentication from tenant users (Super Admin login at `/admin/login`).
+
+---
+
+#### Organization Management
+**Route:** `/admin/organizations`
+
+**What it does:** Create, view, activate, and suspend tenant organizations. View organization details including subscription status, storage usage, user count, and activity. Manage subscription tier upgrades/downgrades.
+
+---
+
+#### Subscription Plans
+**Route:** `/admin/plans`
+
+**What it does:** Configure subscription plans with feature limits (users, storage, modules, API access). Manage plan tiers, pricing, and feature flags per tenant.
+
+---
+
+#### Domain & Media Management
+**Routes:** `/admin/domains`, `/admin/media-settings`
+
+**What it does:** Custom domain configuration per organization with DNS verification. Media/file storage settings (local, S3, or cloud storage configuration).
+
+---
+
 ## 3. Regulatory Compliance Summary
 
 This system is built to comply with the following Bangladeshi and international regulations:
@@ -1216,17 +1486,18 @@ This system is built to comply with the following Bangladeshi and international 
 ### Key Differentiators
 
 1. **Bangladesh-specific** — Built specifically for Bangladeshi NGO regulations, not adapted from generic ERP
-2. **All-in-one** — 12 modules covering every aspect of NGO operations in a single platform
-3. **Modern technology** — 2026 latest stable tech stack ensuring long-term maintainability
+2. **All-in-one** — 13 modules covering every aspect of NGO operations in a single platform
+3. **Modern technology** — 2026 latest stable tech stack (Next.js 16, React 19, TypeScript 6, PostgreSQL 18) ensuring long-term maintainability
 4. **Multi-compliance** — NGOAB + FDRA + MRA + BLA compliance built into every module
 5. **Scalable** — From small CBOs to large national NGOs like BRAC/ASA/Proshika
-6. **Cloud-ready** — Deploy on VPS, cloud, or on-premise based on organizational needs
-7. **84 functional screens** — Comprehensive coverage with no "coming soon" placeholders
-8. **Real-world example-driven** — Every feature designed around actual NGO workflows in Bangladesh
+6. **SaaS Multi-tenant** — Single platform serving multiple organizations with complete data isolation
+7. **200+ functional screens** — Comprehensive coverage across all modules with 350+ API endpoints
+8. **Bilingual** — Full English and Bangla interface with next-intl internationalization
+9. **Real-world example-driven** — Every feature designed around actual NGO workflows in Bangladesh
 
 ---
 
 > **Document prepared by:** CodeMoly Development Team
-> **Date:** February 2026
-> **Version:** 2.0
+> **Date:** February 2026 | **Updated:** April 2026
+> **Version:** 3.0
 > **Contact:** For demo access or queries, please contact the development team.

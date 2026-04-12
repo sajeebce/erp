@@ -1,9 +1,9 @@
 # NGO ERP System - Feature Analysis & Planning Document
 
-> **Prepared:** February 2026
+> **Prepared:** February 2026 | **Updated:** April 2026
 > **Target:** Bangladeshi NGO Organizations
-> **Type:** UI Mockup Dashboard with Demo Data
-> **Source:** NGO_ERP_Proposal.pptx Analysis + Online Research
+> **Total Modules:** 13 | **Total Pages/Screens:** 200+ | **API Endpoints:** 350+
+> **Compliance:** NGOAB, FDRA 2016, MRA, Bangladesh Labour Act 2006
 
 ---
 
@@ -112,6 +112,16 @@ This document outlines the complete feature set for a **Bangladeshi NGO-specific
 | Petty Cash | Field office petty cash management |
 | Bank Statement Import | CSV/Excel import for reconciliation |
 
+#### 2.5 Daily Expense Management
+| Feature | Description |
+|---------|-------------|
+| Expense Dashboard | Overview of all expense activities with KPIs |
+| Petty Cash Management | Multi-fund petty cash with transactions, reconciliation, top-up workflow |
+| Expense Claims | Staff expense claim submission with multi-level approval (supervisor → finance), receipt attachments, reimbursement tracking |
+| Travel Advances | Pre-trip advance requests with approval, disbursement, and settlement workflow |
+| Per Diem Rate Configuration | Location-based per diem rates with automatic calculation for travel claims |
+| Expense Categories | Configurable expense categories with budget linkage and GL account mapping |
+
 ---
 
 ### 3. Budget Management Module
@@ -126,6 +136,8 @@ This document outlines the complete feature set for a **Bangladeshi NGO-specific
 | Donor Budget Format | Generate budgets in donor-required formats |
 | Cost Allocation | Overhead cost distribution across projects |
 | Budget Forecasting | Projected spending analysis |
+| Budget Analytics | Visual analytics with spending trends, burn rate, variance analysis charts |
+| Budget Templates | Reusable budget templates for recurring project types |
 | Budget Alerts | Notifications when budget thresholds reached (80%, 90%, 100%) |
 
 ---
@@ -161,7 +173,9 @@ This document outlines the complete feature set for a **Bangladeshi NGO-specific
 | Project Timeline (Gantt) | Visual timeline with dependencies |
 | Project Team Management | Assign staff to projects |
 | Project Documents | Document repository per project |
-| Project Closeout | Formal project closure process |
+| Indicators & Results Framework | Define and track project output/outcome indicators with baseline-target-achievement |
+| Risk Register | Identify, categorize, and mitigate project risks with likelihood/impact scoring |
+| Project Closeout | Formal project closure process with checklist |
 | Multi-location Projects | Track activities across field offices |
 
 ---
@@ -232,63 +246,129 @@ This document outlines the complete feature set for a **Bangladeshi NGO-specific
 #### 9.1 Employee Management
 | Feature | Description |
 |---------|-------------|
-| Employee Database | Complete personnel records |
-| Employee Onboarding | Checklist-based onboarding process |
-| Organization Chart | Visual hierarchy display |
-| Employee Documents | Store certificates, NID, photos |
-| Employee Portal (Self-service) | Personal info, payslips, leave requests |
-| Project-wise Staff Allocation | Track staff across projects |
+| Employee Directory | Complete personnel records with photo, department, designation, employment type |
+| Employee Profile (Tabbed) | Comprehensive profile with tabs: Personal, Education, Work History, Skills, Certifications, Documents, Dependents, Emergency Contacts, Salary History |
+| Employee Onboarding | 17-point checklist-based onboarding (NID, TIN, bank setup, IT access, policy acknowledgment, NGOAB FD-4 notification) with document upload per task |
+| Organization Chart | Visual hierarchy display with department-wise structure |
+| Employee Documents | Structured document collection with type classification, upload, verification, and expiry tracking |
+| Project-wise Staff Allocation | Track staff across projects with allocation percentage and cost distribution |
 
-#### 9.2 Payroll & Benefits
+#### 9.2 Recruitment & ATS (Applicant Tracking System)
 | Feature | Description |
 |---------|-------------|
-| Salary Structure | Configure salary components |
-| Payroll Processing | Monthly payroll calculation |
-| Tax Calculation | Bangladesh income tax rules |
-| Provident Fund | PF contribution tracking |
-| Gratuity Calculation | Service-based gratuity |
+| Job Posting Management | Create, publish, close job postings with auto-generated posting number and public career page slug |
+| Public Career Portal | Organization-branded public job board accessible via `/public/careers/[orgSlug]` |
+| Application Pipeline | Full ATS pipeline: Applied → Screened → Shortlisted → Technical Test → Interview → Reference Check → Offer → Hired |
+| Application Scoring | Software-based CV scoring (education, experience, skills, language, certifications — 100-point scale) |
+| Interview Scheduling | Schedule interviews with panel members, record scores and notes |
+| Convert to Employee | One-click conversion from hired applicant to employee with pre-filled data |
+| Recruitment Analytics | Pipeline metrics, time-to-hire, source effectiveness |
+
+#### 9.3 Employment Contracts
+| Feature | Description |
+|---------|-------------|
+| Contract Management | Create, renew, terminate employment contracts with full lifecycle tracking |
+| Contract Types | Support for permanent, fixed-term, consultancy, and project-based contracts |
+| Expiry Alerts | Automated alerts for contracts nearing expiry |
+| Contract History | Complete contract history per employee with version tracking |
+
+#### 9.4 Payroll & Compensation
+| Feature | Description |
+|---------|-------------|
+| Salary Grades | Configurable salary grade/step matrix for organizational pay scale |
+| Salary Structures | Define salary components (basic, house rent, medical, transport, etc.) with percentage or fixed allocation |
+| Payroll Processing | Monthly payroll run with attendance integration, leave deductions, and auto-calculation |
+| Tax Calculation | Bangladesh income tax rules (TDS) |
+| Payslip Generation | PDF payslip generation with customizable templates |
 | Salary Disbursement | Bank transfer file generation |
-| Payslip Generation | Monthly payslip with breakdown |
-| Project-wise Salary Allocation | Distribute salary cost across projects |
+| Project-wise Salary Allocation | Distribute salary cost across projects for donor reporting |
+| Budget Impact Analysis | Payroll run impact on project budgets |
 
-#### 9.3 Leave Management
+#### 9.5 Pension & Retirement Benefits
 | Feature | Description |
 |---------|-------------|
-| Leave Types | Annual, Sick, Casual, Maternity, etc. |
-| Leave Application | Online application with approval |
-| Leave Balance | Real-time balance tracking |
-| Leave Calendar | Team-wise leave overview |
-| Holiday Calendar | Bangladesh public holidays |
-| Leave Policy | Configurable leave rules |
+| **Provident Fund (PF)** | |
+| PF Policy Configuration | Define contribution rates (employee + employer), vesting schedules, eligibility criteria |
+| PF Enrollment & Nominees | Enroll employees with nominee designation and percentage allocation |
+| PF Contribution Runs | Monthly contribution processing with preview and posting |
+| PF Interest Calculation | Annual interest calculation on PF balances |
+| PF Loans | Employee PF loans with approval, disbursement, and repayment tracking |
+| PF Withdrawals & Settlements | Partial withdrawal and final settlement on separation |
+| PF Trust Management | Trust fund overview with investment tracking, trustee management, and transaction history |
+| PF Reports | Register, individual statements, trust balance reports |
+| **Gratuity Fund** | |
+| Gratuity Policy | Slab-based gratuity calculation per Bangladesh Labour Act (5/10/15+ years of service) |
+| Gratuity Accruals | Monthly/annual accrual runs with liability tracking |
+| Gratuity Fund Management | Dedicated fund with transaction history |
+| Employee Gratuity Ledgers | Individual gratuity ledger per employee showing accrued amount |
+| Gratuity Payments | Payment processing on retirement/separation with approval workflow |
+| Gratuity Reports | Liability reports, employee statements |
+| Retirement Summary | Combined PF + Gratuity retirement benefit overview per employee |
 
-#### 9.4 Attendance & Time
+#### 9.6 Leave Management
+| Feature | Description |
+|---------|-------------|
+| Leave Types | Annual, Sick, Casual, Maternity (16 weeks), Paternity, Study, Compassionate, Unpaid — per Bangladesh Labour Act 2006 |
+| Leave Application | Online application with supervisor approval workflow |
+| Leave Balance | Real-time balance tracking per employee per leave type |
+| Team Leave Calendar | Visual calendar showing team-wide leave schedule |
+| Leave Coverage Rules | Configure coverage/delegation rules during absence |
+| Holiday Calendar | Organizational holiday calendars with public, organizational, restricted, and optional holiday types; localized Bengali names |
+
+#### 9.7 Attendance & Time
 | Feature | Description |
 |---------|-------------|
 | Daily Attendance | Check-in/check-out tracking |
-| Field Visit Log | GPS-based field visit recording |
-| Timesheet | Project-wise time allocation |
-| Overtime Tracking | OT calculation and approval |
-| Attendance Report | Monthly attendance summary |
+| Monthly Summary | Working days, present, absent, late, leave, OT hours per employee |
+| Attendance Report | Monthly attendance summary for payroll integration |
 
-#### 9.5 Performance Management (ePMS)
+#### 9.8 Performance Management (ePMS)
 | Feature | Description |
 |---------|-------------|
-| KPI Setting | Define KPIs per role/project |
-| Self-assessment | Employee self-review |
-| 360-degree Feedback | Multi-rater evaluation |
-| Mid-year Review | Half-yearly assessment |
-| Annual Appraisal | Year-end performance review |
-| Performance Report | Individual and team analytics |
-| Development Plans | Training needs identification |
+| Performance Reviews | Review cycles with self-assessment, supervisor scoring, and final rating |
+| Rating Scale | Outstanding / Exceeds / Meets / Below / Unsatisfactory |
+| OKR Integration | Link performance reviews to OKR cycle scores |
 
-#### 9.6 Training & Development
+#### 9.9 Objectives & Key Results (OKR)
 | Feature | Description |
 |---------|-------------|
-| Training Calendar | Schedule training programs |
-| Training Registration | Enroll employees in programs |
-| Training Evaluation | Post-training assessment |
-| Skill Matrix | Employee skill inventory |
-| Certification Tracking | Track professional certifications |
+| OKR Cycles | Create quarterly/annual OKR cycles with start/end dates |
+| Objectives | Create objectives at Organization, Department, and Individual levels |
+| Key Results | Metric, Percentage, or Milestone-based key results with targets and progress tracking |
+| Check-ins | Regular progress check-ins on key results with value updates and notes |
+| OKR Alignment Tree | Visual tree showing how individual objectives cascade from department and organizational goals |
+| My OKRs Dashboard | Personal OKR dashboard showing assigned objectives with inline check-in capability |
+| OKR Analytics | Completion rates, adoption rates, on-track/at-risk/behind metrics |
+
+#### 9.10 Training & Development
+| Feature | Description |
+|---------|-------------|
+| Training Programs | Create and track training programs (internal/external/online) |
+| Participant Management | Enroll employees, track attendance and completion |
+| Skill Matrix | Employee skill inventory with proficiency levels |
+| Certification Tracking | Track professional certifications with expiry dates |
+
+#### 9.11 Offboarding & Separation
+| Feature | Description |
+|---------|-------------|
+| Offboarding Process | Structured offboarding checklist (asset return, access revocation, clearance, exit interview) |
+| Final Settlement | Calculate final settlement including pending salary, leave encashment, gratuity, PF |
+| Exit Documentation | Generate experience certificate, relieving letter, NOC |
+
+#### 9.12 Grievance & Disciplinary
+| Feature | Description |
+|---------|-------------|
+| Grievance Management | Employee grievance filing with category, priority, investigation, and resolution tracking |
+| Grievance Escalation | Multi-level escalation workflow |
+| Disciplinary Cases | Record and manage disciplinary proceedings with evidence, hearings, and outcomes |
+| Appeal Process | Employee appeal submission and review |
+
+#### 9.13 HR Analytics
+| Feature | Description |
+|---------|-------------|
+| HR Dashboard | Headcount trends, department distribution, turnover rates |
+| Personnel Cost Tracking | Salary cost analysis by department, project, and funding source |
+| Workforce Analytics | Employment type breakdown, tenure analysis, gender diversity metrics |
 
 ---
 
@@ -342,8 +422,11 @@ This document outlines the complete feature set for a **Bangladeshi NGO-specific
 | Audit Log | System access and activity log |
 | Data Backup | Scheduled backup management |
 | Integration Settings | API keys, third-party connections |
-| Multi-language Support | Bangla and English interface |
+| Multi-language Support | Bangla and English interface (fully implemented with next-intl) |
+| Fiscal Year Management | Configure and manage organizational fiscal years |
 | Notification Settings | Configure alerts and notifications |
+| SaaS Multi-tenancy | Multiple organizations on single platform with data isolation |
+| Super Admin Panel | Platform-level management — organizations, plans, subscriptions, domains |
 
 ---
 
@@ -443,105 +526,148 @@ This document outlines the complete feature set for a **Bangladeshi NGO-specific
 ### Sidebar Menu
 
 ```
+CORE
+────
 Dashboard
   ├── Overview
   ├── Analytics
   └── Activity Feed
 
-Finance & Accounting
+Finance
   ├── Chart of Accounts
   ├── Journal Entries
-  ├── Vouchers (Payment/Receipt/Journal)
+  ├── Vouchers (Payment/Receipt/Journal/Bank)
   ├── Bank Reconciliation
-  ├── Bank & Cash Management
-  └── Financial Reports
+  ├── Bank & Cash
+  ├── Financial Reports
+  └── Daily Expenses
+       ├── Expense Dashboard
+       ├── Petty Cash
+       ├── Expense Claims
+       ├── Advances
+       ├── Per Diem Rates
+       └── Expense Categories
 
-Budget Management
+Budget
   ├── Budget List
   ├── Create Budget
   ├── Budget vs Actual
   ├── Budget Revision
-  └── Cost Allocation
+  ├── Cost Allocation
+  ├── Budget Analytics
+  └── Budget Templates
 
-Donor & Grant Management
+PROGRAMS
+────────
+Donors & Grants
   ├── Donor Directory
-  ├── Grant/Project Registry
+  ├── Grant Registry
   ├── Fund Receipts
   ├── Fund Requisitions
-  ├── Donor Reports
-  └── Grant Lifecycle
+  ├── Grant Lifecycle
+  └── Donor Reports
 
-Project Management
+Projects
   ├── Project List
   ├── Project Dashboard
   ├── Activity Planning
-  ├── Milestone Tracking
+  ├── Milestones
   ├── LogFrame
+  ├── Indicators
+  ├── Risks
   └── Project Closeout
 
-Beneficiary Management
+Beneficiaries
   ├── Beneficiary Registry
   ├── Program Enrollment
   ├── Service Delivery
   ├── Impact Assessment
-  └── Grievance Management
+  └── Grievances
 
-Procurement & Supply Chain
-  ├── Purchase Requisition
+OPERATIONS
+──────────
+Procurement
+  ├── Requisitions
   ├── Purchase Orders
   ├── eTendering
   ├── Vendor Management
   ├── Contracts
   ├── Inventory
-  ├── Warehouse Management
+  ├── Warehouse
   └── Goods Receipt
 
-Fixed Assets
+Assets
   ├── Asset Register
-  ├── Asset Categories
+  ├── Categories
   ├── Depreciation Schedule
   ├── Asset Transfer
   ├── Maintenance
   └── Disposal
 
-Human Resources
+HR & Payroll
   ├── Employee Directory
+  ├── Recruitment
   ├── Onboarding
+  ├── Contracts
   ├── Attendance
   ├── Leave Management
+  │    ├── Leave Applications
+  │    └── Team Calendar
+  ├── Holiday Calendar
   ├── Payroll
+  ├── Salary Grades
+  ├── Salary Structures
+  ├── Pension Management
+  │    ├── Provident Fund (14 sub-pages)
+  │    └── Gratuity (11 sub-pages)
   ├── Performance (ePMS)
+  ├── OKR (Objectives & Key Results)
   ├── Training
-  └── Organization Chart
+  ├── Project Allocations
+  ├── Offboarding
+  ├── Grievances
+  ├── Disciplinary
+  ├── Org Chart
+  └── HR Analytics
 
 Microfinance (MFI)
-  ├── Samity/Group Management
+  ├── Samity Management
   ├── Loan Products
   ├── Loan Applications
   ├── Disbursement
-  ├── Collection/Repayment
+  ├── Collection & Repayment
   ├── Savings
   ├── Overdue Management
   └── MRA Reports
 
+SYSTEM
+──────
 Reports & Analytics
   ├── Financial Reports
-  ├── NGOAB Reports (FD Forms)
+  ├── NGOAB Reports (FD-1 to FD-9)
   ├── Donor Reports
   ├── Project Reports
   ├── HR Reports
   ├── Procurement Reports
-  ├── Custom Reports
+  ├── Custom Report Builder
   └── Audit Trail
 
-Settings & Administration
+Settings
   ├── Organization Setup
   ├── User Management
   ├── Roles & Permissions
   ├── Approval Workflows
+  ├── Fiscal Years
   ├── Notification Settings
   ├── System Configuration
   └── Backup & Logs
+
+Super Admin Panel (Platform)
+  ├── Organizations (Tenants)
+  ├── Subscription Plans
+  ├── Domain Management
+  ├── Media Settings
+  └── Audit Log
 ```
 
 ---
