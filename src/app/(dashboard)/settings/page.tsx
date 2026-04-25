@@ -10,6 +10,7 @@ import {
   Bell,
   Settings,
   Database,
+  Network,
 } from "lucide-react";
 
 interface SettingsCard {
@@ -69,6 +70,13 @@ const settingsCards: SettingsCard[] = [
     description: "Schedule database backups, view system logs, and manage data retention policies",
     icon: <Database className="h-6 w-6" />,
     href: "/settings/backup-logs",
+  },
+  {
+    id: "operating-structure",
+    title: "Operating Structure",
+    description: "Configure sectors, business units, cost centers, locations, and fund classes for multi-concern operations",
+    icon: <Network className="h-6 w-6" />,
+    href: "/settings/operating-structure",
   },
 ];
 

@@ -98,6 +98,7 @@
     "salaryStructures": "Salary Structures",
     "okr": "OKR",
     "projectAllocations": "Project Allocations",
+    "costAllocations": "Cost Allocations",
     "samityManagement": "Samity Management",
     "loanProducts": "Loan Products",
     "loanApplications": "Loan Applications",
@@ -120,7 +121,8 @@
     "approvalWorkflows": "Approval Workflows",
     "notificationSettings": "Notification Settings",
     "systemConfiguration": "System Configuration",
-    "backupLogs": "Backup & Logs"
+    "backupLogs": "Backup & Logs",
+    "operatingStructure": "Operating Structure"
   },
   "appName": "NGO ERP",
   "appDesc": "Management System",

@@ -114,7 +114,8 @@
     "failedToDelete": "Failed to delete journal entry",
     "failedToPost": "Failed to post journal entry",
     "accountCode": "Account Code",
-    "accountName": "Account Name"
+    "accountName": "Account Name",
+    "attachments": "Attachments"
   },
   "vouchers": {
     "title": "Vouchers",

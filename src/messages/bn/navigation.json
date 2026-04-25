@@ -98,6 +98,7 @@
     "salaryStructures": "বেতন কাঠামো",
     "okr": "ওকেআর",
     "projectAllocations": "প্রকল্প বরাদ্দ",
+    "costAllocations": "ব্যয় বরাদ্দ",
     "samityManagement": "সমিতি ব্যবস্থাপনা",
     "loanProducts": "ঋণ পণ্য",
     "loanApplications": "ঋণ আবেদন",
@@ -120,7 +121,8 @@
     "approvalWorkflows": "অনুমোদন কার্যপ্রবাহ",
     "notificationSettings": "বিজ্ঞপ্তি সেটিংস",
     "systemConfiguration": "সিস্টেম কনফিগারেশন",
-    "backupLogs": "ব্যাকআপ ও লগ"
+    "backupLogs": "ব্যাকআপ ও লগ",
+    "operatingStructure": "পরিচালনা কাঠামো"
   },
   "appName": "এনজিও ইআরপি",
   "appDesc": "ব্যবস্থাপনা সিস্টেম",

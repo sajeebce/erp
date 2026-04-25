@@ -159,6 +159,7 @@ export const navigation: NavItem[] = [
       { title: "items.okr", url: "/hr/okr" },
       { title: "items.training", url: "/hr/training" },
       { title: "items.projectAllocations", url: "/hr/project-allocations" },
+      { title: "items.costAllocations", url: "/hr/cost-allocations" },
       { title: "items.offboarding", url: "/hr/offboarding" },
       { title: "items.grievances", url: "/hr/grievances" },
       { title: "items.disciplinary", url: "/hr/disciplinary" },
@@ -202,6 +203,7 @@ export const navigation: NavItem[] = [
     icon: Settings,
     items: [
       { title: "items.organizationSetup", url: "/settings/organization" },
+      { title: "items.operatingStructure", url: "/settings/operating-structure" },
       { title: "items.userManagement", url: "/settings/users" },
       { title: "items.rolesPermissions", url: "/settings/roles" },
       { title: "items.approvalWorkflows", url: "/settings/workflows" },

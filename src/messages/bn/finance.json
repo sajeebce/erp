@@ -124,7 +124,8 @@
     "failedToDelete": "জার্নাল এন্ট্রি মুছতে ব্যর্থ",
     "failedToPost": "জার্নাল এন্ট্রি পোস্ট করতে ব্যর্থ",
     "accountCode": "অ্যাকাউন্ট কোড",
-    "accountName": "অ্যাকাউন্ট নাম"
+    "accountName": "অ্যাকাউন্ট নাম",
+    "attachments": "সংযুক্তি"
   },
   "vouchers": {
     "title": "ভাউচার",
