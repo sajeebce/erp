@@ -81,6 +81,13 @@ model Organization {
   teamCoverageRules  TeamCoverageRule[]
   okrCycles          OKRCycle[]
 
+  // ── Phase 13: Operating Structure ──
+  sectors            Sector[]
+  businessUnits      BusinessUnit[]
+  costCenters        CostCenter[]
+  fundClasses        FundClass[]
+  operatingLocations OperatingLocation[]
+
   @@index([slug])
 }
 
@@ -169,4 +176,116 @@ model NumberSequence {
 
   @@unique([organizationId, entity])
   @@index([organizationId])
+}
+
+// ═══════════════════════════════════════════
+// Phase 13: Multi-Concern Operating Structure
+// ═══════════════════════════════════════════
+
+model Sector {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @db.Uuid
+  code           String
+  name           String
+  localizedName  Json?
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  businessUnits  BusinessUnit[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model BusinessUnit {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @db.Uuid
+  sectorId       String              @db.Uuid
+  code           String
+  name           String
+  shortName      String?
+  localizedName  Json?
+  isActive       Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  sector             Sector              @relation(fields: [sectorId], references: [id])
+  costCenters        CostCenter[]
+  operatingLocations OperatingLocation[]
+  accounts           Account[]
+  journalEntries     JournalEntry[]
+  journalLines       JournalEntryLine[]
+  vouchers           Voucher[]
+  bankAccounts       BankAccount[]
+  pettyCashFunds     PettyCashFund[]
+  expenseClaims      ExpenseClaim[]
+  expenseClaimItems  ExpenseClaimItem[]
+  employeeAdvances   EmployeeAdvance[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([sectorId])
+}
+
+model CostCenter {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @db.Uuid
+  businessUnitId String         @db.Uuid
+  code           String
+  name           String
+  localizedName  Json?
+  description    String?
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  businessUnit      BusinessUnit       @relation(fields: [businessUnitId], references: [id])
+  journalLines      JournalEntryLine[]
+  expenseClaimItems ExpenseClaimItem[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([businessUnitId])
+}
+
+model FundClass {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @db.Uuid
+  code           String
+  name           String
+  localizedName  Json?
+  restriction    String
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  journalLines JournalEntryLine[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model OperatingLocation {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @db.Uuid
+  businessUnitId String?       @db.Uuid
+  code           String
+  name           String
+  localizedName  Json?
+  address        String?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([businessUnitId])
 }
