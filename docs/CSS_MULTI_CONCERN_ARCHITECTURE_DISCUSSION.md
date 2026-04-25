@@ -4,6 +4,8 @@
 > **Context:** CSS (Christian Service Society) Bangladesh — ERP client prospect
 > **Topic:** Multi-concern accounting, central dashboard, IFRS/IPSAS compliance evaluation
 
+> **Current source of truth:** Use [Multi-Concern Architecture](./multiconcern.md), [Multi-Concern Accounting Plan](./multiconcern-accounting.md), [Multi-Concern HR Plan](./multiconcern-hr.md), and Phase 13 in [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md). This file is retained as background discussion and must not override the newer decision: CSS concerns are not separate legal entities in the current implementation.
+
 ---
 
 ## 📝 User Request (Turn 1)

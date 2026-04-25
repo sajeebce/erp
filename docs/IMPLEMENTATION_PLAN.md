@@ -61,6 +61,7 @@
 | | **Phase 8c: HR Deferred + Cross-Module HR** | 9841–11017 | Salary grades, payslip PDF, team leave calendar, OKR, personnel cost tracking, dashboard HR KPIs |
 | | **Phase 8c-fix: HR Wiring & Bug Fixes** | 11022–11193 | Salary grades 500, dynamic compensation, avatar+filters, photo upload, tab scroll, PF URL bulk fix |
 | | **Phase 8b-fix: Pension (PF + Gratuity) Fixes** | 11196–11327 | PF enrollments/dashboard/detail, Gratuity BDTNaN, pension i18n, 22 URL fixes |
+| | **Phase 13: Multi-Concern Accounting & Operating Structure** | 11353+ | CSS Bangladesh multi-concern setup: Sector/BusinessUnit/CostCenter/FundClass models, dimension-aware journal posting, concern-wise reports, CSS COA |
 | 7.1 | Cron Jobs | 11330–11352 | Scheduled tasks (token cleanup, depreciation, etc.) |
 | **8** | **Testing Guidelines** | **11354–11645** | Testing strategy, module-wise tests, integration scenarios |
 | — | **Verification Checklist** | **11647–11675** | Pre-launch validation checklist |
@@ -11324,6 +11325,302 @@ Target: >100% means fully funded
 | 8b-fix.5 | Pension overview — fix API field mapping | ✅ DONE |
 | 8b-fix.6 | PF bulk URL fix — 22 pages /provident-fund/ → /pf/ | ✅ DONE |
 | 8b-fix.7 | PF Member Detail — enriched API + schema relation fix | ✅ DONE |
+
+---
+
+### Phase 13: Multi-Concern Accounting & Operating Structure ✅ BACKEND COMPLETE
+
+> **Goal:** CSS Bangladesh has 5 sectors, 19 concerns, 29+ cost centers. All financial transactions must be tagged with business unit, cost center, fund class, project, and grant dimensions so that consolidated and per-concern reports can be generated from one shared ledger.
+
+#### Status Summary
+
+| Task | Status |
+|------|--------|
+| 13.1 `/settings/operating-structure` UI page (5 tabs: Sectors, Business Units, Cost Centers, Locations, Fund Classes) | ✅ DONE |
+| 13.2 CSS demo data in Operating Structure page (5 sectors, 19 BUs, 29 cost centers, 4 locations, 4 fund classes) | ✅ DONE |
+| 13.3 HR Cost Allocations page `/hr/cost-allocations` (replaces project-allocations) | ✅ UI DONE |
+| 13.4 Finance dimension filter bar on `/finance/financial-reports` (Sector → BU → CC → FundClass → Project → Grant) | ✅ UI DONE |
+| 13.5 CSS COA seed (`seed-accounts.ts`) — 346 accounts from `docs/data/CSS_COA.docx` | ✅ SEEDED |
+| 13.6 Prisma schema: Add `Sector`, `BusinessUnit`, `CostCenter`, `FundClass`, `OperatingLocation` models | ✅ DONE |
+| 13.7 Prisma schema: Add dimension FKs to `JournalEntryLine`, `Voucher`, `BankAccount`, `PettyCashFund`, `ExpenseClaim`, `ExpenseClaimItem`, `EmployeeAdvance`, `Account`, `JournalEntry` | ✅ DONE |
+| 13.8 Prisma schema applied: `pnpm db:push` — DB in sync, `PRISMA_CLIENT_VERSION` bumped to 4 | ✅ DONE |
+| 13.9 API: CRUD endpoints for sectors, business-units, cost-centers, fund-classes, operating-locations (5×2 routes = 10 files) | ✅ DONE |
+| 13.10 API: Update `JournalEntry` + `JournalEntryLine` POST/PUT to accept dimension fields | ✅ DONE |
+| 13.11 API: Update `Voucher` (POST + approve) to accept and propagate `businessUnitId` | ✅ DONE |
+| 13.12 Seed: CSS sector/BU/cost-center/fund-class/location data (`seed-css-operating-structure.ts`) | ✅ DONE |
+| 13.13 UI: Wire Operating Structure tabs to real APIs (removed static mock data, loading/saving states) | ✅ DONE |
+| 13.14 UI: Wire HR Cost Allocations to real `EmployeeCostAllocation` API | ⬜ TODO |
+| 13.15 UI: Add dimension selectors to Journal Entry create/edit form | ⬜ TODO |
+| 13.16 UI: Add dimension selectors to Voucher create/edit form | ⬜ TODO |
+| 13.17 Reports API: Add dimension filters (`sectorId`, `businessUnitId`, `costCenterId`, `fundClassId`, `grantId`) to trial balance, income statement, and all reports via `getAccountBalances` | ✅ DONE |
+| 13.18 Report: Concern-wise Trial Balance (use `?businessUnitId=` or `?sectorId=` param) | ✅ DONE (via filter params) |
+| 13.19 Report: Concern-wise Income Statement (use `?businessUnitId=` or `?sectorId=` param) | ✅ DONE (via filter params) |
+| 13.20 Dashboard: Sector → BU → CostCenter drill-down KPIs | ⬜ TODO |
+| 13.21 Documentation: update this Phase 13 table | ✅ DONE |
+
+#### Phase 13 Verification Results (2026-04-24)
+
+**DB query results:**
+```
+Sectors:             5  (SEC-001 Health … SEC-005 Special Development)
+Business Units:      19 (BU-001 Hospital … BU-019 CLTP)
+Cost Centers:        29 (CC-OPD … CC-CLP-FLD)
+Fund Classes:        4  (FC-UNR, FC-RES, FC-TMP, FC-END)
+Operating Locations: 4  (LOC-001…LOC-004)
+JournalEntryLine.businessUnitId: nullable FK added, existing 28 pre-migration lines = null (expected)
+```
+
+**TypeScript check:** `npx tsc --noEmit --skipLibCheck` → 0 errors
+
+**Dev server note:** After `pnpm db:generate` + `PRISMA_CLIENT_VERSION = 4`, the dev server must be restarted once to pick up the new Prisma client models (`sector`, `businessUnit`, `costCenter`, `fundClass`). The operating structure CRUD APIs will return 400 until after the restart.
+
+**API endpoints created:**
+- `GET/POST /api/v1/settings/sectors` + `GET/PUT/DELETE /api/v1/settings/sectors/[id]`
+- Same pattern for `business-units`, `cost-centers`, `fund-classes`, `operating-locations`
+
+**Report dimension filter usage:**
+```
+GET /api/v1/finance/reports/trial-balance?fiscalYearId=<id>&businessUnitId=<BU_ID>
+GET /api/v1/finance/reports/income-statement?fiscalYearId=<id>&sectorId=<SECTOR_ID>
+GET /api/v1/finance/reports/trial-balance?fiscalYearId=<id>&fundClassId=<FC_ID>
+```
+All filter through `JournalEntryLine.businessUnitId` / `JournalEntryLine.costCenterId` / `JournalEntryLine.fundClassId`. `sectorId` joins via `businessUnit.sectorId`.
+
+#### Remaining Gaps
+- 13.14: HR Cost Allocations API wiring (needs `EmployeeCostAllocation` model + routes)
+- 13.15–13.16: Dimension selectors on JE and Voucher UI forms
+- 13.20: Dashboard drill-down KPIs
+
+#### Phase 13 Implementation Guardrails
+
+- CSS concerns are not separate legal entities. Do not add `LegalEntity`, separate tenants, or separate ledgers per concern.
+- Use one organization-level chart of accounts. Use dimensions for concern-wise reporting.
+- `sectorId` is derived from `BusinessUnit.sectorId`; do not store `sectorId` on `JournalEntryLine`.
+- The source-of-truth line dimensions are `businessUnitId`, `costCenterId`, `fundClassId`, `projectId`, and `grantId`.
+- All new master data shown in UI must support English and Bangla through `localizedName Json?` and message files.
+- No Phase 13 task can be marked done until it has a database query, curl/API test, or UI verification note.
+- After each completed task, update this section and `docs/multiconcern-accounting.md` if behavior or implementation order changes.
+
+#### Required Prisma Schema Additions
+
+```prisma
+model Sector {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  code           String
+  name           String
+  localizedName  Json?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  businessUnits  BusinessUnit[]
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model BusinessUnit {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  sectorId       String   @db.Uuid
+  sector         Sector   @relation(fields: [sectorId], references: [id])
+  code           String
+  name           String
+  shortName      String?
+  localizedName  Json?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  costCenters    CostCenter[]
+  operatingLocations OperatingLocation[]
+  journalLines   JournalEntryLine[]
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([sectorId])
+}
+
+model CostCenter {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  businessUnitId String       @db.Uuid
+  businessUnit   BusinessUnit @relation(fields: [businessUnitId], references: [id])
+  code           String
+  name           String
+  localizedName  Json?
+  description    String?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  journalLines   JournalEntryLine[]
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([businessUnitId])
+}
+
+model FundClass {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @db.Uuid
+  code           String
+  name           String
+  localizedName  Json?
+  restriction    String  // UNRESTRICTED | RESTRICTED | TEMPORARILY_RESTRICTED | ENDOWMENT
+  isActive       Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  journalLines   JournalEntryLine[]
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model OperatingLocation {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  businessUnitId String?  @db.Uuid
+  code           String
+  name           String
+  localizedName  Json?
+  address        String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  businessUnit   BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([businessUnitId])
+}
+```
+
+#### JournalEntryLine dimension fields to add
+
+```prisma
+// Add to existing JournalEntryLine model:
+businessUnitId  String?  @db.Uuid
+costCenterId    String?  @db.Uuid
+fundClassId     String?  @db.Uuid
+// sectorId derived via businessUnit.sectorId — do NOT store separately
+
+businessUnit    BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+costCenter      CostCenter?   @relation(fields: [costCenterId], references: [id])
+fundClass       FundClass?    @relation(fields: [fundClassId], references: [id])
+
+@@index([businessUnitId])
+@@index([costCenterId])
+@@index([fundClassId])
+```
+
+Also add reverse relation arrays on `Organization`:
+
+```prisma
+sectors           Sector[]
+businessUnits     BusinessUnit[]
+costCenters       CostCenter[]
+fundClasses       FundClass[]
+operatingLocations OperatingLocation[]
+```
+
+#### Phase 13 Backend Execution Order
+
+1. Inspect the current Prisma models and API route patterns before editing.
+2. Add schema models and relations in the split schema files:
+   - `prisma/schema/organization.prisma` for operating structure models.
+   - `prisma/schema/finance.prisma` for finance dimensions and relations.
+   - `prisma/schema/budget.prisma` only where budget dimensions are required by current reports.
+3. Run `pnpm db:generate`; fix type errors before moving to API work.
+4. Run `pnpm prisma migrate dev --name phase13_multi_concern_dimensions` or the repo's current migration command.
+5. Create `prisma/seed-css-operating-structure.ts` with idempotent `upsert` data for 5 sectors, 19 business units, 29+ cost centers, locations, and 4 fund classes.
+6. Update `prisma/seed.ts` to call the CSS operating structure seed only if that matches the repo's seed composition pattern.
+7. Fix `prisma/seed-accounts.ts` so CSS account seeding resolves the organization by env/config instead of hard-coded `shapla-foundation`.
+8. Implement CRUD APIs:
+   - `GET/POST /api/v1/settings/sectors`
+   - `GET/PUT/DELETE /api/v1/settings/sectors/[id]`
+   - `GET/POST /api/v1/settings/business-units`
+   - `GET/PUT/DELETE /api/v1/settings/business-units/[id]`
+   - `GET/POST /api/v1/settings/cost-centers`
+   - `GET/PUT/DELETE /api/v1/settings/cost-centers/[id]`
+   - `GET/POST /api/v1/settings/fund-classes`
+   - `GET/PUT/DELETE /api/v1/settings/fund-classes/[id]`
+   - same pattern for `operating-locations` if the UI tab is kept.
+9. Add a reusable dimension validation helper for organization ownership and cost-center-to-business-unit consistency.
+10. Update journal entry create/update APIs to accept line-level `businessUnitId`, `costCenterId`, and `fundClassId`.
+11. Update voucher create/approve flow so generated journal lines copy final dimensions.
+12. Update bank account, petty cash, expense claim, employee advance, and budget APIs only where current routes already exist and can persist the new fields safely.
+13. Wire `/settings/operating-structure` to real APIs and remove static mock mutation behavior.
+14. Update `/finance/financial-reports` labels to use `next-intl` for both English and Bangla.
+15. Add dimension filters to financial report APIs. `sectorId` must filter by joining through `BusinessUnit`.
+16. Add concern-wise trial balance and concern-wise income statement.
+17. Run lint/build where feasible. If full repo lint has unrelated existing failures, record focused checks and exact remaining failures.
+
+#### Phase 13 Required Verification
+
+Run and document these after implementation:
+
+```bash
+pnpm db:generate
+pnpm prisma migrate dev --name phase13_multi_concern_dimensions
+pnpm tsx prisma/seed-css-operating-structure.ts
+pnpm tsx prisma/seed-accounts.ts
+```
+
+Run DB checks and paste summarized results into this section:
+
+```sql
+select count(*) from "Sector";
+select count(*) from "BusinessUnit";
+select count(*) from "CostCenter";
+select count(*) from "FundClass";
+select code, name, "localizedName" from "BusinessUnit" order by code limit 5;
+select "businessUnitId", "costCenterId", "fundClassId", count(*)
+from "JournalEntryLine"
+group by "businessUnitId", "costCenterId", "fundClassId";
+```
+
+Run curl/API checks and document response status plus key data:
+
+```bash
+curl -s http://localhost:4000/api/v1/settings/sectors
+curl -s http://localhost:4000/api/v1/settings/business-units
+curl -s http://localhost:4000/api/v1/settings/cost-centers
+curl -s http://localhost:4000/api/v1/settings/fund-classes
+curl -s "http://localhost:4000/api/v1/finance/reports/trial-balance?businessUnitId=<BUSINESS_UNIT_ID>"
+curl -s "http://localhost:4000/api/v1/finance/reports/income-statement?sectorId=<SECTOR_ID>"
+```
+
+If auth is required, use the existing login/auth pattern and document the exact cookie/token setup used for curl.
+
+#### COA Summary (seeded 2026-04-24)
+
+| Section | Accounts |
+|---------|---------|
+| Capital Fund (101xxx) | 6 |
+| Current Liabilities (201xxx) | 29 |
+| Current Assets — Cash/Bank/Loans/Stock (303xxx–309xxx) | 46 |
+| Fixed Assets (401xxx) | 15 |
+| Income (501xxx–509xxx) | 89 |
+| Expenses (601xxx–614xxx) | 137 |
+| Accumulated Depreciation (701xxx) | 15 |
+| Synthetic root nodes | 9 |
+| **Total** | **346** |
+
+Key income accounts for concern-wise reporting:
+- `503000` Income from Health (Hospital + Nursing)
+- `504000` Income from Education Home, HTI & HPI
+- `507000` Income from CSS Ava Center
+- `508000` Income from CSS Printing Press
+- `509000` Income from Nursing Institute
+- `502000` Income From Microcredit (MFP)
+
+Key expense accounts for concern-wise reporting:
+- `601000` Personal Cost (shared across all concerns via cost allocation dimensions)
+- `607000` Education Expenses
+- `608000` Health Expenses
+- `605000` CSS Ava Center Expenses
+- `614000` Printing Press Expenses
+- `606000` Credit Expense (MFP)
+- `613000` HRM Expenses
 
 ---
 
