@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
 import { generateNextNumber } from '@/lib/number-sequence'
 import { logAudit, getAuditContext } from '@/lib/audit'
+import { validateDimensions } from '@/lib/dimension-validation'
 import {
   apiCreated,
   apiPaginated,
@@ -58,6 +59,11 @@ export async function GET(request: NextRequest) {
       where.projectId = projectId
     }
 
+    const businessUnitId = url.searchParams.get('businessUnitId')
+    if (businessUnitId) {
+      where.businessUnitId = businessUnitId
+    }
+
     const dateFrom = url.searchParams.get('dateFrom')
     const dateTo = url.searchParams.get('dateTo')
     if (dateFrom || dateTo) {
@@ -80,6 +86,7 @@ export async function GET(request: NextRequest) {
           payee: true,
           projectId: true,
           grantId: true,
+          businessUnitId: true,
           bankAccountId: true,
           chequeNo: true,
           chequeDate: true,
@@ -117,6 +124,7 @@ export async function POST(request: NextRequest) {
       payee,
       projectId,
       grantId,
+      businessUnitId,
       bankAccountId,
       chequeNo,
       chequeDate,
@@ -172,6 +180,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate dimension fields if provided
+    if (businessUnitId) {
+      const dimError = await validateDimensions(auth.organizationId, { businessUnitId })
+      if (dimError) return dimError
+    }
+
     // Generate voucher number based on type
     const entity = VOUCHER_TYPE_ENTITY_MAP[type]
     const voucherNo = await generateNextNumber(auth.organizationId, entity)
@@ -187,6 +201,7 @@ export async function POST(request: NextRequest) {
         payee: payee || null,
         projectId: projectId || null,
         grantId: grantId || null,
+        businessUnitId: businessUnitId || null,
         bankAccountId: bankAccountId || null,
         chequeNo: chequeNo || null,
         chequeDate: chequeDate ? new Date(chequeDate) : null,

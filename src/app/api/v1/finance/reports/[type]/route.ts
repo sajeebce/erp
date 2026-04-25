@@ -17,6 +17,12 @@ interface ReportFilters {
   startDate?: Date
   endDate?: Date
   projectId?: string
+  // Multi-concern dimension filters
+  sectorId?: string
+  businessUnitId?: string
+  costCenterId?: string
+  fundClassId?: string
+  grantId?: string
 }
 
 interface AccountBalance {
@@ -91,6 +97,11 @@ export async function GET(
     const startDateParam = url.searchParams.get('startDate')
     const endDateParam = url.searchParams.get('endDate')
     const projectId = url.searchParams.get('projectId') || undefined
+    const sectorId = url.searchParams.get('sectorId') || undefined
+    const businessUnitId = url.searchParams.get('businessUnitId') || undefined
+    const costCenterId = url.searchParams.get('costCenterId') || undefined
+    const fundClassId = url.searchParams.get('fundClassId') || undefined
+    const grantId = url.searchParams.get('grantId') || undefined
 
     const filters: ReportFilters = {
       fiscalYearId,
@@ -98,6 +109,11 @@ export async function GET(
       startDate: startDateParam ? new Date(startDateParam) : fiscalYear.startDate,
       endDate: endDateParam ? new Date(endDateParam) : fiscalYear.endDate,
       projectId,
+      sectorId,
+      businessUnitId,
+      costCenterId,
+      fundClassId,
+      grantId,
     }
 
     const reportType = type as ReportType
@@ -168,6 +184,13 @@ async function getAccountBalances(filters: ReportFilters, accountTypes?: string[
     accountWhere.projectId = filters.projectId
   }
 
+  // Build line-level dimension filter for journal lines
+  const lineDimensionFilter: Record<string, unknown> = {}
+  if (filters.businessUnitId) lineDimensionFilter.businessUnitId = filters.businessUnitId
+  if (filters.costCenterId) lineDimensionFilter.costCenterId = filters.costCenterId
+  if (filters.fundClassId) lineDimensionFilter.fundClassId = filters.fundClassId
+  if (filters.sectorId) lineDimensionFilter.businessUnit = { sectorId: filters.sectorId }
+
   const accounts = await prisma.account.findMany({
     where: accountWhere,
     select: {
@@ -178,6 +201,7 @@ async function getAccountBalances(filters: ReportFilters, accountTypes?: string[
       nature: true,
       journalLines: {
         where: {
+          ...lineDimensionFilter,
           journalEntry: {
             status: 'APPROVED',
             deletedAt: null,
@@ -191,6 +215,7 @@ async function getAccountBalances(filters: ReportFilters, accountTypes?: string[
                 }
               : {}),
             ...(filters.projectId ? { projectId: filters.projectId } : {}),
+            ...(filters.grantId ? { grantId: filters.grantId } : {}),
           },
         },
         select: {
@@ -263,6 +288,14 @@ async function generateTrialBalance(filters: ReportFilters, _auth: AccessTokenPa
     periodStart: filters.startDate,
     periodEnd: filters.endDate,
     generatedAt: new Date(),
+    dimensionFilters: {
+      sectorId: filters.sectorId ?? null,
+      businessUnitId: filters.businessUnitId ?? null,
+      costCenterId: filters.costCenterId ?? null,
+      fundClassId: filters.fundClassId ?? null,
+      projectId: filters.projectId ?? null,
+      grantId: filters.grantId ?? null,
+    },
     accounts,
     totals: {
       periodDebit: totalPeriodDebit,
@@ -306,6 +339,14 @@ async function generateIncomeStatement(filters: ReportFilters, _auth: AccessToke
     periodStart: filters.startDate,
     periodEnd: filters.endDate,
     generatedAt: new Date(),
+    dimensionFilters: {
+      sectorId: filters.sectorId ?? null,
+      businessUnitId: filters.businessUnitId ?? null,
+      costCenterId: filters.costCenterId ?? null,
+      fundClassId: filters.fundClassId ?? null,
+      projectId: filters.projectId ?? null,
+      grantId: filters.grantId ?? null,
+    },
     income: {
       accounts: incomeAccounts,
       total: totalIncome,

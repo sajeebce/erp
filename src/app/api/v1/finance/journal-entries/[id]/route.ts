@@ -28,20 +28,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       include: {
         lines: {
           include: {
-            account: {
-              select: { id: true, code: true, name: true },
-            },
+            account: { select: { id: true, code: true, name: true } },
+            businessUnit: { select: { id: true, code: true, name: true, shortName: true } },
+            costCenter: { select: { id: true, code: true, name: true } },
+            fundClass: { select: { id: true, code: true, name: true } },
           },
         },
-        fiscalYear: {
-          select: { id: true, name: true, startDate: true, endDate: true },
-        },
-        project: {
-          select: { id: true, name: true },
-        },
-        grant: {
-          select: { id: true, title: true },
-        },
+        fiscalYear: { select: { id: true, name: true, startDate: true, endDate: true } },
+        project: { select: { id: true, name: true } },
+        grant: { select: { id: true, title: true } },
+        businessUnit: { select: { id: true, code: true, name: true, shortName: true } },
       },
     })
 

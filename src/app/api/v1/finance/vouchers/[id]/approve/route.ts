@@ -116,6 +116,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             fiscalYearId: fiscalYear.id,
             projectId: voucher.projectId,
             grantId: voucher.grantId,
+            businessUnitId: voucher.businessUnitId,
             totalDebit: amount,
             totalCredit: amount,
             status: 'APPROVED',
@@ -134,6 +135,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                   debit: amount,
                   credit: new Prisma.Decimal(0),
                   projectId: voucher.projectId,
+                  businessUnitId: voucher.businessUnitId,
                 },
                 {
                   accountId: creditAccountId,
@@ -141,6 +143,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                   debit: new Prisma.Decimal(0),
                   credit: amount,
                   projectId: voucher.projectId,
+                  businessUnitId: voucher.businessUnitId,
                 },
               ],
             },

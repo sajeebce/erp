@@ -24,10 +24,13 @@ model Account {
   updatedAt       DateTime      @updatedAt
   deletedAt       DateTime?
 
+  businessUnitId  String?       @db.Uuid
+
   organization    Organization  @relation(fields: [organizationId], references: [id])
   parent          Account?      @relation("AccountHierarchy", fields: [parentId], references: [id])
   children        Account[]     @relation("AccountHierarchy")
   project         Project?      @relation(fields: [projectId], references: [id])
+  businessUnit    BusinessUnit? @relation(fields: [businessUnitId], references: [id])
 
   journalLines    JournalEntryLine[]
   budgetLines     BudgetLine[]
@@ -38,6 +41,7 @@ model Account {
   @@index([type])
   @@index([parentId])
   @@index([projectId])
+  @@index([businessUnitId])
 }
 
 model JournalEntry {
@@ -49,6 +53,7 @@ model JournalEntry {
   fiscalYearId    String         @db.Uuid
   projectId       String?        @db.Uuid
   grantId         String?        @db.Uuid
+  businessUnitId  String?        @db.Uuid
   currencyCode    CurrencyCode   @default(BDT)
   exchangeRate    Decimal        @default(1) @db.Decimal(18, 6)
   totalDebit      Decimal        @db.Decimal(18, 2)
@@ -69,6 +74,7 @@ model JournalEntry {
   fiscalYear      FiscalYear     @relation(fields: [fiscalYearId], references: [id])
   project         Project?       @relation(fields: [projectId], references: [id])
   grant           Grant?         @relation(fields: [grantId], references: [id])
+  businessUnit    BusinessUnit?  @relation(fields: [businessUnitId], references: [id])
 
   lines           JournalEntryLine[]
   voucher         Voucher?
@@ -79,23 +85,32 @@ model JournalEntry {
   @@index([projectId])
   @@index([grantId])
   @@index([fiscalYearId])
+  @@index([businessUnitId])
 }
 
 model JournalEntryLine {
-  id              String       @id @default(uuid()) @db.Uuid
-  journalEntryId  String       @db.Uuid
-  accountId       String       @db.Uuid
+  id              String        @id @default(uuid()) @db.Uuid
+  journalEntryId  String        @db.Uuid
+  accountId       String        @db.Uuid
   description     String?
-  debit           Decimal      @default(0) @db.Decimal(18, 2)
-  credit          Decimal      @default(0) @db.Decimal(18, 2)
-  projectId       String?      @db.Uuid
-  costCenterId    String?
+  debit           Decimal       @default(0) @db.Decimal(18, 2)
+  credit          Decimal       @default(0) @db.Decimal(18, 2)
+  projectId       String?       @db.Uuid
+  businessUnitId  String?       @db.Uuid
+  costCenterId    String?       @db.Uuid
+  fundClassId     String?       @db.Uuid
 
-  journalEntry    JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
-  account         Account      @relation(fields: [accountId], references: [id])
+  journalEntry    JournalEntry  @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account         Account       @relation(fields: [accountId], references: [id])
+  businessUnit    BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+  costCenter      CostCenter?   @relation(fields: [costCenterId], references: [id])
+  fundClass       FundClass?    @relation(fields: [fundClassId], references: [id])
 
   @@index([journalEntryId])
   @@index([accountId])
+  @@index([businessUnitId])
+  @@index([costCenterId])
+  @@index([fundClassId])
 }
 
 model Voucher {
@@ -109,6 +124,7 @@ model Voucher {
   payee           String?
   projectId       String?        @db.Uuid
   grantId         String?        @db.Uuid
+  businessUnitId  String?        @db.Uuid
   bankAccountId   String?        @db.Uuid
   chequeNo        String?
   chequeDate      DateTime?
@@ -124,6 +140,7 @@ model Voucher {
   organization    Organization   @relation(fields: [organizationId], references: [id])
   project         Project?       @relation(fields: [projectId], references: [id])
   grant           Grant?         @relation(fields: [grantId], references: [id])
+  businessUnit    BusinessUnit?  @relation(fields: [businessUnitId], references: [id])
   bankAccount     BankAccount?   @relation(fields: [bankAccountId], references: [id])
   journalEntry    JournalEntry?  @relation(fields: [journalEntryId], references: [id])
 
@@ -134,6 +151,7 @@ model Voucher {
   @@index([date])
   @@index([status])
   @@index([projectId])
+  @@index([businessUnitId])
 }
 
 model BankAccount {
@@ -153,11 +171,13 @@ model BankAccount {
   currentBalance   Decimal         @default(0) @db.Decimal(18, 2)
   isActive         Boolean         @default(true)
   description      String?
+  businessUnitId   String?         @db.Uuid
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
   organization     Organization    @relation(fields: [organizationId], references: [id])
   glAccount        Account?        @relation(fields: [glAccountId], references: [id])
+  businessUnit     BusinessUnit?   @relation(fields: [businessUnitId], references: [id])
   vouchers         Voucher[]
   fundReceipts     FundReceipt[]
   reconciliations  BankReconciliation[]
@@ -168,6 +188,7 @@ model BankAccount {
   @@index([glAccountId])
   @@index([type])
   @@index([isMotherAccount])
+  @@index([businessUnitId])
 }
 
 model BankReconciliation {
@@ -226,6 +247,7 @@ model PettyCashFund {
   bankAccountId          String?          @db.Uuid
   projectId              String?          @db.Uuid
   grantId                String?          @db.Uuid
+  businessUnitId         String?          @db.Uuid
   location               String?
   maxTransactionLimit    Decimal?         @db.Decimal(18, 2)
   reconciliationFrequency String          @default("MONTHLY")
@@ -238,11 +260,13 @@ model PettyCashFund {
 
   organization    Organization     @relation(fields: [organizationId], references: [id])
   bankAccount     BankAccount?     @relation(fields: [bankAccountId], references: [id])
+  businessUnit    BusinessUnit?    @relation(fields: [businessUnitId], references: [id])
   transactions    PettyCashTransaction[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
   @@index([custodianId])
+  @@index([businessUnitId])
 }
 
 model PettyCashTransaction {
@@ -285,6 +309,7 @@ model ExpenseClaim {
   purpose         String
   projectId       String?            @db.Uuid
   grantId         String?            @db.Uuid
+  businessUnitId  String?            @db.Uuid
   travelStartDate DateTime?
   travelEndDate   DateTime?
   status          ExpenseClaimStatus @default(DRAFT)
@@ -305,12 +330,14 @@ model ExpenseClaim {
   updatedAt       DateTime           @updatedAt
 
   organization    Organization       @relation(fields: [organizationId], references: [id])
+  businessUnit    BusinessUnit?      @relation(fields: [businessUnitId], references: [id])
   items           ExpenseClaimItem[]
 
   @@index([organizationId])
   @@index([employeeId])
   @@index([status])
   @@index([projectId])
+  @@index([businessUnitId])
 }
 
 model ExpenseClaimItem {
@@ -327,6 +354,8 @@ model ExpenseClaimItem {
   accountId       String?      @db.Uuid
   projectId       String?      @db.Uuid
   budgetLineId    String?      @db.Uuid
+  businessUnitId  String?      @db.Uuid
+  costCenterId    String?      @db.Uuid
   tdsRate         Decimal?     @db.Decimal(5, 2)
   tdsAmount       Decimal?     @db.Decimal(18, 2)
   vdsRate         Decimal?     @db.Decimal(5, 2)
@@ -335,9 +364,13 @@ model ExpenseClaimItem {
   notes           String?
   sortOrder       Int          @default(0)
 
-  claim           ExpenseClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  claim           ExpenseClaim  @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  businessUnit    BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+  costCenter      CostCenter?   @relation(fields: [costCenterId], references: [id])
 
   @@index([claimId])
+  @@index([businessUnitId])
+  @@index([costCenterId])
 }
 
 model EmployeeAdvance {
@@ -352,6 +385,7 @@ model EmployeeAdvance {
   approvedAmount  Decimal?       @db.Decimal(18, 2)
   projectId       String?        @db.Uuid
   grantId         String?        @db.Uuid
+  businessUnitId  String?        @db.Uuid
   travelStartDate DateTime?
   travelEndDate   DateTime?
   expectedSettlementDate DateTime?
@@ -374,10 +408,12 @@ model EmployeeAdvance {
   updatedAt       DateTime       @updatedAt
 
   organization    Organization   @relation(fields: [organizationId], references: [id])
+  businessUnit    BusinessUnit?  @relation(fields: [businessUnitId], references: [id])
 
   @@index([organizationId])
   @@index([employeeId])
   @@index([status])
+  @@index([businessUnitId])
 }
 
 model PerDiemRate {

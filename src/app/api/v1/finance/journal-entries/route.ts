@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
 import { generateNextNumber } from '@/lib/number-sequence'
 import { logAudit, getAuditContext } from '@/lib/audit'
+import { validateDimensions } from '@/lib/dimension-validation'
 import {
   apiCreated,
   apiPaginated,
@@ -44,6 +45,11 @@ export async function GET(request: NextRequest) {
     const grantId = url.searchParams.get('grantId')
     if (grantId) {
       where.grantId = grantId
+    }
+
+    const businessUnitId = url.searchParams.get('businessUnitId')
+    if (businessUnitId) {
+      where.businessUnitId = businessUnitId
     }
 
     const dateFrom = url.searchParams.get('dateFrom')
@@ -110,6 +116,7 @@ export async function POST(request: NextRequest) {
       fiscalYearId,
       projectId,
       grantId,
+      businessUnitId,   // header-level default dimension
       currencyCode,
       exchangeRate,
       notes,
@@ -142,6 +149,20 @@ export async function POST(request: NextRequest) {
 
       if (debit <= 0 && credit <= 0) {
         return apiBadRequest(`Line ${i + 1}: a line must have either debit > 0 or credit > 0`)
+      }
+
+      // Validate line-level dimensions (fall back to header businessUnitId)
+      const lineBuId = line.businessUnitId ?? businessUnitId ?? null
+      if (lineBuId || line.costCenterId || line.fundClassId) {
+        const dimError = await validateDimensions(auth.organizationId, {
+          businessUnitId: lineBuId,
+          costCenterId: line.costCenterId ?? null,
+          fundClassId: line.fundClassId ?? null,
+        })
+        if (dimError) {
+          const errBody = await dimError.json() as { error?: { message?: string } }
+          return apiBadRequest(`Line ${i + 1}: ${errBody.error?.message ?? 'invalid dimension'}`)
+        }
       }
     }
 
@@ -225,6 +246,7 @@ export async function POST(request: NextRequest) {
           fiscalYearId,
           projectId: projectId || null,
           grantId: grantId || null,
+          businessUnitId: businessUnitId || null,
           currencyCode: currencyCode || 'BDT',
           exchangeRate: exchangeRate ? new Prisma.Decimal(exchangeRate) : new Prisma.Decimal(1),
           totalDebit: new Prisma.Decimal(totalDebit),
@@ -239,12 +261,18 @@ export async function POST(request: NextRequest) {
               debit?: number
               credit?: number
               projectId?: string
+              businessUnitId?: string
+              costCenterId?: string
+              fundClassId?: string
             }) => ({
               accountId: line.accountId,
               description: line.description || null,
               debit: new Prisma.Decimal(Number(line.debit || 0)),
               credit: new Prisma.Decimal(Number(line.credit || 0)),
               projectId: line.projectId || null,
+              businessUnitId: line.businessUnitId ?? businessUnitId ?? null,
+              costCenterId: line.costCenterId || null,
+              fundClassId: line.fundClassId || null,
             })),
           },
         },
