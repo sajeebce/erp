@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Shield, Users, Loader2, CheckCircle, Wand2 } from "lucide-react";
+import { Plus, Shield, Users, Loader2, CheckCircle, Wand2, Trash2 } from "lucide-react";
 
 interface Role {
   id: string;
@@ -37,6 +37,7 @@ export default function RolesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const [formName, setFormName] = useState("");
@@ -71,6 +72,21 @@ export default function RolesPage() {
       setMsg({ type: "error", text: json.error?.message ?? "Failed to create role." });
     }
     setCreating(false);
+  }
+
+  async function handleDelete(role: Role) {
+    if (!confirm(`Delete role "${role.name}"? This cannot be undone.`)) return;
+    setDeletingId(role.id);
+    setMsg(null);
+    const res = await fetch(`/api/v1/settings/roles/${role.id}`, { method: "DELETE" });
+    const json = await res.json();
+    if (json.success) {
+      setMsg({ type: "success", text: `Role "${role.name}" deleted.` });
+      fetchRoles();
+    } else {
+      setMsg({ type: "error", text: json.error?.message ?? "Failed to delete role." });
+    }
+    setDeletingId(null);
   }
 
   async function handleSeedRoles() {
@@ -150,6 +166,20 @@ export default function RolesPage() {
                   </div>
                   {role.description && (
                     <CardDescription>{role.description}</CardDescription>
+                  )}
+                  {!role.isSystem && role.userCount === 0 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive mt-1"
+                      onClick={() => handleDelete(role)}
+                      disabled={deletingId === role.id}
+                    >
+                      {deletingId === role.id
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <Trash2 className="h-4 w-4" />
+                      }
+                    </Button>
                   )}
                 </CardHeader>
                 <CardContent>
