@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { requireAuthFromRequest } from '@/lib/auth'
+import { requireAuthFromRequest, requireRoleFromRequest } from '@/lib/auth'
 import { generateNextNumber } from '@/lib/number-sequence'
 import { logAudit, getAuditContext } from '@/lib/audit'
 import {
@@ -11,6 +11,34 @@ import {
   parsePaginationParams,
 } from '@/lib/api-response'
 import { Prisma } from '@prisma/client'
+
+interface PurchaseOrderLineInput {
+  description: string
+  unit: string
+  quantity: number
+  unitPrice: number
+  prLineId?: string
+}
+
+async function requisitionBelongsToOrg(
+  requisition: { project: { organizationId: string } | null; requestedById: string },
+  organizationId: string
+) {
+  if (requisition.project?.organizationId === organizationId) {
+    return true
+  }
+
+  const requester = await prisma.user.findFirst({
+    where: {
+      id: requisition.requestedById,
+      organizationId,
+      deletedAt: null,
+    },
+    select: { id: true },
+  })
+
+  return Boolean(requester)
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,6 +63,15 @@ export async function GET(request: NextRequest) {
       where.status = status
     }
 
+    const prId = url.searchParams.get('prId')
+    if (prId) {
+      where.lines = {
+        some: {
+          prLine: { prId },
+        },
+      }
+    }
+
     const [orders, total] = await Promise.all([
       prisma.purchaseOrder.findMany({
         where,
@@ -52,6 +89,18 @@ export async function GET(request: NextRequest) {
           status: true,
           createdAt: true,
           updatedAt: true,
+          lines: {
+            select: {
+              prLine: {
+                select: {
+                  requisition: {
+                    select: { id: true, prNo: true },
+                  },
+                },
+              },
+            },
+            take: 1,
+          },
         },
         orderBy: { [sort]: order },
         skip,
@@ -68,17 +117,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, 'ADMIN')
     const body = await request.json()
 
-    const { vendorId, date, deliveryDate, paymentTerms, notes, lines } = body
+    const { vendorId, prId, date, deliveryDate, paymentTerms, notes } = body
+    let { lines } = body as { lines?: PurchaseOrderLineInput[] }
 
     if (!vendorId) {
       return apiBadRequest('vendorId is required')
-    }
-
-    if (!lines || !Array.isArray(lines) || lines.length === 0) {
-      return apiBadRequest('At least one line item is required')
     }
 
     // Validate vendor belongs to org
@@ -90,6 +136,76 @@ export async function POST(request: NextRequest) {
       return apiBadRequest('Vendor not found or does not belong to your organization')
     }
 
+    let sourcePr: {
+      id: string
+      prNo: string
+      status: string
+      requestedById: string
+      project: { organizationId: string } | null
+      lines: Array<{
+        id: string
+        description: string
+        unit: string
+        quantity: Prisma.Decimal
+        estimatedPrice: Prisma.Decimal
+      }>
+    } | null = null
+
+    if (prId) {
+      sourcePr = await prisma.purchaseRequisition.findFirst({
+        where: { id: prId, deletedAt: null },
+        include: {
+          project: { select: { organizationId: true } },
+          lines: { orderBy: { sortOrder: 'asc' } },
+        },
+      })
+
+      if (!sourcePr) {
+        return apiBadRequest('Purchase requisition not found')
+      }
+
+      const belongsToOrg = await requisitionBelongsToOrg(sourcePr, auth.organizationId)
+      if (!belongsToOrg) {
+        return apiBadRequest('Purchase requisition not found in your organization')
+      }
+
+      if (sourcePr.status !== 'APPROVED') {
+        return apiBadRequest(`Only APPROVED requisitions can create purchase orders. Current status: ${sourcePr.status}`)
+      }
+
+      const existingPo = await prisma.purchaseOrder.findFirst({
+        where: {
+          deletedAt: null,
+          lines: { some: { prLine: { prId } } },
+        },
+        select: { poNo: true },
+      })
+
+      if (existingPo) {
+        return apiBadRequest(`Purchase order ${existingPo.poNo} already exists for this requisition`)
+      }
+
+      if (!lines || lines.length === 0) {
+        lines = sourcePr.lines.map((line) => ({
+          description: line.description,
+          unit: line.unit,
+          quantity: Number(line.quantity),
+          unitPrice: Number(line.estimatedPrice),
+          prLineId: line.id,
+        }))
+      }
+
+      const prLineIds = new Set(sourcePr.lines.map((line) => line.id))
+      const hasInvalidLine = lines.some((line) => !line.prLineId || !prLineIds.has(line.prLineId))
+      if (hasInvalidLine) {
+        return apiBadRequest('All PO lines for a requisition must reference lines from that requisition')
+      }
+    }
+
+    if (!lines || !Array.isArray(lines) || lines.length === 0) {
+      return apiBadRequest('At least one line item is required')
+    }
+
     const poNo = await generateNextNumber(auth.organizationId, 'purchase_order')
 
     const totalAmount = lines.reduce(
@@ -98,21 +214,19 @@ export async function POST(request: NextRequest) {
       0
     )
 
-    const order = await prisma.purchaseOrder.create({
-      data: {
-        poNo,
-        date: date ? new Date(date) : new Date(),
-        vendorId,
-        deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
-        totalAmount: new Prisma.Decimal(totalAmount),
-        paymentTerms: paymentTerms || null,
-        notes: notes || null,
-        lines: {
-          create: lines.map(
-            (
-              l: { description: string; unit: string; quantity: number; unitPrice: number; prLineId?: string },
-              i: number
-            ) => ({
+    const order = await prisma.$transaction(async (tx) => {
+      const created = await tx.purchaseOrder.create({
+        data: {
+          poNo,
+          date: date ? new Date(date) : new Date(),
+          vendorId,
+          deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
+          totalAmount: new Prisma.Decimal(totalAmount),
+          paymentTerms: paymentTerms || null,
+          status: sourcePr ? 'ISSUED' : 'DRAFT',
+          notes: notes || null,
+          lines: {
+            create: lines.map((l, i: number) => ({
               description: l.description,
               unit: l.unit,
               quantity: new Prisma.Decimal(l.quantity),
@@ -120,21 +234,33 @@ export async function POST(request: NextRequest) {
               totalPrice: new Prisma.Decimal(Number(l.quantity) * Number(l.unitPrice)),
               prLineId: l.prLineId || null,
               sortOrder: i,
-            })
-          ),
+            })),
+          },
         },
-      },
-      include: {
-        lines: { orderBy: { sortOrder: 'asc' } },
-        vendor: { select: { companyName: true } },
-      },
+        include: {
+          lines: { orderBy: { sortOrder: 'asc' } },
+          vendor: { select: { companyName: true } },
+        },
+      })
+
+      if (sourcePr) {
+        await tx.purchaseRequisition.update({
+          where: { id: sourcePr.id },
+          data: {
+            status: 'PO_CREATED',
+            linkedPOId: created.id,
+          },
+        })
+      }
+
+      await tx.vendor.update({
+        where: { id: vendorId },
+        data: { totalOrders: { increment: 1 } },
+      })
+
+      return created
     })
 
-    // Increment vendor totalOrders
-    await prisma.vendor.update({
-      where: { id: vendorId },
-      data: { totalOrders: { increment: 1 } },
-    })
 
     const audit = getAuditContext(request)
     await logAudit({
@@ -144,9 +270,27 @@ export async function POST(request: NextRequest) {
       module: 'PROCUREMENT',
       resource: 'PurchaseOrder',
       resourceId: order.id,
-      description: `Created purchase order ${poNo} for vendor ${vendor.companyName}`,
+      description: sourcePr
+        ? `Created purchase order ${poNo} from requisition ${sourcePr.prNo} for vendor ${vendor.companyName}`
+        : `Created purchase order ${poNo} for vendor ${vendor.companyName}`,
+      newValues: { poNo, prId: sourcePr?.id, status: order.status, totalAmount },
       ...audit,
     })
+
+    if (sourcePr) {
+      await logAudit({
+        organizationId: auth.organizationId,
+        userId: auth.userId,
+        action: 'UPDATE',
+        module: 'PROCUREMENT',
+        resource: 'PurchaseRequisition',
+        resourceId: sourcePr.id,
+        description: `Marked requisition ${sourcePr.prNo} as PO_CREATED via ${poNo}`,
+        oldValues: { status: 'APPROVED' },
+        newValues: { status: 'PO_CREATED', linkedPOId: order.id },
+        ...audit,
+      })
+    }
 
     return apiCreated(order)
   } catch (error) {

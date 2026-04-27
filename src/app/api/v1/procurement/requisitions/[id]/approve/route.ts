@@ -22,10 +22,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       where: {
         id,
         deletedAt: null,
-        OR: [
-          { project: { organizationId: auth.organizationId } },
-          { requestedById: { not: undefined } },
-        ],
       },
       include: {
         project: { select: { organizationId: true } },
@@ -36,8 +32,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return apiNotFound('Purchase requisition not found')
     }
 
-    // Verify org ownership through project
-    if (requisition.project && requisition.project.organizationId !== auth.organizationId) {
+    const requester = await prisma.user.findFirst({
+      where: {
+        id: requisition.requestedById,
+        organizationId: auth.organizationId,
+        deletedAt: null,
+      },
+      select: { id: true },
+    })
+
+    const belongsToOrg =
+      requisition.project?.organizationId === auth.organizationId || Boolean(requester)
+
+    if (!belongsToOrg) {
       return apiNotFound('Purchase requisition not found')
     }
 

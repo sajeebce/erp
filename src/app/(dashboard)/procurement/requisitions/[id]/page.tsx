@@ -10,6 +10,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -19,7 +36,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, ArrowLeft, CheckCircle, XCircle, Loader2, ExternalLink } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle, XCircle, Loader2, ExternalLink, ShoppingCart } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
 interface PRLine {
@@ -61,6 +78,14 @@ interface PurchaseRequisition {
   linkedPOs?: LinkedPO[];
 }
 
+interface Vendor {
+  id: string;
+  vendorNo: string;
+  companyName: string;
+  category: string | null;
+  isApproved: boolean;
+}
+
 function getStatusVariant(status: string): "default" | "secondary" | "outline" | "destructive" {
   switch (status) {
     case "PO_CREATED": case "APPROVED": return "default";
@@ -99,8 +124,17 @@ export default function PRDetailPage() {
   const [pr, setPr] = useState<PurchaseRequisition | null>(null);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
+  const [creatingPO, setCreatingPO] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [userRole, setUserRole] = useState<string>("");
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [showPODialog, setShowPODialog] = useState(false);
+  const [poForm, setPOForm] = useState({
+    vendorId: "",
+    deliveryDate: "",
+    paymentTerms: "30 days after delivery with inspection",
+    notes: "",
+  });
 
   async function fetchPR() {
     const res = await fetch(`/api/v1/procurement/requisitions/${id}`);
@@ -118,6 +152,15 @@ export default function PRDetailPage() {
 
   useEffect(() => {
     fetchPR();
+    fetch("/api/v1/procurement/vendors?limit=100&isActive=true")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success) {
+          const approvedVendors = json.data.filter((vendor: Vendor) => vendor.isApproved);
+          setVendors(approvedVendors.length > 0 ? approvedVendors : json.data);
+        }
+      })
+      .catch(() => {});
     fetch("/api/v1/auth/me")
       .then((r) => r.json())
       .then((json) => { if (json.success) setUserRole(json.data.role?.name ?? ""); })
@@ -140,6 +183,37 @@ export default function PRDetailPage() {
       setActionMsg({ type: "error", text: "Network error." });
     } finally {
       setApproving(false);
+    }
+  }
+
+  async function handleCreatePO() {
+    if (!pr) return;
+    setCreatingPO(true);
+    setActionMsg(null);
+    try {
+      const res = await fetch("/api/v1/procurement/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prId: pr.id,
+          vendorId: poForm.vendorId,
+          deliveryDate: poForm.deliveryDate || undefined,
+          paymentTerms: poForm.paymentTerms,
+          notes: poForm.notes,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setActionMsg({ type: "success", text: `Purchase order ${json.data.poNo} created and issued.` });
+        setShowPODialog(false);
+        await fetchPR();
+      } else {
+        setActionMsg({ type: "error", text: json.error?.message ?? "Purchase order creation failed." });
+      }
+    } catch {
+      setActionMsg({ type: "error", text: "Network error." });
+    } finally {
+      setCreatingPO(false);
     }
   }
 
@@ -166,6 +240,7 @@ export default function PRDetailPage() {
   }
 
   const canApprove = userRole === "ADMIN" && ["DRAFT", "SUBMITTED", "REVIEWED"].includes(pr.status);
+  const canCreatePO = userRole === "ADMIN" && pr.status === "APPROVED" && (!pr.linkedPOs || pr.linkedPOs.length === 0);
 
   return (
     <div className="space-y-6">
@@ -181,6 +256,12 @@ export default function PRDetailPage() {
           <Button size="sm" onClick={handleApprove} disabled={approving}>
             {approving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
             Approve
+          </Button>
+        )}
+        {canCreatePO && (
+          <Button size="sm" onClick={() => setShowPODialog(true)}>
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Create PO
           </Button>
         )}
       </PageHeader>
@@ -378,6 +459,83 @@ export default function PRDetailPage() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={showPODialog} onOpenChange={setShowPODialog}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Create Purchase Order from {pr.prNo}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Vendor</Label>
+              <Select
+                value={poForm.vendorId}
+                onValueChange={(vendorId) => setPOForm((prev) => ({ ...prev, vendorId }))}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select approved vendor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendors.map((vendor) => (
+                    <SelectItem key={vendor.id} value={vendor.id}>
+                      {vendor.companyName} ({vendor.vendorNo})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Delivery Date</Label>
+                <Input
+                  type="date"
+                  value={poForm.deliveryDate}
+                  onChange={(event) => setPOForm((prev) => ({ ...prev, deliveryDate: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Payment Terms</Label>
+                <Input
+                  value={poForm.paymentTerms}
+                  onChange={(event) => setPOForm((prev) => ({ ...prev, paymentTerms: event.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Notes</Label>
+              <Textarea
+                value={poForm.notes}
+                onChange={(event) => setPOForm((prev) => ({ ...prev, notes: event.target.value }))}
+                placeholder="Vendor assignment notes, delivery instructions, or approval context"
+              />
+            </div>
+
+            <div className="rounded-md border bg-muted/30 p-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Source PR</span>
+                <span className="font-mono">{pr.prNo}</span>
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-muted-foreground">PO value</span>
+                <span className="font-mono font-medium">{formatCurrency(Number(pr.totalEstimate), locale)}</span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPODialog(false)} disabled={creatingPO}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreatePO} disabled={creatingPO || !poForm.vendorId}>
+              {creatingPO ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
+              Create Issued PO
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

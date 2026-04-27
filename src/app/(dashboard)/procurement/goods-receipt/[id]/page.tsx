@@ -42,6 +42,7 @@ import {
   ExternalLink,
   PackagePlus,
   Info,
+  Landmark,
 } from "lucide-react";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/formatters";
 
@@ -70,6 +71,17 @@ interface GoodsReceipt {
   notes: string | null;
   createdAt: string;
   lines: GRNLine[];
+  accountingEntries?: AccountingEntry[];
+}
+
+interface AccountingEntry {
+  id: string;
+  entryNo: string;
+  date: string;
+  totalDebit: number;
+  totalCredit: number;
+  status: string;
+  postedAt: string | null;
 }
 
 interface AssetCategory {
@@ -117,8 +129,10 @@ export default function GRNDetailPage() {
   const [showRegisterDialog, setShowRegisterDialog] = useState(false);
   const [assetLines, setAssetLines] = useState<AssetLineForm[]>([]);
   const [registering, setRegistering] = useState(false);
+  const [postingAccounting, setPostingAccounting] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [registeredAssets, setRegisteredAssets] = useState<{ assetNo: string; id: string; name: string }[]>([]);
+  const [userRole, setUserRole] = useState("");
 
   async function fetchGRN() {
     const res = await fetch(`/api/v1/procurement/goods-receipt/${id}`);
@@ -136,6 +150,10 @@ export default function GRNDetailPage() {
   useEffect(() => {
     fetchGRN();
     fetchCategories();
+    fetch("/api/v1/auth/me")
+      .then((r) => r.json())
+      .then((json) => { if (json.success) setUserRole(json.data.role?.name ?? ""); })
+      .catch(() => {});
   }, [id]);
 
   function openRegisterDialog() {
@@ -195,6 +213,7 @@ export default function GRNDetailPage() {
           text: `${json.data.assetsCreated} asset(s) registered successfully.`,
         });
         setShowRegisterDialog(false);
+        fetchGRN();
       } else {
         setActionMsg({ type: "error", text: json.error?.message ?? "Registration failed." });
       }
@@ -202,6 +221,25 @@ export default function GRNDetailPage() {
       setActionMsg({ type: "error", text: "Network error." });
     } finally {
       setRegistering(false);
+    }
+  }
+
+  async function handlePostAccounting() {
+    setPostingAccounting(true);
+    setActionMsg(null);
+    try {
+      const res = await fetch(`/api/v1/procurement/goods-receipt/${id}/post-accounting`, { method: "POST" });
+      const json = await res.json();
+      if (json.success) {
+        setActionMsg({ type: "success", text: `Accounting entry ${json.data.entryNo} posted.` });
+        fetchGRN();
+      } else {
+        setActionMsg({ type: "error", text: json.error?.message ?? "Accounting post failed." });
+      }
+    } catch {
+      setActionMsg({ type: "error", text: "Network error." });
+    } finally {
+      setPostingAccounting(false);
     }
   }
 
@@ -228,6 +266,8 @@ export default function GRNDetailPage() {
   }
 
   const canRegisterAssets = grn.status === "ACCEPTED" && registeredAssets.length === 0;
+  const hasAccountingEntry = Boolean(grn.accountingEntries && grn.accountingEntries.length > 0);
+  const canPostAccounting = userRole === "ADMIN" && ["ACCEPTED", "PARTIAL"].includes(grn.status) && !hasAccountingEntry;
 
   return (
     <div className="space-y-6">
@@ -243,6 +283,12 @@ export default function GRNDetailPage() {
           <Button size="sm" onClick={openRegisterDialog}>
             <PackagePlus className="h-4 w-4 mr-2" />
             Register Assets
+          </Button>
+        )}
+        {canPostAccounting && (
+          <Button size="sm" variant="outline" onClick={handlePostAccounting} disabled={postingAccounting}>
+            {postingAccounting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Landmark className="h-4 w-4 mr-2" />}
+            Post Accounting
           </Button>
         )}
       </PageHeader>
@@ -425,6 +471,45 @@ export default function GRNDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Landmark className="h-4 w-4" />
+                Accounting
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {hasAccountingEntry ? (
+                <div className="space-y-3">
+                  {grn.accountingEntries?.map((entry) => (
+                    <div key={entry.id} className="rounded-md border p-3 text-sm">
+                      <div className="flex items-center justify-between">
+                        <Link href={`/finance/journal-entries/${entry.id}`} className="font-mono text-primary hover:underline">
+                          {entry.entryNo}
+                        </Link>
+                        <Badge variant={entry.status === "APPROVED" ? "default" : "outline"}>{entry.status}</Badge>
+                      </div>
+                      <div className="mt-2 flex justify-between text-muted-foreground">
+                        <span>Amount</span>
+                        <span className="font-mono">{formatCurrency(Number(entry.totalDebit), locale)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">No accounting entry posted yet.</p>
+                  {canPostAccounting && (
+                    <Button size="sm" className="w-full" onClick={handlePostAccounting} disabled={postingAccounting}>
+                      {postingAccounting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Landmark className="h-4 w-4 mr-2" />}
+                      Post Fixed Asset Entry
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 

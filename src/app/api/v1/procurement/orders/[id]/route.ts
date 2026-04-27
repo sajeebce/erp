@@ -26,9 +26,32 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         deletedAt: null,
       },
       include: {
-        lines: { orderBy: { sortOrder: 'asc' } },
+        lines: {
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            prLine: {
+              select: {
+                id: true,
+                prId: true,
+                requisition: {
+                  select: { id: true, prNo: true, status: true },
+                },
+              },
+            },
+          },
+        },
         vendor: {
           select: { id: true, vendorNo: true, companyName: true },
+        },
+        goodsReceipts: {
+          select: {
+            id: true,
+            grnNo: true,
+            date: true,
+            status: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
         },
       },
     })

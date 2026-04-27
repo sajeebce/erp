@@ -98,6 +98,28 @@ export async function POST(request: NextRequest) {
       return apiBadRequest('Purchase order not found or does not belong to your organization')
     }
 
+    const poLineIds = new Set(po.lines.map((line) => line.id))
+    for (const line of lines) {
+      if (!line.poLineId || !poLineIds.has(line.poLineId)) {
+        return apiBadRequest(`PO line ${line.poLineId || '(missing)'} does not belong to this purchase order`)
+      }
+    }
+
+    const totalAccepted = lines.reduce(
+      (sum: number, line: { quantityAccepted?: number }) => sum + Number(line.quantityAccepted || 0),
+      0
+    )
+    const totalRejected = lines.reduce(
+      (sum: number, line: { quantityRejected?: number }) => sum + Number(line.quantityRejected || 0),
+      0
+    )
+    const receiptStatus =
+      totalAccepted > 0 && totalRejected > 0
+        ? 'PARTIAL'
+        : totalAccepted > 0
+          ? 'ACCEPTED'
+          : 'REJECTED'
+
     const grnNo = await generateNextNumber(auth.organizationId, 'goods_receipt')
 
     const receipt = await prisma.goodsReceipt.create({
@@ -107,6 +129,7 @@ export async function POST(request: NextRequest) {
         poId,
         vendorId: po.vendorId,
         receivedById: auth.userId,
+        status: receiptStatus,
         inspectionNotes: inspectionNotes || null,
         notes: notes || null,
         lines: {

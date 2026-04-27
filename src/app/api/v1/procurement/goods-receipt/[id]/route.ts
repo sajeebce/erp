@@ -43,7 +43,25 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return apiNotFound('Goods receipt not found')
     }
 
-    return apiSuccess(receipt)
+    const accountingEntries = await prisma.journalEntry.findMany({
+      where: {
+        sourceModule: 'PROCUREMENT_GRN',
+        sourceId: receipt.id,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        entryNo: true,
+        date: true,
+        totalDebit: true,
+        totalCredit: true,
+        status: true,
+        postedAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    return apiSuccess({ ...receipt, accountingEntries })
   } catch (error) {
     return handleRouteError(error)
   }

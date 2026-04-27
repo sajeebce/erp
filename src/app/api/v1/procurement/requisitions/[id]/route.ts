@@ -16,20 +16,48 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-async function findRequisition(id: string, organizationId: string) {
-  return prisma.purchaseRequisition.findFirst({
+async function canAccessRequisition(
+  requisition: { project: { organizationId: string } | null; requestedById: string },
+  organizationId: string,
+  userId: string
+) {
+  if (requisition.project?.organizationId === organizationId) {
+    return true
+  }
+
+  if (requisition.requestedById === userId) {
+    return true
+  }
+
+  const requester = await prisma.user.findFirst({
+    where: {
+      id: requisition.requestedById,
+      organizationId,
+      deletedAt: null,
+    },
+    select: { id: true },
+  })
+
+  return Boolean(requester)
+}
+
+async function findRequisition(id: string, organizationId: string, userId: string) {
+  const requisition = await prisma.purchaseRequisition.findFirst({
     where: {
       id,
       deletedAt: null,
-      OR: [
-        { project: { organizationId } },
-        { requestedById: { not: undefined } },
-      ],
     },
     include: {
       project: { select: { organizationId: true } },
     },
   })
+
+  if (!requisition) {
+    return null
+  }
+
+  const allowed = await canAccessRequisition(requisition, organizationId, userId)
+  return allowed ? requisition : null
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
@@ -37,15 +65,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const auth = await requireAuthFromRequest(request)
     const { id } = await params
 
+    const basicRequisition = await findRequisition(id, auth.organizationId, auth.userId)
+
+    if (!basicRequisition) {
+      return apiNotFound('Purchase requisition not found')
+    }
+
     const requisition = await prisma.purchaseRequisition.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-        OR: [
-          { project: { organizationId: auth.organizationId } },
-          { requestedById: auth.userId },
-        ],
-      },
+      where: { id, deletedAt: null },
       include: {
         lines: {
           orderBy: { sortOrder: 'asc' },
@@ -68,7 +95,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const auth = await requireAuthFromRequest(request)
     const { id } = await params
 
-    const existing = await findRequisition(id, auth.organizationId)
+    const existing = await findRequisition(id, auth.organizationId, auth.userId)
 
     if (!existing) {
       return apiNotFound('Purchase requisition not found')
@@ -135,7 +162,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const auth = await requireAuthFromRequest(request)
     const { id } = await params
 
-    const existing = await findRequisition(id, auth.organizationId)
+    const existing = await findRequisition(id, auth.organizationId, auth.userId)
 
     if (!existing) {
       return apiNotFound('Purchase requisition not found')
