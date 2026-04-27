@@ -158,7 +158,7 @@ export default function PRDetailPage() {
     );
   }
 
-  const canApprove = ["SUBMITTED", "REVIEWED"].includes(pr.status);
+  const canApprove = ["DRAFT", "SUBMITTED", "REVIEWED"].includes(pr.status);
 
   return (
     <div className="space-y-6">
