@@ -86,6 +86,8 @@ export async function POST(request: NextRequest) {
       return apiBadRequest('At least one line item is required')
     }
 
+    let budgetWarning: string | null = null
+
     // If projectId provided, validate it belongs to org
     if (projectId) {
       const project = await prisma.project.findFirst({
@@ -96,48 +98,46 @@ export async function POST(request: NextRequest) {
         return apiBadRequest('Project not found or does not belong to your organization')
       }
 
-      // Validate project-level budget
       const linesTotal = lines.reduce(
         (sum: number, l: { quantity?: number; estimatedPrice?: number }) =>
           sum + (Number(l.quantity || 0) * Number(l.estimatedPrice || 0)),
         0
       )
+
+      // Project-level budget check — warn, do not block
       const remaining = Number(project.totalBudget) - Number(project.amountSpent)
       if (linesTotal > remaining) {
-        return apiBadRequest(
-          `Total estimate (${linesTotal}) exceeds remaining project budget (${remaining})`
-        )
+        budgetWarning = `Total estimate (${linesTotal.toFixed(2)}) exceeds remaining project budget (${remaining.toFixed(2)}). Proceed with approval at your discretion.`
       }
 
-      // Cross-module: validate against active/approved Budget if one exists
-      const activeBudget = await prisma.budget.findFirst({
-        where: {
-          projectId,
-          status: { in: ['APPROVED', 'ACTIVE'] },
-          deletedAt: null,
-        },
-        select: { id: true, totalAmount: true },
-      })
-
-      if (activeBudget) {
-        // Sum totalEstimate of all existing non-rejected PRs linked to this project
-        const existingPRAggregate = await prisma.purchaseRequisition.aggregate({
+      // Cross-module: check against active/approved Budget if one exists — warn, do not block
+      if (!budgetWarning) {
+        const activeBudget = await prisma.budget.findFirst({
           where: {
             projectId,
-            status: { notIn: ['REJECTED', 'CANCELLED'] as any },
+            status: { in: ['APPROVED', 'ACTIVE'] },
             deletedAt: null,
           },
-          _sum: { totalEstimate: true },
+          select: { id: true, totalAmount: true },
         })
 
-        const committedAmount = Number(existingPRAggregate._sum.totalEstimate || 0)
-        const budgetTotal = Number(activeBudget.totalAmount)
-        const availableBudget = budgetTotal - committedAmount
+        if (activeBudget) {
+          const existingPRAggregate = await prisma.purchaseRequisition.aggregate({
+            where: {
+              projectId,
+              status: { notIn: ['REJECTED', 'CANCELLED'] as any },
+              deletedAt: null,
+            },
+            _sum: { totalEstimate: true },
+          })
 
-        if (linesTotal > availableBudget) {
-          return apiBadRequest(
-            `Insufficient budget. Available: ${availableBudget.toFixed(2)}, Requested: ${linesTotal.toFixed(2)}`
-          )
+          const committedAmount = Number(existingPRAggregate._sum.totalEstimate || 0)
+          const budgetTotal = Number(activeBudget.totalAmount)
+          const availableBudget = budgetTotal - committedAmount
+
+          if (linesTotal > availableBudget) {
+            budgetWarning = `Requested amount (${linesTotal.toFixed(2)}) exceeds available budget (${availableBudget.toFixed(2)}). Proceed with approval at your discretion.`
+          }
         }
       }
     }
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
       ...audit,
     })
 
-    return apiCreated(requisition)
+    return apiCreated({ ...requisition, budgetWarning })
   } catch (error) {
     return handleRouteError(error)
   }

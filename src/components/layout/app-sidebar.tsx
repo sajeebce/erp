@@ -35,7 +35,33 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronRight, Building, ChevronsUpDown, LogOut, User, Settings } from "lucide-react";
 import { navigation } from "@/data/navigation";
+import { type NavItem, type NavSubItem } from "@/types";
 import { cn } from "@/lib/utils";
+
+function canSee(allowedRoles: string[] | undefined, roleName: string): boolean {
+  if (roleName === "ADMIN") return true;
+  if (allowedRoles === undefined) return false;
+  if (allowedRoles.includes("*")) return true;
+  return allowedRoles.includes(roleName);
+}
+
+function filterSubItems(items: NavSubItem[], roleName: string): NavSubItem[] {
+  return items
+    .filter((item) => canSee(item.allowedRoles, roleName))
+    .map((item) => ({
+      ...item,
+      items: item.items ? filterSubItems(item.items, roleName) : undefined,
+    }));
+}
+
+function filterNavigation(items: NavItem[], roleName: string): NavItem[] {
+  return items
+    .filter((item) => canSee(item.allowedRoles, roleName))
+    .map((item) => ({
+      ...item,
+      items: item.items ? filterSubItems(item.items, roleName) : undefined,
+    }));
+}
 
 const navGroups = [
   {
@@ -62,14 +88,12 @@ const navGroups = [
     dotClass: "bg-slate-400",
     urls: ["/reports", "/settings"],
   },
-].map((group) => ({
-  ...group,
-  items: navigation.filter((n) => group.urls.includes(n.url)),
-}));
+];
 
 interface UserInfo {
   fullName: string;
   email: string;
+  roleName: string;
 }
 
 export function AppSidebar() {
@@ -82,7 +106,13 @@ export function AppSidebar() {
     fetch("/api/v1/auth/me")
       .then((res) => res.json())
       .then((json) => {
-        if (json.success) setUser({ fullName: json.data.fullName, email: json.data.email });
+        if (json.success) {
+          setUser({
+            fullName: json.data.fullName,
+            email: json.data.email,
+            roleName: json.data.role?.name ?? "ADMIN",
+          });
+        }
       })
       .catch(() => {});
   }, []);
@@ -101,6 +131,16 @@ export function AppSidebar() {
     .join("")
     .slice(0, 2)
     .toUpperCase() || "?";
+
+  const roleName = user?.roleName ?? "ADMIN";
+  const filteredNav = filterNavigation(navigation, roleName);
+
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: filteredNav.filter((n) => group.urls.includes(n.url)),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <Sidebar collapsible="icon">
@@ -124,7 +164,7 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        {navGroups.map((group, groupIndex) => (
+        {visibleGroups.map((group, groupIndex) => (
           <div key={group.labelKey}>
             {groupIndex > 0 && <SidebarSeparator className="mx-3" />}
             <SidebarGroup

@@ -1,4 +1,9 @@
-import { getTranslations, getLocale } from 'next-intl/server';
+"use client";
+
+import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
+import Link from "next/link";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,250 +16,197 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Plus, Download } from "lucide-react";
+import { Plus, Download, Loader2 } from "lucide-react";
 import { formatDate, formatNumber } from "@/lib/formatters";
 
 interface GoodsReceipt {
   id: string;
+  grnNo: string;
   date: string;
-  poReference: string;
-  vendor: string;
-  items: string;
-  quantityOrdered: number;
-  quantityReceived: number;
-  inspectionStatus: "Passed" | "Failed" | "Partial";
-  receivedBy: string;
-  status: "Pending Inspection" | "Accepted" | "Rejected" | "Partial";
+  poId: string;
+  purchaseOrder: { poNo: string } | null;
+  vendorId: string;
+  vendor: { companyName: string } | null;
+  receivedById: string;
+  status: string;
+  inspectionNotes: string | null;
+  createdAt: string;
+  _count: { lines: number };
 }
-
-const goodsReceipts: GoodsReceipt[] = [
-  {
-    id: "GRN-2026-001",
-    date: "2026-01-25",
-    poReference: "PO-2026-002",
-    vendor: "Dhaka IT Hub",
-    items: "Laptops, Printers, Networking Equipment",
-    quantityOrdered: 13,
-    quantityReceived: 13,
-    inspectionStatus: "Passed",
-    receivedBy: "Shakil Ahmed",
-    status: "Accepted",
-  },
-  {
-    id: "GRN-2026-002",
-    date: "2026-01-28",
-    poReference: "PO-2026-005",
-    vendor: "Jamuna Stationery House",
-    items: "Training Manuals, Notebooks, Pens, Flip Charts",
-    quantityOrdered: 500,
-    quantityReceived: 500,
-    inspectionStatus: "Passed",
-    receivedBy: "Anwar Hossain",
-    status: "Accepted",
-  },
-  {
-    id: "GRN-2026-003",
-    date: "2026-01-30",
-    poReference: "PO-2026-004",
-    vendor: "Green Agro Bangladesh",
-    items: "Rice Seeds, Wheat Seeds",
-    quantityOrdered: 800,
-    quantityReceived: 500,
-    inspectionStatus: "Partial",
-    receivedBy: "Kamrul Hasan",
-    status: "Partial",
-  },
-  {
-    id: "GRN-2026-004",
-    date: "2026-02-01",
-    poReference: "PO-2026-001",
-    vendor: "Bengal Office Solutions Ltd.",
-    items: "Office Desks, Chairs",
-    quantityOrdered: 30,
-    quantityReceived: 30,
-    inspectionStatus: "Failed",
-    receivedBy: "Rezaul Karim",
-    status: "Rejected",
-  },
-  {
-    id: "GRN-2026-005",
-    date: "2026-02-03",
-    poReference: "PO-2026-003",
-    vendor: "Padma Medical Supplies",
-    items: "Medical Kits, First Aid Supplies",
-    quantityOrdered: 100,
-    quantityReceived: 100,
-    inspectionStatus: "Passed",
-    receivedBy: "Dr. Nasreen Jahan",
-    status: "Accepted",
-  },
-  {
-    id: "GRN-2026-006",
-    date: "2026-02-05",
-    poReference: "PO-2026-004",
-    vendor: "Green Agro Bangladesh",
-    items: "Vegetable Seeds, Fertilizers",
-    quantityOrdered: 300,
-    quantityReceived: 300,
-    inspectionStatus: "Passed",
-    receivedBy: "Kamrul Hasan",
-    status: "Accepted",
-  },
-  {
-    id: "GRN-2026-007",
-    date: "2026-02-06",
-    poReference: "PO-2026-006",
-    vendor: "Meghna Construction Co.",
-    items: "Tube Well Materials, Hand Pumps",
-    quantityOrdered: 50,
-    quantityReceived: 50,
-    inspectionStatus: "Passed",
-    receivedBy: "Faruk Ahmed",
-    status: "Pending Inspection",
-  },
-  {
-    id: "GRN-2026-008",
-    date: "2026-02-07",
-    poReference: "PO-2026-001",
-    vendor: "Bengal Office Solutions Ltd.",
-    items: "Filing Cabinets (Replacement Batch)",
-    quantityOrdered: 15,
-    quantityReceived: 15,
-    inspectionStatus: "Passed",
-    receivedBy: "Rezaul Karim",
-    status: "Pending Inspection",
-  },
-];
 
 function getStatusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
   switch (status) {
-    case "Accepted": return "default";
-    case "Pending Inspection": return "secondary";
-    case "Rejected": return "destructive";
-    case "Partial": return "outline";
+    case "ACCEPTED": return "default";
+    case "PENDING_INSPECTION": return "secondary";
+    case "REJECTED": return "destructive";
+    case "PARTIAL": return "outline";
     default: return "outline";
   }
 }
 
-function getInspectionVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
-  switch (status) {
-    case "Passed": return "default";
-    case "Failed": return "destructive";
-    case "Partial": return "outline";
-    default: return "outline";
-  }
+function getStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    ACCEPTED: "Accepted",
+    PENDING_INSPECTION: "Pending Inspection",
+    REJECTED: "Rejected",
+    PARTIAL: "Partial",
+  };
+  return map[status] ?? status;
 }
 
-export default async function GoodsReceiptPage() {
-  const t = await getTranslations('procurement');
-  const tc = await getTranslations('common');
-  const locale = await getLocale();
+export default function GoodsReceiptPage() {
+  const t = useTranslations("procurement");
+  const tc = useTranslations("common");
+  const locale = useLocale();
 
-  const totalGRNs = goodsReceipts.length;
-  const pendingInspection = goodsReceipts.filter((g) => g.status === "Pending Inspection").length;
-  const accepted = goodsReceipts.filter((g) => g.status === "Accepted").length;
-  const rejected = goodsReceipts.filter((g) => g.status === "Rejected").length;
+  const [receipts, setReceipts] = useState<GoodsReceipt[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/v1/procurement/goods-receipt?limit=50")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success) {
+          setReceipts(json.data);
+          setTotal(json.meta?.total ?? json.data.length);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const pendingInspection = receipts.filter((g) => g.status === "PENDING_INSPECTION").length;
+  const accepted = receipts.filter((g) => g.status === "ACCEPTED").length;
+  const rejected = receipts.filter((g) => g.status === "REJECTED").length;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={t('goodsReceipt.title')}
-        description={t('goodsReceipt.description')}
+        title={t("goodsReceipt.title")}
+        description={t("goodsReceipt.description")}
       >
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
-          {tc('buttons.export')}
+          {tc("buttons.export")}
         </Button>
         <Button size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          {t('goodsReceipt.newGRN')}
+          {t("goodsReceipt.newGRN")}
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('goodsReceipt.totalGRNs')}</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {t("goodsReceipt.totalGRNs")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{totalGRNs}</p>
+            <p className="text-2xl font-bold">{loading ? "—" : total}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('goodsReceipt.pendingInspection')}</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {t("goodsReceipt.pendingInspection")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-amber-600">{pendingInspection}</p>
+            <p className="text-2xl font-bold text-amber-600">{loading ? "—" : pendingInspection}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('goodsReceipt.accepted')}</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {t("goodsReceipt.accepted")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-emerald-600">{accepted}</p>
+            <p className="text-2xl font-bold text-emerald-600">{loading ? "—" : accepted}</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('goodsReceipt.rejected')}</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {t("goodsReceipt.rejected")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-red-600">{rejected}</p>
+            <p className="text-2xl font-bold text-red-600">{loading ? "—" : rejected}</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>{t('goodsReceipt.goodsReceiptNotes')}</CardTitle>
+          <CardTitle>{t("goodsReceipt.goodsReceiptNotes")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[130px]">{t('goodsReceipt.grnNo')}</TableHead>
-                <TableHead>{t('goodsReceipt.date')}</TableHead>
-                <TableHead>{t('goodsReceipt.poReference')}</TableHead>
-                <TableHead>{t('goodsReceipt.vendor')}</TableHead>
-                <TableHead>{t('goodsReceipt.items')}</TableHead>
-                <TableHead className="text-right">{t('goodsReceipt.qtyOrdered')}</TableHead>
-                <TableHead className="text-right">{t('goodsReceipt.qtyReceived')}</TableHead>
-                <TableHead>{t('goodsReceipt.inspection')}</TableHead>
-                <TableHead>{t('goodsReceipt.receivedBy')}</TableHead>
-                <TableHead>{tc('labels.status')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {goodsReceipts.map((grn) => (
-                <TableRow key={grn.id}>
-                  <TableCell className="font-mono text-sm">{grn.id}</TableCell>
-                  <TableCell>{formatDate(grn.date, locale)}</TableCell>
-                  <TableCell className="font-mono text-sm">{grn.poReference}</TableCell>
-                  <TableCell className="font-medium">{grn.vendor}</TableCell>
-                  <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                    {grn.items}
-                  </TableCell>
-                  <TableCell className="text-right font-mono">{formatNumber(grn.quantityOrdered, locale)}</TableCell>
-                  <TableCell className={`text-right font-mono ${grn.quantityReceived < grn.quantityOrdered ? "text-amber-600" : ""}`}>
-                    {formatNumber(grn.quantityReceived, locale)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getInspectionVariant(grn.inspectionStatus)} className="text-[10px]">
-                      {grn.inspectionStatus}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{grn.receivedBy}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusVariant(grn.status)}>
-                      {grn.status}
-                    </Badge>
-                  </TableCell>
+          {loading ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              Loading...
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[130px]">{t("goodsReceipt.grnNo")}</TableHead>
+                  <TableHead>{t("goodsReceipt.date")}</TableHead>
+                  <TableHead>{t("goodsReceipt.poReference")}</TableHead>
+                  <TableHead>{t("goodsReceipt.vendor")}</TableHead>
+                  <TableHead className="text-right">Lines</TableHead>
+                  <TableHead>{tc("labels.status")}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {receipts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      No goods receipts found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  receipts.map((grn) => (
+                    <TableRow key={grn.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell className="font-mono text-sm">
+                        <Link
+                          href={`/procurement/goods-receipt/${grn.id}`}
+                          className="hover:underline text-primary"
+                        >
+                          {grn.grnNo}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{formatDate(grn.date, locale)}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {grn.purchaseOrder ? (
+                          <Link
+                            href={`/procurement/orders/${grn.poId}`}
+                            className="hover:underline text-primary"
+                          >
+                            {grn.purchaseOrder.poNo}
+                          </Link>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {grn.vendor?.companyName ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatNumber(grn._count.lines, locale)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusVariant(grn.status)}>
+                          {getStatusLabel(grn.status)}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
