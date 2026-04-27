@@ -100,6 +100,7 @@ export default function PRDetailPage() {
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [userRole, setUserRole] = useState<string>("");
 
   async function fetchPR() {
     const res = await fetch(`/api/v1/procurement/requisitions/${id}`);
@@ -115,7 +116,13 @@ export default function PRDetailPage() {
     setLoading(false);
   }
 
-  useEffect(() => { fetchPR(); }, [id]);
+  useEffect(() => {
+    fetchPR();
+    fetch("/api/v1/auth/me")
+      .then((r) => r.json())
+      .then((json) => { if (json.success) setUserRole(json.data.role?.name ?? ""); })
+      .catch(() => {});
+  }, [id]);
 
   async function handleApprove() {
     setApproving(true);
@@ -158,7 +165,7 @@ export default function PRDetailPage() {
     );
   }
 
-  const canApprove = ["DRAFT", "SUBMITTED", "REVIEWED"].includes(pr.status);
+  const canApprove = userRole === "ADMIN" && ["DRAFT", "SUBMITTED", "REVIEWED"].includes(pr.status);
 
   return (
     <div className="space-y-6">
