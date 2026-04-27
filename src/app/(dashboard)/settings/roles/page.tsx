@@ -1,209 +1,203 @@
-import { getTranslations } from 'next-intl/server';
+"use client";
+
+import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Shield, Users, Eye, PenLine, Trash2 } from "lucide-react";
-
-interface Permission {
-  module: string;
-  access: "Full" | "Read/Write" | "Read Only" | "No Access";
-}
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Plus, Shield, Users, Loader2, CheckCircle, Wand2 } from "lucide-react";
 
 interface Role {
+  id: string;
   name: string;
-  description: string;
-  usersAssigned: number;
-  permissions: Permission[];
+  description: string | null;
+  isSystem: boolean;
+  userCount: number;
+  permissionCount: number;
+  createdAt: string;
 }
 
-const roles: Role[] = [
-  {
-    name: "Super Admin",
-    description: "Full system access with all administrative capabilities",
-    usersAssigned: 1,
-    permissions: [
-      { module: "Finance", access: "Full" },
-      { module: "Budget", access: "Full" },
-      { module: "Projects", access: "Full" },
-      { module: "HR", access: "Full" },
-      { module: "Procurement", access: "Full" },
-      { module: "Settings", access: "Full" },
-      { module: "Reports", access: "Full" },
-    ],
-  },
-  {
-    name: "Finance Admin",
-    description: "Manage all financial operations, vouchers, and fund tracking",
-    usersAssigned: 2,
-    permissions: [
-      { module: "Finance", access: "Full" },
-      { module: "Budget", access: "Full" },
-      { module: "Projects", access: "Read Only" },
-      { module: "HR", access: "No Access" },
-      { module: "Procurement", access: "Read/Write" },
-      { module: "Settings", access: "No Access" },
-      { module: "Reports", access: "Full" },
-    ],
-  },
-  {
-    name: "Program Manager",
-    description: "Oversee project implementation, beneficiaries, and M&E activities",
-    usersAssigned: 1,
-    permissions: [
-      { module: "Finance", access: "Read Only" },
-      { module: "Budget", access: "Read/Write" },
-      { module: "Projects", access: "Full" },
-      { module: "HR", access: "Read Only" },
-      { module: "Procurement", access: "Read/Write" },
-      { module: "Settings", access: "No Access" },
-      { module: "Reports", access: "Read/Write" },
-    ],
-  },
-  {
-    name: "HR Manager",
-    description: "Manage staff records, attendance, payroll, and performance",
-    usersAssigned: 1,
-    permissions: [
-      { module: "Finance", access: "Read Only" },
-      { module: "Budget", access: "Read Only" },
-      { module: "Projects", access: "Read Only" },
-      { module: "HR", access: "Full" },
-      { module: "Procurement", access: "No Access" },
-      { module: "Settings", access: "No Access" },
-      { module: "Reports", access: "Read/Write" },
-    ],
-  },
-  {
-    name: "Field Officer",
-    description: "Record field data, beneficiary enrollment, and activity progress",
-    usersAssigned: 3,
-    permissions: [
-      { module: "Finance", access: "No Access" },
-      { module: "Budget", access: "Read Only" },
-      { module: "Projects", access: "Read/Write" },
-      { module: "HR", access: "Read Only" },
-      { module: "Procurement", access: "Read Only" },
-      { module: "Settings", access: "No Access" },
-      { module: "Reports", access: "Read Only" },
-    ],
-  },
-  {
-    name: "Data Entry Operator",
-    description: "Enter transactional data for finance, procurement, and HR modules",
-    usersAssigned: 2,
-    permissions: [
-      { module: "Finance", access: "Read/Write" },
-      { module: "Budget", access: "Read Only" },
-      { module: "Projects", access: "Read Only" },
-      { module: "HR", access: "Read/Write" },
-      { module: "Procurement", access: "Read/Write" },
-      { module: "Settings", access: "No Access" },
-      { module: "Reports", access: "Read Only" },
-    ],
-  },
-  {
-    name: "Auditor (Read Only)",
-    description: "Review all modules for audit and compliance without modification rights",
-    usersAssigned: 1,
-    permissions: [
-      { module: "Finance", access: "Read Only" },
-      { module: "Budget", access: "Read Only" },
-      { module: "Projects", access: "Read Only" },
-      { module: "HR", access: "Read Only" },
-      { module: "Procurement", access: "Read Only" },
-      { module: "Settings", access: "Read Only" },
-      { module: "Reports", access: "Read Only" },
-    ],
-  },
-  {
-    name: "Branch Manager",
-    description: "Manage operations for a specific regional office or branch",
-    usersAssigned: 1,
-    permissions: [
-      { module: "Finance", access: "Read/Write" },
-      { module: "Budget", access: "Read Only" },
-      { module: "Projects", access: "Read/Write" },
-      { module: "HR", access: "Read/Write" },
-      { module: "Procurement", access: "Read/Write" },
-      { module: "Settings", access: "No Access" },
-      { module: "Reports", access: "Read/Write" },
-    ],
-  },
-];
+export default function RolesPage() {
+  const t = useTranslations("settings");
 
-function getAccessVariant(access: string): "default" | "secondary" | "outline" | "destructive" {
-  switch (access) {
-    case "Full": return "default";
-    case "Read/Write": return "secondary";
-    case "Read Only": return "outline";
-    case "No Access": return "destructive";
-    default: return "outline";
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const [formName, setFormName] = useState("");
+  const [formDesc, setFormDesc] = useState("");
+
+  async function fetchRoles() {
+    const res = await fetch("/api/v1/settings/roles");
+    const json = await res.json();
+    if (json.success) setRoles(json.data);
+    setLoading(false);
   }
-}
 
-function getAccessIcon(access: string) {
-  switch (access) {
-    case "Full": return <Shield className="h-3 w-3" />;
-    case "Read/Write": return <PenLine className="h-3 w-3" />;
-    case "Read Only": return <Eye className="h-3 w-3" />;
-    case "No Access": return <Trash2 className="h-3 w-3" />;
-    default: return null;
+  useEffect(() => { fetchRoles(); }, []);
+
+  async function handleCreate() {
+    if (!formName.trim()) return;
+    setCreating(true);
+    setMsg(null);
+    const res = await fetch("/api/v1/settings/roles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: formName.trim(), description: formDesc.trim() || null }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      setMsg({ type: "success", text: `Role "${json.data.name}" created.` });
+      setShowCreate(false);
+      setFormName("");
+      setFormDesc("");
+      fetchRoles();
+    } else {
+      setMsg({ type: "error", text: json.error?.message ?? "Failed to create role." });
+    }
+    setCreating(false);
   }
-}
 
-export default async function RolesPage() {
-  const t = await getTranslations('settings');
+  async function handleSeedRoles() {
+    setSeeding(true);
+    setMsg(null);
+    const res = await fetch("/api/v1/settings/seed-roles", { method: "POST" });
+    const json = await res.json();
+    if (json.success) {
+      setMsg({ type: "success", text: json.data.message });
+      fetchRoles();
+    } else {
+      setMsg({ type: "error", text: json.error?.message ?? "Seeding failed." });
+    }
+    setSeeding(false);
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={t('roles.title')}
-        description={t('roles.description')}
+        title={t("roles.title")}
+        description={t("roles.description")}
       >
-        <Button size="sm">
+        <Button variant="outline" size="sm" onClick={handleSeedRoles} disabled={seeding}>
+          {seeding
+            ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            : <Wand2 className="h-4 w-4 mr-2" />
+          }
+          Seed Standard Roles
+        </Button>
+        <Button size="sm" onClick={() => { setShowCreate(true); setMsg(null); }}>
           <Plus className="h-4 w-4 mr-2" />
-          {t('roles.createRole')}
+          {t("roles.createRole")}
         </Button>
       </PageHeader>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {roles.map((role) => (
-          <Card key={role.name}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">{role.name}</CardTitle>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Users className="h-3 w-3" />
-                  <span>{role.usersAssigned}</span>
-                </div>
-              </div>
-              <CardDescription>{role.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  {t('roles.modulePermissions')}
-                </p>
-                <div className="space-y-1.5">
-                  {role.permissions.map((perm) => (
-                    <div
-                      key={perm.module}
-                      className="flex items-center justify-between text-sm"
-                    >
-                      <span>{perm.module}</span>
-                      <Badge variant={getAccessVariant(perm.access)} className="text-xs">
-                        {getAccessIcon(perm.access)}
-                        <span className="ml-1">{perm.access}</span>
-                      </Badge>
+      {msg && (
+        <Alert className={msg.type === "success"
+          ? "border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/20"
+          : "border-destructive/50 bg-destructive/5"
+        }>
+          {msg.type === "success"
+            ? <CheckCircle className="h-4 w-4 text-emerald-600" />
+            : <Shield className="h-4 w-4 text-destructive" />
+          }
+          <AlertDescription className={msg.type === "success" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}>
+            {msg.text}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin mr-2" />
+          Loading roles...
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {roles.length === 0 ? (
+            <div className="col-span-3 text-center py-12 text-muted-foreground">
+              No roles found. Click "Seed Standard Roles" to create STORE_MANAGER and REQUESTER.
+            </div>
+          ) : (
+            roles.map((role) => (
+              <Card key={role.id}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      {role.name}
+                      {role.isSystem && (
+                        <Badge variant="secondary" className="text-[10px]">System</Badge>
+                      )}
+                    </CardTitle>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Users className="h-3 w-3" />
+                      <span>{role.userCount}</span>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  </div>
+                  {role.description && (
+                    <CardDescription>{role.description}</CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>{role.permissionCount} permissions</span>
+                    <span>{role.userCount} user{role.userCount !== 1 ? "s" : ""}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
+
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Role</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Role Name <span className="text-destructive">*</span></Label>
+              <Input
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="e.g. STORE_MANAGER"
+              />
+              <p className="text-xs text-muted-foreground">Use UPPERCASE_SNAKE_CASE for consistency.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Description</Label>
+              <Textarea
+                value={formDesc}
+                onChange={(e) => setFormDesc(e.target.value)}
+                placeholder="What can this role do?"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={creating || !formName.trim()}>
+              {creating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+              Create Role
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
