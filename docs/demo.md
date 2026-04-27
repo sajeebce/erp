@@ -153,12 +153,40 @@
 
 1. GRN detail page → **"Post Accounting"** button
 2. ✅ Journal Entry তৈরি:
-   - DR Fixed Assets (1204)
-   - CR Accounts Payable (2101)
+   - DR Fixed Assets (1204) — BDT 10,00,000
+   - CR Accounts Payable (2101) — BDT 10,00,000
 
 **Client কে দেখান:**
 - GRN থেকে automatic accounting
 - Budget linkage through dimensions
+
+---
+
+### Step 8 — Chart of Accounts এ Impact দেখান
+
+**Login:** Admin
+
+1. **Finance → Chart of Accounts** এ যান
+2. Account `1204` (Fixed Assets) খুঁজুন → click করুন
+3. দেখাবে:
+   - **Balance বেড়েছে** — BDT 10,00,000 debit (laptop purchase)
+   - Journal Entry reference: JE-XXXX
+4. Account `2101` (Accounts Payable) খুঁজুন → click করুন
+5. দেখাবে:
+   - **Balance বেড়েছে** — BDT 10,00,000 credit (vendor কে দেওয়া বাকি)
+
+**What accurate data দেখাবে:**
+
+| Account | Code | Movement | Amount |
+|---|---|---|---|
+| Fixed Assets | 1204 | DR (বেড়েছে) | BDT 10,00,000 |
+| Accounts Payable | 2101 | CR (বেড়েছে) | BDT 10,00,000 |
+
+**Client কে দেখান:**
+- Procurement থেকে Finance module এ automatically data গেছে
+- Manual journal entry করতে হয়নি
+- Double-entry accounting সঠিকভাবে হয়েছে
+- Audit trail — GRN number reference দেখা যাচ্ছে
 
 ---
 
@@ -172,6 +200,7 @@
 | PR → PO traceability | ✅ |
 | Stock/Asset update after receiving | ✅ |
 | Audit trail visibility | ✅ |
+| Chart of Accounts — automatic accounting impact | ✅ |
 
 ---
 
