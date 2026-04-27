@@ -9,8 +9,8 @@ const STANDARD_ROLES = [
     description: 'Can receive goods, manage inventory, register assets from GRN',
   },
   {
-    name: 'REQUESTER',
-    description: 'Can create and track purchase requisitions',
+    name: 'STAFF',
+    description: 'Can create and track purchase requisitions (staff member)',
   },
 ]
 

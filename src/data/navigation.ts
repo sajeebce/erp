@@ -109,9 +109,9 @@ export const navigation: NavItem[] = [
     title: "modules.procurement.title",
     url: "/procurement",
     icon: ShoppingCart,
-    allowedRoles: ["STORE_MANAGER", "REQUESTER"],
+    allowedRoles: ["STORE_MANAGER", "STAFF"],
     items: [
-      { title: "items.purchaseRequisition", url: "/procurement/requisitions", allowedRoles: ["REQUESTER", "STORE_MANAGER"] },
+      { title: "items.purchaseRequisition", url: "/procurement/requisitions", allowedRoles: ["STAFF", "STORE_MANAGER"] },
       { title: "items.purchaseOrders", url: "/procurement/orders" },
       { title: "items.eTendering", url: "/procurement/etendering" },
       { title: "items.vendorManagement", url: "/procurement/vendors" },
