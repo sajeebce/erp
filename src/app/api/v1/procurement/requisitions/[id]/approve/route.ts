@@ -8,6 +8,7 @@ import {
   apiForbidden,
   handleRouteError,
 } from '@/lib/api-response'
+import { checkProcurementBudget } from '@/lib/procurement-budget'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -25,6 +26,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
       include: {
         project: { select: { organizationId: true } },
+        lines: true,
       },
     })
 
@@ -52,12 +54,30 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return apiForbidden('Only DRAFT, SUBMITTED, or REVIEWED requisitions can be approved')
     }
 
+    const budgetCheck = await checkProcurementBudget({
+      organizationId: auth.organizationId,
+      requisitionId: requisition.id,
+      budgetId: requisition.budgetId,
+      businessUnitId: requisition.businessUnitId,
+      costCenterId: requisition.costCenterId,
+      fundClassId: requisition.fundClassId,
+      projectId: requisition.projectId,
+      totalEstimate: Number(requisition.totalEstimate),
+    })
+
     const updated = await prisma.purchaseRequisition.update({
       where: { id },
       data: {
         status: 'APPROVED',
         approvedById: auth.userId,
         approvedAt: new Date(),
+        budgetId: budgetCheck.budgetId || requisition.budgetId,
+        budgetCheckStatus: budgetCheck.status,
+        budgetWarningMessage: budgetCheck.message,
+        budgetCheckedAt: new Date(),
+        approvedWithBudgetWarning: budgetCheck.status === 'WARNING' || budgetCheck.status === 'NO_BUDGET',
+        warningApprovedById: budgetCheck.status === 'WARNING' || budgetCheck.status === 'NO_BUDGET' ? auth.userId : null,
+        warningApprovedAt: budgetCheck.status === 'WARNING' || budgetCheck.status === 'NO_BUDGET' ? new Date() : null,
       },
       select: {
         id: true,
@@ -65,6 +85,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         status: true,
         approvedById: true,
         approvedAt: true,
+        budgetCheckStatus: true,
+        budgetWarningMessage: true,
+        approvedWithBudgetWarning: true,
         updatedAt: true,
       },
     })
@@ -78,6 +101,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       resource: 'PurchaseRequisition',
       resourceId: id,
       description: `Approved purchase requisition ${requisition.prNo}`,
+      newValues: {
+        status: 'APPROVED',
+        budgetCheckStatus: budgetCheck.status,
+        budgetWarningMessage: budgetCheck.message,
+      },
       ...audit,
     })
 

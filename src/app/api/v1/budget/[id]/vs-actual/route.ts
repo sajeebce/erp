@@ -19,17 +19,26 @@ export async function GET(
     const budget = await prisma.budget.findFirst({
       where: {
         id,
-        project: { organizationId: auth.organizationId },
         deletedAt: null,
+        OR: [
+          { project: { organizationId: auth.organizationId } },
+          { businessUnit: { organizationId: auth.organizationId } },
+        ],
       },
       include: {
         project: {
           select: { id: true, name: true },
         },
+        businessUnit: {
+          select: { id: true, code: true, name: true, shortName: true },
+        },
         department: {
           select: { id: true, name: true, code: true },
         },
         costCenter: {
+          select: { id: true, name: true, code: true },
+        },
+        fundClass: {
           select: { id: true, name: true, code: true },
         },
         lines: {
@@ -47,18 +56,23 @@ export async function GET(
       return apiNotFound('Budget not found')
     }
 
-    // Get actual spend for each budget line from APPROVED journal entry lines
-    // where accountId matches and projectId matches the budget's project
+    // Get actual spend from APPROVED journal entry lines by budgetLineId first,
+    // then by account + budget dimensions for older records.
     const lineAnalysis = await Promise.all(
       budget.lines.map(async (line) => {
         const actualAggregate = await prisma.journalEntryLine.aggregate({
           where: {
-            accountId: line.accountId,
-            journalEntry: {
-              status: 'APPROVED',
-              projectId: budget.projectId,
-              deletedAt: null,
-            },
+            journalEntry: { status: 'APPROVED', deletedAt: null },
+            OR: [
+              { budgetLineId: line.id },
+              {
+                accountId: line.accountId,
+                businessUnitId: line.businessUnitId || budget.businessUnitId,
+                costCenterId: line.costCenterId || budget.costCenterId,
+                fundClassId: line.fundClassId || budget.fundClassId,
+                projectId: line.projectId || budget.projectId,
+              },
+            ],
           },
           _sum: { debit: true },
         })
@@ -116,8 +130,10 @@ export async function GET(
       budgetName: budget.name,
       budgetCode: budget.budgetCode,
       project: budget.project,
+      businessUnit: budget.businessUnit ?? null,
       department: budget.department ?? null,
       costCenter: budget.costCenter ?? null,
+      fundClass: budget.fundClass ?? null,
       currencyCode: budget.currencyCode,
       varianceThreshold: Number(budget.varianceThreshold),
       lines: lineAnalysis,

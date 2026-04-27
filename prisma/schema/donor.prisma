@@ -5,27 +5,27 @@
 // ═══════════════════════════════════════════
 
 model Donor {
-  id               String     @id @default(uuid()) @db.Uuid
-  organizationId   String     @db.Uuid
-  name             String
-  type             DonorType
-  country          String?
-  address          String?
-  phone            String?
-  email            String?
-  website          String?
-  description      String?
-  relationshipStatus String?  // "Active", "Prospect", "Inactive"
-  totalFunded      Decimal    @default(0) @db.Decimal(18, 2)
-  isActive         Boolean    @default(true)
-  notes            String?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-  deletedAt        DateTime?
+  id                 String    @id @default(uuid()) @db.Uuid
+  organizationId     String    @db.Uuid
+  name               String
+  type               DonorType
+  country            String?
+  address            String?
+  phone              String?
+  email              String?
+  website            String?
+  description        String?
+  relationshipStatus String? // "Active", "Prospect", "Inactive"
+  totalFunded        Decimal   @default(0) @db.Decimal(18, 2)
+  isActive           Boolean   @default(true)
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
 
-  organization     Organization @relation(fields: [organizationId], references: [id])
-  contacts         DonorContact[]
-  grants           Grant[]
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  contacts     DonorContact[]
+  grants       Grant[]
 
   @@index([organizationId])
   @@index([type])
@@ -41,7 +41,7 @@ model DonorContact {
   phone       String?
   isPrimary   Boolean @default(false)
 
-  donor       Donor   @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  donor Donor @relation(fields: [donorId], references: [id], onDelete: Cascade)
 
   @@index([donorId])
 }
@@ -59,7 +59,7 @@ model Grant {
   endDate         DateTime?
   status          GrantStatus         @default(PIPELINE)
   lifecycleStage  GrantLifecycleStage @default(IDENTIFICATION)
-  ngoabFdNo       String?             // NGOAB FD-1 reference number
+  ngoabFdNo       String? // NGOAB FD-1 reference number
   agreementRef    String?
   description     String?
   notes           String?
@@ -67,8 +67,8 @@ model Grant {
   updatedAt       DateTime            @updatedAt
   deletedAt       DateTime?
 
-  donor            Donor              @relation(fields: [donorId], references: [id])
-  project          Project?           @relation(fields: [projectId], references: [id])
+  donor   Donor    @relation(fields: [donorId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id])
 
   fundReceipts     FundReceipt[]
   fundRequisitions FundRequisition[]
@@ -83,28 +83,28 @@ model Grant {
 }
 
 model FundReceipt {
-  id              String            @id @default(uuid()) @db.Uuid
-  organizationId  String            @db.Uuid
-  receiptNo       String
-  date            DateTime
-  donorId         String            @db.Uuid
-  grantId         String            @db.Uuid
-  amount          Decimal           @db.Decimal(18, 2)
-  currencyCode    CurrencyCode      @default(BDT)
-  exchangeRate    Decimal           @default(1) @db.Decimal(18, 6)
-  amountInBDT     Decimal           @db.Decimal(18, 2)
-  bankAccountId   String            @db.Uuid
-  bankReference   String?
-  status          FundReceiptStatus @default(PENDING)
-  notes           String?
-  journalEntryId  String?           @db.Uuid
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  deletedAt       DateTime?
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @db.Uuid
+  receiptNo      String
+  date           DateTime
+  donorId        String            @db.Uuid
+  grantId        String            @db.Uuid
+  amount         Decimal           @db.Decimal(18, 2)
+  currencyCode   CurrencyCode      @default(BDT)
+  exchangeRate   Decimal           @default(1) @db.Decimal(18, 6)
+  amountInBDT    Decimal           @db.Decimal(18, 2)
+  bankAccountId  String            @db.Uuid
+  bankReference  String?
+  status         FundReceiptStatus @default(PENDING)
+  notes          String?
+  journalEntryId String?           @db.Uuid
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  deletedAt      DateTime?
 
-  organization   Organization      @relation(fields: [organizationId], references: [id])
-  grant          Grant             @relation(fields: [grantId], references: [id])
-  bankAccount    BankAccount       @relation(fields: [bankAccountId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  grant        Grant        @relation(fields: [grantId], references: [id])
+  bankAccount  BankAccount  @relation(fields: [bankAccountId], references: [id])
 
   @@unique([organizationId, receiptNo])
   @@index([organizationId])
@@ -115,24 +115,24 @@ model FundReceipt {
 }
 
 model FundRequisition {
-  id             String         @id @default(uuid()) @db.Uuid
-  requisitionNo  String         @unique
-  date           DateTime
-  grantId        String         @db.Uuid
-  projectId      String         @db.Uuid
-  amount         Decimal        @db.Decimal(18, 2)
-  purpose        String
-  requestedById  String         @db.Uuid // User FK — plain String, no @relation
-  status         ApprovalStatus @default(DRAFT)
-  approvedById   String?        @db.Uuid // User FK — plain String, no @relation
-  approvedAt     DateTime?
-  disbursedAt    DateTime?
-  notes          String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id            String         @id @default(uuid()) @db.Uuid
+  requisitionNo String         @unique
+  date          DateTime
+  grantId       String         @db.Uuid
+  projectId     String         @db.Uuid
+  amount        Decimal        @db.Decimal(18, 2)
+  purpose       String
+  requestedById String         @db.Uuid // User FK — plain String, no @relation
+  status        ApprovalStatus @default(DRAFT)
+  approvedById  String?        @db.Uuid // User FK — plain String, no @relation
+  approvedAt    DateTime?
+  disbursedAt   DateTime?
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
-  grant          Grant          @relation(fields: [grantId], references: [id])
-  project        Project        @relation(fields: [projectId], references: [id])
+  grant   Grant   @relation(fields: [grantId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
 
   @@index([grantId])
   @@index([projectId])
@@ -154,7 +154,7 @@ model DonorReport {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  grant         Grant             @relation(fields: [grantId], references: [id])
+  grant Grant @relation(fields: [grantId], references: [id])
 
   @@index([grantId])
   @@index([dueDate])

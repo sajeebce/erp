@@ -85,6 +85,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }> = {}
 
     for (const budget of budgets) {
+      if (!budget.projectId) continue
       const personnelLine = budget.lines.find((l) => l.category === 'Personnel')
       budgetByProject[budget.projectId] = {
         budgetId: budget.id,

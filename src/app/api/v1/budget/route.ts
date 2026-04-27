@@ -11,6 +11,7 @@ import {
 } from '@/lib/api-response'
 import { Prisma } from '@prisma/client'
 import { generateNextNumber } from '@/lib/number-sequence'
+import { validateDimensions } from '@/lib/dimension-validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,8 +21,11 @@ export async function GET(request: NextRequest) {
     const { page, limit, skip, search } = parsePaginationParams(url)
 
     const where: Record<string, unknown> = {
-      project: { organizationId: auth.organizationId },
       deletedAt: null,
+      OR: [
+        { project: { organizationId: auth.organizationId } },
+        { businessUnit: { organizationId: auth.organizationId } },
+      ],
     }
 
     if (search) {
@@ -34,6 +38,11 @@ export async function GET(request: NextRequest) {
     const projectId = url.searchParams.get('projectId')
     if (projectId) {
       where.projectId = projectId
+    }
+
+    const businessUnitId = url.searchParams.get('businessUnitId')
+    if (businessUnitId) {
+      where.businessUnitId = businessUnitId
     }
 
     const grantId = url.searchParams.get('grantId')
@@ -66,6 +75,11 @@ export async function GET(request: NextRequest) {
       where.costCenterId = costCenterId
     }
 
+    const fundClassId = url.searchParams.get('fundClassId')
+    if (fundClassId) {
+      where.fundClassId = fundClassId
+    }
+
     const [budgets, total] = await Promise.all([
       prisma.budget.findMany({
         where,
@@ -75,8 +89,10 @@ export async function GET(request: NextRequest) {
           name: true,
           budgetType: true,
           projectId: true,
+          businessUnitId: true,
           departmentId: true,
           costCenterId: true,
+          fundClassId: true,
           grantId: true,
           fiscalYearId: true,
           startDate: true,
@@ -101,10 +117,16 @@ export async function GET(request: NextRequest) {
           project: {
             select: { id: true, name: true },
           },
+          businessUnit: {
+            select: { id: true, code: true, name: true, shortName: true },
+          },
           department: {
             select: { id: true, name: true, code: true },
           },
           costCenter: {
+            select: { id: true, name: true, code: true },
+          },
+          fundClass: {
             select: { id: true, name: true, code: true },
           },
           grant: {
@@ -134,9 +156,21 @@ export async function GET(request: NextRequest) {
                 })
                 .then((lines) => lines.map((l) => l.accountId)),
             },
+            OR: [
+              { budgetLineId: { in: await prisma.budgetLine.findMany({ where: { budgetId: budget.id }, select: { id: true } }).then((lines) => lines.map((l) => l.id)) } },
+              {
+                journalEntry: {
+                  status: 'APPROVED',
+                  projectId: budget.projectId,
+                  deletedAt: null,
+                },
+                businessUnitId: budget.businessUnitId,
+                costCenterId: budget.costCenterId,
+                fundClassId: budget.fundClassId,
+              },
+            ],
             journalEntry: {
               status: 'APPROVED',
-              projectId: budget.projectId,
               deletedAt: null,
             },
           },
@@ -171,8 +205,10 @@ export async function POST(request: NextRequest) {
       name,
       budgetType,
       projectId,
+      businessUnitId,
       departmentId,
       costCenterId,
+      fundClassId,
       grantId,
       fiscalYearId,
       startDate,
@@ -194,8 +230,12 @@ export async function POST(request: NextRequest) {
     } = body
 
     // Basic required fields
-    if (!name || !projectId || !fiscalYearId || totalAmount === undefined) {
-      return apiBadRequest('name, projectId, fiscalYearId, and totalAmount are required')
+    if (!name || !fiscalYearId || totalAmount === undefined) {
+      return apiBadRequest('name, fiscalYearId, and totalAmount are required')
+    }
+
+    if (!projectId && !businessUnitId) {
+      return apiBadRequest('Either projectId or businessUnitId is required')
     }
 
     // Validate lines
@@ -257,15 +297,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate project belongs to org
-    const project = await prisma.project.findFirst({
-      where: {
-        id: projectId,
-        organizationId: auth.organizationId,
-      },
-    })
-    if (!project) {
-      return apiBadRequest('Project not found in this organization')
+    if (projectId) {
+      const project = await prisma.project.findFirst({
+        where: {
+          id: projectId,
+          organizationId: auth.organizationId,
+        },
+      })
+      if (!project) {
+        return apiBadRequest('Project not found in this organization')
+      }
     }
+
+    const dimensionError = await validateDimensions(auth.organizationId, {
+      businessUnitId: businessUnitId || null,
+      costCenterId: costCenterId || null,
+      fundClassId: fundClassId || null,
+      projectId: projectId || null,
+      grantId: grantId || null,
+    })
+    if (dimensionError) return dimensionError
 
     // Validate grant belongs to org (if provided)
     if (grantId) {
@@ -335,9 +386,11 @@ export async function POST(request: NextRequest) {
           budgetCode,
           name: name.trim(),
           budgetType: budgetType || 'PROJECT',
-          projectId,
+          projectId: projectId || null,
+          businessUnitId: businessUnitId || null,
           departmentId: departmentId || null,
           costCenterId: costCenterId || null,
+          fundClassId: fundClassId || null,
           grantId: grantId || null,
           fiscalYearId,
           startDate: startDate ? new Date(startDate) : null,
@@ -365,6 +418,11 @@ export async function POST(request: NextRequest) {
               (
                 line: {
                   accountId: string
+                  businessUnitId?: string
+                  costCenterId?: string
+                  fundClassId?: string
+                  projectId?: string
+                  grantId?: string
                   category: string
                   subCategory?: string
                   description: string
@@ -382,6 +440,11 @@ export async function POST(request: NextRequest) {
                 index: number
               ) => ({
                 accountId: line.accountId,
+                businessUnitId: line.businessUnitId || businessUnitId || null,
+                costCenterId: line.costCenterId || costCenterId || null,
+                fundClassId: line.fundClassId || fundClassId || null,
+                projectId: line.projectId || projectId || null,
+                grantId: line.grantId || grantId || null,
                 category: line.category,
                 subCategory: line.subCategory || null,
                 description: line.description,
@@ -412,10 +475,16 @@ export async function POST(request: NextRequest) {
           project: {
             select: { id: true, name: true },
           },
+          businessUnit: {
+            select: { id: true, code: true, name: true, shortName: true },
+          },
           department: {
             select: { id: true, name: true, code: true },
           },
           costCenter: {
+            select: { id: true, name: true, code: true },
+          },
+          fundClass: {
             select: { id: true, name: true, code: true },
           },
           grant: {
@@ -437,7 +506,7 @@ export async function POST(request: NextRequest) {
       resource: 'budget',
       resourceId: budget.id,
       description: `Created budget "${name}" (${budgetCode})`,
-      newValues: { name, budgetCode, budgetType, totalAmount, projectId, lineCount: lines.length },
+      newValues: { name, budgetCode, budgetType, totalAmount, projectId, businessUnitId, lineCount: lines.length },
       ...auditCtx,
     })
 

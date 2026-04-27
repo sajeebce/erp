@@ -31,7 +31,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         lines: {
           include: {
             poLine: {
-              select: { unitPrice: true, description: true },
+              select: {
+                unitPrice: true,
+                description: true,
+                accountId: true,
+                budgetLineId: true,
+                businessUnitId: true,
+                costCenterId: true,
+                fundClassId: true,
+                projectId: true,
+                grantId: true,
+              },
             },
           },
         },
@@ -110,6 +120,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const entryNo = await generateNextNumber(auth.organizationId, 'journal_entry')
+    const debitLines = grn.lines
+      .map((line) => ({
+        amount: Number(line.quantityAccepted) * Number(line.poLine.unitPrice),
+        poLine: line.poLine,
+      }))
+      .filter((line) => line.amount > 0)
+
+    const firstDebitLine = debitLines[0]?.poLine
 
     const entry = await prisma.journalEntry.create({
       data: {
@@ -118,6 +136,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         description: `Fixed asset receipt from ${grn.grnNo}`,
         reference: `${grn.purchaseOrder.poNo} / ${grn.grnNo}`,
         fiscalYearId: fiscalYear.id,
+        projectId: firstDebitLine?.projectId || null,
+        grantId: firstDebitLine?.grantId || null,
+        businessUnitId: firstDebitLine?.businessUnitId || null,
         totalDebit: new Prisma.Decimal(amount),
         totalCredit: new Prisma.Decimal(amount),
         status: 'APPROVED',
@@ -131,15 +152,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         postedAt: new Date(),
         lines: {
           create: [
-            {
-              accountId: fixedAssetAccount.id,
-              description: `DR fixed assets for ${grn.grnNo}`,
-              debit: new Prisma.Decimal(amount),
+            ...debitLines.map((line) => ({
+              accountId: line.poLine.accountId || fixedAssetAccount.id,
+              budgetLineId: line.poLine.budgetLineId || null,
+              projectId: line.poLine.projectId || null,
+              businessUnitId: line.poLine.businessUnitId || null,
+              costCenterId: line.poLine.costCenterId || null,
+              fundClassId: line.poLine.fundClassId || null,
+              description: `DR fixed assets for ${grn.grnNo} - ${line.poLine.description}`,
+              debit: new Prisma.Decimal(line.amount),
               credit: new Prisma.Decimal(0),
-            },
+            })),
             {
               accountId: accountsPayableAccount.id,
               description: `CR accounts payable for ${grn.vendor.companyName}`,
+              projectId: firstDebitLine?.projectId || null,
+              businessUnitId: firstDebitLine?.businessUnitId || null,
+              costCenterId: firstDebitLine?.costCenterId || null,
+              fundClassId: firstDebitLine?.fundClassId || null,
               debit: new Prisma.Decimal(0),
               credit: new Prisma.Decimal(amount),
             },

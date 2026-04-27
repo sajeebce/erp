@@ -39,6 +39,20 @@ interface CostCenter {
   id: string
   name: string
   code: string
+  businessUnitId?: string
+}
+
+interface BusinessUnit {
+  id: string
+  code: string
+  name: string
+  shortName: string | null
+}
+
+interface FundClass {
+  id: string
+  code: string
+  name: string
 }
 
 interface Grant {
@@ -152,8 +166,10 @@ export default function NewBudgetPage() {
   const [name, setName] = useState('')
   const [budgetType, setBudgetType] = useState('PROJECT')
   const [projectId, setProjectId] = useState('')
+  const [businessUnitId, setBusinessUnitId] = useState('')
   const [departmentId, setDepartmentId] = useState('')
   const [costCenterId, setCostCenterId] = useState('')
+  const [fundClassId, setFundClassId] = useState('')
   const [grantId, setGrantId] = useState('')
   const [fiscalYearId, setFiscalYearId] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -190,8 +206,10 @@ export default function NewBudgetPage() {
 
   // Lookup data
   const [projects, setProjects] = useState<Project[]>([])
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
   const [costCenters, setCostCenters] = useState<CostCenter[]>([])
+  const [fundClasses, setFundClasses] = useState<FundClass[]>([])
   const [grants, setGrants] = useState<Grant[]>([])
   const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -227,8 +245,10 @@ export default function NewBudgetPage() {
 
     Promise.all([
       fetchWithAuth('/api/v1/projects?limit=200', 'Projects').then(d => d && setProjects(d)),
+      fetchWithAuth('/api/v1/settings/business-units?limit=200', 'Business Units').then(d => d && setBusinessUnits(d)),
       fetchWithAuth('/api/v1/hr/departments?limit=200', 'Departments').then(d => d && setDepartments(d)),
       fetchWithAuth('/api/v1/settings/cost-centers?limit=200', 'Cost Centers').then(d => d && setCostCenters(d)),
+      fetchWithAuth('/api/v1/settings/fund-classes?limit=200', 'Fund Classes').then(d => d && setFundClasses(d)),
       fetchWithAuth('/api/v1/donors/grants?limit=200', 'Grants').then(d => d && setGrants(d)),
       fetchWithAuth('/api/v1/settings/fiscal-years?limit=50', 'Fiscal Years').then(d => d && setFiscalYears(d)),
       fetchWithAuth('/api/v1/finance/accounts?isGroup=false&limit=500', 'Accounts').then(d => d && setAccounts(d)),
@@ -332,7 +352,7 @@ export default function NewBudgetPage() {
   }, [lines])
 
   function validate(): boolean {
-    if (!name.trim() || !projectId || !fiscalYearId) {
+    if (!name.trim() || !fiscalYearId || (!projectId && !businessUnitId)) {
       setError(t('form.requiredFields'))
       return false
     }
@@ -364,9 +384,11 @@ export default function NewBudgetPage() {
     const payload = {
       name: name.trim(),
       budgetType,
-      projectId,
+      projectId: projectId || undefined,
+      businessUnitId: businessUnitId || undefined,
       departmentId: departmentId || undefined,
       costCenterId: costCenterId || undefined,
+      fundClassId: fundClassId || undefined,
       grantId: grantId || undefined,
       fiscalYearId,
       startDate: startDate || undefined,
@@ -446,7 +468,7 @@ export default function NewBudgetPage() {
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin mr-2" />
-            <span className="text-muted-foreground">{tc('status.loading')}</span>
+            <span className="text-muted-foreground">Loading...</span>
           </CardContent>
         </Card>
       ) : (
@@ -486,10 +508,38 @@ export default function NewBudgetPage() {
             </div>
           </div>
 
-          {/* Row 2: Project + Grant */}
+          {/* Row 2: Concern + Fund Class */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="budget-project">{t('project')} *</Label>
+              <Label htmlFor="budget-business-unit">Concern / Business Unit *</Label>
+              <SearchableSelect
+                id="budget-business-unit"
+                options={businessUnits.map((bu) => ({ value: bu.id, label: `${bu.code} - ${bu.shortName ?? bu.name}` }))}
+                value={businessUnitId}
+                onValueChange={(v) => {
+                  setBusinessUnitId(v)
+                  setCostCenterId('')
+                }}
+                placeholder="Select concern"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="budget-fund-class">Fund Class</Label>
+              <SearchableSelect
+                id="budget-fund-class"
+                options={fundClasses.map((fc) => ({ value: fc.id, label: `${fc.code} - ${fc.name}` }))}
+                value={fundClassId}
+                onValueChange={setFundClassId}
+                placeholder="Select fund class"
+              />
+            </div>
+          </div>
+
+          {/* Row 3: Project + Grant */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="budget-project">{t('project')} <span className="text-muted-foreground text-xs">(optional for concern budget)</span></Label>
               <SearchableSelect
                 id="budget-project"
                 options={projects.map((p) => ({ value: p.id, label: p.name }))}
@@ -528,7 +578,9 @@ export default function NewBudgetPage() {
               <Label htmlFor="budget-cost-center">Cost Center</Label>
               <SearchableSelect
                 id="budget-cost-center"
-                options={costCenters.map((cc) => ({ value: cc.id, label: `${cc.code} - ${cc.name}` }))}
+                options={costCenters
+                  .filter((cc) => !businessUnitId || cc.businessUnitId === businessUnitId)
+                  .map((cc) => ({ value: cc.id, label: `${cc.code} - ${cc.name}` }))}
                 value={costCenterId}
                 onValueChange={setCostCenterId}
                 placeholder="Select cost center (optional)"

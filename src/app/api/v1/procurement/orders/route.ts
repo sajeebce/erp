@@ -18,6 +18,13 @@ interface PurchaseOrderLineInput {
   quantity: number
   unitPrice: number
   prLineId?: string
+  accountId?: string
+  budgetLineId?: string
+  businessUnitId?: string
+  costCenterId?: string
+  fundClassId?: string
+  projectId?: string
+  grantId?: string
 }
 
 async function requisitionBelongsToOrg(
@@ -141,6 +148,10 @@ export async function POST(request: NextRequest) {
       prNo: string
       status: string
       requestedById: string
+      businessUnitId: string | null
+      costCenterId: string | null
+      fundClassId: string | null
+      projectId: string | null
       project: { organizationId: string } | null
       lines: Array<{
         id: string
@@ -148,6 +159,13 @@ export async function POST(request: NextRequest) {
         unit: string
         quantity: Prisma.Decimal
         estimatedPrice: Prisma.Decimal
+        accountId: string | null
+        budgetLineId: string | null
+        businessUnitId: string | null
+        costCenterId: string | null
+        fundClassId: string | null
+        projectId: string | null
+        grantId: string | null
       }>
     } | null = null
 
@@ -186,12 +204,20 @@ export async function POST(request: NextRequest) {
       }
 
       if (!lines || lines.length === 0) {
-        lines = sourcePr.lines.map((line) => ({
+        const pr = sourcePr
+        lines = pr.lines.map((line) => ({
           description: line.description,
           unit: line.unit,
           quantity: Number(line.quantity),
           unitPrice: Number(line.estimatedPrice),
           prLineId: line.id,
+          accountId: line.accountId || undefined,
+          budgetLineId: line.budgetLineId || undefined,
+          businessUnitId: line.businessUnitId || pr.businessUnitId || undefined,
+          costCenterId: line.costCenterId || pr.costCenterId || undefined,
+          fundClassId: line.fundClassId || pr.fundClassId || undefined,
+          projectId: line.projectId || pr.projectId || undefined,
+          grantId: line.grantId || undefined,
         }))
       }
 
@@ -233,6 +259,13 @@ export async function POST(request: NextRequest) {
               unitPrice: new Prisma.Decimal(l.unitPrice),
               totalPrice: new Prisma.Decimal(Number(l.quantity) * Number(l.unitPrice)),
               prLineId: l.prLineId || null,
+              accountId: l.accountId || null,
+              budgetLineId: l.budgetLineId || null,
+              businessUnitId: l.businessUnitId || sourcePr?.businessUnitId || null,
+              costCenterId: l.costCenterId || sourcePr?.costCenterId || null,
+              fundClassId: l.fundClassId || sourcePr?.fundClassId || null,
+              projectId: l.projectId || sourcePr?.projectId || null,
+              grantId: l.grantId || null,
               sortOrder: i,
             })),
           },

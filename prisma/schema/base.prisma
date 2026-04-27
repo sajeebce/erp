@@ -88,11 +88,11 @@ enum BudgetStatus {
 }
 
 enum BudgetType {
-  PROJECT       // Project/Grant-specific budget
-  CORE          // Core/Unrestricted funding
-  PROGRAM       // Program-level budget
-  OPERATIONAL   // Administrative/Operational budget
-  PROPOSAL      // Pre-award proposal budget
+  PROJECT // Project/Grant-specific budget
+  CORE // Core/Unrestricted funding
+  PROGRAM // Program-level budget
+  OPERATIONAL // Administrative/Operational budget
+  PROPOSAL // Pre-award proposal budget
 }
 
 enum BudgetPeriodType {
@@ -103,10 +103,17 @@ enum BudgetPeriodType {
   CUSTOM
 }
 
+enum BudgetCheckStatus {
+  NOT_CHECKED
+  WITHIN_BUDGET
+  WARNING
+  NO_BUDGET
+}
+
 enum IndirectCostBase {
-  TOTAL_DIRECT   // Total Direct Costs
-  MTDC           // Modified Total Direct Costs
-  PERSONNEL      // Total Personnel Costs only
+  TOTAL_DIRECT // Total Direct Costs
+  MTDC // Modified Total Direct Costs
+  PERSONNEL // Total Personnel Costs only
 }
 
 // ─── Donor & Grant ───

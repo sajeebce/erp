@@ -16,8 +16,8 @@ model AssetCategory {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  organization       Organization       @relation(fields: [organizationId], references: [id])
-  assets             Asset[]
+  organization Organization @relation(fields: [organizationId], references: [id])
+  assets       Asset[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -33,10 +33,10 @@ model Asset {
   purchasePrice           Decimal        @db.Decimal(18, 2)
   serialNumber            String?
   barcode                 String?
-  warehouseId             String?        @db.Uuid  // Current location
-  custodianId             String?        @db.Uuid  // Employee — plain String, no @relation
-  projectId               String?        @db.Uuid  // Funded by which project
-  donorId                 String?        @db.Uuid  // Funded by which donor
+  warehouseId             String?        @db.Uuid // Current location
+  custodianId             String?        @db.Uuid // Employee — plain String, no @relation
+  projectId               String?        @db.Uuid // Funded by which project
+  donorId                 String?        @db.Uuid // Funded by which donor
   condition               AssetCondition @default(NEW)
   accumulatedDepreciation Decimal        @default(0) @db.Decimal(18, 2)
   netBookValue            Decimal        @db.Decimal(18, 2)
@@ -49,13 +49,13 @@ model Asset {
   updatedAt               DateTime       @updatedAt
   deletedAt               DateTime?
 
-  category              AssetCategory      @relation(fields: [categoryId], references: [id])
-  warehouse             Warehouse?         @relation(fields: [warehouseId], references: [id])
-  project               Project?           @relation(fields: [projectId], references: [id])
-  depreciationRecords   AssetDepreciation[]
-  transfers             AssetTransfer[]
-  maintenanceRecords    AssetMaintenance[]
-  disposal              AssetDisposal?
+  category            AssetCategory       @relation(fields: [categoryId], references: [id])
+  warehouse           Warehouse?          @relation(fields: [warehouseId], references: [id])
+  project             Project?            @relation(fields: [projectId], references: [id])
+  depreciationRecords AssetDepreciation[]
+  transfers           AssetTransfer[]
+  maintenanceRecords  AssetMaintenance[]
+  disposal            AssetDisposal?
 
   @@index([assetNo])
   @@index([categoryId])
@@ -74,7 +74,7 @@ model AssetDepreciation {
   journalEntryId     String?  @db.Uuid // Auto-created JE
   createdAt          DateTime @default(now())
 
-  asset              Asset    @relation(fields: [assetId], references: [id])
+  asset Asset @relation(fields: [assetId], references: [id])
 
   @@index([assetId])
   @@index([period])
@@ -96,7 +96,7 @@ model AssetTransfer {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
-  asset           Asset               @relation(fields: [assetId], references: [id])
+  asset Asset @relation(fields: [assetId], references: [id])
 
   @@index([assetId])
   @@index([status])
@@ -117,7 +117,7 @@ model AssetMaintenance {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  asset          Asset           @relation(fields: [assetId], references: [id])
+  asset Asset @relation(fields: [assetId], references: [id])
 
   @@index([assetId])
   @@index([scheduledDate])
@@ -140,7 +140,7 @@ model AssetDisposal {
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
-  asset               Asset          @relation(fields: [assetId], references: [id])
+  asset Asset @relation(fields: [assetId], references: [id])
 
   @@index([assetId])
 }

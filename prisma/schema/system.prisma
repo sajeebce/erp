@@ -15,7 +15,7 @@ model TenantAuditLog {
   status         String      @default("SUCCESS")
   createdAt      DateTime    @default(now())
 
-  user           User?       @relation(fields: [userId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
 
   @@index([organizationId, createdAt])
   @@index([organizationId, module])
@@ -35,7 +35,7 @@ model Notification {
   readAt    DateTime?
   createdAt DateTime         @default(now())
 
-  user      User             @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([userId, isRead])
   @@index([createdAt])
@@ -48,7 +48,7 @@ model NotificationSetting {
   channel   NotificationChannel
   isEnabled Boolean             @default(true)
 
-  user      User                @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@unique([userId, type, channel])
 }
@@ -70,35 +70,35 @@ model Attachment {
 }
 
 model WebhookEndpoint {
-  id              String   @id @default(uuid()) @db.Uuid
-  organizationId  String   @db.Uuid
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @db.Uuid
   url             String
   secret          String
   events          String[]
-  isActive        Boolean  @default(true)
-  failureCount    Int      @default(0)
+  isActive        Boolean   @default(true)
+  failureCount    Int       @default(0)
   lastDeliveredAt DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  deliveries      WebhookDelivery[]
+  deliveries WebhookDelivery[]
 
   @@index([organizationId])
 }
 
 model WebhookDelivery {
-  id             String   @id @default(uuid()) @db.Uuid
-  endpointId     String   @db.Uuid
+  id             String    @id @default(uuid()) @db.Uuid
+  endpointId     String    @db.Uuid
   event          String
   payload        Json
   responseStatus Int?
   responseBody   String?
-  attempts       Int      @default(1)
-  status         String   @default("PENDING")
+  attempts       Int       @default(1)
+  status         String    @default("PENDING")
   deliveredAt    DateTime?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
-  endpoint       WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
 
   @@index([endpointId])
   @@index([event])
@@ -106,85 +106,85 @@ model WebhookDelivery {
 }
 
 model DataRetentionPolicy {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @db.Uuid
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
   entityType     String
   retentionDays  Int
-  isActive       Boolean  @default(true)
+  isActive       Boolean   @default(true)
   lastPurgedAt   DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@unique([organizationId, entityType])
 }
 
 model DataExportRequest {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @db.Uuid
-  requestedById  String   @db.Uuid
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  requestedById  String    @db.Uuid
   exportType     String
   modules        String[]
-  status         String   @default("PENDING")
+  status         String    @default("PENDING")
   filePath       String?
   fileSize       BigInt?
   expiresAt      DateTime?
   completedAt    DateTime?
   errorMessage   String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([organizationId])
   @@index([status])
 }
 
 model ApprovalWorkflowDef {
-  id          String   @id @default(uuid()) @db.Uuid
-  organizationId String @db.Uuid
-  name        String
-  module      String
-  entityType  String
-  description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  module         String
+  entityType     String
+  description    String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  steps       ApprovalWorkflowStep[]
-  instances   ApprovalInstance[]
+  steps     ApprovalWorkflowStep[]
+  instances ApprovalInstance[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
 }
 
 model ApprovalWorkflowStep {
-  id         String              @id @default(uuid()) @db.Uuid
-  workflowId String              @db.Uuid
+  id         String   @id @default(uuid()) @db.Uuid
+  workflowId String   @db.Uuid
   stepNumber Int
   name       String
-  roleId     String              @db.Uuid
-  amountMin  Decimal?            @db.Decimal(18, 2)
-  amountMax  Decimal?            @db.Decimal(18, 2)
-  isRequired Boolean             @default(true)
+  roleId     String   @db.Uuid
+  amountMin  Decimal? @db.Decimal(18, 2)
+  amountMax  Decimal? @db.Decimal(18, 2)
+  isRequired Boolean  @default(true)
 
-  workflow   ApprovalWorkflowDef @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  workflow ApprovalWorkflowDef @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
   @@unique([workflowId, stepNumber])
   @@index([workflowId])
 }
 
 model ApprovalInstance {
-  id            String              @id @default(uuid()) @db.Uuid
-  workflowId    String              @db.Uuid
+  id            String         @id @default(uuid()) @db.Uuid
+  workflowId    String         @db.Uuid
   entityType    String
-  entityId      String              @db.Uuid
-  currentStep   Int                 @default(1)
-  status        ApprovalStatus      @default(SUBMITTED)
-  requestedById String              @db.Uuid
-  amount        Decimal?            @db.Decimal(18, 2)
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  entityId      String         @db.Uuid
+  currentStep   Int            @default(1)
+  status        ApprovalStatus @default(SUBMITTED)
+  requestedById String         @db.Uuid
+  amount        Decimal?       @db.Decimal(18, 2)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
-  workflow      ApprovalWorkflowDef @relation(fields: [workflowId], references: [id])
-  actions       ApprovalAction[]
+  workflow ApprovalWorkflowDef @relation(fields: [workflowId], references: [id])
+  actions  ApprovalAction[]
 
   @@index([workflowId])
   @@index([entityType, entityId])
@@ -192,15 +192,15 @@ model ApprovalInstance {
 }
 
 model ApprovalAction {
-  id         String           @id @default(uuid()) @db.Uuid
-  instanceId String           @db.Uuid
+  id         String   @id @default(uuid()) @db.Uuid
+  instanceId String   @db.Uuid
   stepNumber Int
   action     String
-  actorId    String           @db.Uuid
+  actorId    String   @db.Uuid
   comments   String?
-  createdAt  DateTime         @default(now())
+  createdAt  DateTime @default(now())
 
-  instance   ApprovalInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  instance ApprovalInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
   @@index([instanceId])
 }

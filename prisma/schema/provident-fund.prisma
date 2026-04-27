@@ -6,27 +6,27 @@
 // ═══════════════════════════════════════════
 
 model PFPolicy {
-  id                    String   @id @default(uuid()) @db.Uuid
-  organizationId        String   @db.Uuid
-  name                  String
-  isDefault             Boolean  @default(false)
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @db.Uuid
+  name           String
+  isDefault      Boolean @default(false)
 
   // Contribution rates
-  employeeContribRate   Decimal  @db.Decimal(5, 2) @default(10.00)
-  employerContribRate   Decimal  @db.Decimal(5, 2) @default(10.00)
-  contributionBase      String   @default("BASIC")
+  employeeContribRate Decimal @default(10.00) @db.Decimal(5, 2)
+  employerContribRate Decimal @default(10.00) @db.Decimal(5, 2)
+  contributionBase    String  @default("BASIC")
 
   // Eligibility
-  eligibilityMonths     Int      @default(0)
-  eligibilityTypes      Json?
+  eligibilityMonths Int   @default(0)
+  eligibilityTypes  Json?
 
   // Vesting
-  vestingSchedule       Json
+  vestingSchedule Json
 
   // Interest
-  interestRate          Decimal  @db.Decimal(5, 2) @default(9.00)
-  interestCalcMethod    String   @default("MONTHLY_BALANCE")
-  interestPostingFreq   String   @default("ANNUAL")
+  interestRate        Decimal @default(9.00) @db.Decimal(5, 2)
+  interestCalcMethod  String  @default("MONTHLY_BALANCE")
+  interestPostingFreq String  @default("ANNUAL")
 
   // Withdrawal rules
   allowPartialWithdraw  Boolean  @default(true)
@@ -35,17 +35,17 @@ model PFPolicy {
   minServiceForWithdraw Int      @default(12)
 
   // Loan rules
-  allowLoan             Boolean  @default(true)
-  maxLoanPercent        Decimal? @db.Decimal(5, 2) @default(80.00)
-  loanInterestRate      Decimal? @db.Decimal(5, 2) @default(5.00)
-  maxLoanRepayMonths    Int      @default(36)
-  maxActiveLoans        Int      @default(1)
+  allowLoan          Boolean  @default(true)
+  maxLoanPercent     Decimal? @default(80.00) @db.Decimal(5, 2)
+  loanInterestRate   Decimal? @default(5.00) @db.Decimal(5, 2)
+  maxLoanRepayMonths Int      @default(36)
+  maxActiveLoans     Int      @default(1)
 
-  isActive              Boolean  @default(true)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization Organization   @relation(fields: [organizationId], references: [id])
   enrollments  PFEnrollment[]
 
   @@unique([organizationId, name])
@@ -53,19 +53,19 @@ model PFPolicy {
 }
 
 model PFTrust {
-  id                String   @id @default(uuid()) @db.Uuid
-  organizationId    String   @db.Uuid
-  name              String
-  registrationNo    String?
-  registrationDate  DateTime?
-  bankAccountId     String?  @db.Uuid
-  currentBalance    Decimal  @default(0) @db.Decimal(18, 2)
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @db.Uuid
+  name             String
+  registrationNo   String?
+  registrationDate DateTime?
+  bankAccountId    String?   @db.Uuid
+  currentBalance   Decimal   @default(0) @db.Decimal(18, 2)
 
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  organization Organization       @relation(fields: [organizationId], references: [id])
+  organization Organization         @relation(fields: [organizationId], references: [id])
   trustees     PFTrustee[]
   transactions PFTrustTransaction[]
   investments  PFInvestment[]
@@ -83,35 +83,35 @@ model PFTrustee {
   appointedDate DateTime
   isActive      Boolean  @default(true)
 
-  trust         PFTrust  @relation(fields: [trustId], references: [id])
+  trust PFTrust @relation(fields: [trustId], references: [id])
 
   @@index([trustId])
 }
 
 model PFEnrollment {
-  id                String   @id @default(uuid()) @db.Uuid
-  organizationId    String   @db.Uuid
-  employeeId        String   @unique @db.Uuid
-  policyId          String   @db.Uuid
-  enrollmentDate    DateTime
-  effectiveDate     DateTime
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  employeeId     String   @unique @db.Uuid
+  policyId       String   @db.Uuid
+  enrollmentDate DateTime
+  effectiveDate  DateTime
 
   // Rates (may override policy for individual)
-  employeeRate      Decimal  @db.Decimal(5, 2)
-  employerRate      Decimal  @db.Decimal(5, 2)
+  employeeRate Decimal @db.Decimal(5, 2)
+  employerRate Decimal @db.Decimal(5, 2)
 
   // Running balances
-  totalEmployeeContrib  Decimal @default(0) @db.Decimal(18, 2)
-  totalEmployerContrib  Decimal @default(0) @db.Decimal(18, 2)
-  totalInterest         Decimal @default(0) @db.Decimal(18, 2)
-  totalWithdrawals      Decimal @default(0) @db.Decimal(18, 2)
-  totalLoanOutstanding  Decimal @default(0) @db.Decimal(18, 2)
-  currentBalance        Decimal @default(0) @db.Decimal(18, 2)
+  totalEmployeeContrib Decimal @default(0) @db.Decimal(18, 2)
+  totalEmployerContrib Decimal @default(0) @db.Decimal(18, 2)
+  totalInterest        Decimal @default(0) @db.Decimal(18, 2)
+  totalWithdrawals     Decimal @default(0) @db.Decimal(18, 2)
+  totalLoanOutstanding Decimal @default(0) @db.Decimal(18, 2)
+  currentBalance       Decimal @default(0) @db.Decimal(18, 2)
 
-  status            String   @default("ACTIVE")
-  settledAt         DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  status    String    @default("ACTIVE")
+  settledAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id])
   employee     Employee     @relation(fields: [employeeId], references: [id])
@@ -123,42 +123,42 @@ model PFEnrollment {
 }
 
 model PFNominee {
-  id            String   @id @default(uuid()) @db.Uuid
-  enrollmentId  String   @db.Uuid
-  name          String
-  relationship  String
-  percentage    Decimal  @db.Decimal(5, 2)
-  nidNumber     String?
-  phone         String?
-  address       String?
-  photo         String?  // Nominee photo path
-  nidDocPath    String?  // Uploaded NID/birth certificate
-  otherDocPath  String?  // Other supporting document
+  id           String  @id @default(uuid()) @db.Uuid
+  enrollmentId String  @db.Uuid
+  name         String
+  relationship String
+  percentage   Decimal @db.Decimal(5, 2)
+  nidNumber    String?
+  phone        String?
+  address      String?
+  photo        String? // Nominee photo path
+  nidDocPath   String? // Uploaded NID/birth certificate
+  otherDocPath String? // Other supporting document
 
-  enrollment    PFEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  enrollment PFEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
 
   @@index([enrollmentId])
 }
 
 model PFContribution {
-  id                String   @id @default(uuid()) @db.Uuid
-  organizationId    String   @db.Uuid
-  enrollmentId      String   @db.Uuid
-  employeeId        String   @db.Uuid
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  enrollmentId   String @db.Uuid
+  employeeId     String @db.Uuid
 
-  month             Int
-  year              Int
-  basicSalary       Decimal  @db.Decimal(18, 2)
-  employeeAmount    Decimal  @db.Decimal(18, 2)
-  employerAmount    Decimal  @db.Decimal(18, 2)
-  totalAmount       Decimal  @db.Decimal(18, 2)
+  month          Int
+  year           Int
+  basicSalary    Decimal @db.Decimal(18, 2)
+  employeeAmount Decimal @db.Decimal(18, 2)
+  employerAmount Decimal @db.Decimal(18, 2)
+  totalAmount    Decimal @db.Decimal(18, 2)
 
   // Project allocation (same as salary)
   projectAllocations Json?
 
-  payrollRunId      String?  @db.Uuid
-  journalEntryId    String?  @db.Uuid
-  createdAt         DateTime @default(now())
+  payrollRunId   String?  @db.Uuid
+  journalEntryId String?  @db.Uuid
+  createdAt      DateTime @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
@@ -168,20 +168,20 @@ model PFContribution {
 }
 
 model PFInterestPosting {
-  id                String   @id @default(uuid()) @db.Uuid
-  organizationId    String   @db.Uuid
-  enrollmentId      String   @db.Uuid
-  employeeId        String   @db.Uuid
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  enrollmentId   String @db.Uuid
+  employeeId     String @db.Uuid
 
-  periodStart       DateTime
-  periodEnd         DateTime
-  openingBalance    Decimal  @db.Decimal(18, 2)
-  interestRate      Decimal  @db.Decimal(5, 2)
-  interestAmount    Decimal  @db.Decimal(18, 2)
-  closingBalance    Decimal  @db.Decimal(18, 2)
+  periodStart    DateTime
+  periodEnd      DateTime
+  openingBalance Decimal  @db.Decimal(18, 2)
+  interestRate   Decimal  @db.Decimal(5, 2)
+  interestAmount Decimal  @db.Decimal(18, 2)
+  closingBalance Decimal  @db.Decimal(18, 2)
 
-  journalEntryId    String?  @db.Uuid
-  createdAt         DateTime @default(now())
+  journalEntryId String?  @db.Uuid
+  createdAt      DateTime @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
@@ -190,25 +190,25 @@ model PFInterestPosting {
 }
 
 model PFWithdrawal {
-  id                String   @id @default(uuid()) @db.Uuid
-  organizationId    String   @db.Uuid
-  withdrawalNo      String   @unique
-  enrollmentId      String   @db.Uuid
-  employeeId        String   @db.Uuid
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  withdrawalNo   String @unique
+  enrollmentId   String @db.Uuid
+  employeeId     String @db.Uuid
 
-  amount            Decimal  @db.Decimal(18, 2)
-  reason            String
-  description       String?
-  supportingDocs    Json?
+  amount         Decimal @db.Decimal(18, 2)
+  reason         String
+  description    String?
+  supportingDocs Json?
 
-  status            String   @default("PENDING")
-  approvedById      String?  @db.Uuid
-  approvedAt        DateTime?
-  paidAt            DateTime?
+  status       String    @default("PENDING")
+  approvedById String?   @db.Uuid
+  approvedAt   DateTime?
+  paidAt       DateTime?
 
-  journalEntryId    String?  @db.Uuid
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  journalEntryId String?  @db.Uuid
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
@@ -217,29 +217,29 @@ model PFWithdrawal {
 }
 
 model PFLoan {
-  id                String   @id @default(uuid()) @db.Uuid
-  organizationId    String   @db.Uuid
-  loanNo            String   @unique
-  enrollmentId      String   @db.Uuid
-  employeeId        String   @db.Uuid
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  loanNo         String @unique
+  enrollmentId   String @db.Uuid
+  employeeId     String @db.Uuid
 
-  principalAmount   Decimal  @db.Decimal(18, 2)
-  interestRate      Decimal  @db.Decimal(5, 2)
-  repaymentMonths   Int
+  principalAmount    Decimal @db.Decimal(18, 2)
+  interestRate       Decimal @db.Decimal(5, 2)
+  repaymentMonths    Int
   monthlyInstallment Decimal @db.Decimal(18, 2)
-  totalRepayable    Decimal  @db.Decimal(18, 2)
+  totalRepayable     Decimal @db.Decimal(18, 2)
   outstandingBalance Decimal @db.Decimal(18, 2)
 
-  disbursedAt       DateTime?
-  status            String   @default("PENDING")
-  approvedById      String?  @db.Uuid
-  approvedAt        DateTime?
+  disbursedAt  DateTime?
+  status       String    @default("PENDING")
+  approvedById String?   @db.Uuid
+  approvedAt   DateTime?
 
-  journalEntryId    String?  @db.Uuid
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  journalEntryId String?  @db.Uuid
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization Organization    @relation(fields: [organizationId], references: [id])
+  organization Organization      @relation(fields: [organizationId], references: [id])
   repayments   PFLoanRepayment[]
 
   @@index([organizationId])
@@ -247,49 +247,49 @@ model PFLoan {
 }
 
 model PFLoanRepayment {
-  id                String   @id @default(uuid()) @db.Uuid
-  loanId            String   @db.Uuid
-  installmentNo     Int
-  dueDate           DateTime
-  principalPortion  Decimal  @db.Decimal(18, 2)
-  interestPortion   Decimal  @db.Decimal(18, 2)
-  totalAmount       Decimal  @db.Decimal(18, 2)
-  paidAmount        Decimal  @default(0) @db.Decimal(18, 2)
-  paidAt            DateTime?
-  payrollRunId      String?  @db.Uuid
-  status            String   @default("PENDING")
+  id               String    @id @default(uuid()) @db.Uuid
+  loanId           String    @db.Uuid
+  installmentNo    Int
+  dueDate          DateTime
+  principalPortion Decimal   @db.Decimal(18, 2)
+  interestPortion  Decimal   @db.Decimal(18, 2)
+  totalAmount      Decimal   @db.Decimal(18, 2)
+  paidAmount       Decimal   @default(0) @db.Decimal(18, 2)
+  paidAt           DateTime?
+  payrollRunId     String?   @db.Uuid
+  status           String    @default("PENDING")
 
-  loan              PFLoan   @relation(fields: [loanId], references: [id])
+  loan PFLoan @relation(fields: [loanId], references: [id])
 
   @@unique([loanId, installmentNo])
   @@index([loanId])
 }
 
 model PFSettlement {
-  id                String   @id @default(uuid()) @db.Uuid
-  organizationId    String   @db.Uuid
-  settlementNo      String   @unique
-  enrollmentId      String   @db.Uuid
-  employeeId        String   @db.Uuid
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
+  settlementNo   String @unique
+  enrollmentId   String @db.Uuid
+  employeeId     String @db.Uuid
 
   // Balances at settlement
-  employeeContrib   Decimal  @db.Decimal(18, 2)
-  employerContrib   Decimal  @db.Decimal(18, 2)
-  interestEarned    Decimal  @db.Decimal(18, 2)
-  vestedPercent     Decimal  @db.Decimal(5, 2)
-  vestedEmployer    Decimal  @db.Decimal(18, 2)
-  forfeited         Decimal  @db.Decimal(18, 2)
-  loanDeduction     Decimal  @db.Decimal(18, 2)
-  netPayable        Decimal  @db.Decimal(18, 2)
+  employeeContrib Decimal @db.Decimal(18, 2)
+  employerContrib Decimal @db.Decimal(18, 2)
+  interestEarned  Decimal @db.Decimal(18, 2)
+  vestedPercent   Decimal @db.Decimal(5, 2)
+  vestedEmployer  Decimal @db.Decimal(18, 2)
+  forfeited       Decimal @db.Decimal(18, 2)
+  loanDeduction   Decimal @db.Decimal(18, 2)
+  netPayable      Decimal @db.Decimal(18, 2)
 
-  status            String   @default("CALCULATED")
-  offboardingId     String?  @db.Uuid
-  approvedById      String?  @db.Uuid
-  paidAt            DateTime?
+  status        String    @default("CALCULATED")
+  offboardingId String?   @db.Uuid
+  approvedById  String?   @db.Uuid
+  paidAt        DateTime?
 
-  journalEntryId    String?  @db.Uuid
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  journalEntryId String?  @db.Uuid
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id])
 
@@ -298,49 +298,49 @@ model PFSettlement {
 }
 
 model PFInvestment {
-  id                String   @id @default(uuid()) @db.Uuid
-  trustId           String   @db.Uuid
-  type              String
-  institutionName   String
-  accountNo         String?
-  amount            Decimal  @db.Decimal(18, 2)
-  interestRate      Decimal  @db.Decimal(5, 2)
-  startDate         DateTime
-  maturityDate      DateTime?
-  currentValue      Decimal  @db.Decimal(18, 2)
-  status            String   @default("ACTIVE")
+  id              String    @id @default(uuid()) @db.Uuid
+  trustId         String    @db.Uuid
+  type            String
+  institutionName String
+  accountNo       String?
+  amount          Decimal   @db.Decimal(18, 2)
+  interestRate    Decimal   @db.Decimal(5, 2)
+  startDate       DateTime
+  maturityDate    DateTime?
+  currentValue    Decimal   @db.Decimal(18, 2)
+  status          String    @default("ACTIVE")
 
-  trust             PFTrust  @relation(fields: [trustId], references: [id])
+  trust PFTrust @relation(fields: [trustId], references: [id])
 
   @@index([trustId])
 }
 
 model PFInvestmentIncome {
-  id                String   @id @default(uuid()) @db.Uuid
-  investmentId      String   @db.Uuid
-  incomeType        String
-  amount            Decimal  @db.Decimal(18, 2)
-  receivedDate      DateTime
-  journalEntryId    String?  @db.Uuid
-  createdAt         DateTime @default(now())
+  id             String   @id @default(uuid()) @db.Uuid
+  investmentId   String   @db.Uuid
+  incomeType     String
+  amount         Decimal  @db.Decimal(18, 2)
+  receivedDate   DateTime
+  journalEntryId String?  @db.Uuid
+  createdAt      DateTime @default(now())
 
   @@index([investmentId])
 }
 
 model PFTrustTransaction {
-  id                String   @id @default(uuid()) @db.Uuid
-  trustId           String   @db.Uuid
-  transactionNo     String   @unique
-  type              String
-  amount            Decimal  @db.Decimal(18, 2)
-  balance           Decimal  @db.Decimal(18, 2)
-  description       String?
-  referenceNo       String?
-  transactionDate   DateTime
-  journalEntryId    String?  @db.Uuid
-  createdAt         DateTime @default(now())
+  id              String   @id @default(uuid()) @db.Uuid
+  trustId         String   @db.Uuid
+  transactionNo   String   @unique
+  type            String
+  amount          Decimal  @db.Decimal(18, 2)
+  balance         Decimal  @db.Decimal(18, 2)
+  description     String?
+  referenceNo     String?
+  transactionDate DateTime
+  journalEntryId  String?  @db.Uuid
+  createdAt       DateTime @default(now())
 
-  trust             PFTrust  @relation(fields: [trustId], references: [id])
+  trust PFTrust @relation(fields: [trustId], references: [id])
 
   @@index([trustId])
 }

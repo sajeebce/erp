@@ -68,6 +68,9 @@ interface PurchaseRequisition {
   priority: string;
   totalEstimate: number;
   status: string;
+  budgetCheckStatus?: string;
+  budgetWarningMessage?: string | null;
+  approvedWithBudgetWarning?: boolean;
   justification: string | null;
   notes: string | null;
   approvedById: string | null;
@@ -266,11 +269,12 @@ export default function PRDetailPage() {
         )}
       </PageHeader>
 
-      {pr.budgetWarning && (
+      {(pr.budgetWarning || pr.budgetWarningMessage) && (
         <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-700 dark:text-amber-400">
-            <strong>Budget Warning:</strong> {pr.budgetWarning}
+            <strong>Budget Warning:</strong> {pr.budgetWarning ?? pr.budgetWarningMessage}
+            {pr.approvedWithBudgetWarning ? " This warning was approved and retained for audit." : ""}
           </AlertDescription>
         </Alert>
       )}
@@ -309,6 +313,12 @@ export default function PRDetailPage() {
                 <div>
                   <p className="text-muted-foreground">Status</p>
                   <Badge variant={getStatusVariant(pr.status)}>{getStatusLabel(pr.status)}</Badge>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Budget Check</p>
+                  <Badge variant={pr.budgetCheckStatus === "WITHIN_BUDGET" ? "default" : pr.budgetCheckStatus === "NOT_CHECKED" ? "outline" : "destructive"}>
+                    {pr.budgetCheckStatus ?? "NOT_CHECKED"}
+                  </Badge>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Priority</p>

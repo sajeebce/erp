@@ -308,7 +308,7 @@ export async function GET(request: NextRequest) {
           id: b.id,
           name: b.name,
           budgetAmount: Number(b.totalAmount),
-          actualSpend: Number(b.project.amountSpent),
+          actualSpend: Number(b.project?.amountSpent ?? 0),
         })),
         beneficiaryGrowth,
       },

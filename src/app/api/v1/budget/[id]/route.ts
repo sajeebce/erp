@@ -21,12 +21,24 @@ export async function GET(
     const budget = await prisma.budget.findFirst({
       where: {
         id,
-        project: { organizationId: auth.organizationId },
         deletedAt: null,
+        OR: [
+          { project: { organizationId: auth.organizationId } },
+          { businessUnit: { organizationId: auth.organizationId } },
+        ],
       },
       include: {
         project: {
           select: { id: true, name: true, projectNo: true },
+        },
+        businessUnit: {
+          select: { id: true, code: true, name: true, shortName: true },
+        },
+        costCenter: {
+          select: { id: true, code: true, name: true },
+        },
+        fundClass: {
+          select: { id: true, code: true, name: true },
         },
         grant: {
           select: { id: true, title: true, grantNo: true },
@@ -69,8 +81,11 @@ export async function PUT(
     const existing = await prisma.budget.findFirst({
       where: {
         id,
-        project: { organizationId: auth.organizationId },
         deletedAt: null,
+        OR: [
+          { project: { organizationId: auth.organizationId } },
+          { businessUnit: { organizationId: auth.organizationId } },
+        ],
       },
     })
 

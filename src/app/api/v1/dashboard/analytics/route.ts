@@ -231,7 +231,7 @@ export async function GET(request: NextRequest) {
       (sum, b) => sum + Number(b.totalAmount), 0
     )
     const totalSpent = budgetData.reduce(
-      (sum, b) => sum + Number(b.project.amountSpent), 0
+      (sum, b) => sum + Number(b.project?.amountSpent ?? 0), 0
     )
     const totalRemaining = totalBudget - totalSpent
     const budgetUtilizationRate = totalBudget > 0
@@ -243,7 +243,7 @@ export async function GET(request: NextRequest) {
     for (const b of budgetData) {
       const projectSpentRatio =
         Number(b.totalAmount) > 0
-          ? Number(b.project.amountSpent) / Number(b.totalAmount)
+          ? Number(b.project?.amountSpent ?? 0) / Number(b.totalAmount)
           : 0
 
       for (const line of b.lines) {

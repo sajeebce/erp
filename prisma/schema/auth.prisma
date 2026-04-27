@@ -1,32 +1,32 @@
 model User {
-  id                 String      @id @default(uuid()) @db.Uuid
-  organizationId     String      @db.Uuid
+  id                 String     @id @default(uuid()) @db.Uuid
+  organizationId     String     @db.Uuid
   email              String
   passwordHash       String
   fullName           String
   phone              String?
   avatar             String?
-  roleId             String      @db.Uuid
-  departmentId       String?     @db.Uuid
-  status             UserStatus  @default(ACTIVE)
+  roleId             String     @db.Uuid
+  departmentId       String?    @db.Uuid
+  status             UserStatus @default(ACTIVE)
   lastLoginAt        DateTime?
   lastLoginIp        String?
-  failedLoginCount   Int         @default(0)
+  failedLoginCount   Int        @default(0)
   lockedUntil        DateTime?
-  mustChangePassword Boolean     @default(true)
+  mustChangePassword Boolean    @default(true)
   preferredLanguage  String?
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
   deletedAt          DateTime?
 
-  organization       Organization   @relation(fields: [organizationId], references: [id])
-  role               Role           @relation(fields: [roleId], references: [id])
-  department         Department?    @relation(fields: [departmentId], references: [id])
-  employee           Employee?
-  refreshTokens      RefreshToken[]
-  notifications      Notification[]
+  organization         Organization          @relation(fields: [organizationId], references: [id])
+  role                 Role                  @relation(fields: [roleId], references: [id])
+  department           Department?           @relation(fields: [departmentId], references: [id])
+  employee             Employee?
+  refreshTokens        RefreshToken[]
+  notifications        Notification[]
   notificationSettings NotificationSetting[]
-  auditLogs          TenantAuditLog[]
+  auditLogs            TenantAuditLog[]
 
   @@unique([organizationId, email])
   @@index([organizationId])
@@ -46,7 +46,7 @@ model RefreshToken {
   lastUsedAt DateTime?
   createdAt  DateTime  @default(now())
 
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])
@@ -54,40 +54,40 @@ model RefreshToken {
 }
 
 model Role {
-  id             String           @id @default(uuid()) @db.Uuid
-  organizationId String           @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
   name           String
   description    String?
-  isSystem       Boolean          @default(false)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  isSystem       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization   Organization     @relation(fields: [organizationId], references: [id])
-  users          User[]
-  permissions    RolePermission[]
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  users        User[]
+  permissions  RolePermission[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
 }
 
 model Permission {
-  id          String           @id @default(uuid()) @db.Uuid
+  id          String  @id @default(uuid()) @db.Uuid
   module      String
   action      String
   resource    String
   description String?
 
-  roles       RolePermission[]
+  roles RolePermission[]
 
   @@unique([module, action, resource])
 }
 
 model RolePermission {
-  roleId       String     @db.Uuid
-  permissionId String     @db.Uuid
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
 
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
 }

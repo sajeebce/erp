@@ -4,32 +4,32 @@
 // ═══════════════════════════════════════════
 
 model Vendor {
-  id              String    @id @default(uuid()) @db.Uuid
-  organizationId  String    @db.Uuid
-  vendorNo        String
-  companyName     String
-  category        String?   // "IT", "Construction", "Office Supplies", "Consultancy"
-  contactPerson   String?
-  phone           String?
-  email           String?
-  address         String?
-  tin             String?   // Tax Identification Number
-  tradeLicense    String?
-  rating          Decimal   @default(0) @db.Decimal(3, 1) // 0.0 - 5.0
-  totalOrders     Int       @default(0)
-  isApproved      Boolean   @default(false)
-  isActive        Boolean   @default(true)
-  notes           String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  vendorNo       String
+  companyName    String
+  category       String? // "IT", "Construction", "Office Supplies", "Consultancy"
+  contactPerson  String?
+  phone          String?
+  email          String?
+  address        String?
+  tin            String? // Tax Identification Number
+  tradeLicense   String?
+  rating         Decimal   @default(0) @db.Decimal(3, 1) // 0.0 - 5.0
+  totalOrders    Int       @default(0)
+  isApproved     Boolean   @default(false)
+  isActive       Boolean   @default(true)
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
 
-  organization    Organization   @relation(fields: [organizationId], references: [id])
-  purchaseOrders  PurchaseOrder[]
-  tenderBids      TenderBid[]
-  contracts       Contract[]
-  vendorRatings   VendorRating[]
-  goodsReceipts   GoodsReceipt[]
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  purchaseOrders PurchaseOrder[]
+  tenderBids     TenderBid[]
+  contracts      Contract[]
+  vendorRatings  VendorRating[]
+  goodsReceipts  GoodsReceipt[]
 
   @@unique([organizationId, vendorNo])
   @@index([organizationId])
@@ -38,84 +38,114 @@ model Vendor {
 }
 
 model VendorRating {
-  id          String   @id @default(uuid()) @db.Uuid
-  vendorId    String   @db.Uuid
-  poId        String?  @db.Uuid
-  quality     Int      // 1-5
-  delivery    Int      // 1-5
-  pricing     Int      // 1-5
-  communication Int    // 1-5
-  overall     Decimal  @db.Decimal(3, 1)
-  comments    String?
-  ratedById   String   @db.Uuid // User FK — plain String, no @relation
-  createdAt   DateTime @default(now())
+  id            String   @id @default(uuid()) @db.Uuid
+  vendorId      String   @db.Uuid
+  poId          String?  @db.Uuid
+  quality       Int // 1-5
+  delivery      Int // 1-5
+  pricing       Int // 1-5
+  communication Int // 1-5
+  overall       Decimal  @db.Decimal(3, 1)
+  comments      String?
+  ratedById     String   @db.Uuid // User FK — plain String, no @relation
+  createdAt     DateTime @default(now())
 
-  vendor      Vendor   @relation(fields: [vendorId], references: [id])
+  vendor Vendor @relation(fields: [vendorId], references: [id])
 
   @@index([vendorId])
 }
 
 model PurchaseRequisition {
-  id            String     @id @default(uuid()) @db.Uuid
-  prNo          String     @unique
-  date          DateTime
-  requestedById String     @db.Uuid // User FK — plain String, no @relation
-  departmentId  String?    @db.Uuid
-  projectId     String?    @db.Uuid
-  priority      PRPriority @default(NORMAL)
-  totalEstimate Decimal    @db.Decimal(18, 2)
-  justification String?
-  status        PRStatus   @default(DRAFT)
-  approvedById  String?    @db.Uuid // User FK — plain String, no @relation
-  approvedAt    DateTime?
-  linkedPOId    String?    @db.Uuid
-  notes         String?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  deletedAt     DateTime?
+  id                        String            @id @default(uuid()) @db.Uuid
+  prNo                      String            @unique
+  date                      DateTime
+  requestedById             String            @db.Uuid // User FK — plain String, no @relation
+  departmentId              String?           @db.Uuid
+  projectId                 String?           @db.Uuid
+  businessUnitId            String?           @db.Uuid
+  costCenterId              String?           @db.Uuid
+  fundClassId               String?           @db.Uuid
+  budgetId                  String?           @db.Uuid
+  priority                  PRPriority        @default(NORMAL)
+  totalEstimate             Decimal           @db.Decimal(18, 2)
+  justification             String?
+  status                    PRStatus          @default(DRAFT)
+  budgetCheckStatus         BudgetCheckStatus @default(NOT_CHECKED)
+  budgetWarningMessage      String?
+  budgetCheckedAt           DateTime?
+  approvedWithBudgetWarning Boolean           @default(false)
+  warningApprovedById       String?           @db.Uuid
+  warningApprovedAt         DateTime?
+  approvedById              String?           @db.Uuid // User FK — plain String, no @relation
+  approvedAt                DateTime?
+  linkedPOId                String?           @db.Uuid
+  notes                     String?
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
+  deletedAt                 DateTime?
 
-  project       Project?   @relation(fields: [projectId], references: [id])
-  lines         PurchaseRequisitionLine[]
+  project      Project?                  @relation(fields: [projectId], references: [id])
+  businessUnit BusinessUnit?             @relation(fields: [businessUnitId], references: [id])
+  costCenter   CostCenter?               @relation(fields: [costCenterId], references: [id])
+  fundClass    FundClass?                @relation(fields: [fundClassId], references: [id])
+  budget       Budget?                   @relation(fields: [budgetId], references: [id])
+  lines        PurchaseRequisitionLine[]
 
   @@index([prNo])
   @@index([status])
   @@index([projectId])
+  @@index([businessUnitId])
+  @@index([costCenterId])
+  @@index([fundClassId])
+  @@index([budgetId])
 }
 
 model PurchaseRequisitionLine {
-  id             String              @id @default(uuid()) @db.Uuid
-  prId           String              @db.Uuid
-  description    String
-  specification  String?
-  unit           String              // "pcs", "kg", "litre", "set"
-  quantity       Decimal             @db.Decimal(10, 2)
-  estimatedPrice Decimal             @db.Decimal(18, 2)
-  totalEstimate  Decimal             @db.Decimal(18, 2)
-  sortOrder      Int                 @default(0)
+  id                     String   @id @default(uuid()) @db.Uuid
+  prId                   String   @db.Uuid
+  description            String
+  specification          String?
+  accountId              String?  @db.Uuid
+  budgetLineId           String?  @db.Uuid
+  businessUnitId         String?  @db.Uuid
+  costCenterId           String?  @db.Uuid
+  fundClassId            String?  @db.Uuid
+  projectId              String?  @db.Uuid
+  grantId                String?  @db.Uuid
+  unit                   String // "pcs", "kg", "litre", "set"
+  quantity               Decimal  @db.Decimal(10, 2)
+  estimatedPrice         Decimal  @db.Decimal(18, 2)
+  totalEstimate          Decimal  @db.Decimal(18, 2)
+  budgetAvailableAtCheck Decimal? @db.Decimal(18, 2)
+  budgetVarianceAtCheck  Decimal? @db.Decimal(18, 2)
+  sortOrder              Int      @default(0)
 
-  requisition    PurchaseRequisition @relation(fields: [prId], references: [id], onDelete: Cascade)
-  poLines        PurchaseOrderLine[]
+  requisition PurchaseRequisition @relation(fields: [prId], references: [id], onDelete: Cascade)
+  poLines     PurchaseOrderLine[]
 
   @@index([prId])
+  @@index([budgetLineId])
+  @@index([businessUnitId])
+  @@index([costCenterId])
 }
 
 model PurchaseOrder {
-  id              String     @id @default(uuid()) @db.Uuid
-  poNo            String     @unique
-  date            DateTime
-  vendorId        String     @db.Uuid
-  deliveryDate    DateTime?
-  totalAmount     Decimal    @db.Decimal(18, 2)
-  paymentTerms    String?
-  status          POStatus   @default(DRAFT)
-  notes           String?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-  deletedAt       DateTime?
+  id           String    @id @default(uuid()) @db.Uuid
+  poNo         String    @unique
+  date         DateTime
+  vendorId     String    @db.Uuid
+  deliveryDate DateTime?
+  totalAmount  Decimal   @db.Decimal(18, 2)
+  paymentTerms String?
+  status       POStatus  @default(DRAFT)
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
-  vendor          Vendor     @relation(fields: [vendorId], references: [id])
-  lines           PurchaseOrderLine[]
-  goodsReceipts   GoodsReceipt[]
+  vendor        Vendor              @relation(fields: [vendorId], references: [id])
+  lines         PurchaseOrderLine[]
+  goodsReceipts GoodsReceipt[]
 
   @@index([poNo])
   @@index([vendorId])
@@ -123,29 +153,39 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderLine {
-  id             String                   @id @default(uuid()) @db.Uuid
-  poId           String                   @db.Uuid
-  prLineId       String?                  @db.Uuid // Traceability to PR
+  id             String  @id @default(uuid()) @db.Uuid
+  poId           String  @db.Uuid
+  prLineId       String? @db.Uuid // Traceability to PR
+  accountId      String? @db.Uuid
+  budgetLineId   String? @db.Uuid
+  businessUnitId String? @db.Uuid
+  costCenterId   String? @db.Uuid
+  fundClassId    String? @db.Uuid
+  projectId      String? @db.Uuid
+  grantId        String? @db.Uuid
   description    String
   unit           String
-  quantity       Decimal                  @db.Decimal(10, 2)
-  unitPrice      Decimal                  @db.Decimal(18, 2)
-  totalPrice     Decimal                  @db.Decimal(18, 2)
-  receivedQty    Decimal                  @default(0) @db.Decimal(10, 2)
-  sortOrder      Int                      @default(0)
+  quantity       Decimal @db.Decimal(10, 2)
+  unitPrice      Decimal @db.Decimal(18, 2)
+  totalPrice     Decimal @db.Decimal(18, 2)
+  receivedQty    Decimal @default(0) @db.Decimal(10, 2)
+  sortOrder      Int     @default(0)
 
-  purchaseOrder  PurchaseOrder            @relation(fields: [poId], references: [id], onDelete: Cascade)
-  prLine         PurchaseRequisitionLine? @relation(fields: [prLineId], references: [id])
-  grnLines       GoodsReceiptLine[]
+  purchaseOrder PurchaseOrder            @relation(fields: [poId], references: [id], onDelete: Cascade)
+  prLine        PurchaseRequisitionLine? @relation(fields: [prLineId], references: [id])
+  grnLines      GoodsReceiptLine[]
 
   @@index([poId])
+  @@index([budgetLineId])
+  @@index([businessUnitId])
+  @@index([costCenterId])
 }
 
 model Tender {
   id              String       @id @default(uuid()) @db.Uuid
   tenderNo        String       @unique
   title           String
-  category        String?      // "Supply", "Works", "Consultancy"
+  category        String? // "Supply", "Works", "Consultancy"
   description     String?
   estimatedValue  Decimal      @db.Decimal(18, 2)
   publicationDate DateTime
@@ -157,7 +197,7 @@ model Tender {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  bids            TenderBid[]
+  bids TenderBid[]
 
   @@index([status])
   @@index([closingDate])
@@ -175,32 +215,32 @@ model TenderBid {
   notes          String?
   submittedAt    DateTime @default(now())
 
-  tender         Tender   @relation(fields: [tenderId], references: [id])
-  vendor         Vendor   @relation(fields: [vendorId], references: [id])
+  tender Tender @relation(fields: [tenderId], references: [id])
+  vendor Vendor @relation(fields: [vendorId], references: [id])
 
   @@index([tenderId])
   @@index([vendorId])
 }
 
 model Contract {
-  id            String         @id @default(uuid()) @db.Uuid
-  contractNo    String         @unique
-  title         String
-  vendorId      String         @db.Uuid
-  type          ContractType
-  startDate     DateTime
-  endDate       DateTime
-  value         Decimal        @db.Decimal(18, 2)
-  status        ContractStatus @default(DRAFT)
-  description   String?
-  terms         String?
-  renewalDate   DateTime?
-  notes         String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  deletedAt     DateTime?
+  id          String         @id @default(uuid()) @db.Uuid
+  contractNo  String         @unique
+  title       String
+  vendorId    String         @db.Uuid
+  type        ContractType
+  startDate   DateTime
+  endDate     DateTime
+  value       Decimal        @db.Decimal(18, 2)
+  status      ContractStatus @default(DRAFT)
+  description String?
+  terms       String?
+  renewalDate DateTime?
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
 
-  vendor        Vendor         @relation(fields: [vendorId], references: [id])
+  vendor Vendor @relation(fields: [vendorId], references: [id])
 
   @@index([vendorId])
   @@index([status])

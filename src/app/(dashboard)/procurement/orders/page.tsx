@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -15,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2, ExternalLink } from "lucide-react";
+import { AlertTriangle, Download, Loader2, ExternalLink } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
 interface PurchaseOrder {
@@ -64,17 +65,21 @@ export default function PurchaseOrdersPage() {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/v1/procurement/orders?limit=50")
+    fetch(`/api/v1/procurement/orders?limit=50&_=${Date.now()}`, { cache: "no-store" })
       .then((response) => response.json())
       .then((json) => {
         if (json.success) {
           setPurchaseOrders(json.data);
           setTotal(json.meta?.total ?? json.data.length);
+          setError(null);
+        } else {
+          setError(json.error?.message ?? "Failed to load purchase orders.");
         }
       })
-      .catch(() => {})
+      .catch(() => setError("Failed to load purchase orders. Please refresh the page."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -97,6 +102,13 @@ export default function PurchaseOrdersPage() {
           {tc("buttons.export")}
         </Button>
       </PageHeader>
+
+      {error && (
+        <Alert className="border-destructive/50 bg-destructive/5">
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+          <AlertDescription className="text-destructive">{error}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>

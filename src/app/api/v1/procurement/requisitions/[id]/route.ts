@@ -84,7 +84,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return apiNotFound('Purchase requisition not found')
     }
 
-    return apiSuccess(requisition)
+    return apiSuccess({
+      ...requisition,
+      budgetWarning: requisition.budgetWarningMessage,
+    })
   } catch (error) {
     return handleRouteError(error)
   }
@@ -168,8 +171,23 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return apiNotFound('Purchase requisition not found')
     }
 
-    if (existing.status !== 'DRAFT') {
-      return apiForbidden('Only DRAFT requisitions can be deleted')
+    const linkedPo = await prisma.purchaseOrder.findFirst({
+      where: {
+        deletedAt: null,
+        OR: [
+          ...(existing.linkedPOId ? [{ id: existing.linkedPOId }] : []),
+          { lines: { some: { prLine: { prId: id } } } },
+        ],
+      },
+      select: { poNo: true },
+    })
+
+    if (linkedPo || existing.linkedPOId) {
+      return apiForbidden(
+        linkedPo
+          ? `Cannot delete requisition with linked purchase order ${linkedPo.poNo}`
+          : 'Cannot delete requisition with linked purchase order'
+      )
     }
 
     await prisma.purchaseRequisition.update({
@@ -186,6 +204,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       resource: 'PurchaseRequisition',
       resourceId: id,
       description: `Deleted purchase requisition ${existing.prNo}`,
+      oldValues: {
+        prNo: existing.prNo,
+        status: existing.status,
+        totalEstimate: existing.totalEstimate.toString(),
+      },
       ...audit,
     })
 

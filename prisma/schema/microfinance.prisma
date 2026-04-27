@@ -6,16 +6,16 @@
 // ═══════════════════════════════════════════
 
 model Branch {
-  id              String   @id @default(uuid()) @db.Uuid
-  organizationId  String   @db.Uuid
-  code            String
-  name            String
-  location        String
-  managerId       String?  @db.Uuid  // Employee FK — plain String, no @relation
-  phone           String?
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  code           String
+  name           String
+  location       String
+  managerId      String?  @db.Uuid // Employee FK — plain String, no @relation
+  phone          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id])
   samities     Samity[]
@@ -30,9 +30,9 @@ model Samity {
   name           String
   branchId       String       @db.Uuid
   formationDate  DateTime
-  meetingDay     String       // "Saturday", "Sunday", etc.
-  meetingTime    String?      // "09:00 AM"
-  fieldOfficerId String?      @db.Uuid  // Employee FK — plain String, no @relation
+  meetingDay     String // "Saturday", "Sunday", etc.
+  meetingTime    String? // "09:00 AM"
+  fieldOfficerId String?      @db.Uuid // Employee FK — plain String, no @relation
   totalMembers   Int          @default(0)
   status         SamityStatus @default(NEW)
   location       String?
@@ -40,26 +40,26 @@ model Samity {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  branch         Branch       @relation(fields: [branchId], references: [id])
-  members        MFIMember[]
-  collections    CollectionSheet[]
+  branch      Branch            @relation(fields: [branchId], references: [id])
+  members     MFIMember[]
+  collections CollectionSheet[]
 
   @@index([branchId])
   @@index([status])
 }
 
 model MFIMember {
-  id              String      @id @default(uuid()) @db.Uuid
-  memberNo        String      @unique
-  beneficiaryId   String      @db.Uuid  // Links to Beneficiary master
-  samityId        String      @db.Uuid
-  admissionDate   DateTime
-  status          String      @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED, WITHDRAWN
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id            String   @id @default(uuid()) @db.Uuid
+  memberNo      String   @unique
+  beneficiaryId String   @db.Uuid // Links to Beneficiary master
+  samityId      String   @db.Uuid
+  admissionDate DateTime
+  status        String   @default("ACTIVE") // ACTIVE, INACTIVE, SUSPENDED, WITHDRAWN
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  beneficiary     Beneficiary @relation(fields: [beneficiaryId], references: [id])
-  samity          Samity      @relation(fields: [samityId], references: [id])
+  beneficiary     Beneficiary      @relation(fields: [beneficiaryId], references: [id])
+  samity          Samity           @relation(fields: [samityId], references: [id])
   loanAccounts    LoanAccount[]
   savingsAccounts SavingsAccount[]
 
@@ -85,8 +85,8 @@ model LoanProduct {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  loanApplications   LoanApplication[]
-  loanAccounts       LoanAccount[]
+  loanApplications LoanApplication[]
+  loanAccounts     LoanAccount[]
 
   @@index([productCode])
   @@index([category])
@@ -101,17 +101,17 @@ model LoanApplication {
   amountRequested Decimal       @db.Decimal(18, 2)
   purpose         String
   durationMonths  Int
-  fieldOfficerId  String?       @db.Uuid  // Employee FK — plain String, no @relation
+  fieldOfficerId  String?       @db.Uuid // Employee FK — plain String, no @relation
   status          LoanAppStatus @default(SUBMITTED)
   approvedAmount  Decimal?      @db.Decimal(18, 2)
-  approvedById    String?       @db.Uuid  // User FK — plain String, no @relation
+  approvedById    String?       @db.Uuid // User FK — plain String, no @relation
   approvedAt      DateTime?
   rejectionReason String?
   notes           String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  product         LoanProduct   @relation(fields: [productId], references: [id])
+  product LoanProduct @relation(fields: [productId], references: [id])
 
   @@index([memberId])
   @@index([status])
@@ -140,10 +140,10 @@ model LoanAccount {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  member             MFIMember          @relation(fields: [memberId], references: [id])
-  product            LoanProduct        @relation(fields: [productId], references: [id])
-  disbursement       LoanDisbursement?
-  repayments         LoanRepayment[]
+  member       MFIMember         @relation(fields: [memberId], references: [id])
+  product      LoanProduct       @relation(fields: [productId], references: [id])
+  disbursement LoanDisbursement?
+  repayments   LoanRepayment[]
 
   @@index([memberId])
   @@index([status])
@@ -153,44 +153,44 @@ model LoanAccount {
 }
 
 model LoanDisbursement {
-  id              String             @id @default(uuid()) @db.Uuid
-  disbursementNo  String             @unique
-  loanAccountId   String             @unique @db.Uuid  // 1:1 with LoanAccount
-  date            DateTime
-  amount          Decimal            @db.Decimal(18, 2)
-  mode            DisbursementMode
-  branchId        String?            @db.Uuid
-  disbursedById   String             @db.Uuid  // User FK — plain String, no @relation
-  status          DisbursementStatus @default(SCHEDULED)
-  reference       String?
-  journalEntryId  String?            @db.Uuid
-  notes           String?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  id             String             @id @default(uuid()) @db.Uuid
+  disbursementNo String             @unique
+  loanAccountId  String             @unique @db.Uuid // 1:1 with LoanAccount
+  date           DateTime
+  amount         Decimal            @db.Decimal(18, 2)
+  mode           DisbursementMode
+  branchId       String?            @db.Uuid
+  disbursedById  String             @db.Uuid // User FK — plain String, no @relation
+  status         DisbursementStatus @default(SCHEDULED)
+  reference      String?
+  journalEntryId String?            @db.Uuid
+  notes          String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
-  loanAccount     LoanAccount        @relation(fields: [loanAccountId], references: [id])
+  loanAccount LoanAccount @relation(fields: [loanAccountId], references: [id])
 
   @@index([loanAccountId])
   @@index([date])
 }
 
 model LoanRepayment {
-  id              String      @id @default(uuid()) @db.Uuid
-  repaymentNo     String      @unique
-  loanAccountId   String      @db.Uuid
+  id              String   @id @default(uuid()) @db.Uuid
+  repaymentNo     String   @unique
+  loanAccountId   String   @db.Uuid
   date            DateTime
-  principalAmount Decimal     @db.Decimal(18, 2)
-  interestAmount  Decimal     @db.Decimal(18, 2)
-  totalAmount     Decimal     @db.Decimal(18, 2)
-  penaltyAmount   Decimal     @default(0) @db.Decimal(18, 2)
-  collectedById   String      @db.Uuid  // User FK — plain String, no @relation
-  balanceAfter    Decimal     @db.Decimal(18, 2)
-  isOnTime        Boolean     @default(true)
-  journalEntryId  String?     @db.Uuid
+  principalAmount Decimal  @db.Decimal(18, 2)
+  interestAmount  Decimal  @db.Decimal(18, 2)
+  totalAmount     Decimal  @db.Decimal(18, 2)
+  penaltyAmount   Decimal  @default(0) @db.Decimal(18, 2)
+  collectedById   String   @db.Uuid // User FK — plain String, no @relation
+  balanceAfter    Decimal  @db.Decimal(18, 2)
+  isOnTime        Boolean  @default(true)
+  journalEntryId  String?  @db.Uuid
   notes           String?
-  createdAt       DateTime    @default(now())
+  createdAt       DateTime @default(now())
 
-  loanAccount     LoanAccount @relation(fields: [loanAccountId], references: [id])
+  loanAccount LoanAccount @relation(fields: [loanAccountId], references: [id])
 
   @@index([loanAccountId])
   @@index([date])
@@ -206,36 +206,36 @@ model CollectionSheet {
   amountCollected  Decimal          @db.Decimal(18, 2)
   shortfall        Decimal          @default(0) @db.Decimal(18, 2)
   onTimePercent    Decimal          @default(0) @db.Decimal(5, 2)
-  collectedById    String           @db.Uuid  // User FK — plain String, no @relation
+  collectedById    String           @db.Uuid // User FK — plain String, no @relation
   status           CollectionStatus @default(COMPLETED)
   depositedAt      DateTime?
   notes            String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  samity           Samity           @relation(fields: [samityId], references: [id])
+  samity Samity @relation(fields: [samityId], references: [id])
 
   @@index([samityId])
   @@index([date])
 }
 
 model SavingsAccount {
-  id              String      @id @default(uuid()) @db.Uuid
-  accountNo       String      @unique
-  memberId        String      @db.Uuid
-  type            SavingsType
-  balance         Decimal     @default(0) @db.Decimal(18, 2)
-  totalDeposited  Decimal     @default(0) @db.Decimal(18, 2)
-  totalWithdrawn  Decimal     @default(0) @db.Decimal(18, 2)
-  interestEarned  Decimal     @default(0) @db.Decimal(18, 2)
-  interestRate    Decimal     @default(0) @db.Decimal(5, 2)
-  monthlyDeposit  Decimal     @default(0) @db.Decimal(18, 2) // For compulsory
-  isActive        Boolean     @default(true)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id             String      @id @default(uuid()) @db.Uuid
+  accountNo      String      @unique
+  memberId       String      @db.Uuid
+  type           SavingsType
+  balance        Decimal     @default(0) @db.Decimal(18, 2)
+  totalDeposited Decimal     @default(0) @db.Decimal(18, 2)
+  totalWithdrawn Decimal     @default(0) @db.Decimal(18, 2)
+  interestEarned Decimal     @default(0) @db.Decimal(18, 2)
+  interestRate   Decimal     @default(0) @db.Decimal(5, 2)
+  monthlyDeposit Decimal     @default(0) @db.Decimal(18, 2) // For compulsory
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
-  member          MFIMember   @relation(fields: [memberId], references: [id])
-  transactions    SavingsTransaction[]
+  member       MFIMember            @relation(fields: [memberId], references: [id])
+  transactions SavingsTransaction[]
 
   @@index([memberId])
   @@index([type])
@@ -243,19 +243,19 @@ model SavingsAccount {
 }
 
 model SavingsTransaction {
-  id              String         @id @default(uuid()) @db.Uuid
-  accountId       String         @db.Uuid
-  date            DateTime
-  type            String         // "DEPOSIT", "WITHDRAWAL", "INTEREST"
-  amount          Decimal        @db.Decimal(18, 2)
-  balanceAfter    Decimal        @db.Decimal(18, 2)
-  reference       String?
-  transactedById  String         @db.Uuid  // User FK — plain String, no @relation
-  journalEntryId  String?        @db.Uuid
-  notes           String?
-  createdAt       DateTime       @default(now())
+  id             String   @id @default(uuid()) @db.Uuid
+  accountId      String   @db.Uuid
+  date           DateTime
+  type           String // "DEPOSIT", "WITHDRAWAL", "INTEREST"
+  amount         Decimal  @db.Decimal(18, 2)
+  balanceAfter   Decimal  @db.Decimal(18, 2)
+  reference      String?
+  transactedById String   @db.Uuid // User FK — plain String, no @relation
+  journalEntryId String?  @db.Uuid
+  notes          String?
+  createdAt      DateTime @default(now())
 
-  account         SavingsAccount @relation(fields: [accountId], references: [id])
+  account SavingsAccount @relation(fields: [accountId], references: [id])
 
   @@index([accountId])
   @@index([date])

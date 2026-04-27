@@ -35,11 +35,15 @@ export async function POST(
     const budget = await prisma.budget.findFirst({
       where: {
         id,
-        project: { organizationId: auth.organizationId },
         deletedAt: null,
+        OR: [
+          { project: { organizationId: auth.organizationId } },
+          { businessUnit: { organizationId: auth.organizationId } },
+        ],
       },
       include: {
         project: { select: { name: true } },
+        businessUnit: { select: { name: true } },
       },
     })
 

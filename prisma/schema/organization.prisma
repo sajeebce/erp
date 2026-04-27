@@ -1,9 +1,9 @@
 model Organization {
-  id                     String   @id @default(uuid()) @db.Uuid
+  id                     String       @id @default(uuid()) @db.Uuid
   name                   String
-  slug                   String   @unique
-  customDomain           String?  @unique
-  domainVerified         Boolean  @default(false)
+  slug                   String       @unique
+  customDomain           String?      @unique
+  domainVerified         Boolean      @default(false)
   registrationNo         String?
   ngoabLicenseNo         String?
   mraLicenseNo           String?
@@ -16,24 +16,24 @@ model Organization {
   website                String?
   logo                   String?
   baseCurrency           CurrencyCode @default(BDT)
-  fiscalYearStartMonth   Int      @default(7)
-  dateFormat             String   @default("DD/MM/YYYY")
-  numberFormat           String   @default("BD")
-  timezone               String   @default("Asia/Dhaka")
-  defaultLanguage        String   @default("en")
-  supportedLanguages     String[] @default(["en"])
+  fiscalYearStartMonth   Int          @default(7)
+  dateFormat             String       @default("DD/MM/YYYY")
+  numberFormat           String       @default("BD")
+  timezone               String       @default("Asia/Dhaka")
+  defaultLanguage        String       @default("en")
+  supportedLanguages     String[]     @default(["en"])
   localizedName          Json?
-  isActive               Boolean  @default(true)
-  storageUsedBytes       BigInt   @default(0)
-  storageWarning80Sent   Boolean  @default(false)
-  storageWarning90Sent   Boolean  @default(false)
-  bandwidthUsedBytes     BigInt   @default(0)
+  isActive               Boolean      @default(true)
+  storageUsedBytes       BigInt       @default(0)
+  storageWarning80Sent   Boolean      @default(false)
+  storageWarning90Sent   Boolean      @default(false)
+  bandwidthUsedBytes     BigInt       @default(0)
   bandwidthPeriodStart   DateTime?
   bandwidthPeriodEnd     DateTime?
-  bandwidthWarning80Sent Boolean  @default(false)
-  bandwidthWarning90Sent Boolean  @default(false)
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  bandwidthWarning80Sent Boolean      @default(false)
+  bandwidthWarning90Sent Boolean      @default(false)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 
   subscription       TenantSubscription?
   users              User[]
@@ -75,11 +75,11 @@ model Organization {
   pfSettlements      PFSettlement[]
 
   // ── Phase 8c Relations ──
-  salaryGrades       SalaryGrade[]
-  salaryStructures   SalaryStructure[]
-  payslipTemplates   PayslipTemplate[]
-  teamCoverageRules  TeamCoverageRule[]
-  okrCycles          OKRCycle[]
+  salaryGrades      SalaryGrade[]
+  salaryStructures  SalaryStructure[]
+  payslipTemplates  PayslipTemplate[]
+  teamCoverageRules TeamCoverageRule[]
+  okrCycles         OKRCycle[]
 
   // ── Phase 13: Operating Structure ──
   sectors            Sector[]
@@ -102,7 +102,7 @@ model FiscalYear {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization   @relation(fields: [organizationId], references: [id])
   fiscalPeriods  FiscalPeriod[]
   budgets        Budget[]
   journalEntries JournalEntry[]
@@ -112,16 +112,16 @@ model FiscalYear {
 }
 
 model FiscalPeriod {
-  id           String     @id @default(uuid()) @db.Uuid
-  fiscalYearId String     @db.Uuid
+  id           String   @id @default(uuid()) @db.Uuid
+  fiscalYearId String   @db.Uuid
   name         String
   periodNumber Int
   startDate    DateTime
   endDate      DateTime
-  isClosed     Boolean    @default(false)
-  createdAt    DateTime   @default(now())
+  isClosed     Boolean  @default(false)
+  createdAt    DateTime @default(now())
 
-  fiscalYear   FiscalYear @relation(fields: [fiscalYearId], references: [id])
+  fiscalYear FiscalYear @relation(fields: [fiscalYearId], references: [id])
 
   @@unique([fiscalYearId, periodNumber])
 }
@@ -138,41 +138,41 @@ model Currency {
 }
 
 model ExchangeRate {
-  id            String       @id @default(uuid()) @db.Uuid
-  currencyId    String       @db.Uuid
-  rate          Decimal      @db.Decimal(18, 6)
+  id            String   @id @default(uuid()) @db.Uuid
+  currencyId    String   @db.Uuid
+  rate          Decimal  @db.Decimal(18, 6)
   effectiveDate DateTime
-  createdAt     DateTime     @default(now())
+  createdAt     DateTime @default(now())
 
-  currency      Currency     @relation(fields: [currencyId], references: [id])
+  currency Currency @relation(fields: [currencyId], references: [id])
 
   @@index([currencyId, effectiveDate])
 }
 
 model SystemConfig {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @db.Uuid
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid
   key            String
   value          String
-  type           String       @default("string")
+  type           String @default("string")
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([organizationId, key])
   @@index([organizationId])
 }
 
 model NumberSequence {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @db.Uuid
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @db.Uuid
   entity         String
   prefix         String
-  separator      String       @default("-")
-  includeYear    Boolean      @default(true)
-  currentValue   Int          @default(0)
-  padLength      Int          @default(3)
+  separator      String  @default("-")
+  includeYear    Boolean @default(true)
+  currentValue   Int     @default(0)
+  padLength      Int     @default(3)
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([organizationId, entity])
   @@index([organizationId])
@@ -183,47 +183,49 @@ model NumberSequence {
 // ═══════════════════════════════════════════
 
 model Sector {
-  id             String         @id @default(uuid()) @db.Uuid
-  organizationId String         @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
   code           String
   name           String
   localizedName  Json?
-  isActive       Boolean        @default(true)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization   Organization   @relation(fields: [organizationId], references: [id])
-  businessUnits  BusinessUnit[]
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  businessUnits BusinessUnit[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
 }
 
 model BusinessUnit {
-  id             String              @id @default(uuid()) @db.Uuid
-  organizationId String              @db.Uuid
-  sectorId       String              @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  sectorId       String   @db.Uuid
   code           String
   name           String
   shortName      String?
   localizedName  Json?
-  isActive       Boolean             @default(true)
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization       Organization        @relation(fields: [organizationId], references: [id])
-  sector             Sector              @relation(fields: [sectorId], references: [id])
-  costCenters        CostCenter[]
-  operatingLocations OperatingLocation[]
-  accounts           Account[]
-  journalEntries     JournalEntry[]
-  journalLines       JournalEntryLine[]
-  vouchers           Voucher[]
-  bankAccounts       BankAccount[]
-  pettyCashFunds     PettyCashFund[]
-  expenseClaims      ExpenseClaim[]
-  expenseClaimItems  ExpenseClaimItem[]
-  employeeAdvances   EmployeeAdvance[]
+  organization         Organization          @relation(fields: [organizationId], references: [id])
+  sector               Sector                @relation(fields: [sectorId], references: [id])
+  costCenters          CostCenter[]
+  operatingLocations   OperatingLocation[]
+  accounts             Account[]
+  journalEntries       JournalEntry[]
+  journalLines         JournalEntryLine[]
+  budgets              Budget[]
+  purchaseRequisitions PurchaseRequisition[]
+  vouchers             Voucher[]
+  bankAccounts         BankAccount[]
+  pettyCashFunds       PettyCashFund[]
+  expenseClaims        ExpenseClaim[]
+  expenseClaimItems    ExpenseClaimItem[]
+  employeeAdvances     EmployeeAdvance[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -231,22 +233,23 @@ model BusinessUnit {
 }
 
 model CostCenter {
-  id             String         @id @default(uuid()) @db.Uuid
-  organizationId String         @db.Uuid
-  businessUnitId String         @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  businessUnitId String   @db.Uuid
   code           String
   name           String
   localizedName  Json?
   description    String?
-  isActive       Boolean        @default(true)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization      Organization       @relation(fields: [organizationId], references: [id])
-  businessUnit      BusinessUnit       @relation(fields: [businessUnitId], references: [id])
-  journalLines      JournalEntryLine[]
-  expenseClaimItems ExpenseClaimItem[]
-  budgets           Budget[]
+  organization         Organization          @relation(fields: [organizationId], references: [id])
+  businessUnit         BusinessUnit          @relation(fields: [businessUnitId], references: [id])
+  journalLines         JournalEntryLine[]
+  expenseClaimItems    ExpenseClaimItem[]
+  budgets              Budget[]
+  purchaseRequisitions PurchaseRequisition[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -254,34 +257,36 @@ model CostCenter {
 }
 
 model FundClass {
-  id             String         @id @default(uuid()) @db.Uuid
-  organizationId String         @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
   code           String
   name           String
   localizedName  Json?
   restriction    String
-  isActive       Boolean        @default(true)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization Organization      @relation(fields: [organizationId], references: [id])
-  journalLines JournalEntryLine[]
+  organization         Organization          @relation(fields: [organizationId], references: [id])
+  journalLines         JournalEntryLine[]
+  budgets              Budget[]
+  purchaseRequisitions PurchaseRequisition[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
 }
 
 model OperatingLocation {
-  id             String        @id @default(uuid()) @db.Uuid
-  organizationId String        @db.Uuid
-  businessUnitId String?       @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  businessUnitId String?  @db.Uuid
   code           String
   name           String
   localizedName  Json?
   address        String?
-  isActive       Boolean       @default(true)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   organization Organization  @relation(fields: [organizationId], references: [id])
   businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id])

@@ -36,6 +36,37 @@ interface Project {
   amountSpent: number;
 }
 
+interface BusinessUnit {
+  id: string;
+  code: string;
+  name: string;
+  shortName: string | null;
+}
+
+interface CostCenter {
+  id: string;
+  code: string;
+  name: string;
+  businessUnitId: string;
+}
+
+interface FundClass {
+  id: string;
+  code: string;
+  name: string;
+}
+
+interface Budget {
+  id: string;
+  budgetCode: string;
+  name: string;
+  totalAmount: number;
+  status: string;
+  businessUnitId: string | null;
+  costCenterId: string | null;
+  fundClassId: string | null;
+}
+
 interface PRLine {
   description: string;
   specification: string;
@@ -58,6 +89,10 @@ export default function NewRequisitionPage() {
   const locale = useLocale();
 
   const [projects, setProjects] = useState<Project[]>([]);
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
+  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
+  const [fundClasses, setFundClasses] = useState<FundClass[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [budgetWarning, setBudgetWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +100,10 @@ export default function NewRequisitionPage() {
 
   const [form, setForm] = useState({
     projectId: "",
+    businessUnitId: "",
+    costCenterId: "",
+    fundClassId: "",
+    budgetId: "",
     priority: "NORMAL",
     justification: "",
     notes: "",
@@ -76,10 +115,13 @@ export default function NewRequisitionPage() {
   ]);
 
   useEffect(() => {
-    fetch("/api/v1/projects?limit=50&status=ACTIVE")
-      .then((r) => r.json())
-      .then((json) => { if (json.success) setProjects(json.data); })
-      .catch(() => {});
+    Promise.all([
+      fetch("/api/v1/projects?limit=50&status=ACTIVE").then((r) => r.json()).then((json) => { if (json.success) setProjects(json.data); }),
+      fetch("/api/v1/settings/business-units?limit=200").then((r) => r.json()).then((json) => { if (json.success) setBusinessUnits(json.data); }),
+      fetch("/api/v1/settings/cost-centers?limit=200").then((r) => r.json()).then((json) => { if (json.success) setCostCenters(json.data); }),
+      fetch("/api/v1/settings/fund-classes?limit=50").then((r) => r.json()).then((json) => { if (json.success) setFundClasses(json.data); }),
+      fetch("/api/v1/budget?limit=200").then((r) => r.json()).then((json) => { if (json.success) setBudgets(json.data); }),
+    ]).catch(() => {});
   }, []);
 
   function addLine() {
@@ -103,6 +145,12 @@ export default function NewRequisitionPage() {
   }, 0);
 
   const selectedProject = projects.find((p) => p.id === form.projectId);
+  const matchingBudgets = budgets.filter((budget) =>
+    ["APPROVED", "ACTIVE"].includes(budget.status) &&
+    (!form.businessUnitId || budget.businessUnitId === form.businessUnitId) &&
+    (!form.costCenterId || !budget.costCenterId || budget.costCenterId === form.costCenterId) &&
+    (!form.fundClassId || !budget.fundClassId || budget.fundClassId === form.fundClassId)
+  );
   const remainingBudget = selectedProject
     ? Number(selectedProject.totalBudget) - Number(selectedProject.amountSpent)
     : null;
@@ -129,6 +177,10 @@ export default function NewRequisitionPage() {
         body: JSON.stringify({
           date: form.date,
           projectId: form.projectId || null,
+          businessUnitId: form.businessUnitId || null,
+          costCenterId: form.costCenterId || null,
+          fundClassId: form.fundClassId || null,
+          budgetId: form.budgetId || null,
           priority: form.priority,
           justification: form.justification || null,
           notes: form.notes || null,
@@ -229,6 +281,80 @@ export default function NewRequisitionPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1.5 md:col-span-2">
+            <Label>Concern / Business Unit</Label>
+            <Select
+              value={form.businessUnitId}
+              onValueChange={(v) => setForm((f) => ({ ...f, businessUnitId: v, costCenterId: "", budgetId: "" }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select concern" />
+              </SelectTrigger>
+              <SelectContent>
+                {businessUnits.map((bu) => (
+                  <SelectItem key={bu.id} value={bu.id}>
+                    {bu.code} - {bu.shortName ?? bu.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Cost Center</Label>
+            <Select
+              value={form.costCenterId}
+              onValueChange={(v) => setForm((f) => ({ ...f, costCenterId: v, budgetId: "" }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select cost center" />
+              </SelectTrigger>
+              <SelectContent>
+                {costCenters
+                  .filter((cc) => !form.businessUnitId || cc.businessUnitId === form.businessUnitId)
+                  .map((cc) => (
+                    <SelectItem key={cc.id} value={cc.id}>
+                      {cc.code} - {cc.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Fund Class</Label>
+            <Select
+              value={form.fundClassId}
+              onValueChange={(v) => setForm((f) => ({ ...f, fundClassId: v, budgetId: "" }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select fund class" />
+              </SelectTrigger>
+              <SelectContent>
+                {fundClasses.map((fc) => (
+                  <SelectItem key={fc.id} value={fc.id}>
+                    {fc.code} - {fc.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5 md:col-span-2">
+            <Label>Approved Budget</Label>
+            <Select value={form.budgetId} onValueChange={(v) => setForm((f) => ({ ...f, budgetId: v }))}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select approved concern budget" />
+              </SelectTrigger>
+              <SelectContent>
+                {matchingBudgets.map((budget) => (
+                  <SelectItem key={budget.id} value={budget.id}>
+                    {budget.budgetCode} - {budget.name} ({formatCurrency(Number(budget.totalAmount), locale)})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {form.businessUnitId && matchingBudgets.length === 0 && (
+              <p className="text-xs text-amber-600">No approved/active matching budget found. Submission will carry a budget warning.</p>
+            )}
           </div>
           <div className="space-y-1.5 md:col-span-2">
             <Label>Project <span className="text-muted-foreground text-xs">(optional)</span></Label>

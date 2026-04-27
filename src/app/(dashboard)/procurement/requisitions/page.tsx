@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Plus, Download, AlertTriangle, Loader2 } from "lucide-react";
+import { Plus, Download, AlertTriangle, Loader2, Trash2, CheckCircle, XCircle } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
 interface PRLine {
@@ -41,6 +41,7 @@ interface PurchaseRequisition {
   justification: string | null;
   approvedById: string | null;
   approvedAt: string | null;
+  linkedPOId?: string | null;
   createdAt: string;
   budgetWarning?: string | null;
 }
@@ -86,10 +87,13 @@ export default function PurchaseRequisitionsPage() {
 
   const [requisitions, setRequisitions] = useState<PurchaseRequisition[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  useEffect(() => {
-    fetch("/api/v1/procurement/requisitions?limit=50")
+  async function fetchRequisitions() {
+    setLoading(true);
+    fetch(`/api/v1/procurement/requisitions?limit=50&_=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((json) => {
         if (json.success) {
@@ -99,7 +103,41 @@ export default function PurchaseRequisitionsPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    fetchRequisitions();
   }, []);
+
+  async function handleDeleteRequisition(req: PurchaseRequisition) {
+    if (req.status === "PO_CREATED" || req.linkedPOId) {
+      setActionMsg({ type: "error", text: "Cannot delete requisitions with linked purchase orders." });
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete requisition ${req.prNo}? It will be removed from the active procurement flow.`);
+    if (!confirmed) return;
+
+    setDeletingId(req.id);
+    setActionMsg(null);
+
+    try {
+      const res = await fetch(`/api/v1/procurement/requisitions/${req.id}`, { method: "DELETE" });
+      const json = await res.json();
+
+      if (json.success) {
+        setRequisitions((prev) => prev.filter((item) => item.id !== req.id));
+        setTotal((prev) => Math.max(0, prev - 1));
+        setActionMsg({ type: "success", text: `Requisition ${req.prNo} deleted.` });
+      } else {
+        setActionMsg({ type: "error", text: json.error?.message ?? "Failed to delete requisition." });
+      }
+    } catch {
+      setActionMsg({ type: "error", text: "Network error while deleting requisition." });
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   const totalValue = requisitions.reduce((sum, r) => sum + Number(r.totalEstimate), 0);
   const pendingApproval = requisitions.filter((r) => ["SUBMITTED", "REVIEWED"].includes(r.status)).length;
@@ -178,6 +216,21 @@ export default function PurchaseRequisitionsPage() {
         </Alert>
       )}
 
+      {actionMsg && (
+        <Alert className={actionMsg.type === "success"
+          ? "border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/20"
+          : "border-destructive/50 bg-destructive/5"
+        }>
+          {actionMsg.type === "success"
+            ? <CheckCircle className="h-4 w-4 text-emerald-600" />
+            : <XCircle className="h-4 w-4 text-destructive" />
+          }
+          <AlertDescription className={actionMsg.type === "success" ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}>
+            {actionMsg.text}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>{t("requisitions.title")}</CardTitle>
@@ -198,12 +251,13 @@ export default function PurchaseRequisitionsPage() {
                   <TableHead>{t("requisitions.priority")}</TableHead>
                   <TableHead>{tc("labels.status")}</TableHead>
                   <TableHead>{t("requisitions.poRef")}</TableHead>
+                  <TableHead className="w-[72px] text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {requisitions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       No requisitions found
                     </TableCell>
                   </TableRow>
@@ -236,7 +290,24 @@ export default function PurchaseRequisitionsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="font-mono text-sm text-muted-foreground">
-                        {req.status === "PO_CREATED" ? "PO linked" : "—"}
+                        {req.status === "PO_CREATED" || req.linkedPOId ? "PO linked" : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          disabled={req.status === "PO_CREATED" || Boolean(req.linkedPOId) || deletingId === req.id}
+                          title={req.status === "PO_CREATED" || req.linkedPOId ? "Cannot delete requisitions with linked purchase orders" : `Delete ${req.prNo}`}
+                          onClick={() => handleDeleteRequisition(req)}
+                        >
+                          {deletingId === req.id
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <Trash2 className="h-4 w-4" />
+                          }
+                          <span className="sr-only">Delete requisition</span>
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))

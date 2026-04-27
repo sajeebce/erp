@@ -11,6 +11,8 @@ import {
   parsePaginationParams,
 } from '@/lib/api-response'
 import { Prisma } from '@prisma/client'
+import { validateDimensions } from '@/lib/dimension-validation'
+import { checkProcurementBudget } from '@/lib/procurement-budget'
 
 export async function GET(request: NextRequest) {
   try {
@@ -59,12 +61,20 @@ export async function GET(request: NextRequest) {
           requestedById: true,
           departmentId: true,
           projectId: true,
+          businessUnitId: true,
+          costCenterId: true,
+          fundClassId: true,
+          budgetId: true,
           priority: true,
           totalEstimate: true,
           status: true,
+          budgetCheckStatus: true,
+          budgetWarningMessage: true,
+          approvedWithBudgetWarning: true,
           justification: true,
           approvedById: true,
           approvedAt: true,
+          linkedPOId: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -75,7 +85,15 @@ export async function GET(request: NextRequest) {
       prisma.purchaseRequisition.count({ where }),
     ])
 
-    return apiPaginated(requisitions, total, page, limit)
+    return apiPaginated(
+      requisitions.map((requisition) => ({
+        ...requisition,
+        budgetWarning: requisition.budgetWarningMessage,
+      })),
+      total,
+      page,
+      limit
+    )
   } catch (error) {
     return handleRouteError(error)
   }
@@ -86,11 +104,31 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuthFromRequest(request)
     const body = await request.json()
 
-    const { date, departmentId, projectId, priority, justification, notes, lines } = body
+    const {
+      date,
+      departmentId,
+      projectId,
+      businessUnitId,
+      costCenterId,
+      fundClassId,
+      budgetId,
+      priority,
+      justification,
+      notes,
+      lines,
+    } = body
 
     if (!lines || !Array.isArray(lines) || lines.length === 0) {
       return apiBadRequest('At least one line item is required')
     }
+
+    const dimensionError = await validateDimensions(auth.organizationId, {
+      businessUnitId: businessUnitId || null,
+      costCenterId: costCenterId || null,
+      fundClassId: fundClassId || null,
+      projectId: projectId || null,
+    })
+    if (dimensionError) return dimensionError
 
     let budgetWarning: string | null = null
 
@@ -157,6 +195,23 @@ export async function POST(request: NextRequest) {
       0
     )
 
+    const budgetCheck = await checkProcurementBudget({
+      organizationId: auth.organizationId,
+      budgetId: budgetId || null,
+      businessUnitId: businessUnitId || null,
+      costCenterId: costCenterId || null,
+      fundClassId: fundClassId || null,
+      projectId: projectId || null,
+      totalEstimate,
+    })
+    budgetWarning = budgetCheck.message
+    const matchingBudgetLines = budgetCheck.budgetId
+      ? await prisma.budgetLine.findMany({
+          where: { budgetId: budgetCheck.budgetId },
+          select: { id: true, accountId: true },
+        })
+      : []
+
     const requisition = await prisma.purchaseRequisition.create({
       data: {
         prNo,
@@ -164,22 +219,54 @@ export async function POST(request: NextRequest) {
         requestedById: auth.userId,
         departmentId: departmentId || null,
         projectId: projectId || null,
+        businessUnitId: businessUnitId || null,
+        costCenterId: costCenterId || null,
+        fundClassId: fundClassId || null,
+        budgetId: budgetCheck.budgetId || budgetId || null,
         priority: priority || 'NORMAL',
         totalEstimate: new Prisma.Decimal(totalEstimate),
+        budgetCheckStatus: budgetCheck.status,
+        budgetWarningMessage: budgetCheck.message,
+        budgetCheckedAt: new Date(),
         justification: justification || null,
         notes: notes || null,
         lines: {
           create: lines.map(
             (
-              l: { description: string; specification?: string; unit: string; quantity: number; estimatedPrice: number },
+            l: {
+              description: string
+              specification?: string
+              accountId?: string
+              budgetLineId?: string
+              businessUnitId?: string
+              costCenterId?: string
+              fundClassId?: string
+              projectId?: string
+              grantId?: string
+              unit: string
+              quantity: number
+              estimatedPrice: number
+            },
               i: number
             ) => ({
               description: l.description,
               specification: l.specification || null,
+              accountId: l.accountId || null,
+              budgetLineId:
+                l.budgetLineId ||
+                matchingBudgetLines.find((budgetLine) => l.accountId && budgetLine.accountId === l.accountId)?.id ||
+                (matchingBudgetLines.length === 1 ? matchingBudgetLines[0].id : null),
+              businessUnitId: l.businessUnitId || businessUnitId || null,
+              costCenterId: l.costCenterId || costCenterId || null,
+              fundClassId: l.fundClassId || fundClassId || null,
+              projectId: l.projectId || projectId || null,
+              grantId: l.grantId || null,
               unit: l.unit,
               quantity: new Prisma.Decimal(l.quantity),
               estimatedPrice: new Prisma.Decimal(l.estimatedPrice),
               totalEstimate: new Prisma.Decimal(Number(l.quantity) * Number(l.estimatedPrice)),
+              budgetAvailableAtCheck: new Prisma.Decimal(budgetCheck.availableAmount),
+              budgetVarianceAtCheck: new Prisma.Decimal(Math.max(0, budgetCheck.varianceAmount)),
               sortOrder: i,
             })
           ),
