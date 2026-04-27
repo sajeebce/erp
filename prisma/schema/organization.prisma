@@ -43,6 +43,7 @@ model Organization {
   bankAccounts       BankAccount[]
   donors             Donor[]
   projects           Project[]
+  projectExtensions  ProjectExtensionRequest[]
   employees          Employee[]
   departments        Department[]
   beneficiaries      Beneficiary[]

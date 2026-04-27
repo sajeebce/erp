@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { Plus } from 'lucide-react'
 import { ColumnDef } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { DataTable } from '@/components/shared/data-table'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
@@ -20,18 +21,30 @@ interface Project {
   country: string | null
   region: string | null
   location: string | null
+  startDate: string | null
+  endDate: string | null
   totalBudget: string | number
   amountSpent: string | number
   currency: string | null
   progress: number
   status: string
   implementingPartner: string | null
+  extensionRequests: {
+    id: string
+    requestNo: string
+    status: string
+    currentEndDate: string
+    proposedEndDate: string
+    requestedAt: string
+    approvedAt: string | null
+  }[]
   _count: {
     teamMembers: number
     activities: number
     milestones: number
     indicators: number
     risks: number
+    extensionRequests: number
   }
 }
 
@@ -39,7 +52,7 @@ export default function ProjectsPage() {
   const router = useRouter()
   const t = useTranslations('projects')
   const tc = useTranslations('common')
-  const { formatCurrency } = useFormatters()
+  const { formatCurrency, formatDate } = useFormatters()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -83,6 +96,24 @@ export default function ProjectsPage() {
       accessorKey: 'location',
       header: t('fields.location'),
       cell: ({ row }) => (row.getValue('location') as string) || '-',
+    },
+    {
+      accessorKey: 'endDate',
+      header: 'End Date',
+      cell: ({ row }) => {
+        const value = row.getValue('endDate') as string | null
+        return value ? formatDate(value) : '-'
+      },
+    },
+    {
+      id: 'extensionStatus',
+      header: 'Extension',
+      cell: ({ row }) => {
+        const latest = row.original.extensionRequests?.[0]
+        if (latest?.status === 'PENDING_APPROVAL') return <Badge variant="outline">Pending</Badge>
+        if (row.original._count.extensionRequests > 0) return <Badge variant="secondary">Extended</Badge>
+        return <span className="text-muted-foreground">-</span>
+      },
     },
     {
       accessorKey: 'totalBudget',

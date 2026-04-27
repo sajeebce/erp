@@ -3,12 +3,13 @@
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { ArrowLeft, Loader2, Pencil, Trash2, Save, X } from 'lucide-react'
+import { ArrowLeft, Loader2, Pencil, Trash2, Save, X, CalendarPlus, CheckCircle2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { SearchableSelect } from '@/components/shared/searchable-select'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
@@ -45,6 +46,28 @@ interface TeamMember {
   }
 }
 
+interface ProjectExtensionRequest {
+  id: string
+  requestNo: string
+  currentStartDate: string | null
+  currentEndDate: string
+  proposedEndDate: string
+  currentBudget: string | number
+  reason: string
+  impactNotes: string | null
+  approvalReference: string | null
+  attachmentUrl: string | null
+  status: string
+  requestedById: string
+  requestedAt: string
+  approvedById: string | null
+  approvedAt: string | null
+  approvalNotes: string | null
+  rejectedById: string | null
+  rejectedAt: string | null
+  rejectionReason: string | null
+}
+
 interface Employee {
   id: string
   fullName: string
@@ -75,6 +98,7 @@ interface Project {
   updatedAt: string
   grants: Grant[]
   teamMembers: TeamMember[]
+  extensionRequests: ProjectExtensionRequest[]
   _count: {
     activities: number
     milestones: number
@@ -83,6 +107,7 @@ interface Project {
     risks: number
     logFrameEntries: number
     documents: number
+    extensionRequests: number
   }
   budgetSummary: {
     totalBudgeted: number
@@ -93,6 +118,19 @@ interface Project {
 function toDateInput(val: string | null): string {
   if (!val) return ''
   return new Date(val).toISOString().split('T')[0]
+}
+
+function getApiError(json: { error?: string | { message?: string } } | null, fallback: string) {
+  if (!json?.error) return fallback
+  return typeof json.error === 'string' ? json.error : json.error.message || fallback
+}
+
+function daysBetween(from: string | null, to: string | null): number {
+  if (!from || !to) return 0
+  const start = new Date(from).getTime()
+  const end = new Date(to).getTime()
+  if (Number.isNaN(start) || Number.isNaN(end)) return 0
+  return Math.ceil((end - start) / (24 * 60 * 60 * 1000))
 }
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -109,6 +147,13 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [showExtensionForm, setShowExtensionForm] = useState(false)
+  const [extensionSubmitting, setExtensionSubmitting] = useState(false)
+  const [extensionActionId, setExtensionActionId] = useState<string | null>(null)
+  const [extensionProposedEndDate, setExtensionProposedEndDate] = useState('')
+  const [extensionReason, setExtensionReason] = useState('')
+  const [extensionImpactNotes, setExtensionImpactNotes] = useState('')
+  const [extensionApprovalReference, setExtensionApprovalReference] = useState('')
 
   // Edit form state
   const [editName, setEditName] = useState('')
@@ -140,7 +185,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       if (res.ok && json.success) {
         setProject(json.data)
       } else {
-        setError(json.error || tc('errors.loadFailed'))
+        setError(getApiError(json, tc('errors.loadFailed')))
       }
     } catch {
       setError(tc('errors.loadFailed'))
@@ -223,7 +268,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         setEditing(false)
         fetchProject()
       } else {
-        setError(json.error || t('form.failedToUpdate'))
+        setError(getApiError(json, t('form.failedToUpdate')))
       }
     } catch {
       setError(t('form.failedToUpdate'))
@@ -246,12 +291,106 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         router.push('/projects')
       } else {
         const json = await res.json()
-        setError(json.error || t('form.failedToDelete'))
+        setError(getApiError(json, t('form.failedToDelete')))
       }
     } catch {
       setError(t('form.failedToDelete'))
     } finally {
       setDeleting(false)
+    }
+  }
+
+  async function handleCreateExtension() {
+    if (!extensionProposedEndDate) {
+      setError('Proposed end date is required')
+      return
+    }
+    if (!extensionReason.trim()) {
+      setError('Extension reason is required')
+      return
+    }
+
+    setExtensionSubmitting(true)
+    setError('')
+
+    try {
+      const res = await fetch(`/api/v1/projects/${id}/extensions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          proposedEndDate: extensionProposedEndDate,
+          reason: extensionReason,
+          impactNotes: extensionImpactNotes,
+          approvalReference: extensionApprovalReference,
+        }),
+      })
+      const json = await res.json()
+      if (res.ok && json.success) {
+        setShowExtensionForm(false)
+        setExtensionProposedEndDate('')
+        setExtensionReason('')
+        setExtensionImpactNotes('')
+        setExtensionApprovalReference('')
+        fetchProject()
+      } else {
+        setError(getApiError(json, 'Failed to create no-cost extension request'))
+      }
+    } catch {
+      setError('Failed to create no-cost extension request')
+    } finally {
+      setExtensionSubmitting(false)
+    }
+  }
+
+  async function handleApproveExtension(extensionId: string) {
+    const approvalNotes = window.prompt('Approval notes', 'Approved as no-cost extension. Budget remains unchanged.')
+    if (approvalNotes === null) return
+
+    setExtensionActionId(extensionId)
+    setError('')
+
+    try {
+      const res = await fetch(`/api/v1/projects/${id}/extensions/${extensionId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approvalNotes }),
+      })
+      const json = await res.json()
+      if (res.ok && json.success) {
+        fetchProject()
+      } else {
+        setError(getApiError(json, 'Failed to approve extension request'))
+      }
+    } catch {
+      setError('Failed to approve extension request')
+    } finally {
+      setExtensionActionId(null)
+    }
+  }
+
+  async function handleRejectExtension(extensionId: string) {
+    const rejectionReason = window.prompt('Rejection reason')
+    if (!rejectionReason?.trim()) return
+
+    setExtensionActionId(extensionId)
+    setError('')
+
+    try {
+      const res = await fetch(`/api/v1/projects/${id}/extensions/${extensionId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rejectionReason }),
+      })
+      const json = await res.json()
+      if (res.ok && json.success) {
+        fetchProject()
+      } else {
+        setError(getApiError(json, 'Failed to reject extension request'))
+      }
+    } catch {
+      setError('Failed to reject extension request')
+    } finally {
+      setExtensionActionId(null)
     }
   }
 
@@ -283,6 +422,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   const canEdit = ['PIPELINE', 'ACTIVE', 'ON_HOLD'].includes(project.status)
   const canDelete = project.status === 'PIPELINE'
+  const canRequestExtension = ['ACTIVE', 'ON_HOLD'].includes(project.status) && !!project.endDate
+  const pendingExtension = project.extensionRequests.find((item) => item.status === 'PENDING_APPROVAL')
+  const approvedExtensions = project.extensionRequests.filter((item) => item.status === 'APPROVED')
+  const firstApprovedExtension = approvedExtensions[approvedExtensions.length - 1]
+  const originalEndDate = firstApprovedExtension?.currentEndDate || project.endDate
+  const extendedDays = daysBetween(originalEndDate, project.endDate)
 
   return (
     <div className="space-y-6">
@@ -292,6 +437,23 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <Button variant="outline" size="sm" onClick={startEditing}>
               <Pencil className="h-4 w-4 mr-2" />
               {tc('buttons.edit')}
+            </Button>
+          )}
+          {!editing && canRequestExtension && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setShowExtensionForm((value) => !value)
+                setExtensionProposedEndDate('')
+                setExtensionReason('')
+                setExtensionImpactNotes('')
+                setExtensionApprovalReference('')
+              }}
+              disabled={!!pendingExtension}
+            >
+              <CalendarPlus className="h-4 w-4 mr-2" />
+              {pendingExtension ? 'Extension Pending' : 'Request No-Cost Extension'}
             </Button>
           )}
           {!editing && canDelete && (
@@ -388,7 +550,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-budget">{t('fields.totalBudget')}</Label>
-                  <Input id="edit-budget" type="number" min="0" step="0.01" value={editTotalBudget} onChange={(e) => setEditTotalBudget(e.target.value)} />
+                  <Input id="edit-budget" type="number" min="0" step="0.01" value={editTotalBudget} readOnly className="bg-muted" />
+                  <p className="text-xs text-muted-foreground">Budget changes require a separate budget revision workflow.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-currency">{t('fields.currency')}</Label>
@@ -513,6 +676,178 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* No-Cost Extension Workflow */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex flex-wrap items-center justify-between gap-3">
+            <span>No-Cost Extension & Timeline</span>
+            <div className="flex items-center gap-2">
+              {approvedExtensions.length > 0 && <Badge variant="secondary">Extended</Badge>}
+              {pendingExtension && <Badge variant="outline">Pending Approval</Badge>}
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="rounded-lg border p-4">
+              <p className="text-sm text-muted-foreground">Original End Date</p>
+              <p className="font-semibold">{originalEndDate ? formatDate(originalEndDate) : '-'}</p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-sm text-muted-foreground">Current End Date</p>
+              <p className="font-semibold">{project.endDate ? formatDate(project.endDate) : '-'}</p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-sm text-muted-foreground">Approved Extensions</p>
+              <p className="font-semibold">{approvedExtensions.length}</p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-sm text-muted-foreground">Budget Integrity</p>
+              <p className="font-semibold text-emerald-700">Budget locked</p>
+            </div>
+          </div>
+
+          {approvedExtensions.length > 0 && (
+            <div className="rounded-md bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">
+              Project timeline extended by {extendedDays} day(s). Project budget remains {formatCurrency(Number(project.totalBudget))}.
+            </div>
+          )}
+
+          {showExtensionForm && (
+            <div className="rounded-lg border p-4 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Current End Date</p>
+                  <p className="font-medium">{project.endDate ? formatDate(project.endDate) : '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Current Budget</p>
+                  <p className="font-medium font-mono">{formatCurrency(Number(project.totalBudget))}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="extension-proposed-end-date">Proposed New End Date *</Label>
+                  <Input
+                    id="extension-proposed-end-date"
+                    type="date"
+                    value={extensionProposedEndDate}
+                    onChange={(e) => setExtensionProposedEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="extension-reason">Reason *</Label>
+                <Textarea
+                  id="extension-reason"
+                  value={extensionReason}
+                  onChange={(e) => setExtensionReason(e.target.value)}
+                  rows={3}
+                  placeholder="Explain why duration extension is required without additional budget."
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="extension-impact">Impact Notes</Label>
+                  <Textarea
+                    id="extension-impact"
+                    value={extensionImpactNotes}
+                    onChange={(e) => setExtensionImpactNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Scope, timeline, donor, or field impact."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="extension-reference">Approval Reference</Label>
+                  <Textarea
+                    id="extension-reference"
+                    value={extensionApprovalReference}
+                    onChange={(e) => setExtensionApprovalReference(e.target.value)}
+                    rows={2}
+                    placeholder="Board memo, donor email, or internal approval reference."
+                  />
+                </div>
+              </div>
+              <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+                This is a no-cost extension. The project budget is read-only and will remain unchanged.
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowExtensionForm(false)} disabled={extensionSubmitting}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateExtension} disabled={extensionSubmitting}>
+                  {extensionSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CalendarPlus className="h-4 w-4 mr-2" />}
+                  Submit for Approval
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-muted-foreground">
+                  <th className="text-left py-2 pr-4">Request No</th>
+                  <th className="text-left py-2 pr-4">Current End</th>
+                  <th className="text-left py-2 pr-4">Proposed End</th>
+                  <th className="text-right py-2 pr-4">Budget Snapshot</th>
+                  <th className="text-left py-2 pr-4">Status</th>
+                  <th className="text-left py-2 pr-4">Reason</th>
+                  <th className="text-right py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {project.extensionRequests.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-6 text-center text-muted-foreground">
+                      No extension requests yet.
+                    </td>
+                  </tr>
+                ) : (
+                  project.extensionRequests.map((extension) => (
+                    <tr key={extension.id} className="border-b last:border-0 align-top">
+                      <td className="py-2 pr-4 font-mono text-xs">{extension.requestNo}</td>
+                      <td className="py-2 pr-4">{formatDate(extension.currentEndDate)}</td>
+                      <td className="py-2 pr-4">{formatDate(extension.proposedEndDate)}</td>
+                      <td className="py-2 pr-4 text-right font-mono">{formatCurrency(Number(extension.currentBudget))}</td>
+                      <td className="py-2 pr-4"><StatusBadge status={extension.status} /></td>
+                      <td className="py-2 pr-4 max-w-[280px]">
+                        <p className="line-clamp-2">{extension.reason}</p>
+                        {extension.rejectionReason && <p className="text-xs text-destructive mt-1">Rejected: {extension.rejectionReason}</p>}
+                        {extension.approvalNotes && <p className="text-xs text-muted-foreground mt-1">Approved: {extension.approvalNotes}</p>}
+                      </td>
+                      <td className="py-2 text-right">
+                        {extension.status === 'PENDING_APPROVAL' ? (
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRejectExtension(extension.id)}
+                              disabled={extensionActionId === extension.id}
+                            >
+                              <XCircle className="h-4 w-4 mr-1" />
+                              Reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleApproveExtension(extension.id)}
+                              disabled={extensionActionId === extension.id}
+                            >
+                              {extensionActionId === extension.id ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+                              Approve
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
 

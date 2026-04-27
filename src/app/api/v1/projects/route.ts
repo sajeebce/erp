@@ -85,6 +85,20 @@ export async function GET(request: NextRequest) {
               status: true,
             },
           },
+          extensionRequests: {
+            where: { deletedAt: null },
+            select: {
+              id: true,
+              requestNo: true,
+              currentEndDate: true,
+              proposedEndDate: true,
+              status: true,
+              requestedAt: true,
+              approvedAt: true,
+            },
+            orderBy: { requestedAt: 'desc' },
+            take: 1,
+          },
           _count: {
             select: {
               teamMembers: { where: { isActive: true } },
@@ -92,6 +106,7 @@ export async function GET(request: NextRequest) {
               milestones: true,
               indicators: true,
               risks: true,
+              extensionRequests: { where: { status: 'APPROVED', deletedAt: null } },
             },
           },
         },

@@ -181,6 +181,13 @@ enum ProjectStatus {
   CANCELLED
 }
 
+enum ProjectExtensionStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
 enum ProjectType {
   HUMANITARIAN
   DEVELOPMENT

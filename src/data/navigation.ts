@@ -85,6 +85,7 @@ export const navigation: NavItem[] = [
     items: [
       { title: "items.projectList", url: "/projects" },
       { title: "items.projectDashboard", url: "/projects/dashboard" },
+      { title: "items.projectExtensions", url: "/projects/extensions" },
       { title: "items.activityPlanning", url: "/projects/activity-planning" },
       { title: "items.milestoneTracking", url: "/projects/milestones" },
       { title: "items.logFrame", url: "/projects/logframe" },

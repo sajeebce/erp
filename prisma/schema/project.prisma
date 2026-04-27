@@ -51,6 +51,7 @@ model Project {
   assets                   Asset[]
   employeeAllocations      EmployeeProjectAllocation[]
   payrollBudgetAllocations PayrollBudgetAllocation[]
+  extensionRequests        ProjectExtensionRequest[]
 
   @@unique([organizationId, projectNo])
   @@index([organizationId])
@@ -75,6 +76,44 @@ model ProjectTeamMember {
 
   @@index([projectId])
   @@index([employeeId])
+}
+
+model ProjectExtensionRequest {
+  id                String                 @id @default(uuid()) @db.Uuid
+  organizationId    String                 @db.Uuid
+  projectId         String                 @db.Uuid
+  requestNo         String
+  currentStartDate  DateTime?
+  currentEndDate    DateTime
+  proposedEndDate   DateTime
+  currentBudget     Decimal                @db.Decimal(18, 2)
+  reason            String
+  impactNotes       String?
+  approvalReference String?
+  attachmentUrl     String?
+  status            ProjectExtensionStatus @default(PENDING_APPROVAL)
+  requestedById     String                 @db.Uuid
+  requestedAt       DateTime               @default(now())
+  approvedById      String?                @db.Uuid
+  approvedAt        DateTime?
+  approvalNotes     String?
+  rejectedById      String?                @db.Uuid
+  rejectedAt        DateTime?
+  rejectionReason   String?
+  cancelledById     String?                @db.Uuid
+  cancelledAt       DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  deletedAt         DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, requestNo])
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([status])
+  @@index([requestedAt])
 }
 
 model Activity {

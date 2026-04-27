@@ -81,6 +81,31 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             },
           },
         },
+        extensionRequests: {
+          where: { deletedAt: null },
+          select: {
+            id: true,
+            requestNo: true,
+            currentStartDate: true,
+            currentEndDate: true,
+            proposedEndDate: true,
+            currentBudget: true,
+            reason: true,
+            impactNotes: true,
+            approvalReference: true,
+            attachmentUrl: true,
+            status: true,
+            requestedById: true,
+            requestedAt: true,
+            approvedById: true,
+            approvedAt: true,
+            approvalNotes: true,
+            rejectedById: true,
+            rejectedAt: true,
+            rejectionReason: true,
+          },
+          orderBy: { requestedAt: 'desc' },
+        },
         _count: {
           select: {
             activities: true,
@@ -90,6 +115,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             risks: true,
             logFrameEntries: true,
             documents: true,
+            extensionRequests: { where: { status: 'APPROVED', deletedAt: null } },
           },
         },
       },
@@ -137,8 +163,20 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     if (body.description !== undefined) data.description = body.description || null
     if (body.startDate !== undefined) data.startDate = body.startDate ? new Date(body.startDate) : null
-    if (body.endDate !== undefined) data.endDate = body.endDate ? new Date(body.endDate) : null
-    if (body.totalBudget !== undefined) data.totalBudget = new Prisma.Decimal(body.totalBudget)
+    if (body.endDate !== undefined) {
+      const nextEndDate = body.endDate ? new Date(body.endDate) : null
+      if (nextEndDate && existing.endDate && nextEndDate > existing.endDate) {
+        return apiBadRequest('Project duration extension must use the No-Cost Extension approval workflow')
+      }
+      data.endDate = nextEndDate
+    }
+    if (body.totalBudget !== undefined) {
+      const nextBudget = new Prisma.Decimal(body.totalBudget)
+      if (!nextBudget.equals(existing.totalBudget)) {
+        return apiBadRequest('Project budget changes must use a separate budget revision workflow')
+      }
+      data.totalBudget = nextBudget
+    }
     if (body.location !== undefined) data.location = body.location || null
     if (body.country !== undefined) data.country = body.country || null
     if (body.region !== undefined) data.region = body.region || null
