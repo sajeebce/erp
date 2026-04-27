@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useRef, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { ArrowLeft, Loader2, Pencil, Trash2, Save, X, CalendarPlus, CheckCircle2, XCircle } from 'lucide-react'
@@ -154,6 +154,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [extensionReason, setExtensionReason] = useState('')
   const [extensionImpactNotes, setExtensionImpactNotes] = useState('')
   const [extensionApprovalReference, setExtensionApprovalReference] = useState('')
+  const extensionCardRef = useRef<HTMLDivElement | null>(null)
 
   // Edit form state
   const [editName, setEditName] = useState('')
@@ -228,6 +229,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   function cancelEditing() {
     setEditing(false)
     setError('')
+  }
+
+  function openExtensionForm() {
+    setShowExtensionForm(true)
+    setExtensionProposedEndDate('')
+    setExtensionReason('')
+    setExtensionImpactNotes('')
+    setExtensionApprovalReference('')
+    window.setTimeout(() => {
+      extensionCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
   }
 
   async function handleSave() {
@@ -443,13 +455,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                setShowExtensionForm((value) => !value)
-                setExtensionProposedEndDate('')
-                setExtensionReason('')
-                setExtensionImpactNotes('')
-                setExtensionApprovalReference('')
-              }}
+              onClick={openExtensionForm}
               disabled={!!pendingExtension}
             >
               <CalendarPlus className="h-4 w-4 mr-2" />
@@ -680,13 +686,19 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       </Card>
 
       {/* No-Cost Extension Workflow */}
-      <Card>
+      <Card ref={extensionCardRef}>
         <CardHeader>
           <CardTitle className="flex flex-wrap items-center justify-between gap-3">
             <span>No-Cost Extension & Timeline</span>
             <div className="flex items-center gap-2">
               {approvedExtensions.length > 0 && <Badge variant="secondary">Extended</Badge>}
               {pendingExtension && <Badge variant="outline">Pending Approval</Badge>}
+              {!pendingExtension && canRequestExtension && (
+                <Button size="sm" variant="outline" onClick={openExtensionForm}>
+                  <CalendarPlus className="h-4 w-4 mr-2" />
+                  Request
+                </Button>
+              )}
             </div>
           </CardTitle>
         </CardHeader>
