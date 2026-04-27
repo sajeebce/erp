@@ -246,6 +246,7 @@ model CostCenter {
   businessUnit      BusinessUnit       @relation(fields: [businessUnitId], references: [id])
   journalLines      JournalEntryLine[]
   expenseClaimItems ExpenseClaimItem[]
+  budgets           Budget[]
 
   @@unique([organizationId, code])
   @@index([organizationId])

@@ -29,6 +29,18 @@ interface Project {
   name: string
 }
 
+interface Department {
+  id: string
+  name: string
+  code: string
+}
+
+interface CostCenter {
+  id: string
+  name: string
+  code: string
+}
+
 interface Grant {
   id: string
   title: string
@@ -140,6 +152,8 @@ export default function NewBudgetPage() {
   const [name, setName] = useState('')
   const [budgetType, setBudgetType] = useState('PROJECT')
   const [projectId, setProjectId] = useState('')
+  const [departmentId, setDepartmentId] = useState('')
+  const [costCenterId, setCostCenterId] = useState('')
   const [grantId, setGrantId] = useState('')
   const [fiscalYearId, setFiscalYearId] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -176,6 +190,8 @@ export default function NewBudgetPage() {
 
   // Lookup data
   const [projects, setProjects] = useState<Project[]>([])
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [costCenters, setCostCenters] = useState<CostCenter[]>([])
   const [grants, setGrants] = useState<Grant[]>([])
   const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -211,6 +227,8 @@ export default function NewBudgetPage() {
 
     Promise.all([
       fetchWithAuth('/api/v1/projects?limit=200', 'Projects').then(d => d && setProjects(d)),
+      fetchWithAuth('/api/v1/hr/departments?limit=200', 'Departments').then(d => d && setDepartments(d)),
+      fetchWithAuth('/api/v1/settings/cost-centers?limit=200', 'Cost Centers').then(d => d && setCostCenters(d)),
       fetchWithAuth('/api/v1/donors/grants?limit=200', 'Grants').then(d => d && setGrants(d)),
       fetchWithAuth('/api/v1/settings/fiscal-years?limit=50', 'Fiscal Years').then(d => d && setFiscalYears(d)),
       fetchWithAuth('/api/v1/finance/accounts?isGroup=false&limit=500', 'Accounts').then(d => d && setAccounts(d)),
@@ -347,6 +365,8 @@ export default function NewBudgetPage() {
       name: name.trim(),
       budgetType,
       projectId,
+      departmentId: departmentId || undefined,
+      costCenterId: costCenterId || undefined,
       grantId: grantId || undefined,
       fiscalYearId,
       startDate: startDate || undefined,
@@ -487,6 +507,31 @@ export default function NewBudgetPage() {
                 value={grantId}
                 onValueChange={setGrantId}
                 placeholder={t('form.selectGrant')}
+              />
+            </div>
+          </div>
+
+          {/* Row 2b: Department + Cost Center */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="budget-department">Department</Label>
+              <SearchableSelect
+                id="budget-department"
+                options={departments.map((d) => ({ value: d.id, label: `${d.code} - ${d.name}` }))}
+                value={departmentId}
+                onValueChange={setDepartmentId}
+                placeholder="Select department (optional)"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="budget-cost-center">Cost Center</Label>
+              <SearchableSelect
+                id="budget-cost-center"
+                options={costCenters.map((cc) => ({ value: cc.id, label: `${cc.code} - ${cc.name}` }))}
+                value={costCenterId}
+                onValueChange={setCostCenterId}
+                placeholder="Select cost center (optional)"
               />
             </div>
           </div>

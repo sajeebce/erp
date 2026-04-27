@@ -10,6 +10,8 @@ model Budget {
   name               String
   budgetType         BudgetType       @default(PROJECT)
   projectId          String           @db.Uuid
+  departmentId       String?          @db.Uuid
+  costCenterId       String?          @db.Uuid
   grantId            String?          @db.Uuid
   fiscalYearId       String           @db.Uuid
   startDate          DateTime?
@@ -49,6 +51,8 @@ model Budget {
   deletedAt          DateTime?
 
   project            Project          @relation(fields: [projectId], references: [id])
+  department         Department?      @relation(fields: [departmentId], references: [id])
+  costCenter         CostCenter?      @relation(fields: [costCenterId], references: [id])
   grant              Grant?           @relation(fields: [grantId], references: [id])
   fiscalYear         FiscalYear       @relation(fields: [fiscalYearId], references: [id])
 
@@ -57,6 +61,8 @@ model Budget {
   payrollBudgetAllocations PayrollBudgetAllocation[]
 
   @@index([projectId])
+  @@index([departmentId])
+  @@index([costCenterId])
   @@index([grantId])
   @@index([status])
   @@index([budgetType])

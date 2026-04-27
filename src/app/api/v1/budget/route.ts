@@ -56,6 +56,16 @@ export async function GET(request: NextRequest) {
       where.fiscalYearId = fiscalYearId
     }
 
+    const departmentId = url.searchParams.get('departmentId')
+    if (departmentId) {
+      where.departmentId = departmentId
+    }
+
+    const costCenterId = url.searchParams.get('costCenterId')
+    if (costCenterId) {
+      where.costCenterId = costCenterId
+    }
+
     const [budgets, total] = await Promise.all([
       prisma.budget.findMany({
         where,
@@ -65,6 +75,8 @@ export async function GET(request: NextRequest) {
           name: true,
           budgetType: true,
           projectId: true,
+          departmentId: true,
+          costCenterId: true,
           grantId: true,
           fiscalYearId: true,
           startDate: true,
@@ -88,6 +100,12 @@ export async function GET(request: NextRequest) {
           updatedAt: true,
           project: {
             select: { id: true, name: true },
+          },
+          department: {
+            select: { id: true, name: true, code: true },
+          },
+          costCenter: {
+            select: { id: true, name: true, code: true },
           },
           grant: {
             select: { id: true, title: true },
@@ -153,6 +171,8 @@ export async function POST(request: NextRequest) {
       name,
       budgetType,
       projectId,
+      departmentId,
+      costCenterId,
       grantId,
       fiscalYearId,
       startDate,
@@ -316,6 +336,8 @@ export async function POST(request: NextRequest) {
           name: name.trim(),
           budgetType: budgetType || 'PROJECT',
           projectId,
+          departmentId: departmentId || null,
+          costCenterId: costCenterId || null,
           grantId: grantId || null,
           fiscalYearId,
           startDate: startDate ? new Date(startDate) : null,
@@ -389,6 +411,12 @@ export async function POST(request: NextRequest) {
           },
           project: {
             select: { id: true, name: true },
+          },
+          department: {
+            select: { id: true, name: true, code: true },
+          },
+          costCenter: {
+            select: { id: true, name: true, code: true },
           },
           grant: {
             select: { id: true, title: true },

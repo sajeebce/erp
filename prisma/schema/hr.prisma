@@ -23,6 +23,7 @@ model Department {
   users        User[]
   jobPostings  JobPosting[]
   coverageRules TeamCoverageRule[]
+  budgets      Budget[]
 
   @@unique([organizationId, name])
   @@unique([organizationId, code])

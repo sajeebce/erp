@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import {
-  Download, TrendingUp, TrendingDown, Target, BarChart3, Loader2, AlertCircle, FileSpreadsheet,
+  Download, TrendingUp, TrendingDown, Target, BarChart3, Loader2, AlertCircle, FileSpreadsheet, AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,12 +21,20 @@ import {
 
 // ─── Types ───
 
+interface Department {
+  id: string
+  name: string
+  code: string
+}
+
 interface BudgetOption {
   id: string
   name: string
   budgetCode: string
   status: string
   project: { id: string; name: string } | null
+  department: { id: string; name: string; code: string } | null
+  costCenter: { id: string; name: string; code: string } | null
   totalAmount: number
 }
 
@@ -46,14 +54,25 @@ interface LineAnalysis {
 interface VsActualData {
   budgetId: string
   budgetName: string
+  budgetCode: string
   project: { id: string; name: string } | null
+  department: { id: string; name: string; code: string } | null
+  costCenter: { id: string; name: string; code: string } | null
   currencyCode: string
+  varianceThreshold: number
   lines: LineAnalysis[]
   totals: {
     totalBudget: number
     totalActual: number
     totalVariance: number
     overallUtilizationPercent: number
+    overallStatus: 'ON_TRACK' | 'AT_RISK' | 'OVER_BUDGET'
+  }
+  alerts: {
+    overBudgetCount: number
+    atRiskCount: number
+    overBudgetLines: { id: string; description: string; variancePercent: number }[]
+    atRiskLines: { id: string; description: string; variancePercent: number }[]
   }
 }
 
@@ -92,12 +111,15 @@ export default function BudgetVsActualPage() {
   const [budgetsLoading, setBudgetsLoading] = useState(true)
   const [budgetsError, setBudgetsError] = useState('')
 
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [selectedDeptId, setSelectedDeptId] = useState('')
+
   const [selectedBudgetId, setSelectedBudgetId] = useState('')
   const [vsActualData, setVsActualData] = useState<VsActualData | null>(null)
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const [analysisError, setAnalysisError] = useState('')
 
-  // ─── Fetch budgets on mount ───
+  // ─── Fetch budgets + departments on mount ───
 
   const fetchBudgets = useCallback(async () => {
     setBudgetsLoading(true)
@@ -116,7 +138,13 @@ export default function BudgetVsActualPage() {
     setBudgetsLoading(false)
   }, [t])
 
-  useEffect(() => { fetchBudgets() }, [fetchBudgets])
+  useEffect(() => {
+    fetchBudgets()
+    fetch('/api/v1/hr/departments?limit=200')
+      .then(r => r.json())
+      .then(j => { if (j.success) setDepartments(j.data ?? []) })
+      .catch(() => {})
+  }, [fetchBudgets])
 
   // ─── Fetch vs-actual when budget selected ───
 
@@ -147,12 +175,24 @@ export default function BudgetVsActualPage() {
 
   // ─── Derived data ───
 
+  const filteredBudgets = useMemo(
+    () => selectedDeptId
+      ? budgets.filter(b => b.department?.id === selectedDeptId)
+      : budgets,
+    [budgets, selectedDeptId],
+  )
+
   const budgetOptions = useMemo(
-    () => budgets.map(b => ({
+    () => filteredBudgets.map(b => ({
       value: b.id,
-      label: `${b.budgetCode} - ${b.name}`,
+      label: `${b.budgetCode} - ${b.name}${b.department ? ` (${b.department.name})` : ''}`,
     })),
-    [budgets],
+    [filteredBudgets],
+  )
+
+  const departmentOptions = useMemo(
+    () => departments.map(d => ({ value: d.id, label: `${d.code} - ${d.name}` })),
+    [departments],
   )
 
   const selectedBudget = budgets.find(b => b.id === selectedBudgetId)
@@ -220,33 +260,52 @@ export default function BudgetVsActualPage() {
         )}
       </PageHeader>
 
-      {/* Budget selector */}
+      {/* Budget selector + department filter */}
       <Card>
         <CardContent className="pt-6">
-          <div className="max-w-md">
-            {budgetsLoading ? (
-              <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {t('loadingBudgets')}
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Department filter */}
+            {departments.length > 0 && (
+              <div className="w-full sm:w-56 shrink-0">
+                <SearchableSelect
+                  options={[{ value: '', label: 'All Departments' }, ...departmentOptions]}
+                  value={selectedDeptId}
+                  onValueChange={(v) => {
+                    setSelectedDeptId(v)
+                    setSelectedBudgetId('')
+                    setVsActualData(null)
+                  }}
+                  placeholder="Filter by department"
+                />
               </div>
-            ) : budgetsError ? (
-              <div className="flex items-center gap-2 text-destructive text-sm">
-                <AlertCircle className="h-4 w-4" />
-                {budgetsError}
-                <Button variant="ghost" size="sm" onClick={fetchBudgets}>
-                  {t('retry')}
-                </Button>
-              </div>
-            ) : (
-              <SearchableSelect
-                options={budgetOptions}
-                value={selectedBudgetId}
-                onValueChange={handleBudgetChange}
-                placeholder={t('selectBudget')}
-                searchPlaceholder={t('searchBudgets')}
-                emptyMessage={t('noBudgets')}
-              />
             )}
+
+            {/* Budget selector */}
+            <div className="flex-1">
+              {budgetsLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t('loadingBudgets')}
+                </div>
+              ) : budgetsError ? (
+                <div className="flex items-center gap-2 text-destructive text-sm">
+                  <AlertCircle className="h-4 w-4" />
+                  {budgetsError}
+                  <Button variant="ghost" size="sm" onClick={fetchBudgets}>
+                    {t('retry')}
+                  </Button>
+                </div>
+              ) : (
+                <SearchableSelect
+                  options={budgetOptions}
+                  value={selectedBudgetId}
+                  onValueChange={handleBudgetChange}
+                  placeholder={t('selectBudget')}
+                  searchPlaceholder={t('searchBudgets')}
+                  emptyMessage={t('noBudgets')}
+                />
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -289,6 +348,36 @@ export default function BudgetVsActualPage() {
       {/* Data display */}
       {vsActualData && !analysisLoading && (
         <>
+          {/* Overspending alert banner */}
+          {vsActualData.alerts.overBudgetCount > 0 && (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-destructive">
+                  Over-Budget Alert: {vsActualData.alerts.overBudgetCount} line{vsActualData.alerts.overBudgetCount > 1 ? 's' : ''} exceeded budget
+                </p>
+                <p className="text-xs text-destructive/80 mt-0.5">
+                  {vsActualData.alerts.overBudgetLines.map(l => `${l.description} (${l.variancePercent.toFixed(1)}%)`).join(' · ')}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* At-risk warning banner */}
+          {vsActualData.alerts.atRiskCount > 0 && vsActualData.alerts.overBudgetCount === 0 && (
+            <div className="rounded-lg border border-yellow-400/40 bg-yellow-50 dark:bg-yellow-950/30 px-4 py-3 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-yellow-700 dark:text-yellow-400">
+                  Warning: {vsActualData.alerts.atRiskCount} line{vsActualData.alerts.atRiskCount > 1 ? 's' : ''} above 80% utilization
+                </p>
+                <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-0.5">
+                  {vsActualData.alerts.atRiskLines.map(l => `${l.description} (${l.variancePercent.toFixed(1)}%)`).join(' · ')}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Summary cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
@@ -309,6 +398,16 @@ export default function BudgetVsActualPage() {
                     {vsActualData.project && (
                       <Badge variant="outline" className="text-xs">
                         {vsActualData.project.name}
+                      </Badge>
+                    )}
+                    {vsActualData.department && (
+                      <Badge variant="secondary" className="text-xs">
+                        {vsActualData.department.name}
+                      </Badge>
+                    )}
+                    {vsActualData.costCenter && (
+                      <Badge variant="secondary" className="text-xs">
+                        {vsActualData.costCenter.name}
                       </Badge>
                     )}
                     <Badge variant={getStatusBadgeVariant(selectedBudget.status)} className="text-xs">

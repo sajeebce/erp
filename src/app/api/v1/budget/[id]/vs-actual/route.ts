@@ -26,6 +26,12 @@ export async function GET(
         project: {
           select: { id: true, name: true },
         },
+        department: {
+          select: { id: true, name: true, code: true },
+        },
+        costCenter: {
+          select: { id: true, name: true, code: true },
+        },
         lines: {
           include: {
             account: {
@@ -96,17 +102,37 @@ export async function GET(
       ? Math.round((totalActual / totalBudget) * 10000) / 100
       : 0
 
+    const overallStatus = overallUtilizationPercent > 100
+      ? 'OVER_BUDGET'
+      : overallUtilizationPercent >= 80
+        ? 'AT_RISK'
+        : 'ON_TRACK'
+
+    const overBudgetLines = lineAnalysis.filter((l) => l.status === 'OVER_BUDGET')
+    const atRiskLines = lineAnalysis.filter((l) => l.variancePercent >= 80 && l.status !== 'OVER_BUDGET')
+
     return apiSuccess({
       budgetId: budget.id,
       budgetName: budget.name,
+      budgetCode: budget.budgetCode,
       project: budget.project,
+      department: budget.department ?? null,
+      costCenter: budget.costCenter ?? null,
       currencyCode: budget.currencyCode,
+      varianceThreshold: Number(budget.varianceThreshold),
       lines: lineAnalysis,
       totals: {
         totalBudget,
         totalActual,
         totalVariance,
         overallUtilizationPercent,
+        overallStatus,
+      },
+      alerts: {
+        overBudgetCount: overBudgetLines.length,
+        atRiskCount: atRiskLines.length,
+        overBudgetLines: overBudgetLines.map((l) => ({ id: l.id, description: l.description, variancePercent: l.variancePercent })),
+        atRiskLines: atRiskLines.map((l) => ({ id: l.id, description: l.description, variancePercent: l.variancePercent })),
       },
     })
   } catch (error) {
