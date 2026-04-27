@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 15 * 60,
+      maxAge: 8 * 60 * 60, // 8 hours
     })
 
     return response

@@ -10,7 +10,7 @@ const SUPER_ADMIN_TOKEN_SECRET = new TextEncoder().encode(
   process.env.SUPER_ADMIN_TOKEN_SECRET || 'ngo-erp-super-admin-secret-change-in-production'
 )
 
-const ACCESS_TOKEN_EXPIRY = '15m'
+const ACCESS_TOKEN_EXPIRY = '8h'
 const REFRESH_TOKEN_EXPIRY = '7d'
 const SUPER_ADMIN_TOKEN_EXPIRY = '8h'
 
