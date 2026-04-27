@@ -19,13 +19,19 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url)
     const { page, limit, skip, sort, order } = parsePaginationParams(url)
 
-    // PR tenant isolation: through project.organizationId or requestedById user
-    const where: Record<string, unknown> = {
-      deletedAt: null,
-      OR: [
+    // ADMIN sees all PRs in the org; others see only their own
+    const where: Record<string, unknown> = { deletedAt: null }
+
+    if (auth.roleName === 'ADMIN') {
+      const orgUserIds = await prisma.user
+        .findMany({ where: { organizationId: auth.organizationId }, select: { id: true } })
+        .then((users) => users.map((u) => u.id))
+      where.OR = [
         { project: { organizationId: auth.organizationId } },
-        { requestedById: auth.userId },
-      ],
+        { requestedById: { in: orgUserIds } },
+      ]
+    } else {
+      where.requestedById = auth.userId
     }
 
     const status = url.searchParams.get('status')
