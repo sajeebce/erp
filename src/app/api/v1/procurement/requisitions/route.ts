@@ -186,7 +186,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const prNo = await generateNextNumber(auth.organizationId, 'purchase_requisition')
+    let prNo: string
+    try {
+      prNo = await generateNextNumber(auth.organizationId, 'purchase_requisition')
+    } catch {
+      await prisma.numberSequence.create({
+        data: {
+          organizationId: auth.organizationId,
+          entity: 'purchase_requisition',
+          prefix: 'PR',
+          separator: '-',
+          padLength: 4,
+          currentValue: 0,
+          includeYear: true,
+        },
+      })
+      prNo = await generateNextNumber(auth.organizationId, 'purchase_requisition')
+    }
 
     // Calculate totalEstimate from lines
     const totalEstimate = lines.reduce(
