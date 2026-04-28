@@ -24,6 +24,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       include: {
         department: { select: { id: true, name: true, code: true } },
         designation: { select: { id: true, title: true, level: true } },
+        primaryBusinessUnit: { select: { id: true, code: true, name: true, shortName: true } },
+        workLocation: { select: { id: true, code: true, name: true, address: true } },
         reportingTo: { select: { id: true, fullName: true, employeeNo: true } },
         directReports: {
           where: { deletedAt: null },
@@ -81,6 +83,22 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const body = await request.json()
     const data: Record<string, unknown> = {}
 
+    if (body.primaryBusinessUnitId !== undefined && body.primaryBusinessUnitId) {
+      const businessUnit = await prisma.businessUnit.findFirst({
+        where: { id: body.primaryBusinessUnitId, organizationId: auth.organizationId },
+        select: { id: true },
+      })
+      if (!businessUnit) return apiBadRequest('Business unit not found in this organization')
+    }
+
+    if (body.workLocationId !== undefined && body.workLocationId) {
+      const workLocation = await prisma.operatingLocation.findFirst({
+        where: { id: body.workLocationId, organizationId: auth.organizationId },
+        select: { id: true },
+      })
+      if (!workLocation) return apiBadRequest('Work location not found in this organization')
+    }
+
     if (body.fullName !== undefined) data.fullName = body.fullName.trim()
     if (body.localizedName !== undefined) data.localizedName = body.localizedName || null
     if (body.fatherName !== undefined) data.fatherName = body.fatherName || null
@@ -95,6 +113,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (body.permanentAddress !== undefined) data.permanentAddress = body.permanentAddress || null
     if (body.departmentId !== undefined) data.departmentId = body.departmentId
     if (body.designationId !== undefined) data.designationId = body.designationId
+    if (body.primaryBusinessUnitId !== undefined) data.primaryBusinessUnitId = body.primaryBusinessUnitId || null
+    if (body.workLocationId !== undefined) data.workLocationId = body.workLocationId || null
     if (body.employmentType !== undefined) data.employmentType = body.employmentType
     if (body.reportingToId !== undefined) data.reportingToId = body.reportingToId || null
     if (body.status !== undefined) data.status = body.status

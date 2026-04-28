@@ -72,6 +72,8 @@ model Employee {
 
   departmentId     String         @db.Uuid
   designationId    String         @db.Uuid
+  primaryBusinessUnitId String?   @db.Uuid
+  workLocationId   String?        @db.Uuid
   employmentType   EmploymentType @default(FULL_TIME)
   joiningDate      DateTime
   confirmationDate DateTime?
@@ -150,12 +152,15 @@ model Employee {
   user          User?        @relation(fields: [userId], references: [id])
   department    Department   @relation(fields: [departmentId], references: [id])
   designation   Designation  @relation(fields: [designationId], references: [id])
+  primaryBusinessUnit BusinessUnit?   @relation(fields: [primaryBusinessUnitId], references: [id])
+  workLocation  OperatingLocation? @relation(fields: [workLocationId], references: [id])
   reportingTo   Employee?    @relation("EmployeeReporting", fields: [reportingToId], references: [id])
   directReports Employee[]   @relation("EmployeeReporting")
 
   documents              EmployeeDocument[]
   onboarding             OnboardingProgress[]
   attendance             Attendance[]
+  attendanceMovements    AttendanceMovement[]
   leaveApplications      LeaveApplication[]
   leaveBalances          LeaveBalance[]
   payrollEntries         PayrollEntry[]
@@ -185,6 +190,8 @@ model Employee {
   @@unique([organizationId, employeeNo])
   @@index([organizationId])
   @@index([departmentId])
+  @@index([primaryBusinessUnitId])
+  @@index([workLocationId])
   @@index([status])
   @@index([employmentType])
 }
@@ -398,16 +405,65 @@ model Attendance {
   status     AttendanceStatus @default(PRESENT)
   checkIn    DateTime?
   checkOut   DateTime?
+  attendanceMode   String?
+  attendanceSource String?
+  operatingLocationId String? @db.Uuid
+  geoLat     Decimal?          @db.Decimal(10, 7)
+  geoLng     Decimal?          @db.Decimal(10, 7)
+  geoAccuracyMeters Decimal?   @db.Decimal(8, 2)
+  geoAddress String?
+  validationStatus String?
+  syncedAt   DateTime?
+  deviceId   String?
   otHours    Decimal          @default(0) @db.Decimal(4, 2)
   notes      String?
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
 
-  employee Employee @relation(fields: [employeeId], references: [id])
+  employee          Employee           @relation(fields: [employeeId], references: [id])
+  operatingLocation OperatingLocation? @relation(fields: [operatingLocationId], references: [id])
+  movements         AttendanceMovement[]
 
   @@unique([employeeId, date])
   @@index([employeeId])
   @@index([date])
+  @@index([operatingLocationId])
+}
+
+model AttendanceMovement {
+  id                  String    @id @default(uuid()) @db.Uuid
+  organizationId      String    @db.Uuid
+  employeeId          String    @db.Uuid
+  attendanceId        String?   @db.Uuid
+  movementType        String
+  purpose             String
+  destinationName     String
+  destinationAddress  String?
+  operatingLocationId String?   @db.Uuid
+  checkOutTime        DateTime
+  expectedReturnTime  DateTime?
+  actualReturnTime    DateTime?
+  status              String    @default("OPEN")
+  approvedById        String?   @db.Uuid
+  supervisorNotes     String?
+  geoLatOut           Decimal?  @db.Decimal(10, 7)
+  geoLngOut           Decimal?  @db.Decimal(10, 7)
+  geoLatIn            Decimal?  @db.Decimal(10, 7)
+  geoLngIn            Decimal?  @db.Decimal(10, 7)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  employee          Employee           @relation(fields: [employeeId], references: [id])
+  attendance        Attendance?        @relation(fields: [attendanceId], references: [id])
+  operatingLocation OperatingLocation? @relation(fields: [operatingLocationId], references: [id])
+
+  @@index([organizationId])
+  @@index([employeeId])
+  @@index([attendanceId])
+  @@index([operatingLocationId])
+  @@index([status])
+  @@index([checkOutTime])
 }
 
 model LeaveType {

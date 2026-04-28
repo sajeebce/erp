@@ -26,6 +26,18 @@ export async function GET(request: NextRequest) {
     const employeeId = url.searchParams.get('employeeId')
     if (employeeId) where.employeeId = employeeId
 
+    const departmentId = url.searchParams.get('departmentId')
+    if (departmentId) where.employee = { organizationId: auth.organizationId, deletedAt: null, departmentId }
+
+    const attendanceMode = url.searchParams.get('attendanceMode')
+    if (attendanceMode) where.attendanceMode = attendanceMode
+
+    const validationStatus = url.searchParams.get('validationStatus')
+    if (validationStatus) where.validationStatus = validationStatus
+
+    const operatingLocationId = url.searchParams.get('operatingLocationId')
+    if (operatingLocationId) where.operatingLocationId = operatingLocationId
+
     const date = url.searchParams.get('date')
     if (date) where.date = new Date(date)
 
@@ -41,7 +53,16 @@ export async function GET(request: NextRequest) {
       prisma.attendance.findMany({
         where,
         include: {
-          employee: { select: { id: true, employeeNo: true, fullName: true } },
+          employee: {
+            select: {
+              id: true,
+              employeeNo: true,
+              fullName: true,
+              departmentId: true,
+              department: { select: { id: true, name: true } },
+            },
+          },
+          operatingLocation: { select: { id: true, code: true, name: true } },
         },
         orderBy: { date: 'desc' },
         skip,
@@ -61,7 +82,7 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuthFromRequest(request)
     const body = await request.json()
 
-    const { employeeId, date, status } = body
+    const { employeeId, date, status, operatingLocationId } = body
 
     if (!employeeId || !date) {
       return apiBadRequest('employeeId and date are required')
@@ -76,6 +97,16 @@ export async function POST(request: NextRequest) {
       return apiBadRequest('Employee not found in this organization')
     }
 
+    if (operatingLocationId) {
+      const operatingLocation = await prisma.operatingLocation.findFirst({
+        where: { id: operatingLocationId, organizationId: auth.organizationId },
+        select: { id: true },
+      })
+      if (!operatingLocation) {
+        return apiBadRequest('Operating location not found in this organization')
+      }
+    }
+
     // Check unique per employee+date
     const attendanceDate = new Date(date)
     const existing = await prisma.attendance.findUnique({
@@ -85,7 +116,7 @@ export async function POST(request: NextRequest) {
       return apiConflict('Attendance already recorded for this employee on this date')
     }
 
-    const validStatuses = ['PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'ON_LEAVE', 'HOLIDAY']
+    const validStatuses = ['PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'ON_LEAVE', 'HOLIDAY', 'WEEKEND']
     const attStatus = status || 'PRESENT'
     if (!validStatuses.includes(attStatus)) {
       return apiBadRequest(`status must be one of: ${validStatuses.join(', ')}`)
@@ -98,6 +129,16 @@ export async function POST(request: NextRequest) {
         status: attStatus,
         checkIn: body.checkIn ? new Date(body.checkIn) : null,
         checkOut: body.checkOut ? new Date(body.checkOut) : null,
+        attendanceMode: body.attendanceMode?.trim() || null,
+        attendanceSource: body.attendanceSource?.trim() || null,
+        operatingLocationId: operatingLocationId || null,
+        geoLat: body.geoLat !== undefined && body.geoLat !== null ? new Prisma.Decimal(body.geoLat) : null,
+        geoLng: body.geoLng !== undefined && body.geoLng !== null ? new Prisma.Decimal(body.geoLng) : null,
+        geoAccuracyMeters: body.geoAccuracyMeters !== undefined && body.geoAccuracyMeters !== null ? new Prisma.Decimal(body.geoAccuracyMeters) : null,
+        geoAddress: body.geoAddress?.trim() || null,
+        validationStatus: body.validationStatus?.trim() || null,
+        syncedAt: body.syncedAt ? new Date(body.syncedAt) : null,
+        deviceId: body.deviceId?.trim() || null,
         otHours: body.otHours ? new Prisma.Decimal(body.otHours) : new Prisma.Decimal(0),
         notes: body.notes || null,
       },
@@ -112,7 +153,21 @@ export async function POST(request: NextRequest) {
       resource: 'attendance',
       resourceId: attendance.id,
       description: `Recorded attendance for "${employee.fullName}" on ${date}`,
-      newValues: { employeeId, date, status: attStatus },
+      newValues: {
+        employeeId,
+        date,
+        status: attStatus,
+        attendanceMode: body.attendanceMode || null,
+        attendanceSource: body.attendanceSource || null,
+        operatingLocationId: operatingLocationId || null,
+        geoLat: body.geoLat ?? null,
+        geoLng: body.geoLng ?? null,
+        geoAccuracyMeters: body.geoAccuracyMeters ?? null,
+        geoAddress: body.geoAddress || null,
+        validationStatus: body.validationStatus || null,
+        syncedAt: body.syncedAt || null,
+        deviceId: body.deviceId || null,
+      },
       ...auditCtx,
     })
 

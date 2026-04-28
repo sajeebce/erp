@@ -146,6 +146,7 @@ export const navigation: NavItem[] = [
       { title: "items.onboarding", url: "/hr/onboarding" },
       { title: "items.contracts", url: "/hr/contracts" },
       { title: "items.attendance", url: "/hr/attendance" },
+      { title: "items.attendanceMovements", url: "/hr/attendance/movements" },
       {
         title: "items.leaveManagement",
         url: "/hr/leave",

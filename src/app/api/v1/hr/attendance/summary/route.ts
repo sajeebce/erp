@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url)
     const month = url.searchParams.get('month')
     const year = url.searchParams.get('year')
+    const employeeId = url.searchParams.get('employeeId')
+    const departmentId = url.searchParams.get('departmentId')
 
     if (!month || !year) {
       return apiBadRequest('month and year are required')
@@ -28,8 +30,16 @@ export async function GET(request: NextRequest) {
         organizationId: auth.organizationId,
         status: 'ACTIVE',
         deletedAt: null,
+        ...(employeeId ? { id: employeeId } : {}),
+        ...(departmentId ? { departmentId } : {}),
       },
-      select: { id: true, employeeNo: true, fullName: true },
+      select: {
+        id: true,
+        employeeNo: true,
+        fullName: true,
+        departmentId: true,
+        department: { select: { id: true, name: true } },
+      },
     })
 
     // Get all attendance records for the month
@@ -49,6 +59,8 @@ export async function GET(request: NextRequest) {
       let late = 0
       let onLeave = 0
       let halfDay = 0
+      let holiday = 0
+      let weekend = 0
       let totalOtHours = 0
 
       for (const r of records) {
@@ -58,21 +70,34 @@ export async function GET(request: NextRequest) {
           case 'LATE': late++; break
           case 'ON_LEAVE': onLeave++; break
           case 'HALF_DAY': halfDay++; break
+          case 'HOLIDAY': holiday++; break
+          case 'WEEKEND': weekend++; break
         }
         totalOtHours += Number(r.otHours)
       }
+
+      const workingDays = records.filter((r) => !['HOLIDAY', 'WEEKEND'].includes(r.status)).length
+      const attendancePercent = workingDays > 0
+        ? ((present + late + halfDay) / workingDays) * 100
+        : 0
 
       return {
         employeeId: emp.id,
         employeeNo: emp.employeeNo,
         fullName: emp.fullName,
+        departmentId: emp.departmentId,
+        departmentName: emp.department?.name || '-',
+        workingDays,
         present,
         absent,
         late,
         onLeave,
         halfDay,
+        holiday,
+        weekend,
         totalOtHours,
         totalRecords: records.length,
+        attendancePercent,
       }
     })
 

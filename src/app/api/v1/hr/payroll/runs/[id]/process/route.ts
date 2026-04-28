@@ -19,6 +19,43 @@ function r2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
+function toDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
+
+function countWeekendDays(year: number, month: number): number {
+  const daysInMonth = new Date(year, month, 0).getDate()
+  let weekends = 0
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const weekday = new Date(year, month - 1, day).getDay()
+    if (weekday === 5 || weekday === 6) {
+      weekends++
+    }
+  }
+
+  return weekends
+}
+
+function expandHolidayDateKeys(startDate: Date, endDate: Date, monthStart: Date, monthEnd: Date): string[] {
+  const keys: string[] = []
+  const current = new Date(startDate)
+
+  while (current <= endDate) {
+    if (current >= monthStart && current <= monthEnd) {
+      keys.push(toDateKey(current))
+    }
+    current.setDate(current.getDate() + 1)
+  }
+
+  return keys
+}
+
+function getWeekdayFromDateKey(dateKey: string): number {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  return new Date(year, month - 1, day).getDay()
+}
+
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const auth = await requireAuthFromRequest(request)
@@ -58,6 +95,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const startDate = new Date(run.year, run.month - 1, 1)
     const endDate = new Date(run.year, run.month, 0, 23, 59, 59)
     const daysInMonth = new Date(run.year, run.month, 0).getDate()
+    const weekendDays = countWeekendDays(run.year, run.month)
 
     const attendanceRecords = await prisma.attendance.findMany({
       where: {
@@ -65,6 +103,50 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         date: { gte: startDate, lte: endDate },
       },
     })
+
+    const holidayCalendar = await prisma.holidayCalendar.findFirst({
+      where: {
+        organizationId: auth.organizationId,
+        year: run.year,
+        isActive: true,
+        isDefault: true,
+      },
+      select: { id: true },
+    })
+
+    const holidays = holidayCalendar
+      ? await prisma.holiday.findMany({
+          where: {
+            calendarId: holidayCalendar.id,
+            date: { lte: endDate },
+            OR: [
+              { endDate: null },
+              { endDate: { gte: startDate } },
+            ],
+          },
+          select: { date: true, endDate: true },
+        })
+      : []
+
+    const holidayDateKeys = new Set<string>()
+    for (const holiday of holidays) {
+      const holidayStart = new Date(holiday.date)
+      const holidayEnd = holiday.endDate ? new Date(holiday.endDate) : new Date(holiday.date)
+
+      for (const key of expandHolidayDateKeys(holidayStart, holidayEnd, startDate, endDate)) {
+        holidayDateKeys.add(key)
+      }
+    }
+
+    let weekdayHolidayCount = 0
+    for (const key of holidayDateKeys) {
+      const weekday = getWeekdayFromDateKey(key)
+      if (weekday !== 5 && weekday !== 6) {
+        weekdayHolidayCount++
+      }
+    }
+
+    const workingCalendarDays = Math.max(0, daysInMonth - weekendDays - weekdayHolidayCount)
 
     // Determine fiscal year for YTD calculation
     const fiscalYear = await prisma.fiscalYear.findFirst({
@@ -177,7 +259,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         ['PRESENT', 'LATE', 'HALF_DAY'].includes(a.status)
       ).length
       const leaveDays = empAttendance.filter((a) => a.status === 'ON_LEAVE').length
-      const absentDays = Math.max(0, daysInMonth - presentDays - leaveDays)
+      const absentDays = Math.max(0, workingCalendarDays - presentDays - leaveDays)
       const otHours = empAttendance.reduce((sum, a) => sum + Number(a.otHours), 0)
 
       // ── Calculate components ──
@@ -330,7 +412,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         otherDeductions: new Prisma.Decimal(otherDeductions),
         absentDeduction: new Prisma.Decimal(absentDeduction),
         netSalary: new Prisma.Decimal(netSalary),
-        workingDays: daysInMonth,
+        workingDays: workingCalendarDays,
         presentDays,
         absentDays,
         otHours: new Prisma.Decimal(otHours),

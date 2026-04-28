@@ -35,6 +35,12 @@ export async function GET(request: NextRequest) {
     const departmentId = url.searchParams.get('departmentId')
     if (departmentId) where.departmentId = departmentId
 
+    const primaryBusinessUnitId = url.searchParams.get('primaryBusinessUnitId')
+    if (primaryBusinessUnitId) where.primaryBusinessUnitId = primaryBusinessUnitId
+
+    const workLocationId = url.searchParams.get('workLocationId')
+    if (workLocationId) where.workLocationId = workLocationId
+
     const status = url.searchParams.get('status')
     if (status) where.status = status
 
@@ -58,10 +64,14 @@ export async function GET(request: NextRequest) {
           basicSalary: true,
           photo: true,
           dutyStation: true,
+          primaryBusinessUnitId: true,
+          workLocationId: true,
           localizedName: true,
           createdAt: true,
           department: { select: { id: true, name: true } },
           designation: { select: { id: true, title: true } },
+          primaryBusinessUnit: { select: { id: true, code: true, name: true, shortName: true } },
+          workLocation: { select: { id: true, code: true, name: true } },
         },
         orderBy: { [sort]: order },
         skip,
@@ -81,7 +91,7 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuthFromRequest(request)
     const body = await request.json()
 
-    const { fullName, departmentId, designationId, joiningDate } = body
+    const { fullName, departmentId, designationId, joiningDate, primaryBusinessUnitId, workLocationId } = body
 
     if (!fullName || !departmentId || !designationId || !joiningDate) {
       return apiBadRequest('fullName, departmentId, designationId, and joiningDate are required')
@@ -100,6 +110,22 @@ export async function POST(request: NextRequest) {
       select: { id: true },
     })
     if (!desig) return apiBadRequest('Designation not found')
+
+    if (primaryBusinessUnitId) {
+      const businessUnit = await prisma.businessUnit.findFirst({
+        where: { id: primaryBusinessUnitId, organizationId: auth.organizationId },
+        select: { id: true },
+      })
+      if (!businessUnit) return apiBadRequest('Business unit not found in this organization')
+    }
+
+    if (workLocationId) {
+      const workLocation = await prisma.operatingLocation.findFirst({
+        where: { id: workLocationId, organizationId: auth.organizationId },
+        select: { id: true },
+      })
+      if (!workLocation) return apiBadRequest('Work location not found in this organization')
+    }
 
     const employeeNo = await generateNextNumber(auth.organizationId, 'employee')
 
@@ -123,6 +149,8 @@ export async function POST(request: NextRequest) {
         permanentAddress: body.permanentAddress || null,
         departmentId,
         designationId,
+        primaryBusinessUnitId: primaryBusinessUnitId || null,
+        workLocationId: workLocationId || null,
         employmentType: body.employmentType || 'FULL_TIME',
         joiningDate: new Date(joiningDate),
         confirmationDate: body.confirmationDate ? new Date(body.confirmationDate) : null,

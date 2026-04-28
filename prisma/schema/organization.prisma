@@ -88,6 +88,7 @@ model Organization {
   costCenters        CostCenter[]
   fundClasses        FundClass[]
   operatingLocations OperatingLocation[]
+  attendanceMovements AttendanceMovement[]
 
   @@index([slug])
 }
@@ -216,6 +217,7 @@ model BusinessUnit {
   sector               Sector                @relation(fields: [sectorId], references: [id])
   costCenters          CostCenter[]
   operatingLocations   OperatingLocation[]
+  primaryEmployees     Employee[]
   accounts             Account[]
   journalEntries       JournalEntry[]
   journalLines         JournalEntryLine[]
@@ -291,6 +293,9 @@ model OperatingLocation {
 
   organization Organization  @relation(fields: [organizationId], references: [id])
   businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id])
+  employees    Employee[]
+  attendances  Attendance[]
+  attendanceMovements AttendanceMovement[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
