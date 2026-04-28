@@ -81,6 +81,8 @@
     "onboarding": "অনবোর্ডিং",
     "attendance": "উপস্থিতি",
     "attendanceMovements": "Attendance Movements",
+    "selfServiceAttendance": "আমার উপস্থিতি",
+    "mobileAttendance": "মোবাইল চেক-ইন",
     "leaveManagement": "ছুটি ব্যবস্থাপনা",
     "payroll": "বেতন",
     "performance": "কর্মদক্ষতা",

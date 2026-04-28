@@ -81,6 +81,8 @@
     "onboarding": "Onboarding",
     "attendance": "Attendance",
     "attendanceMovements": "Attendance Movements",
+    "selfServiceAttendance": "My Attendance",
+    "mobileAttendance": "Mobile Check-in",
     "leaveManagement": "Leave Management",
     "payroll": "Payroll",
     "performance": "Performance",

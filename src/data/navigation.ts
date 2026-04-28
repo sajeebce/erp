@@ -147,6 +147,8 @@ export const navigation: NavItem[] = [
       { title: "items.contracts", url: "/hr/contracts" },
       { title: "items.attendance", url: "/hr/attendance" },
       { title: "items.attendanceMovements", url: "/hr/attendance/movements" },
+      { title: "items.selfServiceAttendance", url: "/self-service/attendance" },
+      { title: "items.mobileAttendance", url: "/self-service/attendance/mobile" },
       {
         title: "items.leaveManagement",
         url: "/hr/leave",
