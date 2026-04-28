@@ -330,6 +330,285 @@
 
 ---
 
+## HR Module — Task 1: Attendance & Movement Tracking
+
+---
+
+### Pre-Demo Setup (একবার করতে হবে)
+
+#### ১. Employee–User Link করুন
+
+Self-service attendance কাজ করতে হলে demo employee account-এ `userId` set থাকতে হবে।
+
+Prisma Studio SQL console-এ run করুন:
+
+```sql
+-- কোন users আছে দেখুন
+SELECT id, email FROM "User" LIMIT 10;
+
+-- Employee এর সাথে link করুন (email দিয়ে match করে)
+UPDATE "Employee"
+SET "userId" = (SELECT id FROM "User" WHERE email = 'rahim@shapla.org')
+WHERE "fullName" = 'Rafiqul Islam';
+```
+
+> প্রতিটা demo role এর জন্য আলাদা employee–user link করুন।
+
+#### ২. OperatingLocation ✅ আছে
+
+| Code | Name | Address |
+|---|---|---|
+| LOC-001 | Khulna Head Office | CSS Head Office, Khulna |
+| LOC-002 | Hospital Campus | Hospital Road, Khulna |
+| LOC-003 | MFP Branch 001 | Batiaghata, Khulna |
+| LOC-004 | MFP Branch 002 | Dakop, Khulna |
+
+---
+
+### Scenario 1: Outstation Movement During Office Hours
+
+**Demo Story:** Senior officer ব্যাংকে যাচ্ছেন অফিস আওয়ারে।
+
+**Login:** Employee account (যেটায় userId link করা হয়েছে)
+
+---
+
+#### Step 1 — সকালে Office Check-in
+
+1. **`/self-service/attendance`** এ যান
+2. **"Check In"** button click করুন
+3. ✅ Today Status দেখাবে: `PRESENT — Checked in at 9:00 AM`
+
+**Client কে দেখান:**
+- Employee নিজেই check-in করছে
+- Real-time status update
+
+---
+
+#### Step 2 — Official Movement শুরু করুন
+
+1. একই page-এ **"Start Movement"** button click করুন
+2. Form fill করুন:
+   - Movement Type: `BANK_VISIT`
+   - Destination: `Sonali Bank, Khulna Branch`
+   - Purpose: `Cheque collection for project fund`
+   - Expected Return: `01:00 PM`
+3. Submit করুন → ✅ Movement started
+
+**Client কে দেখান:**
+- Movement type clearly defined (official duty)
+- System জানে employee কোথায় গেছে এবং কেন
+
+---
+
+#### Step 3 — Supervisor Visibility দেখান
+
+**Login:** Admin / Supervisor account
+
+1. **`/hr/attendance/movements`** এ যান
+2. **"Currently Out on Duty"** panel দেখান
+3. দেখাবে:
+   - Employee: Rafiqul Islam
+   - Destination: Sonali Bank, Khulna Branch
+   - Out since: 11:00 AM
+   - Status: `OPEN`
+
+**Client কে দেখান:**
+- Supervisor real-time দেখতে পাচ্ছেন কে কোথায় আছেন
+- Absence নয়, official duty হিসেবে marked
+
+---
+
+#### Step 4 — Return Check-in
+
+**Login:** Employee account
+
+1. **`/self-service/attendance`** এ ফিরে যান
+2. **"End Movement"** button click করুন
+3. ✅ Movement status: `RETURNED`, Return time recorded
+
+**Client কে দেখান:**
+- Movement duration automatically calculated
+- Attendance এখনও `PRESENT` — absence deduction নেই
+
+---
+
+#### Step 5 — Movement Report দেখান
+
+**Login:** Admin
+
+1. **`/hr/attendance/movements`** এ যান
+2. Movement register এ দেখাবে:
+   - Employee name
+   - Movement type: BANK_VISIT
+   - Destination
+   - Check-out time, Return time
+   - Duration (e.g., 2h 15m)
+
+**Scenario 1 Key Points:**
+
+| Focus Point | দেখানো হয়েছে |
+|---|---|
+| Absence vs Official Duty differentiation | ✅ Attendance PRESENT থাকে |
+| Time tracking | ✅ Duration calculated |
+| Supervisor visibility | ✅ Live "Out on Duty" panel |
+| Reporting | ✅ Movement register |
+
+---
+
+### Scenario 2: Field Worker Attendance Tracking
+
+**Demo Story:** Field worker মাঠ থেকে GPS দিয়ে attendance দিচ্ছেন।
+
+**Login:** Employee account (field worker)
+
+---
+
+#### Step 1 — Mobile Page খুলুন
+
+1. **`/self-service/attendance/mobile`** এ যান
+2. Page টা mobile-optimized — client কে phone-এ দেখান অথবা browser-এ mobile view করুন
+
+---
+
+#### Step 2 — Attendance Mode Select করুন
+
+1. Mode dropdown থেকে **`FIELD`** select করুন
+2. **"Capture Location"** button click করুন
+3. Browser location permission দিন → ✅ GPS coordinates captured
+4. দেখাবে: `Location: 22.84561, 89.54231 — VALID`
+
+**Client কে দেখান:**
+- GPS automatically capture হচ্ছে
+- Location permission ছাড়াও কাজ করে (PENDING status)
+
+---
+
+#### Step 3 — Field Check-in করুন
+
+1. **"Check In"** button click করুন
+2. ✅ Attendance তৈরি:
+   - Mode: `FIELD`
+   - Source: `MOBILE`
+   - GPS: coordinates stored
+   - Validation: `VALID`
+
+---
+
+#### Step 4 — Offline Sync দেখান (Optional)
+
+1. Browser-এ Network offline করুন (DevTools → Network → Offline)
+2. Check-out করার চেষ্টা করুন
+3. ✅ দেখাবে: `"Check-out queued for sync"` — locally saved
+4. Network online করুন
+5. **"Sync Queued Events"** button click করুন → ✅ Server-এ sync হবে
+
+**Client কে দেখান:**
+- Network না থাকলেও attendance নষ্ট হয় না
+- পরে sync হয়ে যায়
+
+---
+
+#### Step 5 — Field Attendance Report
+
+**Login:** Admin
+
+1. **`/hr/attendance`** এ যান
+2. Filter: **Mode = FIELD** select করুন
+3. দেখাবে field attendance records with GPS validation status
+
+**Scenario 2 Key Points:**
+
+| Focus Point | দেখানো হয়েছে |
+|---|---|
+| Mobile-based attendance | ✅ Mobile-optimized page |
+| GPS location capture | ✅ Browser Geolocation API |
+| Location-based validation | ✅ VALID / PENDING status |
+| Real-time logging | ✅ Instant API record |
+| Offline-to-online sync | ✅ LocalStorage queue + sync |
+
+---
+
+### Scenario 3: Cross-Branch Attendance (HQ to Branch Visit)
+
+**Demo Story:** HQ-র employee অন্য branch-এ গিয়ে attendance দিচ্ছেন।
+
+**Login:** Employee account (HQ employee)
+
+---
+
+#### Step 1 — Mobile Page খুলুন
+
+1. **`/self-service/attendance/mobile`** এ যান
+
+---
+
+#### Step 2 — Branch Visit Mode Select করুন
+
+1. Mode dropdown থেকে **`BRANCH_VISIT`** select করুন
+2. ✅ Branch Location dropdown appear করবে
+3. Dropdown থেকে select করুন: **`MFP Branch 001 — Batiaghata, Khulna`**
+
+**Client কে দেখান:**
+- System-এ registered branches automatically দেখাচ্ছে
+- Home location (HQ) ভিন্ন, visiting location আলাদা
+
+---
+
+#### Step 3 — Branch Check-in করুন
+
+1. **"Check In"** button click করুন
+2. ✅ Attendance তৈরি:
+   - Mode: `BRANCH_VISIT`
+   - Operating Location: MFP Branch 001
+   - Employee home: Khulna Head Office
+
+---
+
+#### Step 4 — Centralized HQ Report দেখান
+
+**Login:** Admin
+
+1. **`/hr/attendance`** এ যান
+2. Filter: **Operating Location = MFP Branch 001** select করুন
+3. দেখাবে — HQ employee branch-এ check-in করেছেন
+4. Mode filter: **`BRANCH_VISIT`** দিয়ে সব cross-branch visits দেখান
+
+**Client কে দেখান:**
+- HQ থেকে centralized visibility
+- কোন employee কোন branch-এ গিয়েছেন — সব record-এ আছে
+- Home location vs visited location clearly different
+
+**Scenario 3 Key Points:**
+
+| Focus Point | দেখানো হয়েছে |
+|---|---|
+| Multi-location flexibility | ✅ OFFICE / FIELD / BRANCH_VISIT mode |
+| System recognizes location | ✅ OperatingLocation validated |
+| Centralized tracking from HQ | ✅ Filter by location in HR report |
+| Visit logs & reporting | ✅ Mode + location in attendance log |
+
+---
+
+### HR Task 1 — Overall Summary
+
+| Scenario | Key Feature | Status |
+|---|---|---|
+| Outstation Movement | Absence vs Duty differentiation, supervisor visibility | ✅ |
+| Field Worker GPS | Mobile check-in, GPS capture, offline sync | ✅ |
+| Cross-Branch | Branch recognition, centralized HQ report | ✅ |
+
+---
+
+### HR Demo Tips
+
+- **Scenario 1:** Check-in আগে করতে হবে, তারপর Start Movement — এই sequence ভুললে error আসবে
+- **Scenario 2:** GPS দেখাতে HTTPS বা localhost দরকার — `http://192.168.50.128:4000` এ কাজ নাও করতে পারে, সেক্ষেত্রে PENDING status দেখান
+- **Scenario 3:** Branch Visit-এ dropdown-এ LOC-001 থেকে LOC-004 দেখাবে
+- **Browser:** Employee আর Admin দুটো আলাদা browser-এ রাখুন
+
+---
+
 ## Demo Tips
 
 - **Browser:** দুটো browser বা incognito window use করুন — একটায় Admin, অন্যটায় Staff/Store Manager
