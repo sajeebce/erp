@@ -1,6 +1,6 @@
 # NGO ERP — Client Demo Script
 
-> URL: http://192.168.50.128:4000
+> URL: http://localhost:4000
 > Prepared: 2026-04-27
 
 ---
@@ -80,7 +80,7 @@
 
 ### Step 3 — Admin PR Approve করেন
 
-**Login:** Admin
+**Login:** `rahim@cssbd.org` (Admin)
 
 1. **Procurement → Purchase Requisition** — দুটো PR দেখাবে (Staff এর + Admin এর)
 2. প্রথম PR (10 laptop) তে click করুন
@@ -96,7 +96,7 @@
 
 ### Step 4 — Admin PO তৈরি করেন
 
-**Same login:** Admin
+**Same login:** `rahim@cssbd.org` (Admin)
 
 1. Approved PR detail page এ **"Create Purchase Order"** button click করুন
 2. Fill করুন:
@@ -149,7 +149,7 @@
 
 ### Step 7 — Admin Accounting Post করেন
 
-**Login:** Admin
+**Login:** `rahim@cssbd.org` (Admin)
 
 1. GRN detail page → **"Post Accounting"** button
 2. ✅ Journal Entry তৈরি:
@@ -164,7 +164,7 @@
 
 ### Step 8 — Chart of Accounts এ Impact দেখান
 
-**Login:** Admin
+**Login:** `rahim@cssbd.org` (Admin)
 
 1. **Finance → Chart of Accounts** এ যান
 2. Account `1204` (Fixed Assets) খুঁজুন → click করুন
@@ -212,7 +212,7 @@
 
 ### Step 1 — Budget দেখান
 
-**Login:** Admin
+**Login:** `rahim@cssbd.org` (Admin)
 
 1. **Budget → Budget List** → `HQ Operations 2026` তে click করুন
 2. Budget details দেখান:
@@ -271,7 +271,7 @@
 
 ### Step 1 — Project Select করুন
 
-**Login:** Admin
+**Login:** `rahim@cssbd.org` (Admin)
 
 1. **Projects → Project List** এ যান
 2. যেকোনো **ACTIVE** project এ click করুন
@@ -298,7 +298,7 @@
 ### Step 3 — Admin Approve করেন
 
 1. **Projects → Extensions** এ যান
-   `http://192.168.50.128:4000/projects/extensions`
+   `http://localhost:4000/projects/extensions`
 2. Pending request দেখাবে
 3. **Approve** click করুন → ✅ Approved
 
@@ -725,8 +725,8 @@ DB-তে ৪টা training আছে:
 ## Quick Login Reference
 
 ```
-Admin:         rahim@cssbd.org   / (existing password)
-Staff:         kamal@cssbd.org     / Test1234!
-Store Manager: shakil@cssbd.org    / Test1234!
+Admin:         rahim@cssbd.org    / (existing password)
+Staff:         kamal@cssbd.org    / Test1234!
+Store Manager: shakil@cssbd.org   / Test1234!
 Organization:  css
 ```
