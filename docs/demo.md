@@ -609,6 +609,110 @@ WHERE "fullName" = 'Rafiqul Islam';
 
 ---
 
+## HR Module — Task 2: Training Participation Control (No Overlap Rule)
+
+---
+
+### Pre-Demo Setup ✅ (আগেই করা হয়েছে)
+
+DB-তে ৪টা training আছে:
+
+| Training No | Title | Date | Status |
+|---|---|---|---|
+| TRN-2026-001 | Financial Management for NGOs | Mar 10–12 | COMPLETED |
+| TRN-2026-002 | Project Cycle Management | May 10–12 | PLANNED |
+| TRN-2026-003 | Field Data Collection & MIS | May 11–13 | PLANNED |
+| TRN-2026-004 | HR Policies & Staff Conduct | Jun 5 | PLANNED |
+
+> TRN-2026-002 এবং TRN-2026-003 overlap করে (May 11-12 shared) — demo-র জন্য।
+
+---
+
+### Step 1 — Training Page খুলুন
+
+**Login:** `rahim@shapla.org` (Admin)
+
+1. **`/hr/training`** এ যান
+2. ৪টা training list-এ দেখাবে
+3. TRN-2026-002 row-এ click করুন → right panel-এ details দেখাবে
+
+**Client কে দেখান:**
+- Live training schedule
+- Status badges (PLANNED, COMPLETED)
+- Participant count per training
+
+---
+
+### Step 2 — Successful Nomination (1st assignment)
+
+1. **Training dropdown** থেকে `TRN-2026-002 - Project Cycle Management` select করুন
+2. **Employee dropdown** থেকে `Karim Ahmed` select করুন
+3. **Assign** button click করুন
+4. ✅ দেখাবে: `Participant assigned successfully`
+5. Participant table-এ Karim Ahmed দেখাবে
+
+**Client কে দেখান:**
+- Employee successfully enrolled
+- Training history tracking — participant table updated
+
+---
+
+### Step 3 — Duplicate Rejection দেখান
+
+1. Same training: `TRN-2026-002`
+2. Same employee: `Karim Ahmed`
+3. **Assign** আবার click করুন
+4. ❌ দেখাবে: `Employee is already a participant`
+
+**Client কে দেখান:**
+- System duplicate nomination block করছে
+- Validation rules enforcement
+
+---
+
+### Step 4 — Overlap Rejection দেখান (Core Demo)
+
+1. **Training dropdown** থেকে `TRN-2026-003 - Field Data Collection & MIS` select করুন
+   > (May 11-13 — TRN-2026-002 এর May 10-12 এর সাথে overlap)
+2. Same employee: `Karim Ahmed`
+3. **Assign** click করুন
+4. ❌ দেখাবে:
+   ```
+   Conflict with TRN-2026-002 - Project Cycle Management (10 May 2026 to 12 May 2026)
+   ```
+
+**Client কে দেখান:**
+- System automatically conflict detect করেছে
+- কোন training এর সাথে conflict, কোন date range — সব clearly দেখাচ্ছে
+- Automated conflict detection কাজ করছে
+
+---
+
+### Step 5 — Non-Overlapping Training (Validation passes)
+
+1. **Training dropdown** থেকে `TRN-2026-004 - HR Policies & Staff Conduct` select করুন
+   > (June 5 — কোনো overlap নেই)
+2. Same employee: `Karim Ahmed`
+3. **Assign** click করুন
+4. ✅ দেখাবে: `Participant assigned successfully`
+
+**Client কে দেখান:**
+- Same employee, আলাদা date → allowed
+- System intelligent — date overlap না থাকলে block করে না
+
+---
+
+### Task 2 Key Points Summary
+
+| Client Focus Point | দেখানো হয়েছে |
+|---|---|
+| Validation rules enforcement | ✅ Duplicate + overlap block |
+| Training history tracking | ✅ Participant table per training |
+| Automated conflict detection | ✅ Date range overlap query |
+| Clear conflict reason | ✅ Conflicting training info সহ |
+
+---
+
 ## Demo Tips
 
 - **Browser:** দুটো browser বা incognito window use করুন — একটায় Admin, অন্যটায় Staff/Store Manager
