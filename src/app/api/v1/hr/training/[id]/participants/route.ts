@@ -8,6 +8,7 @@ import {
   apiBadRequest,
   apiNotFound,
   apiConflict,
+  apiError,
   handleRouteError,
 } from '@/lib/api-response'
 
@@ -61,7 +62,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Validate training exists
-    const training = await prisma.training.findUnique({ where: { id }, select: { id: true, title: true } })
+    const training = await prisma.training.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        trainingNo: true,
+        title: true,
+        startDate: true,
+        endDate: true,
+        status: true,
+      },
+    })
     if (!training) {
       return apiNotFound('Training not found')
     }
@@ -81,6 +92,52 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     })
     if (existing) {
       return apiConflict('Employee is already a participant')
+    }
+
+    const targetStart = training.startDate
+    const targetEnd = training.endDate ?? training.startDate
+
+    const overlappingParticipant = await prisma.trainingParticipant.findFirst({
+      where: {
+        employeeId,
+        trainingId: { not: id },
+        training: {
+          status: { in: ['PLANNED', 'IN_PROGRESS'] },
+          startDate: { lte: targetEnd },
+          OR: [
+            { endDate: { gte: targetStart } },
+            {
+              AND: [
+                { endDate: null },
+                { startDate: { gte: targetStart, lte: targetEnd } },
+              ],
+            },
+          ],
+        },
+      },
+      select: {
+        training: {
+          select: {
+            id: true,
+            trainingNo: true,
+            title: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
+      },
+      orderBy: { training: { startDate: 'asc' } },
+    })
+
+    if (overlappingParticipant?.training) {
+      const conflictingTraining = overlappingParticipant.training
+      return apiError('CONFLICT', 'Employee has overlapping training nomination', 409, {
+        conflictingTrainingId: [conflictingTraining.id],
+        conflictingTrainingNo: [conflictingTraining.trainingNo],
+        conflictingTrainingTitle: [conflictingTraining.title],
+        startDate: [conflictingTraining.startDate.toISOString()],
+        endDate: [(conflictingTraining.endDate ?? conflictingTraining.startDate).toISOString()],
+      })
     }
 
     const participant = await prisma.trainingParticipant.create({
