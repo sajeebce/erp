@@ -22,8 +22,8 @@ const notoBengali = Noto_Sans_Bengali({
 });
 
 export const metadata: Metadata = {
-  title: "NGO ERP System",
-  description: "Comprehensive NGO Management Platform for Bangladeshi Organizations",
+  title: "CSS BD",
+  description: "CSS BD management platform",
 };
 
 export default async function RootLayout({

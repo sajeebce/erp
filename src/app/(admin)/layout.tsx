@@ -45,7 +45,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="flex items-center gap-2 p-4 border-b">
           <Shield className="h-6 w-6 text-primary" />
           <div>
-            <h2 className="font-semibold text-sm">NGO ERP</h2>
+            <h2 className="font-semibold text-sm">CSS BD</h2>
             <p className="text-[10px] text-muted-foreground">Super Admin Panel</p>
           </div>
           <Button variant="ghost" size="icon" className="ml-auto md:hidden" onClick={() => setSidebarOpen(false)}>
