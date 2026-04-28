@@ -43,25 +43,54 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return apiNotFound('Goods receipt not found')
     }
 
-    const accountingEntries = await prisma.journalEntry.findMany({
-      where: {
-        sourceModule: 'PROCUREMENT_GRN',
-        sourceId: receipt.id,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-        entryNo: true,
-        date: true,
-        totalDebit: true,
-        totalCredit: true,
-        status: true,
-        postedAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+    const [accountingEntries, inventoryTransactions] = await Promise.all([
+      prisma.journalEntry.findMany({
+        where: {
+          sourceModule: 'PROCUREMENT_GRN',
+          sourceId: receipt.id,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          entryNo: true,
+          date: true,
+          totalDebit: true,
+          totalCredit: true,
+          status: true,
+          postedAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.inventoryTransaction.findMany({
+        where: {
+          sourceModule: 'PROCUREMENT_GRN',
+          sourceId: receipt.id,
+        },
+        select: {
+          id: true,
+          itemId: true,
+          type: true,
+          quantity: true,
+          balanceAfter: true,
+          reference: true,
+          referenceId: true,
+          sourceLineId: true,
+          unitCost: true,
+          totalCost: true,
+          createdAt: true,
+          item: {
+            select: {
+              itemCode: true,
+              name: true,
+              unit: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ])
 
-    return apiSuccess({ ...receipt, accountingEntries })
+    return apiSuccess({ ...receipt, accountingEntries, inventoryTransactions })
   } catch (error) {
     return handleRouteError(error)
   }

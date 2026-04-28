@@ -9,6 +9,7 @@ import {
   handleRouteError,
 } from '@/lib/api-response'
 import { Prisma } from '@prisma/client'
+import { resolveProcurementLineClassifications } from '@/lib/procurement-line-classification'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -106,21 +107,42 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         0
       )
       data.totalAmount = new Prisma.Decimal(totalAmount)
+      const lineClassifications = await resolveProcurementLineClassifications(auth.organizationId, lines)
 
       data.lines = {
         create: lines.map(
           (
-            l: { description: string; unit: string; quantity: number; unitPrice: number; prLineId?: string },
+            l: {
+              description: string
+              unit: string
+              quantity: number
+              unitPrice: number
+              prLineId?: string
+              itemType?: string
+              inventoryItemId?: string
+              warehouseId?: string
+              assetCategoryId?: string
+              accountId?: string
+            },
             i: number
-          ) => ({
-            description: l.description,
-            unit: l.unit,
-            quantity: new Prisma.Decimal(l.quantity),
-            unitPrice: new Prisma.Decimal(l.unitPrice),
-            totalPrice: new Prisma.Decimal(Number(l.quantity) * Number(l.unitPrice)),
-            prLineId: l.prLineId || null,
-            sortOrder: i,
-          })
+          ) => {
+            const classification = lineClassifications[i]
+
+            return {
+              description: l.description,
+              unit: l.unit,
+              quantity: new Prisma.Decimal(l.quantity),
+              unitPrice: new Prisma.Decimal(l.unitPrice),
+              totalPrice: new Prisma.Decimal(Number(l.quantity) * Number(l.unitPrice)),
+              prLineId: l.prLineId || null,
+              itemType: classification.itemType,
+              inventoryItemId: classification.inventoryItemId,
+              warehouseId: classification.warehouseId,
+              assetCategoryId: classification.assetCategoryId,
+              accountId: classification.accountId || l.accountId || null,
+              sortOrder: i,
+            }
+          }
         ),
       }
     }

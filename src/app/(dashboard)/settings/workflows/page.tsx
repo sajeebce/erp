@@ -1,4 +1,6 @@
 import { getTranslations } from 'next-intl/server';
+import { prisma } from '@/lib/db';
+import { getOrganizationId } from '@/lib/auth';
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,69 +15,34 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus, GitBranch, CheckCircle, XCircle } from "lucide-react";
 
-interface Workflow {
-  name: string;
-  module: string;
-  trigger: string;
-  approvalSteps: string[];
-  status: "Active" | "Inactive";
-}
-
-const workflows: Workflow[] = [
-  {
-    name: "Voucher Approval",
-    module: "Finance",
-    trigger: "Voucher amount > BDT 50,000",
-    approvalSteps: ["Accounts Officer", "Finance Manager", "Executive Director"],
-    status: "Active",
-  },
-  {
-    name: "Purchase Requisition",
-    module: "Procurement",
-    trigger: "New purchase requisition created",
-    approvalSteps: ["Department Head", "Procurement Officer", "Finance Manager"],
-    status: "Active",
-  },
-  {
-    name: "Leave Request",
-    module: "HR",
-    trigger: "Leave application submitted",
-    approvalSteps: ["Line Manager", "HR Manager"],
-    status: "Active",
-  },
-  {
-    name: "Budget Revision",
-    module: "Budget",
-    trigger: "Budget line revision > 10%",
-    approvalSteps: ["Program Manager", "Finance Manager", "Executive Director", "Donor Approval"],
-    status: "Active",
-  },
-  {
-    name: "Fund Requisition",
-    module: "Finance",
-    trigger: "Field office fund request",
-    approvalSteps: ["Branch Manager", "Finance Manager", "Executive Director"],
-    status: "Active",
-  },
-  {
-    name: "Asset Disposal",
-    module: "Assets",
-    trigger: "Asset disposal request initiated",
-    approvalSteps: ["Asset Manager", "Finance Manager", "Executive Director", "Board Approval"],
-    status: "Active",
-  },
-  {
-    name: "Payroll Processing",
-    module: "HR",
-    trigger: "Monthly payroll generated",
-    approvalSteps: ["HR Manager", "Finance Manager", "Executive Director"],
-    status: "Inactive",
-  },
-];
-
 export default async function WorkflowsPage() {
   const t = await getTranslations('settings');
-  const tc = await getTranslations('common');
+  const organizationId = await getOrganizationId();
+  const workflowDefs = await prisma.approvalWorkflowDef.findMany({
+    where: { organizationId },
+    include: {
+      steps: {
+        orderBy: { stepNumber: 'asc' },
+      },
+    },
+    orderBy: [{ module: 'asc' }, { name: 'asc' }],
+  });
+  const roles = await prisma.role.findMany({
+    where: {
+      organizationId,
+      id: { in: workflowDefs.flatMap((workflow) => workflow.steps.map((step) => step.roleId)) },
+    },
+    select: { id: true, name: true },
+  });
+  const roleNameById = new Map(roles.map((role) => [role.id, role.name]));
+  const workflows = workflowDefs.map((workflow) => ({
+    id: workflow.id,
+    name: workflow.name,
+    module: workflow.module,
+    trigger: workflow.entityType,
+    approvalSteps: workflow.steps.map((step) => roleNameById.get(step.roleId) || step.name),
+    status: workflow.isActive ? "Active" : "Inactive",
+  }));
   const totalWorkflows = workflows.length;
   const activeWorkflows = workflows.filter((w) => w.status === "Active").length;
   const inactiveWorkflows = workflows.filter((w) => w.status === "Inactive").length;
@@ -145,7 +112,7 @@ export default async function WorkflowsPage() {
             </TableHeader>
             <TableBody>
               {workflows.map((workflow) => (
-                <TableRow key={workflow.name}>
+                <TableRow key={workflow.id}>
                   <TableCell className="font-medium">{workflow.name}</TableCell>
                   <TableCell className="text-sm">
                     <Badge variant="outline">{workflow.module}</Badge>

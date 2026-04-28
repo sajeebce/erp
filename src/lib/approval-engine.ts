@@ -10,22 +10,75 @@ interface StartApprovalParams {
   amount?: number
 }
 
+interface ApprovalStepResult {
+  stepNumber: number
+  name: string
+  roleId: string
+  roleName: string
+  status: string
+}
+
 interface ApprovalResult {
   instanceId: string
   status: ApprovalStatus
   currentStep: number
   totalSteps: number
   isComplete: boolean
+  currentStepName?: string
+  currentRoleId?: string
+  currentRoleName?: string
+  steps?: ApprovalStepResult[]
 }
 
-/**
- * Start an approval process for an entity.
- * Finds the matching workflow definition and creates an instance.
- */
-export async function startApproval(params: StartApprovalParams): Promise<ApprovalResult> {
+const DEFAULT_PR_WORKFLOW_NAME = 'Purchase Requisition Approval'
+
+function stepAppliesToAmount(step: { isRequired: boolean; amountMin: unknown; amountMax: unknown }, amount?: number | null) {
+  if (!step.isRequired) return false
+  if (amount === undefined || amount === null) return true
+
+  const min = step.amountMin ? Number(step.amountMin) : 0
+  const max = step.amountMax ? Number(step.amountMax) : Infinity
+  return amount >= min && amount <= max
+}
+
+function toResult(instance: {
+  id: string
+  status: ApprovalStatus
+  currentStep: number
+  steps: Array<{
+    stepNumber: number
+    name: string
+    roleId: string
+    roleName: string
+    status: string
+  }>
+}): ApprovalResult {
+  const current = instance.steps.find((step) => step.stepNumber === instance.currentStep)
+
+  return {
+    instanceId: instance.id,
+    status: instance.status,
+    currentStep: instance.currentStep,
+    totalSteps: instance.steps.length,
+    isComplete: instance.status === 'APPROVED' || instance.status === 'REJECTED' || instance.status === 'CANCELLED',
+    currentStepName: current?.name,
+    currentRoleId: current?.roleId,
+    currentRoleName: current?.roleName,
+    steps: instance.steps.map((step) => ({
+      stepNumber: step.stepNumber,
+      name: step.name,
+      roleId: step.roleId,
+      roleName: step.roleName,
+      status: step.status,
+    })),
+  }
+}
+
+async function findOrCreateWorkflow(params: StartApprovalParams) {
   const workflow = await prisma.approvalWorkflowDef.findFirst({
     where: {
       organizationId: params.organizationId,
+      entityType: params.entityType,
       name: params.workflowName,
       isActive: true,
     },
@@ -36,21 +89,118 @@ export async function startApproval(params: StartApprovalParams): Promise<Approv
     },
   })
 
-  if (!workflow) {
-    throw new Error(`Approval workflow "${params.workflowName}" not found`)
+  if (workflow) return workflow
+
+  if (params.entityType !== 'PURCHASE_REQUISITION' || params.workflowName !== DEFAULT_PR_WORKFLOW_NAME) {
+    throw new Error(`Approval workflow "${params.workflowName}" not found for ${params.entityType}`)
   }
 
-  // Filter steps based on amount thresholds
-  const applicableSteps = workflow.steps.filter((step) => {
-    if (params.amount === undefined) return step.isRequired
-    const min = step.amountMin ? Number(step.amountMin) : 0
-    const max = step.amountMax ? Number(step.amountMax) : Infinity
-    return params.amount! >= min && params.amount! <= max
+  const adminRole = await prisma.role.findFirst({
+    where: { organizationId: params.organizationId, name: 'ADMIN' },
+    select: { id: true },
   })
+
+  if (!adminRole) {
+    throw new Error('Default purchase requisition workflow requires an ADMIN role')
+  }
+
+  return prisma.approvalWorkflowDef.create({
+    data: {
+      organizationId: params.organizationId,
+      name: DEFAULT_PR_WORKFLOW_NAME,
+      module: 'PROCUREMENT',
+      entityType: 'PURCHASE_REQUISITION',
+      description: 'Default one-step admin approval for purchase requisitions.',
+      steps: {
+        create: {
+          stepNumber: 1,
+          name: 'Admin Approval',
+          roleId: adminRole.id,
+          isRequired: true,
+        },
+      },
+    },
+    include: {
+      steps: {
+        orderBy: { stepNumber: 'asc' },
+      },
+    },
+  })
+}
+
+/**
+ * Start or resume an approval process for an entity.
+ * The workflow steps are copied into ApprovalInstanceStep rows so in-flight
+ * approvals keep their original routing if workflow settings later change.
+ */
+export async function startApproval(params: StartApprovalParams): Promise<ApprovalResult> {
+  const existing = await prisma.approvalInstance.findFirst({
+    where: {
+      entityType: params.entityType,
+      entityId: params.entityId,
+      status: { in: ['SUBMITTED', 'UNDER_REVIEW'] },
+    },
+    include: {
+      steps: {
+        orderBy: { stepNumber: 'asc' },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  if (existing) {
+    const current = existing.steps.find((step) => step.stepNumber === existing.currentStep)
+    if (current?.status === 'RETURNED') {
+      const resumed = await prisma.approvalInstance.update({
+        where: { id: existing.id },
+        data: {
+          status: 'SUBMITTED',
+          steps: {
+            update: {
+              where: {
+                instanceId_stepNumber: {
+                  instanceId: existing.id,
+                  stepNumber: existing.currentStep,
+                },
+              },
+              data: {
+                status: 'PENDING',
+                action: null,
+                actorId: null,
+                comments: null,
+                actedAt: null,
+              },
+            },
+          },
+        },
+        include: {
+          steps: {
+            orderBy: { stepNumber: 'asc' },
+          },
+        },
+      })
+
+      return toResult(resumed)
+    }
+
+    return toResult(existing)
+  }
+
+  const workflow = await findOrCreateWorkflow(params)
+  const applicableSteps = workflow.steps.filter((step) => stepAppliesToAmount(step, params.amount))
 
   if (applicableSteps.length === 0) {
     throw new Error('No applicable approval steps found for this amount')
   }
+
+  const roleNames = await prisma.role.findMany({
+    where: {
+      id: { in: applicableSteps.map((step) => step.roleId) },
+      organizationId: params.organizationId,
+    },
+    select: { id: true, name: true },
+  })
+  const roleNameById = new Map(roleNames.map((role) => [role.id, role.name]))
 
   const instance = await prisma.approvalInstance.create({
     data: {
@@ -61,20 +211,28 @@ export async function startApproval(params: StartApprovalParams): Promise<Approv
       status: 'SUBMITTED',
       requestedById: params.requestedById,
       amount: params.amount,
+      steps: {
+        create: applicableSteps.map((step, index) => ({
+          stepNumber: index + 1,
+          name: step.name,
+          roleId: step.roleId,
+          roleName: roleNameById.get(step.roleId) || 'UNKNOWN',
+          status: index === 0 ? 'PENDING' : 'WAITING',
+        })),
+      },
+    },
+    include: {
+      steps: {
+        orderBy: { stepNumber: 'asc' },
+      },
     },
   })
 
-  return {
-    instanceId: instance.id,
-    status: instance.status,
-    currentStep: 1,
-    totalSteps: applicableSteps.length,
-    isComplete: false,
-  }
+  return toResult(instance)
 }
 
 /**
- * Process an approval action (approve or reject) on an instance.
+ * Process an approval action on the current pending approval step.
  */
 export async function processApproval(
   instanceId: string,
@@ -85,10 +243,8 @@ export async function processApproval(
   const instance = await prisma.approvalInstance.findUnique({
     where: { id: instanceId },
     include: {
-      workflow: {
-        include: {
-          steps: { orderBy: { stepNumber: 'asc' } },
-        },
+      steps: {
+        orderBy: { stepNumber: 'asc' },
       },
     },
   })
@@ -101,97 +257,182 @@ export async function processApproval(
     throw new Error(`Cannot process approval: current status is ${instance.status}`)
   }
 
-  // Verify actor has the right role for current step
-  const currentStepDef = instance.workflow.steps.find(
-    (s) => s.stepNumber === instance.currentStep
-  )
+  const currentStep = instance.steps.find((step) => step.stepNumber === instance.currentStep)
 
-  if (!currentStepDef) {
-    throw new Error('Current step definition not found')
+  if (!currentStep) {
+    throw new Error('Current approval step not found')
   }
 
-  // Record the action
-  await prisma.approvalAction.create({
-    data: {
-      instanceId,
-      stepNumber: instance.currentStep,
-      action,
-      actorId,
-      comments,
+  if (currentStep.status !== 'PENDING') {
+    throw new Error(`Cannot process approval: current step is ${currentStep.status}`)
+  }
+
+  const actor = await prisma.user.findFirst({
+    where: { id: actorId, deletedAt: null },
+    select: {
+      id: true,
+      roleId: true,
+      role: { select: { name: true } },
     },
   })
 
-  // Determine applicable steps count
-  const applicableSteps = instance.workflow.steps.filter((step) => {
-    if (instance.amount === null) return step.isRequired
-    const amt = Number(instance.amount)
-    const min = step.amountMin ? Number(step.amountMin) : 0
-    const max = step.amountMax ? Number(step.amountMax) : Infinity
-    return amt >= min && amt <= max
-  })
-
-  const totalSteps = applicableSteps.length
-
-  if (action === 'REJECT') {
-    await prisma.approvalInstance.update({
-      where: { id: instanceId },
-      data: { status: 'REJECTED' },
-    })
-    return {
-      instanceId,
-      status: 'REJECTED',
-      currentStep: instance.currentStep,
-      totalSteps,
-      isComplete: true,
-    }
+  if (!actor || actor.roleId !== currentStep.roleId) {
+    throw new Error(`Forbidden: Current approval step requires role ${currentStep.roleName}`)
   }
 
-  if (action === 'RETURN') {
-    const prevStep = Math.max(1, instance.currentStep - 1)
-    await prisma.approvalInstance.update({
-      where: { id: instanceId },
-      data: { currentStep: prevStep, status: 'SUBMITTED' },
-    })
-    return {
-      instanceId,
-      status: 'SUBMITTED',
-      currentStep: prevStep,
-      totalSteps,
-      isComplete: false,
-    }
-  }
-
-  // APPROVE — move to next step or complete
+  const totalSteps = instance.steps.length
   const isLastStep = instance.currentStep >= totalSteps
+  const now = new Date()
 
-  if (isLastStep) {
-    await prisma.approvalInstance.update({
-      where: { id: instanceId },
-      data: { status: 'APPROVED' },
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.approvalAction.create({
+      data: {
+        instanceId,
+        stepNumber: instance.currentStep,
+        action,
+        actorId,
+        comments,
+      },
     })
-    return {
-      instanceId,
-      status: 'APPROVED',
-      currentStep: instance.currentStep,
-      totalSteps,
-      isComplete: true,
-    }
-  }
 
-  // Move to next step
-  const nextStep = instance.currentStep + 1
-  await prisma.approvalInstance.update({
-    where: { id: instanceId },
-    data: { currentStep: nextStep, status: 'UNDER_REVIEW' },
+    if (action === 'REJECT') {
+      return tx.approvalInstance.update({
+        where: { id: instanceId },
+        data: {
+          status: 'REJECTED',
+          steps: {
+            update: {
+              where: {
+                instanceId_stepNumber: {
+                  instanceId,
+                  stepNumber: instance.currentStep,
+                },
+              },
+              data: {
+                status: 'REJECTED',
+                action,
+                actorId,
+                comments,
+                actedAt: now,
+              },
+            },
+          },
+        },
+        include: {
+          steps: {
+            orderBy: { stepNumber: 'asc' },
+          },
+        },
+      })
+    }
+
+    if (action === 'RETURN') {
+      return tx.approvalInstance.update({
+        where: { id: instanceId },
+        data: {
+          status: 'SUBMITTED',
+          steps: {
+            update: {
+              where: {
+                instanceId_stepNumber: {
+                  instanceId,
+                  stepNumber: instance.currentStep,
+                },
+              },
+              data: {
+                status: 'RETURNED',
+                action,
+                actorId,
+                comments,
+                actedAt: now,
+              },
+            },
+          },
+        },
+        include: {
+          steps: {
+            orderBy: { stepNumber: 'asc' },
+          },
+        },
+      })
+    }
+
+    if (isLastStep) {
+      return tx.approvalInstance.update({
+        where: { id: instanceId },
+        data: {
+          status: 'APPROVED',
+          steps: {
+            update: {
+              where: {
+                instanceId_stepNumber: {
+                  instanceId,
+                  stepNumber: instance.currentStep,
+                },
+              },
+              data: {
+                status: 'APPROVED',
+                action,
+                actorId,
+                comments,
+                actedAt: now,
+              },
+            },
+          },
+        },
+        include: {
+          steps: {
+            orderBy: { stepNumber: 'asc' },
+          },
+        },
+      })
+    }
+
+    return tx.approvalInstance.update({
+      where: { id: instanceId },
+      data: {
+        currentStep: instance.currentStep + 1,
+        status: 'UNDER_REVIEW',
+        steps: {
+          update: [
+            {
+              where: {
+                instanceId_stepNumber: {
+                  instanceId,
+                  stepNumber: instance.currentStep,
+                },
+              },
+              data: {
+                status: 'APPROVED',
+                action,
+                actorId,
+                comments,
+                actedAt: now,
+              },
+            },
+            {
+              where: {
+                instanceId_stepNumber: {
+                  instanceId,
+                  stepNumber: instance.currentStep + 1,
+                },
+              },
+              data: {
+                status: 'PENDING',
+              },
+            },
+          ],
+        },
+      },
+      include: {
+        steps: {
+          orderBy: { stepNumber: 'asc' },
+        },
+      },
+    })
   })
 
-  return {
-    instanceId,
-    status: 'UNDER_REVIEW',
-    currentStep: nextStep,
-    totalSteps,
-    isComplete: false,
-  }
+  return toResult(updated)
 }
 
 /**
@@ -204,11 +445,8 @@ export async function getApprovalStatus(
   const instance = await prisma.approvalInstance.findFirst({
     where: { entityType, entityId },
     include: {
-      workflow: {
-        include: { steps: true },
-      },
-      actions: {
-        orderBy: { createdAt: 'desc' },
+      steps: {
+        orderBy: { stepNumber: 'asc' },
       },
     },
     orderBy: { createdAt: 'desc' },
@@ -216,11 +454,7 @@ export async function getApprovalStatus(
 
   if (!instance) return null
 
-  return {
-    instanceId: instance.id,
-    status: instance.status,
-    currentStep: instance.currentStep,
-    totalSteps: instance.workflow.steps.length,
-    isComplete: instance.status === 'APPROVED' || instance.status === 'REJECTED',
-  }
+  return toResult(instance)
 }
+
+export { DEFAULT_PR_WORKFLOW_NAME }

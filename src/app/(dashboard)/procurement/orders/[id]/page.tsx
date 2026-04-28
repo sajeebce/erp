@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import Link from "next/link";
@@ -34,6 +34,11 @@ import { formatCurrency, formatDate, formatNumber } from "@/lib/formatters";
 interface POLine {
   id: string;
   description: string;
+  itemType: "INVENTORY" | "FIXED_ASSET" | "SERVICE_OR_EXPENSE";
+  inventoryItemId: string | null;
+  warehouseId: string | null;
+  assetCategoryId: string | null;
+  accountId: string | null;
   unit: string;
   quantity: number;
   unitPrice: number;
@@ -113,18 +118,18 @@ export default function PurchaseOrderDetailPage() {
   const [savingReceipt, setSavingReceipt] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  async function fetchPO() {
+  const fetchPO = useCallback(async () => {
     const res = await fetch(`/api/v1/procurement/orders/${id}`);
     const json = await res.json();
     if (json.success) {
       setPO(json.data);
     }
     setLoading(false);
-  }
+  }, [id]);
 
   useEffect(() => {
     fetchPO();
-  }, [id]);
+  }, [fetchPO]);
 
   function openReceiptDialog() {
     if (!po) return;
@@ -310,6 +315,7 @@ export default function PurchaseOrderDetailPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Description</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Unit</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
                     <TableHead className="text-right">Received</TableHead>
@@ -321,6 +327,11 @@ export default function PurchaseOrderDetailPage() {
                   {po.lines.map((line) => (
                     <TableRow key={line.id}>
                       <TableCell className="font-medium">{line.description}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px]">
+                          {line.itemType === "SERVICE_OR_EXPENSE" ? "Service/Expense" : line.itemType === "FIXED_ASSET" ? "Fixed Asset" : "Inventory"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{line.unit}</TableCell>
                       <TableCell className="text-right font-mono">{formatNumber(Number(line.quantity), locale)}</TableCell>
                       <TableCell className="text-right font-mono">{formatNumber(Number(line.receivedQty), locale)}</TableCell>

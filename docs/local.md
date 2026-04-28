@@ -105,7 +105,7 @@ curl -X POST http://localhost:3000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "orgName": "CSS",
-    "orgSlug": "css",
+    "orgSlug": "cssbd",
     "fullName": "Abdur Rahim",
     "email": "rahim@cssbd.org",
     "password": "SecurePass@2026!",
@@ -239,7 +239,7 @@ App will be available at **http://localhost:3000**
 | Field | Value |
 |-------|-------|
 | URL | http://localhost:3000/login |
-| Organization | `css` |
+| Organization | `cssbd` |
 | Email | `rahim@cssbd.org` |
 | Password | `SecurePass@2026!` |
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import Link from "next/link";
@@ -41,6 +41,7 @@ import {
   Loader2,
   ExternalLink,
   PackagePlus,
+  PackageCheck,
   Info,
   Landmark,
 } from "lucide-react";
@@ -55,6 +56,9 @@ interface GRNLine {
   quantityAccepted: number;
   quantityRejected: number;
   rejectionReason: string | null;
+  itemType: string;
+  inventoryItemId: string | null;
+  warehouseId: string | null;
   poLine: { description: string; quantity: number; unitPrice: number } | null;
 }
 
@@ -72,6 +76,7 @@ interface GoodsReceipt {
   createdAt: string;
   lines: GRNLine[];
   accountingEntries?: AccountingEntry[];
+  inventoryTransactions?: InventoryTransaction[];
 }
 
 interface AccountingEntry {
@@ -82,6 +87,20 @@ interface AccountingEntry {
   totalCredit: number;
   status: string;
   postedAt: string | null;
+}
+
+interface InventoryTransaction {
+  id: string;
+  itemId: string;
+  type: string;
+  quantity: number;
+  balanceAfter: number;
+  reference: string | null;
+  sourceLineId: string | null;
+  unitCost: number | null;
+  totalCost: number | null;
+  createdAt: string;
+  item: { itemCode: string; name: string; unit: string } | null;
 }
 
 interface AssetCategory {
@@ -134,18 +153,18 @@ export default function GRNDetailPage() {
   const [registeredAssets, setRegisteredAssets] = useState<{ assetNo: string; id: string; name: string }[]>([]);
   const [userRole, setUserRole] = useState("");
 
-  async function fetchGRN() {
+  const fetchGRN = useCallback(async () => {
     const res = await fetch(`/api/v1/procurement/goods-receipt/${id}`);
     const json = await res.json();
     if (json.success) setGrn(json.data);
     setLoading(false);
-  }
+  }, [id]);
 
-  async function fetchCategories() {
+  const fetchCategories = useCallback(async () => {
     const res = await fetch("/api/v1/assets/categories?limit=100");
     const json = await res.json();
     if (json.success) setCategories(json.data);
-  }
+  }, []);
 
   useEffect(() => {
     fetchGRN();
@@ -154,7 +173,7 @@ export default function GRNDetailPage() {
       .then((r) => r.json())
       .then((json) => { if (json.success) setUserRole(json.data.role?.name ?? ""); })
       .catch(() => {});
-  }, [id]);
+  }, [fetchGRN, fetchCategories]);
 
   function openRegisterDialog() {
     if (!grn) return;
@@ -267,6 +286,7 @@ export default function GRNDetailPage() {
 
   const canRegisterAssets = grn.status === "ACCEPTED" && registeredAssets.length === 0;
   const hasAccountingEntry = Boolean(grn.accountingEntries && grn.accountingEntries.length > 0);
+  const hasInventoryTransactions = Boolean(grn.inventoryTransactions && grn.inventoryTransactions.length > 0);
   const canPostAccounting = userRole === "ADMIN" && ["ACCEPTED", "PARTIAL"].includes(grn.status) && !hasAccountingEntry;
 
   return (
@@ -399,6 +419,9 @@ export default function GRNDetailPage() {
                     <TableRow key={line.id}>
                       <TableCell>
                         <p className="font-medium">{line.description}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {line.itemType.replaceAll("_", " ")}
+                        </p>
                         {line.rejectionReason && (
                           <p className="text-xs text-destructive mt-0.5">
                             Rejection: {line.rejectionReason}
@@ -471,6 +494,62 @@ export default function GRNDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <PackageCheck className="h-4 w-4" />
+                Inventory Posting
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {hasInventoryTransactions ? (
+                <div className="space-y-3">
+                  {grn.inventoryTransactions?.map((transaction) => (
+                    <div key={transaction.id} className="rounded-md border p-3 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium">{transaction.item?.name ?? transaction.itemId}</p>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {transaction.item?.itemCode ?? transaction.itemId}
+                          </p>
+                        </div>
+                        <Badge variant="outline">{transaction.type}</Badge>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                        <div>
+                          <p>Qty</p>
+                          <p className="font-mono text-foreground">
+                            {formatNumber(Number(transaction.quantity), locale)} {transaction.item?.unit ?? ""}
+                          </p>
+                        </div>
+                        <div>
+                          <p>Balance</p>
+                          <p className="font-mono text-foreground">
+                            {formatNumber(Number(transaction.balanceAfter), locale)}
+                          </p>
+                        </div>
+                        <div>
+                          <p>Unit Cost</p>
+                          <p className="font-mono text-foreground">
+                            {formatCurrency(Number(transaction.unitCost || 0), locale)}
+                          </p>
+                        </div>
+                        <div>
+                          <p>Total</p>
+                          <p className="font-mono text-foreground">
+                            {formatCurrency(Number(transaction.totalCost || 0), locale)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No inventory stock posting for this GRN.</p>
+              )}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

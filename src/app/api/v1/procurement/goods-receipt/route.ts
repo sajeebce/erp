@@ -12,6 +12,22 @@ import {
 } from '@/lib/api-response'
 import { Prisma } from '@prisma/client'
 
+type GRNLineInput = {
+  poLineId?: string
+  description?: string
+  quantityOrdered?: number | string
+  quantityReceived?: number | string
+  quantityAccepted?: number | string
+  quantityRejected?: number | string
+  rejectionReason?: string
+}
+
+function stockStatusFor(stock: number, reorderLevel: number): 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' {
+  if (stock <= 0) return 'OUT_OF_STOCK'
+  if (stock <= reorderLevel) return 'LOW_STOCK'
+  return 'IN_STOCK'
+}
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuthFromRequest(request)
@@ -71,7 +87,13 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuthFromRequest(request)
     const body = await request.json()
 
-    const { poId, date, inspectionNotes, notes, lines } = body
+    const { poId, date, inspectionNotes, notes, lines } = body as {
+      poId?: string
+      date?: string
+      inspectionNotes?: string
+      notes?: string
+      lines?: GRNLineInput[]
+    }
 
     if (!poId) {
       return apiBadRequest('poId is required')
@@ -98,19 +120,42 @@ export async function POST(request: NextRequest) {
       return apiBadRequest('Purchase order not found or does not belong to your organization')
     }
 
+    if (!['ISSUED', 'PARTIALLY_RECEIVED'].includes(po.status)) {
+      return apiBadRequest(`Goods receipt can only be created for ISSUED or PARTIALLY_RECEIVED purchase orders. Current status: ${po.status}`)
+    }
+
     const poLineIds = new Set(po.lines.map((line) => line.id))
+    const poLineById = new Map(po.lines.map((line) => [line.id, line]))
     for (const line of lines) {
       if (!line.poLineId || !poLineIds.has(line.poLineId)) {
         return apiBadRequest(`PO line ${line.poLineId || '(missing)'} does not belong to this purchase order`)
       }
+
+      const poLine = poLineById.get(line.poLineId)
+      const accepted = Number(line.quantityAccepted || 0)
+      const rejected = Number(line.quantityRejected || 0)
+      const received = Number(line.quantityReceived ?? accepted + rejected)
+      const alreadyAccepted = Number(poLine?.receivedQty || 0)
+      const ordered = Number(poLine?.quantity || 0)
+      const remaining = Math.max(ordered - alreadyAccepted, 0)
+
+      if ([accepted, rejected, received].some((value) => Number.isNaN(value) || value < 0)) {
+        return apiBadRequest('Received, accepted, and rejected quantities must be non-negative numbers')
+      }
+      if (accepted + rejected > received) {
+        return apiBadRequest(`Line ${poLine?.description || line.poLineId}: accepted plus rejected quantity cannot exceed received quantity`)
+      }
+      if (accepted > remaining) {
+        return apiBadRequest(`Line ${poLine?.description || line.poLineId}: accepted quantity exceeds remaining PO quantity (${remaining})`)
+      }
     }
 
     const totalAccepted = lines.reduce(
-      (sum: number, line: { quantityAccepted?: number }) => sum + Number(line.quantityAccepted || 0),
+      (sum: number, line) => sum + Number(line.quantityAccepted || 0),
       0
     )
     const totalRejected = lines.reduce(
-      (sum: number, line: { quantityRejected?: number }) => sum + Number(line.quantityRejected || 0),
+      (sum: number, line) => sum + Number(line.quantityRejected || 0),
       0
     )
     const receiptStatus =
@@ -122,92 +167,152 @@ export async function POST(request: NextRequest) {
 
     const grnNo = await generateNextNumber(auth.organizationId, 'goods_receipt')
 
-    const receipt = await prisma.goodsReceipt.create({
-      data: {
-        grnNo,
-        date: date ? new Date(date) : new Date(),
-        poId,
-        vendorId: po.vendorId,
-        receivedById: auth.userId,
-        status: receiptStatus,
-        inspectionNotes: inspectionNotes || null,
-        notes: notes || null,
-        lines: {
-          create: lines.map(
-            (l: {
-              poLineId: string
-              description: string
-              quantityOrdered: number
-              quantityReceived: number
-              quantityAccepted: number
-              quantityRejected?: number
-              rejectionReason?: string
-            }) => ({
-              poLineId: l.poLineId,
-              description: l.description,
-              quantityOrdered: new Prisma.Decimal(l.quantityOrdered),
-              quantityReceived: new Prisma.Decimal(l.quantityReceived),
-              quantityAccepted: new Prisma.Decimal(l.quantityAccepted),
-              quantityRejected: new Prisma.Decimal(l.quantityRejected || 0),
-              rejectionReason: l.rejectionReason || null,
-            })
-          ),
-        },
-      },
-      include: { lines: true },
-    })
-
-    // Update PO line receivedQty and PO status
-    for (const line of lines) {
-      await prisma.purchaseOrderLine.update({
-        where: { id: line.poLineId },
+    const receipt = await prisma.$transaction(async (tx) => {
+      const createdReceipt = await tx.goodsReceipt.create({
         data: {
-          receivedQty: {
-            increment: Number(line.quantityAccepted || 0),
+          grnNo,
+          date: date ? new Date(date) : new Date(),
+          poId,
+          vendorId: po.vendorId,
+          receivedById: auth.userId,
+          status: receiptStatus,
+          inspectionNotes: inspectionNotes || null,
+          notes: notes || null,
+          lines: {
+            create: lines.map((line) => {
+              const poLine = poLineById.get(line.poLineId as string)
+              const accepted = Number(line.quantityAccepted || 0)
+              const rejected = Number(line.quantityRejected || 0)
+              const received = Number(line.quantityReceived ?? accepted + rejected)
+
+              return {
+                poLineId: line.poLineId as string,
+                description: line.description || poLine?.description || '',
+                itemType: poLine?.itemType || 'SERVICE_OR_EXPENSE',
+                inventoryItemId: poLine?.inventoryItemId || null,
+                warehouseId: poLine?.warehouseId || null,
+                assetCategoryId: poLine?.assetCategoryId || null,
+                accountId: poLine?.accountId || null,
+                quantityOrdered: new Prisma.Decimal(poLine?.quantity || 0),
+                quantityReceived: new Prisma.Decimal(received),
+                quantityAccepted: new Prisma.Decimal(accepted),
+                quantityRejected: new Prisma.Decimal(rejected),
+                rejectionReason: line.rejectionReason || null,
+              }
+            }),
+          },
+        },
+        include: {
+          lines: {
+            include: {
+              poLine: {
+                select: { unitPrice: true },
+              },
+            },
           },
         },
       })
-    }
 
-    // Refresh PO lines and determine PO status
-    const updatedPoLines = await prisma.purchaseOrderLine.findMany({
-      where: { poId },
-    })
-
-    const allFullyReceived = updatedPoLines.every(
-      (l) => Number(l.receivedQty) >= Number(l.quantity)
-    )
-    const anyReceived = updatedPoLines.some(
-      (l) => Number(l.receivedQty) > 0
-    )
-
-    let newPoStatus: string | undefined
-    if (allFullyReceived) {
-      newPoStatus = 'COMPLETED'
-    } else if (anyReceived) {
-      newPoStatus = 'PARTIALLY_RECEIVED'
-    }
-
-    if (newPoStatus) {
-      await prisma.purchaseOrder.update({
-        where: { id: poId },
-        data: { status: newPoStatus as 'PARTIALLY_RECEIVED' | 'COMPLETED' },
-      })
-    }
-
-    // Cross-module: update inventory stock for lines that reference an inventory item
-    for (const line of lines) {
-      if (line.inventoryItemId && Number(line.quantityAccepted || 0) > 0) {
-        await prisma.inventoryItem.update({
-          where: { id: line.inventoryItemId },
+      for (const line of lines) {
+        await tx.purchaseOrderLine.update({
+          where: { id: line.poLineId as string },
           data: {
-            stockInHand: {
-              increment: Number(line.quantityAccepted),
+            receivedQty: {
+              increment: Number(line.quantityAccepted || 0),
             },
           },
         })
       }
-    }
+
+      const updatedPoLines = await tx.purchaseOrderLine.findMany({
+        where: { poId },
+      })
+
+      const allFullyReceived = updatedPoLines.every(
+        (line) => Number(line.receivedQty) >= Number(line.quantity)
+      )
+      const anyReceived = updatedPoLines.some(
+        (line) => Number(line.receivedQty) > 0
+      )
+
+      if (allFullyReceived || anyReceived) {
+        await tx.purchaseOrder.update({
+          where: { id: poId },
+          data: { status: allFullyReceived ? 'COMPLETED' : 'PARTIALLY_RECEIVED' },
+        })
+      }
+
+      for (const line of createdReceipt.lines) {
+        const acceptedQty = Number(line.quantityAccepted)
+        if (line.itemType !== 'INVENTORY' || !line.inventoryItemId || acceptedQty <= 0) {
+          continue
+        }
+
+        const existingTransaction = await tx.inventoryTransaction.findUnique({
+          where: {
+            sourceModule_sourceLineId: {
+              sourceModule: 'PROCUREMENT_GRN',
+              sourceLineId: line.id,
+            },
+          },
+        })
+        if (existingTransaction) {
+          continue
+        }
+
+        const item = await tx.inventoryItem.findFirst({
+          where: {
+            id: line.inventoryItemId,
+            warehouse: { organizationId: auth.organizationId },
+          },
+        })
+        if (!item) {
+          throw new Error(`Inventory item not found for GRN line ${line.description}`)
+        }
+        if (line.warehouseId && line.warehouseId !== item.warehouseId) {
+          throw new Error(`GRN line warehouse does not match inventory item warehouse for ${line.description}`)
+        }
+
+        const currentStock = Number(item.stockInHand)
+        const currentTotalValue = Number(item.totalValue)
+        const unitCost = Number(line.poLine?.unitPrice || 0)
+        const totalCost = acceptedQty * unitCost
+        const newStock = currentStock + acceptedQty
+        const newTotalValue = currentTotalValue + totalCost
+        const newUnitPrice = newStock > 0 ? newTotalValue / newStock : Number(item.unitPrice)
+        const newStatus = stockStatusFor(newStock, Number(item.reorderLevel))
+
+        await tx.inventoryItem.update({
+          where: { id: item.id },
+          data: {
+            stockInHand: new Prisma.Decimal(newStock),
+            totalValue: new Prisma.Decimal(newTotalValue),
+            unitPrice: new Prisma.Decimal(newUnitPrice),
+            status: newStatus,
+          },
+        })
+
+        await tx.inventoryTransaction.create({
+          data: {
+            itemId: item.id,
+            type: 'IN',
+            quantity: new Prisma.Decimal(acceptedQty),
+            balanceAfter: new Prisma.Decimal(newStock),
+            reference: grnNo,
+            referenceId: createdReceipt.id,
+            sourceModule: 'PROCUREMENT_GRN',
+            sourceId: createdReceipt.id,
+            sourceLineId: line.id,
+            unitCost: new Prisma.Decimal(unitCost),
+            totalCost: new Prisma.Decimal(totalCost),
+            notes: `Accepted through goods receipt ${grnNo}`,
+            transactedById: auth.userId,
+          },
+        })
+      }
+
+      return createdReceipt
+    })
 
     const audit = getAuditContext(request)
     await logAudit({

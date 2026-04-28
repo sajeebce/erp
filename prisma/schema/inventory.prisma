@@ -59,14 +59,22 @@ model InventoryTransaction {
   balanceAfter   Decimal  @db.Decimal(10, 2)
   reference      String? // GRN No, PO No, etc.
   referenceId    String?  @db.Uuid
+  sourceModule   String?
+  sourceId       String?  @db.Uuid
+  sourceLineId   String?  @db.Uuid
+  unitCost       Decimal? @db.Decimal(18, 2)
+  totalCost      Decimal? @db.Decimal(18, 2)
   notes          String?
   transactedById String   @db.Uuid // User FK — plain String, no @relation
   createdAt      DateTime @default(now())
 
   item InventoryItem @relation(fields: [itemId], references: [id])
 
+  @@unique([sourceModule, sourceLineId])
   @@index([itemId])
   @@index([type])
+  @@index([sourceModule, sourceId])
+  @@index([sourceLineId])
   @@index([createdAt])
 }
 
@@ -92,18 +100,27 @@ model GoodsReceipt {
 }
 
 model GoodsReceiptLine {
-  id               String  @id @default(uuid()) @db.Uuid
-  grnId            String  @db.Uuid
-  poLineId         String  @db.Uuid
+  id               String              @id @default(uuid()) @db.Uuid
+  grnId            String              @db.Uuid
+  poLineId         String              @db.Uuid
   description      String
-  quantityOrdered  Decimal @db.Decimal(10, 2)
-  quantityReceived Decimal @db.Decimal(10, 2)
-  quantityAccepted Decimal @db.Decimal(10, 2)
-  quantityRejected Decimal @default(0) @db.Decimal(10, 2)
+  itemType         ProcurementItemType @default(SERVICE_OR_EXPENSE)
+  inventoryItemId  String?             @db.Uuid
+  warehouseId      String?             @db.Uuid
+  assetCategoryId  String?             @db.Uuid
+  accountId        String?             @db.Uuid
+  quantityOrdered  Decimal             @db.Decimal(10, 2)
+  quantityReceived Decimal             @db.Decimal(10, 2)
+  quantityAccepted Decimal             @db.Decimal(10, 2)
+  quantityRejected Decimal             @default(0) @db.Decimal(10, 2)
   rejectionReason  String?
 
   goodsReceipt GoodsReceipt      @relation(fields: [grnId], references: [id], onDelete: Cascade)
   poLine       PurchaseOrderLine @relation(fields: [poLineId], references: [id])
 
   @@index([grnId])
+  @@index([itemType])
+  @@index([inventoryItemId])
+  @@index([warehouseId])
+  @@index([assetCategoryId])
 }

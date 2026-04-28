@@ -76,8 +76,19 @@ model PurchaseRequisition {
   approvedWithBudgetWarning Boolean           @default(false)
   warningApprovedById       String?           @db.Uuid
   warningApprovedAt         DateTime?
+  submittedAt               DateTime?
   approvedById              String?           @db.Uuid // User FK — plain String, no @relation
   approvedAt                DateTime?
+  approvalNote              String?
+  rejectedById              String?           @db.Uuid
+  rejectedAt                DateTime?
+  rejectionReason           String?
+  returnedById              String?           @db.Uuid
+  returnedAt                DateTime?
+  returnNote                String?
+  modifiedById              String?           @db.Uuid
+  modifiedAt                DateTime?
+  modifiedApprovalNote      String?
   linkedPOId                String?           @db.Uuid
   notes                     String?
   createdAt                 DateTime          @default(now())
@@ -101,30 +112,38 @@ model PurchaseRequisition {
 }
 
 model PurchaseRequisitionLine {
-  id                     String   @id @default(uuid()) @db.Uuid
-  prId                   String   @db.Uuid
+  id                     String              @id @default(uuid()) @db.Uuid
+  prId                   String              @db.Uuid
   description            String
   specification          String?
-  accountId              String?  @db.Uuid
-  budgetLineId           String?  @db.Uuid
-  businessUnitId         String?  @db.Uuid
-  costCenterId           String?  @db.Uuid
-  fundClassId            String?  @db.Uuid
-  projectId              String?  @db.Uuid
-  grantId                String?  @db.Uuid
+  itemType               ProcurementItemType @default(SERVICE_OR_EXPENSE)
+  inventoryItemId        String?             @db.Uuid
+  warehouseId            String?             @db.Uuid
+  assetCategoryId        String?             @db.Uuid
+  accountId              String?             @db.Uuid
+  budgetLineId           String?             @db.Uuid
+  businessUnitId         String?             @db.Uuid
+  costCenterId           String?             @db.Uuid
+  fundClassId            String?             @db.Uuid
+  projectId              String?             @db.Uuid
+  grantId                String?             @db.Uuid
   unit                   String // "pcs", "kg", "litre", "set"
-  quantity               Decimal  @db.Decimal(10, 2)
-  estimatedPrice         Decimal  @db.Decimal(18, 2)
-  totalEstimate          Decimal  @db.Decimal(18, 2)
-  budgetAvailableAtCheck Decimal? @db.Decimal(18, 2)
-  budgetVarianceAtCheck  Decimal? @db.Decimal(18, 2)
-  sortOrder              Int      @default(0)
+  quantity               Decimal             @db.Decimal(10, 2)
+  estimatedPrice         Decimal             @db.Decimal(18, 2)
+  totalEstimate          Decimal             @db.Decimal(18, 2)
+  budgetAvailableAtCheck Decimal?            @db.Decimal(18, 2)
+  budgetVarianceAtCheck  Decimal?            @db.Decimal(18, 2)
+  sortOrder              Int                 @default(0)
 
   requisition PurchaseRequisition @relation(fields: [prId], references: [id], onDelete: Cascade)
   poLines     PurchaseOrderLine[]
 
   @@index([prId])
   @@index([budgetLineId])
+  @@index([itemType])
+  @@index([inventoryItemId])
+  @@index([warehouseId])
+  @@index([assetCategoryId])
   @@index([businessUnitId])
   @@index([costCenterId])
 }
@@ -153,29 +172,37 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderLine {
-  id             String  @id @default(uuid()) @db.Uuid
-  poId           String  @db.Uuid
-  prLineId       String? @db.Uuid // Traceability to PR
-  accountId      String? @db.Uuid
-  budgetLineId   String? @db.Uuid
-  businessUnitId String? @db.Uuid
-  costCenterId   String? @db.Uuid
-  fundClassId    String? @db.Uuid
-  projectId      String? @db.Uuid
-  grantId        String? @db.Uuid
-  description    String
-  unit           String
-  quantity       Decimal @db.Decimal(10, 2)
-  unitPrice      Decimal @db.Decimal(18, 2)
-  totalPrice     Decimal @db.Decimal(18, 2)
-  receivedQty    Decimal @default(0) @db.Decimal(10, 2)
-  sortOrder      Int     @default(0)
+  id              String              @id @default(uuid()) @db.Uuid
+  poId            String              @db.Uuid
+  prLineId        String?             @db.Uuid // Traceability to PR
+  itemType        ProcurementItemType @default(SERVICE_OR_EXPENSE)
+  inventoryItemId String?             @db.Uuid
+  warehouseId     String?             @db.Uuid
+  assetCategoryId String?             @db.Uuid
+  accountId       String?             @db.Uuid
+  budgetLineId    String?             @db.Uuid
+  businessUnitId  String?             @db.Uuid
+  costCenterId    String?             @db.Uuid
+  fundClassId     String?             @db.Uuid
+  projectId       String?             @db.Uuid
+  grantId         String?             @db.Uuid
+  description     String
+  unit            String
+  quantity        Decimal             @db.Decimal(10, 2)
+  unitPrice       Decimal             @db.Decimal(18, 2)
+  totalPrice      Decimal             @db.Decimal(18, 2)
+  receivedQty     Decimal             @default(0) @db.Decimal(10, 2)
+  sortOrder       Int                 @default(0)
 
   purchaseOrder PurchaseOrder            @relation(fields: [poId], references: [id], onDelete: Cascade)
   prLine        PurchaseRequisitionLine? @relation(fields: [prLineId], references: [id])
   grnLines      GoodsReceiptLine[]
 
   @@index([poId])
+  @@index([itemType])
+  @@index([inventoryItemId])
+  @@index([warehouseId])
+  @@index([assetCategoryId])
   @@index([budgetLineId])
   @@index([businessUnitId])
   @@index([costCenterId])

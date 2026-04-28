@@ -728,5 +728,5 @@ DB-তে ৪টা training আছে:
 Admin:         rahim@cssbd.org    / (existing password)
 Staff:         kamal@cssbd.org    / Test1234!
 Store Manager: shakil@cssbd.org   / Test1234!
-Organization:  css
+Organization:  cssbd
 ```

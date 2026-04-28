@@ -13,6 +13,8 @@ import {
 import { Prisma } from '@prisma/client'
 import { validateDimensions } from '@/lib/dimension-validation'
 import { checkProcurementBudget } from '@/lib/procurement-budget'
+import { DEFAULT_PR_WORKFLOW_NAME, startApproval } from '@/lib/approval-engine'
+import { resolveProcurementLineClassifications } from '@/lib/procurement-line-classification'
 
 export async function GET(request: NextRequest) {
   try {
@@ -71,9 +73,17 @@ export async function GET(request: NextRequest) {
           budgetCheckStatus: true,
           budgetWarningMessage: true,
           approvedWithBudgetWarning: true,
+          submittedAt: true,
           justification: true,
           approvedById: true,
           approvedAt: true,
+          approvalNote: true,
+          rejectedAt: true,
+          rejectionReason: true,
+          returnedAt: true,
+          returnNote: true,
+          modifiedAt: true,
+          modifiedApprovalNote: true,
           linkedPOId: true,
           createdAt: true,
           updatedAt: true,
@@ -116,6 +126,7 @@ export async function POST(request: NextRequest) {
       justification,
       notes,
       lines,
+      submit,
     } = body
 
     if (!lines || !Array.isArray(lines) || lines.length === 0) {
@@ -227,6 +238,7 @@ export async function POST(request: NextRequest) {
           select: { id: true, accountId: true },
         })
       : []
+    const lineClassifications = await resolveProcurementLineClassifications(auth.organizationId, lines)
 
     const requisition = await prisma.purchaseRequisition.create({
       data: {
@@ -244,6 +256,8 @@ export async function POST(request: NextRequest) {
         budgetCheckStatus: budgetCheck.status,
         budgetWarningMessage: budgetCheck.message,
         budgetCheckedAt: new Date(),
+        status: submit ? 'SUBMITTED' : 'DRAFT',
+        submittedAt: submit ? new Date() : null,
         justification: justification || null,
         notes: notes || null,
         lines: {
@@ -252,6 +266,10 @@ export async function POST(request: NextRequest) {
             l: {
               description: string
               specification?: string
+              itemType?: string
+              inventoryItemId?: string
+              warehouseId?: string
+              assetCategoryId?: string
               accountId?: string
               budgetLineId?: string
               businessUnitId?: string
@@ -264,27 +282,36 @@ export async function POST(request: NextRequest) {
               estimatedPrice: number
             },
               i: number
-            ) => ({
-              description: l.description,
-              specification: l.specification || null,
-              accountId: l.accountId || null,
-              budgetLineId:
-                l.budgetLineId ||
-                matchingBudgetLines.find((budgetLine) => l.accountId && budgetLine.accountId === l.accountId)?.id ||
-                (matchingBudgetLines.length === 1 ? matchingBudgetLines[0].id : null),
-              businessUnitId: l.businessUnitId || businessUnitId || null,
-              costCenterId: l.costCenterId || costCenterId || null,
-              fundClassId: l.fundClassId || fundClassId || null,
-              projectId: l.projectId || projectId || null,
-              grantId: l.grantId || null,
-              unit: l.unit,
-              quantity: new Prisma.Decimal(l.quantity),
-              estimatedPrice: new Prisma.Decimal(l.estimatedPrice),
-              totalEstimate: new Prisma.Decimal(Number(l.quantity) * Number(l.estimatedPrice)),
-              budgetAvailableAtCheck: new Prisma.Decimal(budgetCheck.availableAmount),
-              budgetVarianceAtCheck: new Prisma.Decimal(Math.max(0, budgetCheck.varianceAmount)),
-              sortOrder: i,
-            })
+            ) => {
+              const classification = lineClassifications[i]
+              const accountId = classification.accountId || l.accountId || null
+
+              return {
+                description: l.description,
+                specification: l.specification || null,
+                itemType: classification.itemType,
+                inventoryItemId: classification.inventoryItemId,
+                warehouseId: classification.warehouseId,
+                assetCategoryId: classification.assetCategoryId,
+                accountId,
+                budgetLineId:
+                  l.budgetLineId ||
+                  matchingBudgetLines.find((budgetLine) => accountId && budgetLine.accountId === accountId)?.id ||
+                  (matchingBudgetLines.length === 1 ? matchingBudgetLines[0].id : null),
+                businessUnitId: l.businessUnitId || businessUnitId || null,
+                costCenterId: l.costCenterId || costCenterId || null,
+                fundClassId: l.fundClassId || fundClassId || null,
+                projectId: l.projectId || projectId || null,
+                grantId: l.grantId || null,
+                unit: l.unit,
+                quantity: new Prisma.Decimal(l.quantity),
+                estimatedPrice: new Prisma.Decimal(l.estimatedPrice),
+                totalEstimate: new Prisma.Decimal(Number(l.quantity) * Number(l.estimatedPrice)),
+                budgetAvailableAtCheck: new Prisma.Decimal(budgetCheck.availableAmount),
+                budgetVarianceAtCheck: new Prisma.Decimal(Math.max(0, budgetCheck.varianceAmount)),
+                sortOrder: i,
+              }
+            }
           ),
         },
       },
@@ -303,7 +330,18 @@ export async function POST(request: NextRequest) {
       ...audit,
     })
 
-    return apiCreated({ ...requisition, budgetWarning })
+    const approval = submit
+      ? await startApproval({
+          organizationId: auth.organizationId,
+          workflowName: DEFAULT_PR_WORKFLOW_NAME,
+          entityType: 'PURCHASE_REQUISITION',
+          entityId: requisition.id,
+          requestedById: auth.userId,
+          amount: totalEstimate,
+        })
+      : null
+
+    return apiCreated({ ...requisition, budgetWarning, approval })
   } catch (error) {
     return handleRouteError(error)
   }

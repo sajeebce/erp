@@ -42,7 +42,7 @@ curl -X POST http://localhost:4000/api/v1/admin/auth/login \
 | **Login URL** | http://localhost:4000/login |
 | **Register URL** | http://localhost:4000/register |
 | **Dashboard URL** | http://localhost:4000/dashboard |
-| **Org Slug** | `css` |
+| **Org Slug** | `cssbd` |
 | **Email** | `rahim@cssbd.org` |
 | **Password** | `SecurePass@2026!` |
 | **Role** | ADMIN (full access) |
@@ -50,7 +50,7 @@ curl -X POST http://localhost:4000/api/v1/admin/auth/login \
 
 ### Login via UI:
 1. Go to http://localhost:4000/login
-2. Organization: `css`
+2. Organization: `cssbd`
 3. Email: `rahim@cssbd.org`
 4. Password: `SecurePass@2026!`
 
@@ -58,7 +58,7 @@ curl -X POST http://localhost:4000/api/v1/admin/auth/login \
 ```bash
 curl -X POST http://localhost:4000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"rahim@cssbd.org","password":"SecurePass@2026!","orgSlug":"css"}'
+  -d '{"email":"rahim@cssbd.org","password":"SecurePass@2026!","orgSlug":"cssbd"}'
 ```
 
 ---
@@ -68,7 +68,7 @@ curl -X POST http://localhost:4000/api/v1/auth/login \
 | Field | Value |
 |-------|-------|
 | **Login URL** | http://localhost:4000/login |
-| **Org Slug** | `css` |
+| **Org Slug** | `cssbd` |
 | **Email** | `fin@cssbd.org` |
 | **Password** | `Finance@2026!` |
 | **Role** | ADMIN (created during testing) |

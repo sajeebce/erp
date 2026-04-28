@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { requireRoleFromRequest } from '@/lib/auth'
+import { requireAuthFromRequest } from '@/lib/auth'
 import { logAudit, getAuditContext } from '@/lib/audit'
 import {
   apiSuccess,
@@ -9,6 +9,7 @@ import {
   handleRouteError,
 } from '@/lib/api-response'
 import { checkProcurementBudget } from '@/lib/procurement-budget'
+import { DEFAULT_PR_WORKFLOW_NAME, processApproval, startApproval } from '@/lib/approval-engine'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -16,8 +17,10 @@ interface RouteParams {
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await requireRoleFromRequest(request, 'ADMIN')
+    const auth = await requireAuthFromRequest(request)
     const { id } = await params
+    const body = await request.json().catch(() => ({}))
+    const approvalNote = typeof body.approvalNote === 'string' ? body.approvalNote.trim() : ''
 
     const requisition = await prisma.purchaseRequisition.findFirst({
       where: {
@@ -50,8 +53,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return apiNotFound('Purchase requisition not found')
     }
 
-    if (requisition.status !== 'DRAFT' && requisition.status !== 'SUBMITTED' && requisition.status !== 'REVIEWED') {
-      return apiForbidden('Only DRAFT, SUBMITTED, or REVIEWED requisitions can be approved')
+    if (requisition.status !== 'SUBMITTED' && requisition.status !== 'REVIEWED') {
+      return apiForbidden('Only SUBMITTED or REVIEWED requisitions can be approved')
     }
 
     const budgetCheck = await checkProcurementBudget({
@@ -65,19 +68,32 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       totalEstimate: Number(requisition.totalEstimate),
     })
 
+    const approval = await startApproval({
+      organizationId: auth.organizationId,
+      workflowName: DEFAULT_PR_WORKFLOW_NAME,
+      entityType: 'PURCHASE_REQUISITION',
+      entityId: requisition.id,
+      requestedById: requisition.requestedById,
+      amount: Number(requisition.totalEstimate),
+    })
+    const approvalResult = await processApproval(approval.instanceId, auth.userId, 'APPROVE', approvalNote || undefined)
+
+    const isFinalApproval = approvalResult.isComplete && approvalResult.status === 'APPROVED'
+    const now = new Date()
     const updated = await prisma.purchaseRequisition.update({
       where: { id },
       data: {
-        status: 'APPROVED',
-        approvedById: auth.userId,
-        approvedAt: new Date(),
+        status: isFinalApproval ? 'APPROVED' : 'REVIEWED',
+        approvedById: isFinalApproval ? auth.userId : null,
+        approvedAt: isFinalApproval ? now : null,
+        approvalNote: isFinalApproval ? approvalNote || null : null,
         budgetId: budgetCheck.budgetId || requisition.budgetId,
         budgetCheckStatus: budgetCheck.status,
         budgetWarningMessage: budgetCheck.message,
-        budgetCheckedAt: new Date(),
-        approvedWithBudgetWarning: budgetCheck.status === 'WARNING' || budgetCheck.status === 'NO_BUDGET',
-        warningApprovedById: budgetCheck.status === 'WARNING' || budgetCheck.status === 'NO_BUDGET' ? auth.userId : null,
-        warningApprovedAt: budgetCheck.status === 'WARNING' || budgetCheck.status === 'NO_BUDGET' ? new Date() : null,
+        budgetCheckedAt: now,
+        approvedWithBudgetWarning: isFinalApproval && (budgetCheck.status === 'WARNING' || budgetCheck.status === 'NO_BUDGET'),
+        warningApprovedById: isFinalApproval && (budgetCheck.status === 'WARNING' || budgetCheck.status === 'NO_BUDGET') ? auth.userId : null,
+        warningApprovedAt: isFinalApproval && (budgetCheck.status === 'WARNING' || budgetCheck.status === 'NO_BUDGET') ? now : null,
       },
       select: {
         id: true,
@@ -85,6 +101,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         status: true,
         approvedById: true,
         approvedAt: true,
+        approvalNote: true,
         budgetCheckStatus: true,
         budgetWarningMessage: true,
         approvedWithBudgetWarning: true,
@@ -100,16 +117,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       module: 'PROCUREMENT',
       resource: 'PurchaseRequisition',
       resourceId: id,
-      description: `Approved purchase requisition ${requisition.prNo}`,
+      description: isFinalApproval
+        ? `Approved purchase requisition ${requisition.prNo}`
+        : `Approved workflow step ${approval.currentStep} for purchase requisition ${requisition.prNo}`,
       newValues: {
-        status: 'APPROVED',
+        status: isFinalApproval ? 'APPROVED' : 'REVIEWED',
+        approvalNote: approvalNote || null,
+        approvalInstanceId: approvalResult.instanceId,
+        approvalStep: approval.currentStep,
         budgetCheckStatus: budgetCheck.status,
         budgetWarningMessage: budgetCheck.message,
       },
       ...audit,
     })
 
-    return apiSuccess(updated)
+    return apiSuccess({ ...updated, approval: approvalResult })
   } catch (error) {
     return handleRouteError(error)
   }

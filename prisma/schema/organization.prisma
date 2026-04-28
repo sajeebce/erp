@@ -83,11 +83,11 @@ model Organization {
   okrCycles         OKRCycle[]
 
   // ── Phase 13: Operating Structure ──
-  sectors            Sector[]
-  businessUnits      BusinessUnit[]
-  costCenters        CostCenter[]
-  fundClasses        FundClass[]
-  operatingLocations OperatingLocation[]
+  sectors             Sector[]
+  businessUnits       BusinessUnit[]
+  costCenters         CostCenter[]
+  fundClasses         FundClass[]
+  operatingLocations  OperatingLocation[]
   attendanceMovements AttendanceMovement[]
 
   @@index([slug])
@@ -291,10 +291,10 @@ model OperatingLocation {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization  @relation(fields: [organizationId], references: [id])
-  businessUnit BusinessUnit? @relation(fields: [businessUnitId], references: [id])
-  employees    Employee[]
-  attendances  Attendance[]
+  organization        Organization         @relation(fields: [organizationId], references: [id])
+  businessUnit        BusinessUnit?        @relation(fields: [businessUnitId], references: [id])
+  employees           Employee[]
+  attendances         Attendance[]
   attendanceMovements AttendanceMovement[]
 
   @@unique([organizationId, code])

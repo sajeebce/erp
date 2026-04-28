@@ -183,11 +183,35 @@ model ApprovalInstance {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
-  workflow ApprovalWorkflowDef @relation(fields: [workflowId], references: [id])
+  workflow ApprovalWorkflowDef    @relation(fields: [workflowId], references: [id])
   actions  ApprovalAction[]
+  steps    ApprovalInstanceStep[]
 
   @@index([workflowId])
   @@index([entityType, entityId])
+  @@index([status])
+}
+
+model ApprovalInstanceStep {
+  id         String    @id @default(uuid()) @db.Uuid
+  instanceId String    @db.Uuid
+  stepNumber Int
+  name       String
+  roleId     String    @db.Uuid
+  roleName   String
+  status     String    @default("PENDING")
+  action     String?
+  actorId    String?   @db.Uuid
+  comments   String?
+  actedAt    DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  instance ApprovalInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@unique([instanceId, stepNumber])
+  @@index([instanceId])
+  @@index([roleId])
   @@index([status])
 }
 

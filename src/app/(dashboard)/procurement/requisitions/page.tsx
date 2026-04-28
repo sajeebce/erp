@@ -20,14 +20,6 @@ import { Button } from "@/components/ui/button";
 import { Plus, Download, AlertTriangle, Loader2, Trash2, CheckCircle, XCircle } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
-interface PRLine {
-  id: string;
-  description: string;
-  quantity: number;
-  estimatedPrice: number;
-  totalEstimate: number;
-}
-
 interface PurchaseRequisition {
   id: string;
   prNo: string;
@@ -51,6 +43,7 @@ function getStatusVariant(status: string): "default" | "secondary" | "outline" |
     case "PO_CREATED": return "default";
     case "APPROVED": return "default";
     case "REVIEWED": return "secondary";
+    case "RETURNED": return "outline";
     case "SUBMITTED": return "outline";
     case "DRAFT": return "outline";
     case "REJECTED": return "destructive";
@@ -63,6 +56,7 @@ function getStatusLabel(status: string): string {
     PO_CREATED: "PO Created",
     APPROVED: "Approved",
     REVIEWED: "Reviewed",
+    RETURNED: "Returned",
     SUBMITTED: "Submitted",
     DRAFT: "Draft",
     REJECTED: "Rejected",

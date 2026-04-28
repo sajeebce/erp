@@ -5,12 +5,12 @@ import { logAudit, getAuditContext } from '@/lib/audit'
 import {
   apiSuccess,
   apiMessage,
-  apiBadRequest,
   apiNotFound,
   apiForbidden,
   handleRouteError,
 } from '@/lib/api-response'
 import { Prisma } from '@prisma/client'
+import { resolveProcurementLineClassifications } from '@/lib/procurement-line-classification'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -104,17 +104,33 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       return apiNotFound('Purchase requisition not found')
     }
 
-    if (existing.status !== 'DRAFT') {
-      return apiForbidden('Only DRAFT requisitions can be updated')
+    if (existing.status !== 'DRAFT' && existing.status !== 'RETURNED') {
+      return apiForbidden('Only DRAFT or RETURNED requisitions can be updated')
     }
 
     const body = await request.json()
-    const { date, departmentId, projectId, priority, justification, notes, lines } = body
+    const {
+      date,
+      departmentId,
+      projectId,
+      businessUnitId,
+      costCenterId,
+      fundClassId,
+      budgetId,
+      priority,
+      justification,
+      notes,
+      lines,
+    } = body
 
     const data: Record<string, unknown> = {}
     if (date !== undefined) data.date = new Date(date)
     if (departmentId !== undefined) data.departmentId = departmentId || null
     if (projectId !== undefined) data.projectId = projectId || null
+    if (businessUnitId !== undefined) data.businessUnitId = businessUnitId || null
+    if (costCenterId !== undefined) data.costCenterId = costCenterId || null
+    if (fundClassId !== undefined) data.fundClassId = fundClassId || null
+    if (budgetId !== undefined) data.budgetId = budgetId || null
     if (priority !== undefined) data.priority = priority
     if (justification !== undefined) data.justification = justification || null
     if (notes !== undefined) data.notes = notes || null
@@ -129,21 +145,54 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         0
       )
       data.totalEstimate = new Prisma.Decimal(totalEstimate)
+      const lineClassifications = await resolveProcurementLineClassifications(auth.organizationId, lines)
 
       data.lines = {
         create: lines.map(
           (
-            l: { description: string; specification?: string; unit: string; quantity: number; estimatedPrice: number },
+            l: {
+              description: string
+              specification?: string
+              itemType?: string
+              inventoryItemId?: string
+              warehouseId?: string
+              assetCategoryId?: string
+              accountId?: string
+              budgetLineId?: string
+              businessUnitId?: string
+              costCenterId?: string
+              fundClassId?: string
+              projectId?: string
+              grantId?: string
+              unit: string
+              quantity: number
+              estimatedPrice: number
+            },
             i: number
-          ) => ({
-            description: l.description,
-            specification: l.specification || null,
-            unit: l.unit,
-            quantity: new Prisma.Decimal(l.quantity),
-            estimatedPrice: new Prisma.Decimal(l.estimatedPrice),
-            totalEstimate: new Prisma.Decimal(Number(l.quantity) * Number(l.estimatedPrice)),
-            sortOrder: i,
-          })
+          ) => {
+            const classification = lineClassifications[i]
+
+            return {
+              description: l.description,
+              specification: l.specification || null,
+              itemType: classification.itemType,
+              inventoryItemId: classification.inventoryItemId,
+              warehouseId: classification.warehouseId,
+              assetCategoryId: classification.assetCategoryId,
+              accountId: classification.accountId || l.accountId || null,
+              budgetLineId: l.budgetLineId || null,
+              businessUnitId: l.businessUnitId || businessUnitId || existing.businessUnitId || null,
+              costCenterId: l.costCenterId || costCenterId || existing.costCenterId || null,
+              fundClassId: l.fundClassId || fundClassId || existing.fundClassId || null,
+              projectId: l.projectId || projectId || existing.projectId || null,
+              grantId: l.grantId || null,
+              unit: l.unit,
+              quantity: new Prisma.Decimal(l.quantity),
+              estimatedPrice: new Prisma.Decimal(l.estimatedPrice),
+              totalEstimate: new Prisma.Decimal(Number(l.quantity) * Number(l.estimatedPrice)),
+              sortOrder: i,
+            }
+          }
         ),
       }
     }

@@ -11,6 +11,7 @@ import {
   parsePaginationParams,
 } from '@/lib/api-response'
 import { Prisma } from '@prisma/client'
+import { resolveProcurementLineClassifications } from '@/lib/procurement-line-classification'
 
 interface PurchaseOrderLineInput {
   description: string
@@ -18,6 +19,10 @@ interface PurchaseOrderLineInput {
   quantity: number
   unitPrice: number
   prLineId?: string
+  itemType?: string
+  inventoryItemId?: string
+  warehouseId?: string
+  assetCategoryId?: string
   accountId?: string
   budgetLineId?: string
   businessUnitId?: string
@@ -159,6 +164,10 @@ export async function POST(request: NextRequest) {
         unit: string
         quantity: Prisma.Decimal
         estimatedPrice: Prisma.Decimal
+        itemType: string
+        inventoryItemId: string | null
+        warehouseId: string | null
+        assetCategoryId: string | null
         accountId: string | null
         budgetLineId: string | null
         businessUnitId: string | null
@@ -211,6 +220,10 @@ export async function POST(request: NextRequest) {
           quantity: Number(line.quantity),
           unitPrice: Number(line.estimatedPrice),
           prLineId: line.id,
+          itemType: line.itemType,
+          inventoryItemId: line.inventoryItemId || undefined,
+          warehouseId: line.warehouseId || undefined,
+          assetCategoryId: line.assetCategoryId || undefined,
           accountId: line.accountId || undefined,
           budgetLineId: line.budgetLineId || undefined,
           businessUnitId: line.businessUnitId || pr.businessUnitId || undefined,
@@ -239,6 +252,7 @@ export async function POST(request: NextRequest) {
         sum + (Number(l.quantity || 0) * Number(l.unitPrice || 0)),
       0
     )
+    const lineClassifications = await resolveProcurementLineClassifications(auth.organizationId, lines)
 
     const order = await prisma.$transaction(async (tx) => {
       const created = await tx.purchaseOrder.create({
@@ -252,22 +266,30 @@ export async function POST(request: NextRequest) {
           status: sourcePr ? 'ISSUED' : 'DRAFT',
           notes: notes || null,
           lines: {
-            create: lines.map((l, i: number) => ({
-              description: l.description,
-              unit: l.unit,
-              quantity: new Prisma.Decimal(l.quantity),
-              unitPrice: new Prisma.Decimal(l.unitPrice),
-              totalPrice: new Prisma.Decimal(Number(l.quantity) * Number(l.unitPrice)),
-              prLineId: l.prLineId || null,
-              accountId: l.accountId || null,
-              budgetLineId: l.budgetLineId || null,
-              businessUnitId: l.businessUnitId || sourcePr?.businessUnitId || null,
-              costCenterId: l.costCenterId || sourcePr?.costCenterId || null,
-              fundClassId: l.fundClassId || sourcePr?.fundClassId || null,
-              projectId: l.projectId || sourcePr?.projectId || null,
-              grantId: l.grantId || null,
-              sortOrder: i,
-            })),
+            create: lines.map((l, i: number) => {
+              const classification = lineClassifications[i]
+
+              return {
+                description: l.description,
+                unit: l.unit,
+                quantity: new Prisma.Decimal(l.quantity),
+                unitPrice: new Prisma.Decimal(l.unitPrice),
+                totalPrice: new Prisma.Decimal(Number(l.quantity) * Number(l.unitPrice)),
+                prLineId: l.prLineId || null,
+                itemType: classification.itemType,
+                inventoryItemId: classification.inventoryItemId,
+                warehouseId: classification.warehouseId,
+                assetCategoryId: classification.assetCategoryId,
+                accountId: classification.accountId || l.accountId || null,
+                budgetLineId: l.budgetLineId || null,
+                businessUnitId: l.businessUnitId || sourcePr?.businessUnitId || null,
+                costCenterId: l.costCenterId || sourcePr?.costCenterId || null,
+                fundClassId: l.fundClassId || sourcePr?.fundClassId || null,
+                projectId: l.projectId || sourcePr?.projectId || null,
+                grantId: l.grantId || null,
+                sortOrder: i,
+              }
+            }),
           },
         },
         include: {

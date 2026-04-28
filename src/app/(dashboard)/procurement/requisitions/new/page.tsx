@@ -67,9 +67,41 @@ interface Budget {
   fundClassId: string | null;
 }
 
+interface InventoryItem {
+  id: string;
+  itemCode: string;
+  name: string;
+  unit: string;
+  warehouseId: string;
+}
+
+interface Warehouse {
+  id: string;
+  code: string;
+  name: string;
+}
+
+interface AssetCategory {
+  id: string;
+  code: string;
+  name: string;
+}
+
+interface Account {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+}
+
 interface PRLine {
   description: string;
   specification: string;
+  itemType: "INVENTORY" | "FIXED_ASSET" | "SERVICE_OR_EXPENSE";
+  inventoryItemId: string;
+  warehouseId: string;
+  assetCategoryId: string;
+  accountId: string;
   unit: string;
   quantity: string;
   estimatedPrice: string;
@@ -84,6 +116,25 @@ const PRIORITY_OPTIONS = [
 
 const UNIT_OPTIONS = ["pcs", "set", "kg", "litre", "box", "pack", "pair", "unit", "meter", "roll"];
 
+const ITEM_TYPE_OPTIONS = [
+  { value: "INVENTORY", label: "Inventory" },
+  { value: "FIXED_ASSET", label: "Fixed Asset" },
+  { value: "SERVICE_OR_EXPENSE", label: "Service/Expense" },
+] as const;
+
+const blankLine = (): PRLine => ({
+  description: "",
+  specification: "",
+  itemType: "SERVICE_OR_EXPENSE",
+  inventoryItemId: "",
+  warehouseId: "",
+  assetCategoryId: "",
+  accountId: "",
+  unit: "pcs",
+  quantity: "1",
+  estimatedPrice: "",
+});
+
 export default function NewRequisitionPage() {
   const router = useRouter();
   const locale = useLocale();
@@ -93,10 +144,16 @@ export default function NewRequisitionPage() {
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
   const [fundClasses, setFundClasses] = useState<FundClass[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [assetCategories, setAssetCategories] = useState<AssetCategory[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [budgetWarning, setBudgetWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [createdStatus, setCreatedStatus] = useState<"DRAFT" | "SUBMITTED">("SUBMITTED");
 
   const [form, setForm] = useState({
     projectId: "",
@@ -110,9 +167,7 @@ export default function NewRequisitionPage() {
     date: new Date().toISOString().split("T")[0],
   });
 
-  const [lines, setLines] = useState<PRLine[]>([
-    { description: "", specification: "", unit: "pcs", quantity: "1", estimatedPrice: "" },
-  ]);
+  const [lines, setLines] = useState<PRLine[]>([blankLine()]);
 
   useEffect(() => {
     Promise.all([
@@ -121,11 +176,15 @@ export default function NewRequisitionPage() {
       fetch("/api/v1/settings/cost-centers?limit=200").then((r) => r.json()).then((json) => { if (json.success) setCostCenters(json.data); }),
       fetch("/api/v1/settings/fund-classes?limit=50").then((r) => r.json()).then((json) => { if (json.success) setFundClasses(json.data); }),
       fetch("/api/v1/budget?limit=200").then((r) => r.json()).then((json) => { if (json.success) setBudgets(json.data); }),
+      fetch("/api/v1/procurement/inventory?limit=200&isActive=true").then((r) => r.json()).then((json) => { if (json.success) setInventoryItems(json.data); }),
+      fetch("/api/v1/procurement/warehouses?limit=200").then((r) => r.json()).then((json) => { if (json.success) setWarehouses(json.data); }),
+      fetch("/api/v1/assets/categories?limit=200").then((r) => r.json()).then((json) => { if (json.success) setAssetCategories(json.data.filter((category: AssetCategory & { isActive?: boolean }) => category.isActive !== false)); }),
+      fetch("/api/v1/finance/accounts?limit=300&isActive=true&isGroup=false").then((r) => r.json()).then((json) => { if (json.success) setAccounts(json.data); }),
     ]).catch(() => {});
   }, []);
 
   function addLine() {
-    setLines((prev) => [...prev, { description: "", specification: "", unit: "pcs", quantity: "1", estimatedPrice: "" }]);
+    setLines((prev) => [...prev, blankLine()]);
   }
 
   function removeLine(idx: number) {
@@ -135,7 +194,20 @@ export default function NewRequisitionPage() {
   function updateLine(idx: number, field: keyof PRLine, value: string) {
     setLines((prev) => {
       const updated = [...prev];
-      updated[idx] = { ...updated[idx], [field]: value };
+      const current = { ...updated[idx], [field]: value };
+      if (field === "itemType") {
+        current.inventoryItemId = "";
+        current.warehouseId = "";
+        current.assetCategoryId = "";
+      }
+      if (field === "inventoryItemId") {
+        const selectedItem = inventoryItems.find((item) => item.id === value);
+        if (selectedItem) {
+          current.unit = selectedItem.unit || current.unit;
+          current.warehouseId = selectedItem.warehouseId || current.warehouseId;
+        }
+      }
+      updated[idx] = current;
       return updated;
     });
   }
@@ -155,7 +227,7 @@ export default function NewRequisitionPage() {
     ? Number(selectedProject.totalBudget) - Number(selectedProject.amountSpent)
     : null;
 
-  async function handleSubmit() {
+  async function handleSubmit(submit: boolean) {
     setError(null);
     setBudgetWarning(null);
 
@@ -168,8 +240,17 @@ export default function NewRequisitionPage() {
       setError("Quantity and price must be greater than 0.");
       return;
     }
+    if (lines.some((l) => l.itemType === "INVENTORY" && !l.inventoryItemId)) {
+      setError("Inventory lines require an inventory item.");
+      return;
+    }
+    if (lines.some((l) => l.itemType === "FIXED_ASSET" && !l.assetCategoryId)) {
+      setError("Fixed asset lines require an asset category.");
+      return;
+    }
 
-    setSubmitting(true);
+    setSubmitting(submit);
+    setSavingDraft(!submit);
     try {
       const res = await fetch("/api/v1/procurement/requisitions", {
         method: "POST",
@@ -184,9 +265,15 @@ export default function NewRequisitionPage() {
           priority: form.priority,
           justification: form.justification || null,
           notes: form.notes || null,
+          submit,
           lines: lines.map((l) => ({
             description: l.description,
             specification: l.specification || null,
+            itemType: l.itemType,
+            inventoryItemId: l.inventoryItemId || null,
+            warehouseId: l.warehouseId || null,
+            assetCategoryId: l.assetCategoryId || null,
+            accountId: l.accountId || null,
             unit: l.unit,
             quantity: Number(l.quantity),
             estimatedPrice: Number(l.estimatedPrice),
@@ -199,6 +286,7 @@ export default function NewRequisitionPage() {
         if (json.data.budgetWarning) {
           setBudgetWarning(json.data.budgetWarning);
         }
+        setCreatedStatus(submit ? "SUBMITTED" : "DRAFT");
         setSuccess(true);
         setTimeout(() => router.push(`/procurement/requisitions/${json.data.id}`), 1500);
       } else {
@@ -208,6 +296,7 @@ export default function NewRequisitionPage() {
       setError("Network error. Please try again.");
     } finally {
       setSubmitting(false);
+      setSavingDraft(false);
     }
   }
 
@@ -215,7 +304,9 @@ export default function NewRequisitionPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <CheckCircle className="h-12 w-12 text-emerald-500" />
-        <p className="text-lg font-medium">Purchase Requisition created!</p>
+        <p className="text-lg font-medium">
+          Purchase Requisition {createdStatus === "SUBMITTED" ? "submitted" : "saved as draft"}!
+        </p>
         {budgetWarning && (
           <Alert className="border-amber-500/50 bg-amber-50 max-w-lg">
             <AlertTriangle className="h-4 w-4 text-amber-600" />
@@ -403,6 +494,7 @@ export default function NewRequisitionPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Description</TableHead>
+                <TableHead className="min-w-[240px]">Classification</TableHead>
                 <TableHead className="w-[80px]">Unit</TableHead>
                 <TableHead className="w-[80px]">Qty</TableHead>
                 <TableHead className="w-[130px]">Unit Price (BDT)</TableHead>
@@ -426,6 +518,88 @@ export default function NewRequisitionPage() {
                       placeholder="Specification (optional)"
                       className="h-7 text-xs mt-1 text-muted-foreground"
                     />
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <Select value={line.itemType} onValueChange={(v) => updateLine(idx, "itemType", v)}>
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ITEM_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {line.itemType === "INVENTORY" && (
+                        <>
+                          <Select value={line.inventoryItemId} onValueChange={(v) => updateLine(idx, "inventoryItemId", v)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Inventory item" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {inventoryItems.map((item) => (
+                                <SelectItem key={item.id} value={item.id}>
+                                  {item.itemCode} - {item.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select value={line.warehouseId} onValueChange={(v) => updateLine(idx, "warehouseId", v)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Warehouse" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {warehouses.map((warehouse) => (
+                                <SelectItem key={warehouse.id} value={warehouse.id}>
+                                  {warehouse.code} - {warehouse.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </>
+                      )}
+                      {line.itemType === "FIXED_ASSET" && (
+                        <>
+                          <Select value={line.assetCategoryId} onValueChange={(v) => updateLine(idx, "assetCategoryId", v)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Asset category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {assetCategories.map((category) => (
+                                <SelectItem key={category.id} value={category.id}>
+                                  {category.code} - {category.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select value={line.warehouseId} onValueChange={(v) => updateLine(idx, "warehouseId", v)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Optional warehouse" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {warehouses.map((warehouse) => (
+                                <SelectItem key={warehouse.id} value={warehouse.id}>
+                                  {warehouse.code} - {warehouse.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </>
+                      )}
+                      <Select value={line.accountId} onValueChange={(v) => updateLine(idx, "accountId", v)}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="GL account" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {accounts.map((account) => (
+                            <SelectItem key={account.id} value={account.id}>
+                              {account.code} - {account.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Select value={line.unit} onValueChange={(v) => updateLine(idx, "unit", v)}>
@@ -489,7 +663,13 @@ export default function NewRequisitionPage() {
 
       <div className="flex justify-end gap-3">
         <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
-        <Button onClick={handleSubmit} disabled={submitting || lines.length === 0}>
+        <Button variant="outline" onClick={() => handleSubmit(false)} disabled={submitting || savingDraft || lines.length === 0}>
+          {savingDraft
+            ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+            : "Save Draft"
+          }
+        </Button>
+        <Button onClick={() => handleSubmit(true)} disabled={submitting || savingDraft || lines.length === 0}>
           {submitting
             ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting...</>
             : "Submit Requisition"
