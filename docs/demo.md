@@ -9,9 +9,9 @@
 
 | Role | Email | Password | কী দেখে |
 |---|---|---|---|
-| Admin | rahim@shapla.org | (existing) | সব module |
-| Staff | kamal@test.com | Test1234! | শুধু Procurement → Requisitions |
-| Store Manager | shakil@test.com | Test1234! | Procurement (GRN, Inventory, Warehouse) + Assets |
+| Admin | rahim@cssbd.org | (existing) | সব module |
+| Staff | kamal@cssbd.org | Test1234! | শুধু Procurement → Requisitions |
+| Store Manager | shakil@cssbd.org | Test1234! | Procurement (GRN, Inventory, Warehouse) + Assets |
 
 ---
 
@@ -41,7 +41,7 @@
 
 ### Step 1 — Staff PR তৈরি করে (Role Separation দেখান)
 
-**Login:** `kamal@test.com` (STAFF)
+**Login:** `kamal@cssbd.org` (STAFF)
 
 > Sidebar এ শুধু **Dashboard** এবং **Procurement → Purchase Requisition** দেখাবে — অন্য কিছু না।
 
@@ -65,7 +65,7 @@
 
 ### Step 2 — Budget Warning দেখান (Optional)
 
-**Same login:** `kamal@test.com`
+**Same login:** `kamal@cssbd.org`
 
 1. আরেকটা PR তৈরি করুন:
    - Qty: `15`, Unit Price: `100000` (= 15,00,000 > 13,00,000 budget)
@@ -112,7 +112,7 @@
 
 ### Step 5 — Store Manager Goods Receive করেন
 
-**Login:** `shakil@test.com` (STORE_MANAGER)
+**Login:** `shakil@cssbd.org` (STORE_MANAGER)
 
 > Sidebar এ শুধু Procurement (GRN, Inventory, Warehouse) এবং Assets দেখাবে।
 
@@ -242,7 +242,7 @@
 
 ### Step 3 — Over-budget Warning দেখান
 
-**Login:** `kamal@test.com` (STAFF)
+**Login:** `kamal@cssbd.org` (STAFF)
 
 1. New Requisition → same budget → Qty: `15`, Price: `100000`
 2. Submit → ⚠️ Budget warning দেখাবে
@@ -348,7 +348,7 @@ SELECT id, email FROM "User" LIMIT 10;
 
 -- Employee এর সাথে link করুন (email দিয়ে match করে)
 UPDATE "Employee"
-SET "userId" = (SELECT id FROM "User" WHERE email = 'rahim@shapla.org')
+SET "userId" = (SELECT id FROM "User" WHERE email = 'rahim@cssbd.org')
 WHERE "fullName" = 'Rafiqul Islam';
 ```
 
@@ -630,7 +630,7 @@ DB-তে ৪টা training আছে:
 
 ### Step 1 — Training Page খুলুন
 
-**Login:** `rahim@shapla.org` (Admin)
+**Login:** `rahim@cssbd.org` (Admin)
 
 1. **`/hr/training`** এ যান
 2. ৪টা training list-এ দেখাবে
@@ -725,8 +725,8 @@ DB-তে ৪টা training আছে:
 ## Quick Login Reference
 
 ```
-Admin:         rahim@shapla.org   / (existing password)
-Staff:         kamal@test.com     / Test1234!
-Store Manager: shakil@test.com    / Test1234!
-Organization:  shapla-foundation
+Admin:         rahim@cssbd.org   / (existing password)
+Staff:         kamal@cssbd.org     / Test1234!
+Store Manager: shakil@cssbd.org    / Test1234!
+Organization:  css
 ```

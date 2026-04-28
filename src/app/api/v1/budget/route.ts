@@ -12,6 +12,7 @@ import {
 import { Prisma } from '@prisma/client'
 import { generateNextNumber } from '@/lib/number-sequence'
 import { validateDimensions } from '@/lib/dimension-validation'
+import { buildBudgetActualWhere } from '@/lib/budget-actuals'
 
 export async function GET(request: NextRequest) {
   try {
@@ -146,34 +147,20 @@ export async function GET(request: NextRequest) {
     // Calculate utilization % for each budget
     const budgetsWithUtilization = await Promise.all(
       budgets.map(async (budget) => {
+        const budgetLines = await prisma.budgetLine.findMany({
+          where: { budgetId: budget.id },
+          select: { id: true, accountId: true },
+        })
+
         const actualSpend = await prisma.journalEntryLine.aggregate({
-          where: {
-            accountId: {
-              in: await prisma.budgetLine
-                .findMany({
-                  where: { budgetId: budget.id },
-                  select: { accountId: true },
-                })
-                .then((lines) => lines.map((l) => l.accountId)),
-            },
-            OR: [
-              { budgetLineId: { in: await prisma.budgetLine.findMany({ where: { budgetId: budget.id }, select: { id: true } }).then((lines) => lines.map((l) => l.id)) } },
-              {
-                journalEntry: {
-                  status: 'APPROVED',
-                  projectId: budget.projectId,
-                  deletedAt: null,
-                },
-                businessUnitId: budget.businessUnitId,
-                costCenterId: budget.costCenterId,
-                fundClassId: budget.fundClassId,
-              },
-            ],
-            journalEntry: {
-              status: 'APPROVED',
-              deletedAt: null,
-            },
-          },
+          where: buildBudgetActualWhere({
+            budgetLineIds: budgetLines.map((line) => line.id),
+            accountIds: [...new Set(budgetLines.map((line) => line.accountId))],
+            businessUnitId: budget.businessUnitId,
+            costCenterId: budget.costCenterId,
+            fundClassId: budget.fundClassId,
+            projectId: budget.projectId,
+          }),
           _sum: { debit: true },
         })
 
@@ -185,6 +172,7 @@ export async function GET(request: NextRequest) {
 
         return {
           ...budget,
+          totalActual,
           utilizationPercent,
         }
       })

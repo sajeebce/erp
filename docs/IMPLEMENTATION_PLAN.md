@@ -1775,7 +1775,7 @@ model PaymentTransaction {
 model Organization {
   id                 String   @id @default(uuid()) @db.Uuid
   name               String
-  slug               String   @unique  // URL-friendly: "shapla-foundation" → shapla-foundation.ngoerp.com
+  slug               String   @unique  // URL-friendly: "css" → css.ngoerp.com
   customDomain       String?  @unique  // Tenant's own domain: "erp.shaplango.org"
   domainVerified     Boolean  @default(false) // DNS verification status
   localizedName      Json?    // e.g. { "en": "Shapla Foundation", "bn": "শাপলা ফাউন্ডেশন" }
@@ -11533,7 +11533,7 @@ operatingLocations OperatingLocation[]
 4. Run `pnpm prisma migrate dev --name phase13_multi_concern_dimensions` or the repo's current migration command.
 5. Create `prisma/seed-css-operating-structure.ts` with idempotent `upsert` data for 5 sectors, 19 business units, 29+ cost centers, locations, and 4 fund classes.
 6. Update `prisma/seed.ts` to call the CSS operating structure seed only if that matches the repo's seed composition pattern.
-7. Fix `prisma/seed-accounts.ts` so CSS account seeding resolves the organization by env/config instead of hard-coded `shapla-foundation`.
+7. Fix `prisma/seed-accounts.ts` so CSS account seeding resolves the organization by env/config instead of hard-coded `css`.
 8. Implement CRUD APIs:
    - `GET/POST /api/v1/settings/sectors`
    - `GET/PUT/DELETE /api/v1/settings/sectors/[id]`

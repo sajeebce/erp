@@ -3,10 +3,19 @@ import { prisma } from '@/lib/db'
 import { verifyPassword, signAccessToken, signRefreshToken } from '@/lib/auth'
 import { apiSuccess, apiBadRequest, apiUnauthorized, handleRouteError } from '@/lib/api-response'
 
+function isLocalDevRequest(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production') return false
+
+  const hostname = request.nextUrl.hostname
+  return hostname === 'localhost' || hostname === '127.0.0.1'
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, orgSlug } = body
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+    const password = typeof body.password === 'string' ? body.password : ''
+    const orgSlug = typeof body.orgSlug === 'string' ? body.orgSlug.trim().toLowerCase() : ''
 
     if (!email || !password || !orgSlug) {
       return apiBadRequest('Email, password, and organization slug are required')
@@ -32,7 +41,7 @@ export async function POST(request: NextRequest) {
       where: {
         organizationId_email: {
           organizationId: organization.id,
-          email: email.toLowerCase(),
+          email,
         },
       },
       include: { role: true },
@@ -43,15 +52,23 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Check account status
+    const skipLockout = isLocalDevRequest(request)
+
     if (user.status === 'LOCKED') {
-      if (user.lockedUntil && user.lockedUntil > new Date()) {
+      if (skipLockout) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { status: 'ACTIVE', failedLoginCount: 0, lockedUntil: null },
+        })
+      } else if (user.lockedUntil && user.lockedUntil > new Date()) {
         return apiUnauthorized('Account is locked. Try again later.')
+      } else {
+        // Auto-unlock if lock period has passed
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { status: 'ACTIVE', failedLoginCount: 0, lockedUntil: null },
+        })
       }
-      // Auto-unlock if lock period has passed
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { status: 'ACTIVE', failedLoginCount: 0, lockedUntil: null },
-      })
     }
 
     if (user.status === 'INACTIVE') {
@@ -60,16 +77,18 @@ export async function POST(request: NextRequest) {
 
     // 4. Verify password
     if (!verifyPassword(password, user.passwordHash)) {
-      const failedCount = user.failedLoginCount + 1
-      const updateData: Record<string, unknown> = { failedLoginCount: failedCount }
+      if (!skipLockout) {
+        const failedCount = user.failedLoginCount + 1
+        const updateData: Record<string, unknown> = { failedLoginCount: failedCount }
 
-      // Lock after 5 failed attempts for 15 minutes
-      if (failedCount >= 5) {
-        updateData.status = 'LOCKED'
-        updateData.lockedUntil = new Date(Date.now() + 15 * 60 * 1000)
+        // Lock after 5 failed attempts for 15 minutes
+        if (failedCount >= 5) {
+          updateData.status = 'LOCKED'
+          updateData.lockedUntil = new Date(Date.now() + 15 * 60 * 1000)
+        }
+
+        await prisma.user.update({ where: { id: user.id }, data: updateData })
       }
-
-      await prisma.user.update({ where: { id: user.id }, data: updateData })
       return apiUnauthorized('Invalid email or password')
     }
 

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
+import { buildBudgetActualWhere } from '@/lib/budget-actuals'
 import {
   apiSuccess,
   apiNotFound,
@@ -56,6 +57,20 @@ export async function GET(
       return apiNotFound('Budget not found')
     }
 
+    const budgetLineIds = budget.lines.map((line) => line.id)
+    const accountIds = [...new Set(budget.lines.map((line) => line.accountId))]
+    const overallActualAggregate = await prisma.journalEntryLine.aggregate({
+      where: buildBudgetActualWhere({
+        budgetLineIds,
+        accountIds,
+        businessUnitId: budget.businessUnitId,
+        costCenterId: budget.costCenterId,
+        fundClassId: budget.fundClassId,
+        projectId: budget.projectId,
+      }),
+      _sum: { debit: true },
+    })
+
     // Get actual spend from APPROVED journal entry lines by budgetLineId first,
     // then by account + budget dimensions for older records.
     const lineAnalysis = await Promise.all(
@@ -110,7 +125,7 @@ export async function GET(
 
     // Calculate totals
     const totalBudget = lineAnalysis.reduce((sum, l) => sum + l.budgetAmount, 0)
-    const totalActual = lineAnalysis.reduce((sum, l) => sum + l.actualSpent, 0)
+    const totalActual = Number(overallActualAggregate._sum.debit ?? 0)
     const totalVariance = totalBudget - totalActual
     const overallUtilizationPercent = totalBudget > 0
       ? Math.round((totalActual / totalBudget) * 10000) / 100

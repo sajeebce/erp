@@ -15,8 +15,8 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   console.log('🌱 Seeding Phase 8b: Pension Management & Onboarding Checklists...')
 
-  const org = await prisma.organization.findUnique({ where: { slug: 'shapla-foundation' } })
-  if (!org) throw new Error('Organization "shapla-foundation" not found. Run base seed first.')
+  const org = await prisma.organization.findUnique({ where: { slug: 'css' } })
+  if (!org) throw new Error('Organization "css" not found. Run base seed first.')
 
   // ─── 1. Onboarding Checklists (17 default items) ───────────────────────────
   console.log('  → Seeding onboarding checklist items...')
@@ -203,7 +203,7 @@ async function main() {
     pfTrust = await prisma.pFTrust.create({
       data: {
         organizationId: org.id,
-        name: 'Shapla Foundation PF Trust',
+        name: 'CSS PF Trust',
         currentBalance: 850000,
         isActive: true,
       },

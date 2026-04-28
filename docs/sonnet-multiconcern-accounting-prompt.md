@@ -97,7 +97,7 @@ Include `localizedName: { en, bn }` where labels are available.
 Fix `prisma/seed-accounts.ts`:
 
 - keep the 346 CSS COA accounts
-- remove hard-coded `shapla-foundation`
+- remove hard-coded `css`
 - resolve org slug from `CSS_ORG_SLUG` or a clear fallback documented in code
 - keep `localizedName` for account names
 

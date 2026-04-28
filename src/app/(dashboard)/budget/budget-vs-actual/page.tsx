@@ -36,6 +36,8 @@ interface BudgetOption {
   department: { id: string; name: string; code: string } | null
   costCenter: { id: string; name: string; code: string } | null
   totalAmount: number
+  totalActual: number
+  utilizationPercent: number
 }
 
 interface LineAnalysis {
@@ -197,6 +199,32 @@ export default function BudgetVsActualPage() {
 
   const selectedBudget = budgets.find(b => b.id === selectedBudgetId)
 
+  const summaryTotals = useMemo(() => {
+    const totalBudget = filteredBudgets.reduce((sum, budget) => sum + Number(budget.totalAmount || 0), 0)
+    const totalActual = filteredBudgets.reduce((sum, budget) => sum + Number(budget.totalActual || 0), 0)
+    const totalVariance = totalBudget - totalActual
+    const overallUtilizationPercent = totalBudget > 0
+      ? (totalActual / totalBudget) * 100
+      : 0
+
+    return {
+      totalBudget,
+      totalActual,
+      totalVariance,
+      overallUtilizationPercent,
+    }
+  }, [filteredBudgets])
+
+  const summaryChartData = useMemo(() => (
+    filteredBudgets
+      .map((budget) => ({
+        name: budget.budgetCode,
+        budget: Number(budget.totalAmount || 0),
+        actual: Number(budget.totalActual || 0),
+      }))
+      .slice(0, 12)
+  ), [filteredBudgets])
+
   const categories = useMemo(() => {
     if (!vsActualData) return []
     return [...new Set(vsActualData.lines.map(l => l.category))]
@@ -309,6 +337,126 @@ export default function BudgetVsActualPage() {
           </div>
         </CardContent>
       </Card>
+
+      {!budgetsLoading && !budgetsError && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {t('totalBudget')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-2xl font-bold">
+                    {formatCurrency(summaryTotals.totalBudget)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {t('totalActual')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">
+                  {formatCurrency(summaryTotals.totalActual)}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {t('totalVariance')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  {summaryTotals.totalVariance >= 0 ? (
+                    <TrendingDown className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <TrendingUp className="h-4 w-4 text-destructive" />
+                  )}
+                  <p className={`text-2xl font-bold ${
+                    summaryTotals.totalVariance >= 0 ? 'text-green-600' : 'text-destructive'
+                  }`}>
+                    {summaryTotals.totalVariance >= 0 ? '' : '-'}
+                    {formatCurrency(Math.abs(summaryTotals.totalVariance))}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {t('overallUtilization')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                  <p className={`text-2xl font-bold ${getUtilizationTextColor(summaryTotals.overallUtilizationPercent)}`}>
+                    {formatPercent(summaryTotals.overallUtilizationPercent)}
+                  </p>
+                </div>
+                <Progress
+                  value={Math.min(summaryTotals.overallUtilizationPercent, 100)}
+                  className="mt-2"
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('chartTitle')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {summaryChartData.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+                  <FileSpreadsheet className="h-8 w-8" />
+                  <p className="text-sm">{t('noBudgets')}</p>
+                </div>
+              ) : (
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={summaryChartData} margin={{ top: 10, right: 30, left: 20, bottom: 40 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis
+                        dataKey="name"
+                        angle={-25}
+                        textAnchor="end"
+                        tick={{ fontSize: 12 }}
+                        height={60}
+                        className="fill-muted-foreground"
+                      />
+                      <YAxis tick={{ fontSize: 12 }} className="fill-muted-foreground" />
+                      <Tooltip
+                        formatter={(value: number) => formatCurrency(value)}
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="budget" name={t('budgeted')} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="actual" name={t('actual')} fill="hsl(var(--chart-2, 220 70% 50%))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {/* Loading state */}
       {analysisLoading && (

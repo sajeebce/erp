@@ -16,8 +16,8 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   console.log('🌱 Seeding Phase 8: HR International-Grade Upgrade...')
 
-  const org = await prisma.organization.findUnique({ where: { slug: 'shapla-foundation' } })
-  if (!org) throw new Error('Organization "shapla-foundation" not found. Run base seed first.')
+  const org = await prisma.organization.findUnique({ where: { slug: 'css' } })
+  if (!org) throw new Error('Organization "css" not found. Run base seed first.')
 
   // ─── Ensure departments exist (create if missing) ───
   let departments = await prisma.department.findMany({ where: { organizationId: org.id } })
@@ -320,7 +320,7 @@ async function main() {
       interviewType: 'PANEL',
       scheduledAt: new Date('2026-04-05T10:00:00'),
       durationMinutes: 60,
-      location: 'Shapla Foundation HQ, Dhanmondi',
+      location: 'CSS HQ, Dhanmondi',
       isVirtual: false,
       status: 'SCHEDULED',
     },
@@ -446,7 +446,7 @@ async function main() {
     prisma.holiday.create({ data: { calendarId: calendar.id, name: 'Eid ul-Fitr', localizedName: JSON.stringify({ bn: 'ঈদুল ফিতর' }), date: new Date('2026-03-27'), endDate: new Date('2026-03-29'), type: 'PUBLIC', description: '3 days Eid holiday' } }),
     prisma.holiday.create({ data: { calendarId: calendar.id, name: 'Eid ul-Adha', localizedName: JSON.stringify({ bn: 'ঈদুল আযহা' }), date: new Date('2026-06-03'), endDate: new Date('2026-06-05'), type: 'PUBLIC', description: '3 days Eid holiday' } }),
     prisma.holiday.create({ data: { calendarId: calendar.id, name: 'Victory Day', localizedName: JSON.stringify({ bn: 'বিজয় দিবস' }), date: new Date('2026-12-16'), type: 'PUBLIC' } }),
-    prisma.holiday.create({ data: { calendarId: calendar.id, name: 'Shapla Foundation Anniversary', date: new Date('2026-07-15'), type: 'ORGANIZATIONAL', description: 'Organization founding anniversary' } }),
+    prisma.holiday.create({ data: { calendarId: calendar.id, name: 'CSS Anniversary', date: new Date('2026-07-15'), type: 'ORGANIZATIONAL', description: 'Organization founding anniversary' } }),
     prisma.holiday.create({ data: { calendarId: calendar.id, name: 'Annual Staff Retreat', date: new Date('2026-10-10'), endDate: new Date('2026-10-11'), type: 'ORGANIZATIONAL', description: '2-day staff retreat' } }),
   ])
   console.log(`✓ ${holidays.length} Holidays created (8 public + 2 organizational)`)

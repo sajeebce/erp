@@ -30,7 +30,7 @@ Phase 13 backend is complete:
 - Voucher approve propagates `businessUnitId` to auto-generated `JournalEntry` and `JournalEntryLine`.
 - Reports API (`/api/v1/finance/reports/[type]`) accepts `sectorId`, `businessUnitId`, `costCenterId`, `fundClassId`, `grantId` params; filters on `JournalEntryLine` level (sectorId joins via `businessUnit.sectorId`).
 - `/settings/operating-structure` UI wired to real APIs.
-- `seed-accounts.ts` org slug resolved from `CSS_ORG_SLUG` env var, falls back to `shapla-foundation`.
+- `seed-accounts.ts` org slug resolved from `CSS_ORG_SLUG` env var, falls back to `css`.
 - Dimension validation helper at `src/lib/dimension-validation.ts`.
 
 Remaining:
@@ -355,7 +355,7 @@ Use the existing split Prisma schema structure:
 
 ### Seed Rules
 
-- `prisma/seed-accounts.ts` must not hard-code `shapla-foundation` for CSS seeding. Use `CSS_ORG_SLUG` env var with a safe fallback, or resolve by known CSS organization name only when needed.
+- `prisma/seed-accounts.ts` must not hard-code `css` for CSS seeding. Use `CSS_ORG_SLUG` env var with a safe fallback, or resolve by known CSS organization name only when needed.
 - Add `prisma/seed-css-operating-structure.ts` for sectors, business units, cost centers, fund classes, and locations.
 - Seed scripts must be idempotent with `upsert`.
 - Seeded master data must include `localizedName: { en, bn }` where Bangla labels are available.

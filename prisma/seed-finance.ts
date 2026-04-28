@@ -10,8 +10,8 @@ const prisma = new PrismaClient({ adapter })
 
 async function main() {
   // Get org
-  const org = await prisma.organization.findUnique({ where: { slug: 'shapla-foundation' } })
-  if (!org) throw new Error('Organization "shapla-foundation" not found.')
+  const org = await prisma.organization.findUnique({ where: { slug: 'css' } })
+  if (!org) throw new Error('Organization "css" not found.')
 
   const adminUser = await prisma.user.findFirst({ where: { organizationId: org.id, role: { name: 'ADMIN' } } })
   if (!adminUser) throw new Error('Admin user not found')

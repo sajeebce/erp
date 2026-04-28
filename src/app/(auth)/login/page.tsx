@@ -25,11 +25,14 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
+    const normalizedOrgSlug = orgSlug.trim().toLowerCase()
+    const normalizedEmail = email.trim().toLowerCase()
+
     try {
       const res = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, orgSlug }),
+        body: JSON.stringify({ email: normalizedEmail, password, orgSlug: normalizedOrgSlug }),
       })
 
       const data = await res.json()
@@ -65,8 +68,8 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => {
-              setOrgSlug('shapla-foundation')
-              setEmail('rahim@shapla.org')
+              setOrgSlug('css')
+              setEmail('rahim@cssbd.org')
               setPassword('SecurePass@2026!')
               setError('')
             }}
@@ -104,14 +107,14 @@ export default function LoginPage() {
 
           <div className="space-y-2">
             <Label htmlFor="email">{t('login.emailLabel')}</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder={t('login.emailPlaceholder')}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+              <Input
+                id="email"
+                type="email"
+                placeholder={t('login.emailPlaceholder')}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
           </div>
 
           <div className="space-y-2">

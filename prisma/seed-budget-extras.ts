@@ -16,10 +16,10 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   console.log('🌱 Seeding Budget Extras (Revisions + Cost Allocation)...')
 
-  const org = await prisma.organization.findUnique({ where: { slug: 'shapla-foundation' } })
+  const org = await prisma.organization.findUnique({ where: { slug: 'css' } })
   if (!org) throw new Error('Organization not found. Run seed-bootstrap first.')
 
-  const adminUser = await prisma.user.findFirst({ where: { organizationId: org.id, email: 'rahim@shapla.org' } })
+  const adminUser = await prisma.user.findFirst({ where: { organizationId: org.id, email: 'rahim@cssbd.org' } })
   if (!adminUser) throw new Error('Admin user not found. Run seed-bootstrap first.')
 
   const washBudget = await prisma.budget.findFirst({ where: { name: { contains: 'WASH Phase-3' } } })

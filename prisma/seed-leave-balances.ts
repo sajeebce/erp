@@ -16,7 +16,7 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   console.log('🌱 Seeding Leave Balances...')
 
-  const org = await prisma.organization.findUnique({ where: { slug: 'shapla-foundation' } })
+  const org = await prisma.organization.findUnique({ where: { slug: 'css' } })
   if (!org) throw new Error('Organization not found. Run seed-bootstrap first.')
 
   const employees = await prisma.employee.findMany({

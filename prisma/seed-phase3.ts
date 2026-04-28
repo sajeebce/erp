@@ -1,7 +1,7 @@
 /**
  * Phase 3 Seed: Donors, Grants, Projects, Budgets, Fund Receipts
  * Run after main seed: npx tsx prisma/seed-phase3.ts
- * Requires an existing org (shapla-foundation)
+ * Requires an existing org (css)
  */
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
@@ -17,8 +17,8 @@ async function main() {
   console.log('🌱 Seeding Phase 3 data...')
 
   // Get existing org
-  const org = await prisma.organization.findUnique({ where: { slug: 'shapla-foundation' } })
-  if (!org) throw new Error('Organization "shapla-foundation" not found. Run main seed first.')
+  const org = await prisma.organization.findUnique({ where: { slug: 'css' } })
+  if (!org) throw new Error('Organization "css" not found. Run main seed first.')
 
   const adminUser = await prisma.user.findFirst({ where: { organizationId: org.id, role: { name: 'ADMIN' } } })
   if (!adminUser) throw new Error('Admin user not found')

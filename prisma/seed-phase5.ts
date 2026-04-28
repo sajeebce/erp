@@ -15,7 +15,7 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   console.log('🌱 Seeding Phase 5 data...')
 
-  const org = await prisma.organization.findUnique({ where: { slug: 'shapla-foundation' } })
+  const org = await prisma.organization.findUnique({ where: { slug: 'css' } })
   if (!org) throw new Error('Org not found')
 
   const washProject = await prisma.project.findFirst({ where: { organizationId: org.id, name: { contains: 'Water' } } }) ?? await prisma.project.findFirst({ where: { organizationId: org.id } })

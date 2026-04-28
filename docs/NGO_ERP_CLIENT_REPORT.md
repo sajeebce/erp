@@ -898,7 +898,7 @@ Complete HR management from recruitment to performance evaluation with Banglades
 
 **What it does:** Full recruitment pipeline — from job posting creation to candidate hiring. Publish job openings with auto-generated career page URLs, receive applications, auto-score CVs (education match, experience, skills, language, certifications — 100-point scale), manage interview scheduling with panel members, and convert hired applicants directly to employee records with pre-filled data.
 
-**Example Case:** The HR Manager creates a "Field Coordinator" job posting for the new Climate Adaptation project. The system generates a public career page link: `careers/shapla-foundation/field-coordinator-climate-2026`. 45 applications come in. The auto-scoring ranks candidates: top scorer Rashid (82/100 — matching degree, 5 years experience, fluent in Bangla+English). HR schedules interviews with a 3-member panel. After interviews, Rashid is selected. HR clicks "Convert to Employee" — his name, email, phone, and education from the application auto-fill the employee creation form. In 2 minutes, he has an employee record (EMP-089), a draft contract, and 17 onboarding tasks ready.
+**Example Case:** The HR Manager creates a "Field Coordinator" job posting for the new Climate Adaptation project. The system generates a public career page link: `careers/css/field-coordinator-climate-2026`. 45 applications come in. The auto-scoring ranks candidates: top scorer Rashid (82/100 — matching degree, 5 years experience, fluent in Bangla+English). HR schedules interviews with a 3-member panel. After interviews, Rashid is selected. HR clicks "Convert to Employee" — his name, email, phone, and education from the application auto-fill the employee creation form. In 2 minutes, he has an employee record (EMP-089), a draft contract, and 17 onboarding tasks ready.
 
 **When to use:** For all staff recruitment — both project-based and organizational positions. The public career page can be shared on social media and job portals.
 
@@ -1267,7 +1267,7 @@ System configuration, user management, and organizational setup.
 
 **What it does:** Organizational profile configuration. Sections: Organization Profile (Name, Registration No, NGOAB License No, Address), Fiscal Year Settings (Start Month, Currency, Number Format), and operational parameters.
 
-**Example Case:** During initial system setup, the Admin configures: Organization Name "Shapla Development Foundation," Registration No "S-12345," NGOAB License No "FD-2024-678," Address "House 45, Road 12, Dhanmondi, Dhaka." Fiscal Year starts July 1 (Bangladesh government fiscal year). Currency BDT. Number format "Bangladeshi" (1,00,000 not 100,000). VAT Registration No "123456789." This information auto-populates all reports, letters, vouchers, and NGOAB submissions — type it once, use it everywhere.
+**Example Case:** During initial system setup, the Admin configures: Organization Name "CSS," Registration No "S-12345," NGOAB License No "FD-2024-678," Address "House 45, Road 12, Dhanmondi, Dhaka." Fiscal Year starts July 1 (Bangladesh government fiscal year). Currency BDT. Number format "Bangladeshi" (1,00,000 not 100,000). VAT Registration No "123456789." This information auto-populates all reports, letters, vouchers, and NGOAB submissions — type it once, use it everywhere.
 
 **When to use:** Once during initial system setup. When organizational details change (address, registration renewal, license renewal). When setting up a new fiscal year.
 

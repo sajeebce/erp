@@ -35,30 +35,30 @@ curl -X POST http://localhost:4000/api/v1/admin/auth/login \
 
 ---
 
-## 🏢 Tenant Admin (Shapla Development Foundation)
+## 🏢 Tenant Admin (CSS)
 
 | Field | Value |
 |-------|-------|
 | **Login URL** | http://localhost:4000/login |
 | **Register URL** | http://localhost:4000/register |
 | **Dashboard URL** | http://localhost:4000/dashboard |
-| **Org Slug** | `shapla-foundation` |
-| **Email** | `rahim@shapla.org` |
+| **Org Slug** | `css` |
+| **Email** | `rahim@cssbd.org` |
 | **Password** | `SecurePass@2026!` |
 | **Role** | ADMIN (full access) |
 | **Token Type** | JWT (15 min access + 7 day refresh) |
 
 ### Login via UI:
 1. Go to http://localhost:4000/login
-2. Organization: `shapla-foundation`
-3. Email: `rahim@shapla.org`
+2. Organization: `css`
+3. Email: `rahim@cssbd.org`
 4. Password: `SecurePass@2026!`
 
 ### Login via API:
 ```bash
 curl -X POST http://localhost:4000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"rahim@shapla.org","password":"SecurePass@2026!","orgSlug":"shapla-foundation"}'
+  -d '{"email":"rahim@cssbd.org","password":"SecurePass@2026!","orgSlug":"css"}'
 ```
 
 ---
@@ -68,8 +68,8 @@ curl -X POST http://localhost:4000/api/v1/auth/login \
 | Field | Value |
 |-------|-------|
 | **Login URL** | http://localhost:4000/login |
-| **Org Slug** | `shapla-foundation` |
-| **Email** | `fin@shapla.org` |
+| **Org Slug** | `css` |
+| **Email** | `fin@cssbd.org` |
 | **Password** | `Finance@2026!` |
 | **Role** | ADMIN (created during testing) |
 
@@ -161,7 +161,7 @@ curl -X POST http://localhost:4000/api/v1/auth/login \
 | Platform Features | 18 | `prisma/seed.ts` |
 | Permissions | 456 | `prisma/seed.ts` |
 | Currencies | 4 (BDT, USD, EUR, GBP) | `prisma/seed.ts` |
-| Organization | 1 (Shapla Foundation) | API register |
+| Organization | 1 (CSS) | API register |
 | Fiscal Year | 1 (FY 2025-2026, 12 periods) | API |
 | Chart of Accounts | 11 accounts (3-level hierarchy) | API + seed |
 | Donors | 5 (USAID, World Bank, UNICEF, DFID, EU) | `prisma/seed-phase3.ts` |

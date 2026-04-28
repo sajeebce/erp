@@ -3,6 +3,13 @@ import { NextRequest, NextResponse } from 'next/server'
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000 // 15 minutes
 const loginAttempts = new Map<string, { count: number; resetAt: number }>()
 
+function isLocalDevRequest(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production') return false
+
+  const hostname = request.nextUrl.hostname
+  return hostname === 'localhost' || hostname === '127.0.0.1'
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const response = NextResponse.next()
@@ -20,8 +27,10 @@ export function middleware(request: NextRequest) {
     return new NextResponse(null, { status: 204, headers: response.headers })
   }
 
+  const skipRateLimit = isLocalDevRequest(request)
+
   // Rate limiting on login
-  if (pathname === '/api/v1/auth/login' && request.method === 'POST') {
+  if (!skipRateLimit && pathname === '/api/v1/auth/login' && request.method === 'POST') {
     const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
     const key = `login:${ip}`
     const now = Date.now()
@@ -42,7 +51,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Rate limiting on register
-  if (pathname === '/api/v1/auth/register' && request.method === 'POST') {
+  if (!skipRateLimit && pathname === '/api/v1/auth/register' && request.method === 'POST') {
     const ip = request.headers.get('x-forwarded-for') || 'unknown'
     const key = `register:${ip}`
     const now = Date.now()

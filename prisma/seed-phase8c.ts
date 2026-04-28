@@ -18,10 +18,10 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   console.log('🌱 Seeding Phase 8c data...')
 
-  const org = await prisma.organization.findUnique({ where: { slug: 'shapla-foundation' } })
+  const org = await prisma.organization.findUnique({ where: { slug: 'css' } })
   if (!org) throw new Error('Organization not found. Run seed-bootstrap first.')
 
-  const adminUser = await prisma.user.findFirst({ where: { organizationId: org.id, email: 'rahim@shapla.org' } })
+  const adminUser = await prisma.user.findFirst({ where: { organizationId: org.id, email: 'rahim@cssbd.org' } })
     ?? await prisma.user.findFirst({ where: { organizationId: org.id } })
   if (!adminUser) throw new Error('Admin user not found')
 
@@ -245,7 +245,7 @@ async function main() {
     data: {
       organizationId: org.id,
       name: 'Default NGO Payslip',
-      headerText: 'Shapla Foundation',
+      headerText: 'CSS',
       footerText: 'This is a computer-generated payslip and does not require a signature.',
       showYTD: true,
       showEmployerContributions: true,

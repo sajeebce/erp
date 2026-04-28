@@ -104,10 +104,10 @@ Then register the demo organization via API:
 curl -X POST http://localhost:3000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "orgName": "Shapla Development Foundation",
-    "orgSlug": "shapla-foundation",
+    "orgName": "CSS",
+    "orgSlug": "css",
     "fullName": "Abdur Rahim",
-    "email": "rahim@shapla.org",
+    "email": "rahim@cssbd.org",
     "password": "SecurePass@2026!",
     "phone": "+8801712345678"
   }'
@@ -239,8 +239,8 @@ App will be available at **http://localhost:3000**
 | Field | Value |
 |-------|-------|
 | URL | http://localhost:3000/login |
-| Organization | `shapla-foundation` |
-| Email | `rahim@shapla.org` |
+| Organization | `css` |
+| Email | `rahim@cssbd.org` |
 | Password | `SecurePass@2026!` |
 
 ---
