@@ -14,6 +14,39 @@ const pool = new pg.Pool({
 const adapter = new PrismaPg(pool)
 const prisma = new PrismaClient({ adapter })
 
+const STANDARD_ROLES = [
+  {
+    name: 'ADMIN',
+    description: 'Organization Administrator - full access',
+    isSystem: true,
+  },
+  {
+    name: 'STAFF',
+    description: 'Can create and track purchase requisitions (staff member)',
+    isSystem: false,
+  },
+  {
+    name: 'STORE_MANAGER',
+    description: 'Can receive goods, manage inventory, register assets from GRN',
+    isSystem: false,
+  },
+  {
+    name: 'PROGRAM_COORDINATOR',
+    description: 'Can review purchase requisitions at program coordination approval step',
+    isSystem: false,
+  },
+  {
+    name: 'FINANCE_MANAGER',
+    description: 'Can review purchase requisitions at finance approval step',
+    isSystem: false,
+  },
+  {
+    name: 'EXECUTIVE_DIRECTOR',
+    description: 'Can review high-value purchase requisitions at executive approval step',
+    isSystem: false,
+  },
+]
+
 async function main() {
   console.log('🌱 Bootstrap seeding...')
 
@@ -55,6 +88,34 @@ async function main() {
     console.log('✓ Role created:', role.name)
   } else {
     console.log('✓ Role already exists')
+  }
+
+  // Upsert all standard roles required by purchase approval tests.
+  for (const standardRole of STANDARD_ROLES) {
+    const existing = await prisma.role.findFirst({
+      where: { organizationId: org.id, name: standardRole.name },
+    })
+
+    if (existing) {
+      await prisma.role.update({
+        where: { id: existing.id },
+        data: {
+          description: standardRole.description,
+          isSystem: standardRole.isSystem,
+        },
+      })
+      console.log('Role already exists:', standardRole.name)
+    } else {
+      await prisma.role.create({
+        data: {
+          organizationId: org.id,
+          name: standardRole.name,
+          description: standardRole.description,
+          isSystem: standardRole.isSystem,
+        },
+      })
+      console.log('Role created:', standardRole.name)
+    }
   }
 
   // Upsert user

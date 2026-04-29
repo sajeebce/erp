@@ -5,12 +5,34 @@ import { apiSuccess, handleRouteError } from '@/lib/api-response'
 
 const STANDARD_ROLES = [
   {
+    name: 'ADMIN',
+    description: 'Organization Administrator - full access',
+    isSystem: true,
+  },
+  {
     name: 'STORE_MANAGER',
     description: 'Can receive goods, manage inventory, register assets from GRN',
+    isSystem: false,
   },
   {
     name: 'STAFF',
     description: 'Can create and track purchase requisitions (staff member)',
+    isSystem: false,
+  },
+  {
+    name: 'PROGRAM_COORDINATOR',
+    description: 'Can review purchase requisitions at program coordination approval step',
+    isSystem: false,
+  },
+  {
+    name: 'FINANCE_MANAGER',
+    description: 'Can review purchase requisitions at finance approval step',
+    isSystem: false,
+  },
+  {
+    name: 'EXECUTIVE_DIRECTOR',
+    description: 'Can review high-value purchase requisitions at executive approval step',
+    isSystem: false,
   },
 ]
 
@@ -33,7 +55,7 @@ export async function POST(request: NextRequest) {
             organizationId: auth.organizationId,
             name: role.name,
             description: role.description,
-            isSystem: false,
+            isSystem: role.isSystem,
           },
         })
         results.push({ ...created, created: true })
