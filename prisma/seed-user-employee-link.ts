@@ -67,10 +67,9 @@ async function main() {
   console.log('\nFinal mapping:')
   const updated = await prisma.employee.findMany({
     where: { deletedAt: null, userId: { not: null } },
-    select: { fullName: true, userId: true },
-    include: { user: { select: { email: true } } },
+    select: { fullName: true, userId: true, user: { select: { email: true } } },
   })
-  updated.forEach((e) => console.log(`  ${e.fullName} → ${(e as { user?: { email: string } }).user?.email}`))
+  updated.forEach((e) => console.log(`  ${e.fullName} → ${e.user?.email}`))
 }
 
 main()

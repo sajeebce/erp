@@ -226,8 +226,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const expenseFallback = expenseAccounts[0] ?? null
 
     const debitLines = acceptedLines.map((line) => {
+      const expectedType = accountTypeFor(line.itemType)
       const explicitAccount = line.accountId ? explicitAccountById.get(line.accountId) : null
       const budgetLineAccount = line.poLine.budgetLineId ? budgetLineAccountById.get(line.poLine.budgetLineId) : null
+      // Budget line account is used only when its type matches the required type for this item.
+      // e.g. an EXPENSE budget line account is skipped for INVENTORY lines (which need ASSET).
+      const budgetLineAccountForType = budgetLineAccount?.type === expectedType ? budgetLineAccount : null
       const fallbackAccount =
         line.itemType === 'INVENTORY'
           ? inventoryFallback
@@ -235,12 +239,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             ? fixedAssetFallback
             : expenseFallback
 
-      const account = explicitAccount ?? budgetLineAccount ?? fallbackAccount
+      const account = explicitAccount ?? budgetLineAccountForType ?? fallbackAccount
       if (!account) {
         throw new Error(`No active ${accountTypeFor(line.itemType).toLowerCase()} account found for ${postingLabelFor(line.itemType)} line "${line.description}"`)
       }
 
-      const expectedType = accountTypeFor(line.itemType)
       if (account.type !== expectedType) {
         throw new Error(
           `Account ${account.code} (${account.name}) is ${account.type}, but ${postingLabelFor(line.itemType)} line "${line.description}" requires ${expectedType}`

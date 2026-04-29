@@ -88,32 +88,32 @@ async function main() {
   console.log(`✓ ${donors.length} Donors created`)
 
   // ─── 2. Get/Create Accounts for budget lines ───
-  // Get existing accounts
-  const bankAccount = await prisma.account.findFirst({ where: { organizationId: org.id, code: '1101' } })
-  const grantIncome = await prisma.account.findFirst({ where: { organizationId: org.id, code: '4100' } })
-  const salaryExp = await prisma.account.findFirst({ where: { organizationId: org.id, code: '5100' } })
+  // Get existing accounts (Bangladesh COA uses 6-digit codes)
+  const bankAccount = await prisma.account.findFirst({ where: { organizationId: org.id, code: '304001' } })
+  const grantIncome = await prisma.account.findFirst({ where: { organizationId: org.id, code: '501001' } })
+  const salaryExp = await prisma.account.findFirst({ where: { organizationId: org.id, code: '601001' } })
 
   // Create more expense accounts (idempotent)
-  const expGroup = await prisma.account.findFirst({ where: { organizationId: org.id, code: '5000' } })
+  const expGroup = await prisma.account.findFirst({ where: { organizationId: org.id, code: '600000' } })
   const travelExp = await prisma.account.upsert({
-    where: { organizationId_code: { organizationId: org.id, code: '5200' } },
+    where: { organizationId_code: { organizationId: org.id, code: '615000' } },
     update: {},
-    create: { organizationId: org.id, code: '5200', name: 'Travel Expense', type: 'EXPENSE', nature: 'DEBIT', parentId: expGroup!.id, level: 2 },
+    create: { organizationId: org.id, code: '615000', name: 'Travel Expense', type: 'EXPENSE', nature: 'DEBIT', parentId: expGroup!.id, level: 2 },
   })
   const trainingExp = await prisma.account.upsert({
-    where: { organizationId_code: { organizationId: org.id, code: '5300' } },
+    where: { organizationId_code: { organizationId: org.id, code: '616000' } },
     update: {},
-    create: { organizationId: org.id, code: '5300', name: 'Training Expense', type: 'EXPENSE', nature: 'DEBIT', parentId: expGroup!.id, level: 2 },
+    create: { organizationId: org.id, code: '616000', name: 'Training Expense', type: 'EXPENSE', nature: 'DEBIT', parentId: expGroup!.id, level: 2 },
   })
   const equipmentExp = await prisma.account.upsert({
-    where: { organizationId_code: { organizationId: org.id, code: '5400' } },
+    where: { organizationId_code: { organizationId: org.id, code: '617000' } },
     update: {},
-    create: { organizationId: org.id, code: '5400', name: 'Equipment Expense', type: 'EXPENSE', nature: 'DEBIT', parentId: expGroup!.id, level: 2 },
+    create: { organizationId: org.id, code: '617000', name: 'Equipment Expense', type: 'EXPENSE', nature: 'DEBIT', parentId: expGroup!.id, level: 2 },
   })
   const adminExp = await prisma.account.upsert({
-    where: { organizationId_code: { organizationId: org.id, code: '5500' } },
+    where: { organizationId_code: { organizationId: org.id, code: '618000' } },
     update: {},
-    create: { organizationId: org.id, code: '5500', name: 'Admin & Overhead', type: 'EXPENSE', nature: 'DEBIT', parentId: expGroup!.id, level: 2 },
+    create: { organizationId: org.id, code: '618000', name: 'Admin & Overhead', type: 'EXPENSE', nature: 'DEBIT', parentId: expGroup!.id, level: 2 },
   })
   console.log('✓ Additional expense accounts created')
 
