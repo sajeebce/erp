@@ -542,11 +542,14 @@ export default function NewRequisitionPage() {
           </div>
         </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Description</TableHead>
-                <TableHead className="min-w-[240px]">Classification</TableHead>
+                <TableHead className="min-w-[180px]">Description</TableHead>
+                <TableHead className="min-w-[180px]">Specification</TableHead>
+                <TableHead className="w-[200px]">Classification</TableHead>
+                <TableHead className="w-[80px]">GL Account</TableHead>
                 <TableHead className="w-[80px]">Unit</TableHead>
                 <TableHead className="w-[80px]">Qty</TableHead>
                 <TableHead className="w-[130px]">Unit Price (BDT)</TableHead>
@@ -557,21 +560,23 @@ export default function NewRequisitionPage() {
             <TableBody>
               {lines.map((line, idx) => (
                 <TableRow key={idx}>
-                  <TableCell>
+                  <TableCell className="align-top">
                     <Input
                       value={line.description}
                       onChange={(e) => updateLine(idx, "description", e.target.value)}
                       placeholder="e.g. Laptop ThinkPad T14s"
                       className="h-8 text-sm"
                     />
+                  </TableCell>
+                  <TableCell className="align-top">
                     <Input
                       value={line.specification}
                       onChange={(e) => updateLine(idx, "specification", e.target.value)}
                       placeholder="Specification (optional)"
-                      className="h-7 text-xs mt-1 text-muted-foreground"
+                      className="h-8 text-sm"
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top">
                     <div className="space-y-1">
                       <Select value={line.itemType} onValueChange={(v) => updateLine(idx, "itemType", v)}>
                         <SelectTrigger className="h-8 text-sm">
@@ -639,21 +644,23 @@ export default function NewRequisitionPage() {
                           </Select>
                         </>
                       )}
-                      <Select value={line.accountId} onValueChange={(v) => updateLine(idx, "accountId", v)}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="GL account" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {accounts.map((account) => (
-                            <SelectItem key={account.id} value={account.id}>
-                              {account.code} - {account.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top">
+                    <Select value={line.accountId} onValueChange={(v) => updateLine(idx, "accountId", v)}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="GL account" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.code} - {account.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="align-top">
                     <Select value={line.unit} onValueChange={(v) => updateLine(idx, "unit", v)}>
                       <SelectTrigger className="h-8 text-sm">
                         <SelectValue />
@@ -665,7 +672,7 @@ export default function NewRequisitionPage() {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top">
                     <Input
                       type="number"
                       min="1"
@@ -674,7 +681,7 @@ export default function NewRequisitionPage() {
                       className="h-8 text-sm"
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top">
                     <Input
                       type="number"
                       min="0"
@@ -684,10 +691,10 @@ export default function NewRequisitionPage() {
                       className="h-8 text-sm"
                     />
                   </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
+                  <TableCell className="text-right font-mono text-sm align-top pt-3">
                     {formatCurrency((Number(line.quantity) || 0) * (Number(line.estimatedPrice) || 0), locale)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top">
                     {lines.length > 1 && (
                       <Button
                         variant="ghost"
@@ -703,6 +710,7 @@ export default function NewRequisitionPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
 
           <div className="flex justify-end mt-4 pt-4 border-t">
             <div className="text-right">
