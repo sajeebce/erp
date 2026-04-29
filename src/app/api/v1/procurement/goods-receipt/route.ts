@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { requireAuthFromRequest } from '@/lib/auth'
+import { requireAuthFromRequest, requireRoleFromRequest } from '@/lib/auth'
 import { generateNextNumber } from '@/lib/number-sequence'
 import { logAudit, getAuditContext } from '@/lib/audit'
 import {
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, ['STORE_MANAGER'])
     const body = await request.json()
 
     const { poId, date, inspectionNotes, notes, lines } = body as {

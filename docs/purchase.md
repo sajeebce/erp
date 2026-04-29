@@ -63,13 +63,13 @@ These are implementation blockers that should be handled before the full browser
 7. Admin modify-and-approve needs controlled editing rules. **Phase 1/2 update:** a separate admin correction endpoint/UI now preserves existing-line dimensions, validates submitted line IDs belong to the current PR, writes old/new values to audit, recalculates totals, reruns budget check, and approves through the workflow engine.
    - Remaining hardening: consider an upsert pattern later if PO-line traceability ever needs to survive admin edits before approval. New lines without an existing line ID still receive only PR-level default dimensions.
 
-8. GRN creation is not role-restricted enough.
-   - `POST /api/v1/procurement/goods-receipt` currently uses `requireAuthFromRequest`, so any logged-in user can create GRNs through the API.
-   - It should require `STORE_MANAGER` or a configured workflow/permission.
+8. GRN creation is not role-restricted enough. **Phase 6 follow-up update: closed.**
+   - `POST /api/v1/procurement/goods-receipt` now uses `requireRoleFromRequest(request, ['STORE_MANAGER'])`.
+   - `ADMIN` still passes through the shared role helper, but a normal `STAFF` token is rejected server-side.
 
-9. PO creation does not enforce approved vendor.
-   - The PR detail UI filters approved vendors if any exist, but API only checks that the vendor exists in the org.
-   - API should reject inactive/unapproved vendors unless an override permission and note are provided.
+9. PO creation does not enforce approved vendor. **Phase 6 follow-up update: closed.**
+   - `POST /api/v1/procurement/orders` now rejects inactive vendors.
+   - It also rejects unapproved vendors, so the API matches the PR detail UI approved-vendor filter.
 
 10. Partial GRN asset registration is blocked. **Phase 5 update: closed.**
     - `register-assets` only allows GRN status `ACCEPTED`.
@@ -299,6 +299,8 @@ Status: implemented. Verified with curl/API and DB queries against the CSS demo 
 
 ### Phase 7: Role and permission hardening
 
+Status: implemented for the procurement-to-GRN operational API surface. Verified with curl and DB queries against the local CSS demo organization on 2026-04-29: Staff can create/view their own PR, Staff cannot view an Admin-created PR, Store Manager cannot create PRs, Staff direct access to PO/Inventory/Warehouse/Assets APIs returns 403, Store Manager can access PO/Inventory/Warehouse/Assets operational APIs, and Staff cannot post GRN accounting.
+
 1. Create/seed demo users:
    - Staff: `kamal@cssbd.org`
    - Store Manager: `shakil@cssbd.org`
@@ -307,12 +309,16 @@ Status: implemented. Verified with curl/API and DB queries against the CSS demo 
    - STAFF: create/view own PR, submit own PR
    - ADMIN: approve/reject/return PR, create PO, post accounting
    - STORE_MANAGER: create GRN, manage inventory, register assets
+   - Phase 7 update: PR creation now requires `STAFF` (Admin still passes through the shared role helper), PR detail no longer exposes another user's PR to non-Admin users, PO list/detail requires Store Manager/Admin, inventory and warehouse APIs require Store Manager/Admin, and main asset register/category APIs require Store Manager/Admin.
 3. Use role permissions or workflow approver rules server-side. Sidebar hiding is not enough.
 4. Add tests for forbidden actions.
+   - Phase 7 update: forbidden curl checks cover Store Manager PR create, Staff PO list, Staff inventory list, Staff warehouse list, Staff asset list, Staff GRN accounting post, and Staff access to an Admin-created PR.
 
 ### Phase 8: Vendor invoice, payment, and AP settlement
 
 This phase closes the purchase-to-pay loop after GRN accounting. Without it, the system proves procurement-to-AP, but not full payment control.
+
+Status: implemented for the backend vendor invoice and AP payment settlement flow on 2026-04-29. The local CSS demo flow now supports invoice matching against accepted GRNs, invoice approval/rejection, partial payments, bank voucher creation, payment journal posting with optional TDS/VDS withholding, bank balance reduction, duplicate invoice controls, and outstanding amount controls.
 
 1. Add vendor invoice/AP invoice support:
    - invoice number, invoice date, vendor, PO, one or more GRNs
@@ -348,6 +354,14 @@ This phase closes the purchase-to-pay loop after GRN accounting. Without it, the
    - prevent duplicate payment for the same invoice beyond outstanding amount
    - prevent duplicate vendor invoice number per vendor
    - audit invoice approval, rejection, payment creation, and payment posting
+
+Phase 8 implementation update:
+
+- Added `VendorInvoice`, `VendorInvoiceGrn`, and `VendorPayment` finance tables plus migration `20260429090000_phase8_vendor_invoice_payment`.
+- Added Admin-only APIs under `/api/v1/finance/vendor-invoices` for listing, matching/creating invoices, detail view, approval, rejection, and payments.
+- Three-way matching blocks duplicate vendor invoice numbers, invoices without accepted GRNs, GRNs that are already linked to another active invoice, and invoice gross amounts above the accepted GRN value calculated from PO unit prices.
+- Payment posting creates approved journal entries and bank/cash vouchers, supports partial settlement, reduces selected bank account balance by the net paid amount, and posts optional TDS/VDS payable lines.
+- Verified with curl and DB queries against local CSS demo data: Staff invoice access returned 403, over-invoicing was rejected, duplicate invoice number was rejected, invoice `INV-PH8-084657` moved from `MATCHED` to `APPROVED` to `PARTIALLY_PAID` to `PAID`, payments `VP-2026-0001` and `VP-2026-0002` created balanced journal entries `JE-2026-015` and `JE-2026-016`, bank vouchers `BV-2026-002` and `BV-2026-003` were linked, and SB-MOTHER balance reduced by the net disbursement.
 
 ## Browser Test Plan
 

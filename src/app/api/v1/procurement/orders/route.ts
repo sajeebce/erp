@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { requireAuthFromRequest, requireRoleFromRequest } from '@/lib/auth'
+import { requireRoleFromRequest } from '@/lib/auth'
 import { generateNextNumber } from '@/lib/number-sequence'
 import { logAudit, getAuditContext } from '@/lib/audit'
 import {
@@ -54,7 +54,7 @@ async function requisitionBelongsToOrg(
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, ['STORE_MANAGER'])
 
     const url = new URL(request.url)
     const { page, limit, skip, sort, order } = parsePaginationParams(url)
@@ -146,6 +146,12 @@ export async function POST(request: NextRequest) {
 
     if (!vendor) {
       return apiBadRequest('Vendor not found or does not belong to your organization')
+    }
+    if (!vendor.isActive) {
+      return apiBadRequest('Purchase orders can only be created for active vendors')
+    }
+    if (!vendor.isApproved) {
+      return apiBadRequest('Purchase orders can only be created for approved vendors')
     }
 
     let sourcePr: {

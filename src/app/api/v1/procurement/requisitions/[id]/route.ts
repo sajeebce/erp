@@ -19,14 +19,19 @@ interface RouteParams {
 async function canAccessRequisition(
   requisition: { project: { organizationId: string } | null; requestedById: string },
   organizationId: string,
-  userId: string
+  userId: string,
+  roleName: string
 ) {
-  if (requisition.project?.organizationId === organizationId) {
+  if (roleName === 'ADMIN' && requisition.project?.organizationId === organizationId) {
     return true
   }
 
   if (requisition.requestedById === userId) {
     return true
+  }
+
+  if (roleName !== 'ADMIN') {
+    return false
   }
 
   const requester = await prisma.user.findFirst({
@@ -56,7 +61,11 @@ async function findRequisition(id: string, organizationId: string, userId: strin
     return null
   }
 
-  const allowed = await canAccessRequisition(requisition, organizationId, userId)
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: { select: { name: true } } },
+  })
+  const allowed = await canAccessRequisition(requisition, organizationId, userId, user?.role.name || '')
   return allowed ? requisition : null
 }
 

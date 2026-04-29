@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { requireAuthFromRequest } from '@/lib/auth'
+import { requireRoleFromRequest } from '@/lib/auth'
 import { logAudit, getAuditContext } from '@/lib/audit'
 import {
   apiSuccess,
@@ -12,7 +12,7 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, ['STORE_MANAGER'])
 
     const categories = await prisma.assetCategory.findMany({
       where: { organizationId: auth.organizationId },
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, ['STORE_MANAGER'])
     const body = await request.json()
 
     const { code, name, usefulLifeYears, depreciationMethod, depreciationRate } = body

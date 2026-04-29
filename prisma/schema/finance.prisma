@@ -157,6 +157,85 @@ model Voucher {
   @@index([businessUnitId])
 }
 
+model VendorInvoice {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @db.Uuid
+  invoiceNo         String
+  invoiceDate       DateTime
+  vendorId          String   @db.Uuid
+  poId              String   @db.Uuid
+  grossAmount       Decimal  @db.Decimal(18, 2)
+  tdsAmount         Decimal  @default(0) @db.Decimal(18, 2)
+  vdsAmount         Decimal  @default(0) @db.Decimal(18, 2)
+  netPayable        Decimal  @db.Decimal(18, 2)
+  paidAmount        Decimal  @default(0) @db.Decimal(18, 2)
+  outstandingAmount Decimal  @db.Decimal(18, 2)
+  status            String   @default("MATCHED")
+  matchedAt         DateTime?
+  approvedById      String?  @db.Uuid
+  approvedAt        DateTime?
+  rejectedById      String?  @db.Uuid
+  rejectedAt        DateTime?
+  rejectionReason   String?
+  notes             String?
+  createdById       String   @db.Uuid
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  deletedAt         DateTime?
+
+  grns     VendorInvoiceGrn[]
+  payments VendorPayment[]
+
+  @@unique([organizationId, vendorId, invoiceNo])
+  @@index([organizationId])
+  @@index([vendorId])
+  @@index([poId])
+  @@index([status])
+}
+
+model VendorInvoiceGrn {
+  id             String  @id @default(uuid()) @db.Uuid
+  invoiceId      String  @db.Uuid
+  grnId          String  @db.Uuid
+  acceptedAmount Decimal @db.Decimal(18, 2)
+
+  invoice VendorInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([invoiceId, grnId])
+  @@index([invoiceId])
+  @@index([grnId])
+}
+
+model VendorPayment {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  paymentNo      String
+  invoiceId      String   @db.Uuid
+  paymentDate    DateTime
+  paymentMethod  String
+  bankAccountId  String   @db.Uuid
+  amount          Decimal  @db.Decimal(18, 2)
+  tdsAmount      Decimal  @default(0) @db.Decimal(18, 2)
+  vdsAmount      Decimal  @default(0) @db.Decimal(18, 2)
+  netPaid        Decimal  @db.Decimal(18, 2)
+  reference      String?
+  voucherId      String?  @db.Uuid
+  journalEntryId String?  @db.Uuid
+  status         String   @default("APPROVED")
+  paidById       String   @db.Uuid
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  invoice VendorInvoice @relation(fields: [invoiceId], references: [id])
+
+  @@unique([organizationId, paymentNo])
+  @@index([organizationId])
+  @@index([invoiceId])
+  @@index([bankAccountId])
+  @@index([journalEntryId])
+}
+
 model BankAccount {
   id              String          @id @default(uuid()) @db.Uuid
   organizationId  String          @db.Uuid

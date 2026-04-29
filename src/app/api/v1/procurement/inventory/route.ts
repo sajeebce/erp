@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { requireAuthFromRequest } from '@/lib/auth'
+import { requireRoleFromRequest } from '@/lib/auth'
 import { logAudit, getAuditContext } from '@/lib/audit'
 import {
   apiCreated,
@@ -13,7 +13,7 @@ import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, ['STORE_MANAGER'])
 
     const url = new URL(request.url)
     const { page, limit, skip, search, sort, order } = parsePaginationParams(url)
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, ['STORE_MANAGER'])
     const body = await request.json()
 
     const {

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { requireAuthFromRequest } from '@/lib/auth'
+import { requireRoleFromRequest } from '@/lib/auth'
 import {
   apiSuccess,
   apiBadRequest,
@@ -17,7 +17,7 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, ['STORE_MANAGER'])
     const { id } = await params
 
     const order = await prisma.purchaseOrder.findFirst({
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, 'ADMIN')
     const { id } = await params
 
     const existing = await prisma.purchaseOrder.findFirst({

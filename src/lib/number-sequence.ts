@@ -36,6 +36,8 @@ const DEFAULT_SEQUENCE_CONFIG: Record<string, { prefix: string; padLength?: numb
   training: { prefix: 'TRN', padLength: 4 },
   samity: { prefix: 'SMT', padLength: 4 },
   vendor: { prefix: 'VND', padLength: 4 },
+  vendor_invoice: { prefix: 'VI', padLength: 4 },
+  vendor_payment: { prefix: 'VP', padLength: 4 },
 }
 
 async function ensureSequenceExists(organizationId: string, entity: string) {
