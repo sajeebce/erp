@@ -36,7 +36,6 @@ export async function checkProcurementBudget(input: ProcurementBudgetInput): Pro
         where: {
           id: input.budgetId,
           deletedAt: null,
-          project: input.projectId ? { organizationId: input.organizationId } : undefined,
           OR: [
             { project: { organizationId: input.organizationId } },
             { businessUnit: { organizationId: input.organizationId } },

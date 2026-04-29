@@ -71,6 +71,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 unitPrice: true,
                 description: true,
                 budgetLineId: true,
+                budgetLine: {
+                  select: {
+                    account: { select: { id: true, code: true, name: true, type: true } },
+                  },
+                },
                 businessUnitId: true,
                 costCenterId: true,
                 fundClassId: true,
@@ -208,6 +213,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const debitLines = acceptedLines.map((line) => {
       const explicitAccount = line.accountId ? explicitAccountById.get(line.accountId) : null
+      const budgetLineAccount = line.poLine.budgetLine?.account ?? null
       const fallbackAccount =
         line.itemType === 'INVENTORY'
           ? inventoryFallback
@@ -215,7 +221,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             ? fixedAssetFallback
             : expenseFallback
 
-      const account = explicitAccount ?? fallbackAccount
+      const account = explicitAccount ?? budgetLineAccount ?? fallbackAccount
       if (!account) {
         throw new Error(`No active ${accountTypeFor(line.itemType).toLowerCase()} account found for ${postingLabelFor(line.itemType)} line "${line.description}"`)
       }

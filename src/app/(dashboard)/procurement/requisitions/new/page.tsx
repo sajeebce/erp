@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
@@ -73,6 +73,7 @@ interface InventoryItem {
   name: string;
   unit: string;
   warehouseId: string;
+  unitPrice?: number | string | null;
 }
 
 interface Warehouse {
@@ -176,12 +177,59 @@ export default function NewRequisitionPage() {
       fetch("/api/v1/settings/cost-centers?limit=200").then((r) => r.json()).then((json) => { if (json.success) setCostCenters(json.data); }),
       fetch("/api/v1/settings/fund-classes?limit=50").then((r) => r.json()).then((json) => { if (json.success) setFundClasses(json.data); }),
       fetch("/api/v1/budget?limit=200").then((r) => r.json()).then((json) => { if (json.success) setBudgets(json.data); }),
-      fetch("/api/v1/procurement/inventory?limit=200&isActive=true").then((r) => r.json()).then((json) => { if (json.success) setInventoryItems(json.data); }),
-      fetch("/api/v1/procurement/warehouses?limit=200").then((r) => r.json()).then((json) => { if (json.success) setWarehouses(json.data); }),
-      fetch("/api/v1/assets/categories?limit=200").then((r) => r.json()).then((json) => { if (json.success) setAssetCategories(json.data.filter((category: AssetCategory & { isActive?: boolean }) => category.isActive !== false)); }),
+      fetch("/api/v1/procurement/requisitions/lookups").then((r) => r.json()).then((json) => {
+        if (json.success) {
+          setInventoryItems(json.data.inventoryItems);
+          setWarehouses(json.data.warehouses);
+          setAssetCategories(json.data.assetCategories);
+        }
+      }),
       fetch("/api/v1/finance/accounts?limit=300&isActive=true&isGroup=false").then((r) => r.json()).then((json) => { if (json.success) setAccounts(json.data); }),
     ]).catch(() => {});
   }, []);
+
+  const applyInventoryItem = useCallback((line: PRLine, item: InventoryItem) => {
+    line.inventoryItemId = item.id;
+    line.warehouseId = item.warehouseId || line.warehouseId;
+    line.unit = item.unit || line.unit;
+
+    const unitPrice = Number(item.unitPrice || 0);
+    if (unitPrice > 0 && (!line.estimatedPrice || Number(line.estimatedPrice) === 0)) {
+      line.estimatedPrice = String(unitPrice);
+    }
+
+    if (!line.description.trim()) {
+      line.description = item.name;
+    }
+  }, []);
+
+  const findDefaultInventoryItem = useCallback((line: PRLine) => {
+    const description = line.description.trim().toLowerCase();
+    const matchingItem = description
+      ? inventoryItems.find((item) => {
+          const name = item.name.toLowerCase();
+          const code = item.itemCode.toLowerCase();
+          return name.includes(description) || description.includes(name) || code.includes(description);
+        })
+      : null;
+
+    return matchingItem || inventoryItems[0] || null;
+  }, [inventoryItems]);
+
+  useEffect(() => {
+    if (inventoryItems.length === 0) return;
+
+    setLines((prev) => prev.map((line) => {
+      if (line.itemType !== "INVENTORY" || line.inventoryItemId) return line;
+
+      const defaultItem = findDefaultInventoryItem(line);
+      if (!defaultItem) return line;
+
+      const updatedLine = { ...line };
+      applyInventoryItem(updatedLine, defaultItem);
+      return updatedLine;
+    }));
+  }, [applyInventoryItem, findDefaultInventoryItem, inventoryItems]);
 
   function addLine() {
     setLines((prev) => [...prev, blankLine()]);
@@ -199,12 +247,16 @@ export default function NewRequisitionPage() {
         current.inventoryItemId = "";
         current.warehouseId = "";
         current.assetCategoryId = "";
+
+        if (value === "INVENTORY") {
+          const defaultItem = findDefaultInventoryItem(current);
+          if (defaultItem) applyInventoryItem(current, defaultItem);
+        }
       }
       if (field === "inventoryItemId") {
         const selectedItem = inventoryItems.find((item) => item.id === value);
         if (selectedItem) {
-          current.unit = selectedItem.unit || current.unit;
-          current.warehouseId = selectedItem.warehouseId || current.warehouseId;
+          applyInventoryItem(current, selectedItem);
         }
       }
       updated[idx] = current;

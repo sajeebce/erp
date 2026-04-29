@@ -411,13 +411,13 @@ Steps:
 3. Click New Requisition.
 4. Select concern/business unit, cost center, fund class, and approved budget.
 5. Add line:
-   - Description: `Printer toner cartridge`
+   - Description: `Tarpaulin Sheet`
    - Type: `Inventory`
    - Unit: `pcs`
    - Quantity: `5`
    - Unit Price: `2000`
-   - Inventory item: matching toner item, or create/select inventory item depending on final UI
-   - Warehouse: main store
+   - Inventory item: `TRP-001 - Tarpaulin Sheet`
+   - Warehouse: `WH-DHK - Dhaka HQ Warehouse` (auto-filled after selecting the inventory item)
 6. Submit PR.
 7. Expected output:
    - PR number generated.

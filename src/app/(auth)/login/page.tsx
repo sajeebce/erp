@@ -68,7 +68,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => {
-              setOrgSlug('cssbd')
+              setOrgSlug('css')
               setEmail('rahim@cssbd.org')
               setPassword('SecurePass@2026!')
               setError('')
