@@ -45,6 +45,10 @@ model Asset {
   isActive                Boolean        @default(true)
   disposedAt              DateTime?
   notes                   String?
+  sourceModule            String?
+  sourceId                String?        @db.Uuid
+  sourceLineId            String?        @db.Uuid
+  sourceUnitIndex         Int?
   createdAt               DateTime       @default(now())
   updatedAt               DateTime       @updatedAt
   deletedAt               DateTime?
@@ -57,11 +61,14 @@ model Asset {
   maintenanceRecords  AssetMaintenance[]
   disposal            AssetDisposal?
 
+  @@unique([sourceModule, sourceLineId, sourceUnitIndex])
   @@index([assetNo])
   @@index([categoryId])
   @@index([warehouseId])
   @@index([projectId])
   @@index([condition])
+  @@index([sourceModule, sourceId])
+  @@index([sourceLineId])
 }
 
 model AssetDepreciation {

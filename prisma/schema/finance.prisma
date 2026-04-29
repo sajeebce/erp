@@ -79,6 +79,7 @@ model JournalEntry {
   lines   JournalEntryLine[]
   voucher Voucher?
 
+  @@unique([sourceModule, sourceId])
   @@index([entryNo])
   @@index([date])
   @@index([status])

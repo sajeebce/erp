@@ -28,8 +28,8 @@ Procurement, Budget, Inventory, Asset, Finance, and Approval menus should behave
 | PO creation | Admin can create an issued PO from an approved PR. PO lines link to PR lines via `prLineId`, copy line classification/destination/account fields, and PR becomes `PO_CREATED`. | Phase 3 classification done |
 | GRN creation | PO detail can create GRN. API copies PO line classification/destination/account fields into `GoodsReceiptLine`, validates PO status (`ISSUED` / `PARTIALLY_RECEIVED` only), updates PO line `receivedQty`, and updates PO status. | Phase 4 status validation done |
 | Inventory update | Accepted inventory GRN lines now create idempotent `InventoryTransaction` rows from persisted `GoodsReceiptLine` data, update `InventoryItem.stockInHand`, recalculate `totalValue`, weighted `unitPrice`, and stock status in the same DB transaction, and show linked transactions on GRN detail. | Done in Phase 4 |
-| Asset registration | GRN detail can register assets from accepted GRN. `Asset` rows are created with only a free-form `notes: "Registered from GRN ${grnNo}"` — there are no structured `sourceModule` / `sourceId` / `sourceLineId` columns on `Asset`, so duplicate asset registration can happen after refresh or repeated submission. | Partial |
-| Finance posting | GRN detail can post accounting. API creates an approved JE with source `PROCUREMENT_GRN`, but it always loads hard-coded accounts `1204` (fixed assets, used as fallback DR) and `2101` (AP, used as CR) and labels the entry "Fixed asset receipt from …". It does not distinguish inventory vs asset vs service/expense. Per-line `accountId` is honored if the PO line carries one, but the description and fallback still assume fixed-asset semantics. | Major gap |
+| Asset registration | GRN detail registers fixed assets from accepted or partial GRNs with structured `sourceModule`, `sourceId`, `sourceLineId`, and `sourceUnitIndex` references. A unique index prevents duplicate creation beyond accepted quantity, and GRN detail reloads persisted linked assets. | Done in Phase 5 |
+| Finance posting | GRN detail posts one approved, source-linked JE per GRN. Debit lines are generated per accepted GRN line and routed by item type/account (`INVENTORY` and `FIXED_ASSET` to asset accounts, `SERVICE_OR_EXPENSE` to expense accounts); AP is credited once through a liability account. A unique index prevents duplicate GRN accounting JEs. | Done in Phase 6 |
 | Roles/users | The CSS org has only `rahim@cssbd.org` (created by `prisma/seed-bootstrap.ts`). `STAFF` and `STORE_MANAGER` role records are not auto-seeded; an on-demand endpoint `POST /api/v1/settings/seed-roles` (`src/app/api/v1/settings/seed-roles/route.ts`) creates them. No demo users exist for those roles. | Test prerequisite missing |
 
 ## Additional Gaps Found After Review
@@ -71,7 +71,7 @@ These are implementation blockers that should be handled before the full browser
    - The PR detail UI filters approved vendors if any exist, but API only checks that the vendor exists in the org.
    - API should reject inactive/unapproved vendors unless an override permission and note are provided.
 
-10. Partial GRN asset registration is blocked.
+10. Partial GRN asset registration is blocked. **Phase 5 update: closed.**
     - `register-assets` only allows GRN status `ACCEPTED`.
     - A partial GRN may still have accepted fixed-asset quantities; the asset registration rule should work per accepted line quantity.
 
@@ -105,12 +105,11 @@ These are implementation blockers that should be handled before the full browser
     - `POST /api/v1/procurement/goods-receipt` now rejects any PO that is not `ISSUED` or `PARTIALLY_RECEIVED`.
     - Verified on 2026-04-29: a second GRN attempt against completed `PO-2026-003` returned `BAD_REQUEST` with current status `COMPLETED`.
 
-17. Finance posting check-then-write is not atomic. **Phase 4 update: closed only for GRN inventory posting, still open for finance.**
+17. Finance posting check-then-write is not atomic. **Phase 6 update: closed for GRN accounting.**
     - GRN creation now creates the receipt, updates PO received quantity/status, posts inventory transactions, and updates inventory stock/value/status inside one Prisma transaction.
     - This closes the atomicity risk for the GRN -> inventory side.
-    - `post-accounting/route.ts` reads `existingEntry` first, then creates the JE in a separate Prisma call — not wrapped in `prisma.$transaction`.
-    - Two parallel "Post Accounting" requests (e.g. double-click) can both pass the duplicate check and create two JEs for the same GRN.
-    - Either wrap read + write in a single transaction with `SELECT … FOR UPDATE` semantics, or add a unique DB index on `(sourceModule, sourceId)` for `JournalEntry` so the second insert fails fast.
+    - `post-accounting/route.ts` now performs duplicate check and JE creation in a Prisma transaction.
+    - `JournalEntry` also has a unique DB index on `(sourceModule, sourceId)`, so concurrent duplicate posting fails fast.
 
 18. `GoodsReceipt` has no `deletedAt` column.
     - `PurchaseRequisition`, `PurchaseOrder`, `Vendor`, `Contract`, etc. all use soft delete; `GoodsReceipt` does not.
@@ -124,7 +123,7 @@ These are implementation blockers that should be handled before the full browser
     - Verified with curl + DB query: PR `PR-2026-015` -> PO `PO-2026-002` -> GRN `GRN-2026-002` retained item type, inventory reference, and account reference through all three line tables.
     - Existing historical rows default to `SERVICE_OR_EXPENSE`; browser tests for inventory/asset paths should use fresh PRs created after Phase 3.
     - Phase 4 hardening completed: explicit warehouse mismatch with the selected inventory item is rejected by the shared line-classification helper.
-    - Remaining Phase 6 hardening: validate or map GL account type by item type, e.g. fixed asset lines should not accidentally post to an expense account unless an explicit override policy exists.
+    - Phase 6 hardening completed: GRN accounting validates debit account type by item type, so fixed asset/inventory lines cannot post to expense accounts and service/expense lines cannot post to asset accounts unless the model is explicitly changed later.
 
 ## Correct Target Flow
 
@@ -264,16 +263,29 @@ Non-blocking Phase 4 observations:
 
 ### Phase 5: Fix asset registration from GRN
 
-1. Add source references to Asset or an AssetSource table:
+Status: implemented. Verified with curl/API, DB queries, and GRN detail page smoke against the CSS demo organization on 2026-04-29: `PO-2026-005` -> `GRN-2026-005` registered two fixed assets (`AST-2026-005`, `AST-2026-006`) with structured `PROCUREMENT_GRN` source references, page refresh returned both linked assets, and a duplicate registration attempt returned HTTP 400 with zero remaining units.
+
+1. Add source references to Asset:
    - `sourceModule = PROCUREMENT_GRN`
    - `sourceId = grnId`
    - `sourceLineId = grnLineId`
+   - `sourceUnitIndex = accepted unit index`
 2. Block duplicate asset creation for the same accepted quantity.
+   - A unique index on `(sourceModule, sourceLineId, sourceUnitIndex)` is the DB safety net.
+   - Registration plans all assets first and creates them in one DB transaction, so a failed batch does not leave partial asset rows.
 3. Require asset category for fixed asset lines.
+   - The GRN line must be classified as `FIXED_ASSET`.
+   - The registration API still accepts `categoryId` so Store Manager/Admin can refine the final asset category at registration time.
 4. Optional but recommended: require warehouse or custodian before final registration.
+   - Current implementation validates warehouse when supplied, but does not require warehouse/custodian.
 5. Show created assets after page refresh, not only in temporary UI state.
+   - `GET /api/v1/procurement/goods-receipt/[id]` now returns persisted `registeredAssets`.
+
+Deployment note: the local development DB was non-empty and not migration-baselined, so `prisma migrate deploy` returned `P3005` during verification. The Phase 5 migration SQL is additive and was applied directly for local testing. Production/staging migration history should be baselined before the next cutover.
 
 ### Phase 6: Fix finance posting logic
+
+Status: implemented. Verified with curl/API and DB queries against the CSS demo organization on 2026-04-29: mixed `PO-2026-008` -> `GRN-2026-008` posted `JE-2026-104` with total debit/credit BDT `89,400`, three debit lines routed by item type (`ASSET`, `ASSET`, `EXPENSE`), one Accounts Payable credit line (`LIABILITY`), one source-linked JE for the GRN, and duplicate posting blocked on repeat request.
 
 1. Replace hard-coded fixed asset posting with line-wise posting:
    - inventory -> Inventory account
@@ -282,6 +294,7 @@ Non-blocking Phase 4 observations:
 2. Keep AP credit per vendor.
 3. Create one balanced JE per GRN, with source `PROCUREMENT_GRN`.
 4. Prevent duplicate posting using source module/source ID.
+   - A unique DB index on `(sourceModule, sourceId)` prevents concurrent duplicate JEs for the same GRN.
 5. Vendor payment / AP settlement is covered by Phase 8 — including TDS/VDS withholding splits where applicable. GRN posting must only recognise AP; it must not touch Bank/Cash or Reconciliation directly.
 
 ### Phase 7: Role and permission hardening

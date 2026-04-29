@@ -59,6 +59,7 @@ interface GRNLine {
   itemType: string;
   inventoryItemId: string | null;
   warehouseId: string | null;
+  assetCategoryId: string | null;
   poLine: { description: string; quantity: number; unitPrice: number } | null;
 }
 
@@ -77,6 +78,7 @@ interface GoodsReceipt {
   lines: GRNLine[];
   accountingEntries?: AccountingEntry[];
   inventoryTransactions?: InventoryTransaction[];
+  registeredAssets?: RegisteredAsset[];
 }
 
 interface AccountingEntry {
@@ -101,6 +103,18 @@ interface InventoryTransaction {
   totalCost: number | null;
   createdAt: string;
   item: { itemCode: string; name: string; unit: string } | null;
+}
+
+interface RegisteredAsset {
+  id: string;
+  assetNo: string;
+  name: string;
+  categoryId: string;
+  purchasePrice: number;
+  serialNumber: string | null;
+  sourceLineId: string | null;
+  sourceUnitIndex: number | null;
+  category: { code: string; name: string } | null;
 }
 
 interface AssetCategory {
@@ -150,7 +164,6 @@ export default function GRNDetailPage() {
   const [registering, setRegistering] = useState(false);
   const [postingAccounting, setPostingAccounting] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [registeredAssets, setRegisteredAssets] = useState<{ assetNo: string; id: string; name: string }[]>([]);
   const [userRole, setUserRole] = useState("");
 
   const fetchGRN = useCallback(async () => {
@@ -177,17 +190,25 @@ export default function GRNDetailPage() {
 
   function openRegisterDialog() {
     if (!grn) return;
+    const registeredCountByLine = new Map<string, number>();
+    for (const asset of grn.registeredAssets ?? []) {
+      if (!asset.sourceLineId) continue;
+      registeredCountByLine.set(asset.sourceLineId, (registeredCountByLine.get(asset.sourceLineId) ?? 0) + 1);
+    }
     const lines: AssetLineForm[] = grn.lines
-      .filter((l) => Number(l.quantityAccepted) > 0)
-      .map((l) => ({
-        grnLineId: l.id,
-        name: l.description,
-        categoryId: categories[0]?.id ?? "",
-        quantity: Number(l.quantityAccepted),
-        unitPrice: l.poLine ? Number(l.poLine.unitPrice) : 0,
-        purchaseDate: grn.date.split("T")[0],
-        serialNumbers: "",
-      }));
+      .filter((l) => l.itemType === "FIXED_ASSET" && Number(l.quantityAccepted) > (registeredCountByLine.get(l.id) ?? 0))
+      .map((l) => {
+        const registeredCount = registeredCountByLine.get(l.id) ?? 0;
+        return {
+          grnLineId: l.id,
+          name: l.description,
+          categoryId: l.assetCategoryId ?? categories[0]?.id ?? "",
+          quantity: Number(l.quantityAccepted) - registeredCount,
+          unitPrice: l.poLine ? Number(l.poLine.unitPrice) : 0,
+          purchaseDate: grn.date.split("T")[0],
+          serialNumbers: "",
+        };
+      });
     setAssetLines(lines);
     setShowRegisterDialog(true);
   }
@@ -226,7 +247,6 @@ export default function GRNDetailPage() {
       const json = await res.json();
 
       if (json.success) {
-        setRegisteredAssets(json.data.assets);
         setActionMsg({
           type: "success",
           text: `${json.data.assetsCreated} asset(s) registered successfully.`,
@@ -284,7 +304,16 @@ export default function GRNDetailPage() {
     );
   }
 
-  const canRegisterAssets = grn.status === "ACCEPTED" && registeredAssets.length === 0;
+  const registeredAssets = grn.registeredAssets ?? [];
+  const registeredCountByLine = new Map<string, number>();
+  for (const asset of registeredAssets) {
+    if (!asset.sourceLineId) continue;
+    registeredCountByLine.set(asset.sourceLineId, (registeredCountByLine.get(asset.sourceLineId) ?? 0) + 1);
+  }
+  const hasRemainingFixedAssetUnits = grn.lines.some(
+    (line) => line.itemType === "FIXED_ASSET" && Number(line.quantityAccepted) > (registeredCountByLine.get(line.id) ?? 0)
+  );
+  const canRegisterAssets = ["ACCEPTED", "PARTIAL"].includes(grn.status) && hasRemainingFixedAssetUnits;
   const hasAccountingEntry = Boolean(grn.accountingEntries && grn.accountingEntries.length > 0);
   const hasInventoryTransactions = Boolean(grn.inventoryTransactions && grn.inventoryTransactions.length > 0);
   const canPostAccounting = userRole === "ADMIN" && ["ACCEPTED", "PARTIAL"].includes(grn.status) && !hasAccountingEntry;
@@ -472,7 +501,7 @@ export default function GRNDetailPage() {
             </CardContent>
           </Card>
 
-          {grn.status === "ACCEPTED" && (
+          {["ACCEPTED", "PARTIAL"].includes(grn.status) && (
             <Card className="border-blue-500/30">
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
@@ -481,15 +510,17 @@ export default function GRNDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground space-y-2">
-                <p>This GRN is accepted. Fixed assets (laptops, equipment, etc.) should be registered in the asset register.</p>
-                <p>Consumable items (paper, toner) go to inventory automatically.</p>
-                {registeredAssets.length === 0 ? (
+                <p>Accepted fixed-asset units should be registered in the asset register.</p>
+                <p>Consumable items go to inventory automatically.</p>
+                {hasRemainingFixedAssetUnits ? (
                   <Button size="sm" className="w-full mt-2" onClick={openRegisterDialog}>
                     <PackagePlus className="h-4 w-4 mr-2" />
                     Register Assets
                   </Button>
                 ) : (
-                  <p className="text-emerald-600 font-medium">{registeredAssets.length} asset(s) registered.</p>
+                  <p className="text-emerald-600 font-medium">
+                    {registeredAssets.length > 0 ? `${registeredAssets.length} asset(s) registered.` : "No accepted fixed-asset units on this GRN."}
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -582,7 +613,7 @@ export default function GRNDetailPage() {
                   {canPostAccounting && (
                     <Button size="sm" className="w-full" onClick={handlePostAccounting} disabled={postingAccounting}>
                       {postingAccounting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Landmark className="h-4 w-4 mr-2" />}
-                      Post Fixed Asset Entry
+                      Post Accounting Entry
                     </Button>
                   )}
                 </div>
