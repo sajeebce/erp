@@ -71,11 +71,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 unitPrice: true,
                 description: true,
                 budgetLineId: true,
-                budgetLine: {
-                  select: {
-                    account: { select: { id: true, code: true, name: true, type: true } },
-                  },
-                },
                 businessUnitId: true,
                 costCenterId: true,
                 fundClassId: true,
@@ -144,7 +139,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .filter((line) => line.amount > 0)
 
     const explicitAccountIds = [...new Set(acceptedLines.map((line) => line.accountId).filter(Boolean) as string[])]
-    const [explicitAccounts, assetAccounts, expenseAccounts, liabilityAccounts] = await Promise.all([
+    const budgetLineIds = [...new Set(acceptedLines.map((line) => line.poLine.budgetLineId).filter(Boolean) as string[])]
+    const [explicitAccounts, budgetLines, assetAccounts, expenseAccounts, liabilityAccounts] = await Promise.all([
       explicitAccountIds.length
         ? prisma.account.findMany({
             where: {
@@ -155,6 +151,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
               deletedAt: null,
             },
             select: { id: true, code: true, name: true, type: true },
+          })
+        : Promise.resolve([]),
+      budgetLineIds.length
+        ? prisma.budgetLine.findMany({
+            where: {
+              id: { in: budgetLineIds },
+              budget: {
+                OR: [
+                  { project: { organizationId: auth.organizationId } },
+                  { businessUnit: { organizationId: auth.organizationId } },
+                ],
+              },
+            },
+            select: {
+              id: true,
+              account: { select: { id: true, code: true, name: true, type: true } },
+            },
           })
         : Promise.resolve([]),
       prisma.account.findMany({
@@ -196,6 +209,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     ])
 
     const explicitAccountById = new Map(explicitAccounts.map((account) => [account.id, account]))
+    const budgetLineAccountById = new Map(budgetLines.map((line) => [line.id, line.account]))
     const accountsPayableAccount =
       liabilityAccounts.find((account) => account.code === '2101') ??
       liabilityAccounts.find((account) => account.code === '201002') ??
@@ -213,7 +227,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const debitLines = acceptedLines.map((line) => {
       const explicitAccount = line.accountId ? explicitAccountById.get(line.accountId) : null
-      const budgetLineAccount = line.poLine.budgetLine?.account ?? null
+      const budgetLineAccount = line.poLine.budgetLineId ? budgetLineAccountById.get(line.poLine.budgetLineId) : null
       const fallbackAccount =
         line.itemType === 'INVENTORY'
           ? inventoryFallback
