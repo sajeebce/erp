@@ -17,7 +17,7 @@ async function main() {
   console.log('🌱 Seeding Phase 12: HR Employee Profile Enhancement...')
 
   // ─── 1. Find org and employees ───
-  const org = await prisma.organization.findFirst({ where: { slug: 'css' } })
+  const org = await prisma.organization.findFirst({ where: { slug: 'cssbd' } })
   if (!org) throw new Error('Demo org not found. Run earlier seeds first.')
 
   const employees = await prisma.employee.findMany({

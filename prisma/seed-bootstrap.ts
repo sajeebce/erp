@@ -51,14 +51,14 @@ async function main() {
   console.log('🌱 Bootstrap seeding...')
 
   // Upsert org
-  let org = await prisma.organization.findFirst({ where: { slug: 'css' } })
+  let org = await prisma.organization.findFirst({ where: { slug: 'cssbd' } })
   if (org) {
     console.log('✓ Organization already exists')
   } else {
     org = await prisma.organization.create({
     data: {
       name: 'CSS',
-      slug: 'css',
+      slug: 'cssbd',
       registrationNo: 'REG-2024-001',
       ngoabLicenseNo: 'NGOAB-2024-001',
       address: '42 Dhanmondi, Dhaka-1205',

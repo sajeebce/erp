@@ -24,8 +24,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       include: {
         department: { select: { id: true, name: true, code: true } },
         designation: { select: { id: true, title: true, level: true } },
-        primaryBusinessUnit: { select: { id: true, code: true, name: true, shortName: true } },
-        workLocation: { select: { id: true, code: true, name: true, address: true } },
         reportingTo: { select: { id: true, fullName: true, employeeNo: true } },
         directReports: {
           where: { deletedAt: null },

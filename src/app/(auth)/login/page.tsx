@@ -63,12 +63,12 @@ export default function LoginPage() {
         <CardDescription>{t('login.description')}</CardDescription>
       </CardHeader>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-5">
         <CardContent className="space-y-4">
           <button
             type="button"
             onClick={() => {
-              setOrgSlug('css')
+              setOrgSlug('cssbd')
               setEmail('rahim@cssbd.org')
               setPassword('SecurePass@2026!')
               setError('')
@@ -153,9 +153,9 @@ export default function LoginPage() {
           </Button>
           <p className="text-sm text-muted-foreground text-center">
             {t('login.noAccount')}{' '}
-            <Link href="/register" className="text-primary font-medium hover:underline">
+            <span className="cursor-not-allowed font-medium text-muted-foreground opacity-60" aria-disabled="true">
               {t('login.createOrg')}
-            </Link>
+            </span>
           </p>
         </CardFooter>
       </form>

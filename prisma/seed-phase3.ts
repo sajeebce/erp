@@ -17,7 +17,7 @@ async function main() {
   console.log('🌱 Seeding Phase 3 data...')
 
   // Get existing org
-  const org = await prisma.organization.findUnique({ where: { slug: 'css' } })
+  const org = await prisma.organization.findUnique({ where: { slug: 'cssbd' } })
   if (!org) throw new Error('Organization "css" not found. Run main seed first.')
 
   const adminUser = await prisma.user.findFirst({ where: { organizationId: org.id, role: { name: 'ADMIN' } } })

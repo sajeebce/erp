@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server'
-import { Prisma } from '@prisma/client'
+import { AttendanceStatus, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
 import { apiBadRequest, apiSuccess, handleRouteError } from '@/lib/api-response'
 
 interface MobileSyncEvent {
   date: string
-  status?: string
+  status?: AttendanceStatus
   checkIn?: string | null
   checkOut?: string | null
   attendanceMode?: string | null
@@ -21,7 +21,15 @@ interface MobileSyncEvent {
   notes?: string | null
 }
 
-const VALID_STATUSES = ['PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'ON_LEAVE', 'HOLIDAY', 'WEEKEND']
+const VALID_STATUSES: AttendanceStatus[] = [
+  'PRESENT',
+  'ABSENT',
+  'LATE',
+  'HALF_DAY',
+  'ON_LEAVE',
+  'HOLIDAY',
+  'WEEKEND',
+]
 
 export async function POST(request: NextRequest) {
   try {

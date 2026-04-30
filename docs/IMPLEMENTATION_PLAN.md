@@ -126,7 +126,7 @@ This is a **SaaS application** — multiple NGO organizations share a single dep
 Each tenant can be accessed via **two** methods:
 
 1. **Platform subdomain (default):** `{slug}.ngoerp.com` — automatically available on signup
-2. **Custom domain (optional):** Tenant connects their own domain (e.g., `erp.shaplango.org`)
+2. **Custom domain (optional):** Tenant connects their own domain (e.g., `erp.cssbd.org`)
 
 ```
 Routing Resolution Order:
@@ -1776,9 +1776,9 @@ model Organization {
   id                 String   @id @default(uuid()) @db.Uuid
   name               String
   slug               String   @unique  // URL-friendly: "css" → css.ngoerp.com
-  customDomain       String?  @unique  // Tenant's own domain: "erp.shaplango.org"
+  customDomain       String?  @unique  // Tenant's own domain: "erp.cssbd.org"
   domainVerified     Boolean  @default(false) // DNS verification status
-  localizedName      Json?    // e.g. { "en": "Shapla Foundation", "bn": "শাপলা ফাউন্ডেশন" }
+  localizedName      Json?    // e.g. { "en": "CSS", "bn": "শাপলা ফাউন্ডেশন" }
   registrationNo     String?
   ngoabLicenseNo     String?
   mraLicenseNo       String?
@@ -4710,9 +4710,9 @@ GET /api/v1/{resource}?page=1&limit=20&sort=createdAt&order=desc&search=keyword&
 > - ✅ List roles → ADMIN role with 456 permissions, 1 user
 > - ✅ Create role "FINANCE_OFFICER" → created with 0 permissions
 > - ✅ Create user "Nasreen Akhter" with FINANCE_OFFICER role → success
-> - ✅ Set custom domain "erp.shaplango.org" → domainVerified=false
+> - ✅ Set custom domain "erp.cssbd.org" → domainVerified=false
 > - ✅ Get domain config → shows domain and slug
-> - ✅ Login as new user (nasreen@shapla.org) → JWT with FINANCE_OFFICER role
+> - ✅ Login as new user (nasreen@cssbd.org) → JWT with FINANCE_OFFICER role
 
 **1e. Core Infrastructure (Week 3-4)** ✅ completed (core libs)
 27. ✅ completed — Tenant Audit Trail system (`lib/audit.ts` — logAudit + getAuditContext)
@@ -6152,7 +6152,7 @@ model PFPolicy {
 model PFTrust {
   id                String   @id @default(uuid()) @db.Uuid
   organizationId    String   @db.Uuid
-  name              String   // "Shapla Foundation PF Trust"
+  name              String   // "CSS PF Trust"
   registrationNo    String?  // NBR registration number
   registrationDate  DateTime?
   bankAccountId     String?  @db.Uuid // Trust's bank account
@@ -9218,7 +9218,7 @@ model EmployeeDocument {
 ┌─────────────────────────────────────────────────────────────────┐
 │ [Photo/Avatar]  Imran Hossain (ইমরান হোসাইন)                   │
 │                 EMP-007 · Field Coordinator · Field Operations   │
-│                 📧 imran@shapla.org  📱 01413777888              │
+│                 📧 imran@cssbd.org  📱 01413777888              │
 │                 [ACTIVE] [CONTRACT] [EXPATRIATE]                │
 │                                                                 │
 │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │

@@ -15,7 +15,7 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   console.log('🌱 Seeding Phase 8b: Pension Management & Onboarding Checklists...')
 
-  const org = await prisma.organization.findUnique({ where: { slug: 'css' } })
+  const org = await prisma.organization.findUnique({ where: { slug: 'cssbd' } })
   if (!org) throw new Error('Organization "css" not found. Run base seed first.')
 
   // ─── 1. Onboarding Checklists (17 default items) ───────────────────────────

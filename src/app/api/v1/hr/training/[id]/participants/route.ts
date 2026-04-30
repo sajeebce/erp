@@ -11,6 +11,7 @@ import {
   apiError,
   handleRouteError,
 } from '@/lib/api-response'
+import { getTrainingEnd, trainingWindowsOverlap } from '@/lib/hr-training'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -18,11 +19,11 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    await requireAuthFromRequest(request)
+    const auth = await requireAuthFromRequest(request)
     const { id } = await params
 
-    const training = await prisma.training.findUnique({
-      where: { id },
+    const training = await prisma.training.findFirst({
+      where: { id, organizationId: auth.organizationId },
       select: { id: true },
     })
     if (!training) {
@@ -62,8 +63,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Validate training exists
-    const training = await prisma.training.findUnique({
-      where: { id },
+    const training = await prisma.training.findFirst({
+      where: { id, organizationId: auth.organizationId },
       select: {
         id: true,
         trainingNo: true,
@@ -71,10 +72,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         startDate: true,
         endDate: true,
         status: true,
+        capacity: true,
       },
     })
     if (!training) {
       return apiNotFound('Training not found')
+    }
+    if (training.status === 'COMPLETED') {
+      return apiBadRequest('Cannot nominate participant to a completed training')
+    }
+    if (training.status === 'CANCELLED') {
+      return apiBadRequest('Cannot nominate participant to a cancelled training')
     }
 
     // Validate employee belongs to org
@@ -95,24 +103,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const targetStart = training.startDate
-    const targetEnd = training.endDate ?? training.startDate
+    const targetEnd = getTrainingEnd(training)
 
-    const overlappingParticipant = await prisma.trainingParticipant.findFirst({
+    if (training.capacity !== null) {
+      const participantCount = await prisma.trainingParticipant.count({ where: { trainingId: id } })
+      if (participantCount >= training.capacity) {
+        return apiConflict('Training capacity is full')
+      }
+    }
+
+    const possibleOverlappingParticipants = await prisma.trainingParticipant.findMany({
       where: {
         employeeId,
         trainingId: { not: id },
         training: {
+          organizationId: auth.organizationId,
           status: { in: ['PLANNED', 'IN_PROGRESS'] },
-          startDate: { lte: targetEnd },
-          OR: [
-            { endDate: { gte: targetStart } },
-            {
-              AND: [
-                { endDate: null },
-                { startDate: { gte: targetStart, lte: targetEnd } },
-              ],
-            },
-          ],
+          startDate: { lt: targetEnd },
         },
       },
       select: {
@@ -129,6 +136,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       orderBy: { training: { startDate: 'asc' } },
     })
 
+    const overlappingParticipant = possibleOverlappingParticipants.find((participant) => {
+      if (!participant.training) return false
+      const otherEnd = getTrainingEnd(participant.training)
+      return trainingWindowsOverlap(targetStart, targetEnd, participant.training.startDate, otherEnd)
+    })
+
     if (overlappingParticipant?.training) {
       const conflictingTraining = overlappingParticipant.training
       return apiError('CONFLICT', 'Employee has overlapping training nomination', 409, {
@@ -136,7 +149,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         conflictingTrainingNo: [conflictingTraining.trainingNo],
         conflictingTrainingTitle: [conflictingTraining.title],
         startDate: [conflictingTraining.startDate.toISOString()],
-        endDate: [(conflictingTraining.endDate ?? conflictingTraining.startDate).toISOString()],
+        endDate: [getTrainingEnd(conflictingTraining).toISOString()],
       })
     }
 

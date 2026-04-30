@@ -1,0 +1,2 @@
+ALTER TABLE "Training"
+ADD COLUMN IF NOT EXISTS "capacity" INTEGER;

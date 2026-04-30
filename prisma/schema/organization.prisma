@@ -45,6 +45,7 @@ model Organization {
   projects           Project[]
   projectExtensions  ProjectExtensionRequest[]
   employees          Employee[]
+  trainings          Training[]
   departments        Department[]
   beneficiaries      Beneficiary[]
   vendors            Vendor[]

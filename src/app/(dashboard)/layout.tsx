@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { TopNavbar } from "@/components/layout/top-navbar";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { DemoBanner } from "@/components/shared/demo-banner";
 
 export default function DashboardLayout({
   children,
@@ -13,7 +14,12 @@ export default function DashboardLayout({
       <AppSidebar />
       <SidebarInset className="h-dvh overflow-hidden">
         <div data-print-hide="true"><TopNavbar /></div>
-        <main className="min-h-0 flex-1 overflow-y-auto p-6 animate-fade-in">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto p-6 animate-fade-in">
+          <div className="space-y-6">
+            <DemoBanner />
+            {children}
+          </div>
+        </main>
       </SidebarInset>
       <div data-print-hide="true"><CommandPalette /></div>
     </SidebarProvider>

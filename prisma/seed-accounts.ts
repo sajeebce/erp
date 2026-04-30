@@ -48,8 +48,8 @@ import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import pg from 'pg'
 
-// Org resolved via CSS_ORG_SLUG env var, falls back to 'css' for dev.
-const CSS_ORG_SLUG = process.env.CSS_ORG_SLUG || 'css'
+// Org resolved via CSS_ORG_SLUG env var, falls back to 'cssbd' for dev.
+const CSS_ORG_SLUG = process.env.CSS_ORG_SLUG || 'cssbd'
 
 const pool = new pg.Pool({
   connectionString:

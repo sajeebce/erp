@@ -641,7 +641,8 @@ model PerformanceReview {
 
 model Training {
   id            String         @id @default(uuid()) @db.Uuid
-  trainingNo    String         @unique
+  organizationId String        @db.Uuid
+  trainingNo    String
   title         String
   type          TrainingType
   facilitator   String?
@@ -649,6 +650,7 @@ model Training {
   startDate     DateTime
   endDate       DateTime?
   durationHours Int?
+  capacity      Int?
   budget        Decimal        @default(0) @db.Decimal(18, 2)
   actualCost    Decimal        @default(0) @db.Decimal(18, 2)
   status        TrainingStatus @default(PLANNED)
@@ -657,8 +659,11 @@ model Training {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
+  organization Organization @relation(fields: [organizationId], references: [id])
   participants TrainingParticipant[]
 
+  @@unique([organizationId, trainingNo])
+  @@index([organizationId])
   @@index([status])
   @@index([startDate])
 }

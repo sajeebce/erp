@@ -69,6 +69,72 @@ pm2 start "pnpm start" --name ngo-erp --time
 pm2 save
 ```
 
+## Claude VPS Pull And Deploy Command
+
+Use this instruction when asking Claude/Codex on the VPS to pull the latest GitHub code and redeploy.
+
+```text
+You are on the VPS. Deploy the latest code from GitHub carefully.
+
+Rules:
+- Do not delete the database.
+- Do not run destructive git commands such as git reset --hard unless I explicitly approve.
+- Before pulling, run git status and stop if there are uncommitted server-side changes.
+- Use migration deploy, not prisma db push, unless this is a disposable demo database.
+- Be careful with seed files. Do not rerun the full seed sequence on an existing populated database without confirming it is a fresh demo DB.
+- For CSS demo data, always use org slug cssbd.
+- If this is a fresh demo DB, run the seed order documented in docs/vps.md.
+- If this is an existing DB and only training demo fixtures need refreshing, run only prisma/seed-training-demo.ts after confirming base cssbd org, projects, and employees exist.
+
+Deployment steps:
+1. cd into the project directory.
+2. verify current branch and git status.
+3. pull latest code from GitHub using git pull --ff-only.
+4. install dependencies with pnpm install --frozen-lockfile.
+5. generate Prisma client.
+6. run prisma migrate deploy.
+7. build the app.
+8. restart/reload the pm2 process.
+9. run verification commands from docs/vps.md.
+```
+
+Command block for an existing VPS checkout:
+
+```bash
+cd /var/www/ngo-erp
+git status --short
+git branch --show-current
+git pull --ff-only origin main
+pnpm install --frozen-lockfile
+pnpm db:generate
+pnpm exec prisma migrate deploy
+pnpm build
+pm2 reload ngo-erp --update-env || pm2 start "pnpm start" --name ngo-erp --time
+pm2 save
+```
+
+If the VPS does not have the repo yet, clone first:
+
+```bash
+cd /var/www
+git clone <GITHUB_REPO_URL> ngo-erp
+cd ngo-erp
+cp .env.example .env
+nano .env
+pnpm install --frozen-lockfile
+pnpm db:generate
+pnpm exec prisma migrate deploy
+pnpm build
+pm2 start "pnpm start" --name ngo-erp --time
+pm2 save
+```
+
+Seed rule:
+
+- Fresh demo DB only: run the full seed sequence in the next section.
+- Existing DB: do not run the full seed sequence unless duplicates/data reset are acceptable.
+- Training browser Test Case 1-6 fixtures: run `pnpm exec tsx prisma/seed-training-demo.ts` only after `cssbd`, active projects, and employees already exist.
+
 ## Seed Files
 
 Total seed files in `prisma/`: **20**.
@@ -93,7 +159,7 @@ Total seed files in `prisma/`: **20**.
 | 16 | `seed-phase12b-employee-tabs.ts` | Employee tab demo data, documents, additional HR profile related data. |
 | 17 | `seed-expenses.ts` | Daily expense management, categories, per diem, petty cash, expense claims, advances. |
 | 18 | `seed-reconciliation.ts` | Bank reconciliation demo data. |
-| 19 | `seed-training-demo.ts` | Training demo scenarios. |
+| 19 | `seed-training-demo.ts` | Training browser test fixtures: `TRN-A`, `TRN-B`, `TRN-C`, `TRN-D`, `TRN-E`, `TRN-F`, including duplicate and overlap scenarios. |
 | 20 | `seed-user-employee-link.ts` | Optional helper to link existing users to employee records in order. |
 
 ## Recommended Seed Order For Full Demo VPS
@@ -145,7 +211,7 @@ Created by `prisma/seed-bootstrap.ts`.
 
 | Org slug | Email | Password | Role |
 |---|---|---|---|
-| `css` | `rahim@cssbd.org` | `SecurePass@2026!` | `ADMIN` |
+| `cssbd` | `rahim@cssbd.org` | `SecurePass@2026!` | `ADMIN` |
 
 ### Purchase Workflow Demo Users
 
@@ -181,13 +247,13 @@ Recommended password for demo/test-only users: `SecurePass@2026!`.
 | Field | Value |
 |---|---|
 | Name | `CSS` |
-| Slug | `css` |
+| Slug | `cssbd` |
 | Email | `info@cssbd.org` |
 | Base currency | `BDT` |
 | Fiscal year start month | `7` |
 | Languages | `en`, `bn` |
 
-Note: Some older docs mention org slug `cssbd`, but the actual seed slug is `css`.
+Use org slug `cssbd` for demo login, seed verification, and browser tests.
 
 ## Important Seeded Procurement Data
 
@@ -201,18 +267,60 @@ After the recommended full seed sequence:
 - Bank/cash accounts are created by `seed-finance.ts`.
 - Budgets are created by `seed-budget.ts`.
 
+## Important Seeded Training Data
+
+Created by `prisma/seed-training-demo.ts`.
+
+Dependency:
+
+- Run `seed-bootstrap.ts` first so the `cssbd` organization exists.
+- Run `seed-phase3.ts` first so at least two active projects exist.
+- Run `seed-phase5.ts` and `seed-phase8-hr.ts` first so active employees exist.
+
+Required for `docs/training.md` browser Test Case 1-6:
+
+| Fixture | Seeded value |
+|---|---|
+| Organization | `cssbd` / `CSS` |
+| Login user | `rahim@cssbd.org` |
+| Test employee | `EMP-001 - Karim Ahmed` |
+| Project A | `PRJ-2026-001 - Clean Water for Turkana` |
+| Project B | `PRJ-2026-002 - Girls Education Initiative` |
+
+Training fixtures:
+
+| Training | Project | Date/time | Status | Test purpose |
+|---|---|---|---|---|
+| `TRN-A - Safeguarding Training` | Project A | `10 May 2026, 10:00-13:00` | `PLANNED` | Main assignment and duplicate nomination test. |
+| `TRN-B - Project Cycle Management` | Project A | `10 May 2026, 12:00-15:00` | `PLANNED` | Same-project overlap conflict with `TRN-A`. |
+| `TRN-F - Partner Reporting Workshop` | Project B | `10 May 2026, 12:00-15:00` | `PLANNED` | Different-project overlap conflict with `TRN-A`. |
+| `TRN-C - Finance Compliance Orientation` | Project A | `10 May 2026, 14:00-17:00` | `PLANNED` | Same-project, non-overlapping allowed nomination. |
+| `TRN-D - Cancelled Field Safety Session` | Project B | `10 May 2026, 11:00-12:00` | `CANCELLED` | Cancelled training control fixture. |
+| `TRN-E - Completed HR Policy Session` | Project A | `09 May 2026, 10:00-12:00` | `COMPLETED` | Completed training/history fixture. |
+
+Notes:
+
+- `TRN-F` is the required fixture for different-project overlap testing. Do not use cancelled `TRN-D` for Test Case 5.
+- `seed-training-demo.ts` upserts training rows, but it does not delete participant rows. If you need a clean browser test run, remove existing participants from `TRN-A`, `TRN-B`, `TRN-C`, and `TRN-F` before starting Test Case 1.
+
 ## Post-Install Verification
 
 Check seed roles:
 
 ```bash
-pnpm exec tsx -e "import { PrismaClient } from '@prisma/client'; import { PrismaPg } from '@prisma/adapter-pg'; import pg from 'pg'; const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL }); const prisma = new PrismaClient({ adapter: new PrismaPg(pool) }); const org = await prisma.organization.findFirst({ where: { slug: 'css' } }); console.log(await prisma.role.findMany({ where: { organizationId: org?.id }, select: { name: true, isSystem: true }, orderBy: { name: 'asc' } })); await prisma.$disconnect(); await pool.end();"
+pnpm exec tsx -e "import { PrismaClient } from '@prisma/client'; import { PrismaPg } from '@prisma/adapter-pg'; import pg from 'pg'; const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL }); const prisma = new PrismaClient({ adapter: new PrismaPg(pool) }); const org = await prisma.organization.findFirst({ where: { slug: 'cssbd' } }); console.log(await prisma.role.findMany({ where: { organizationId: org?.id }, select: { name: true, isSystem: true }, orderBy: { name: 'asc' } })); await prisma.$disconnect(); await pool.end();"
 ```
 
 Check seeded users:
 
 ```bash
-pnpm exec tsx -e "import { PrismaClient } from '@prisma/client'; import { PrismaPg } from '@prisma/adapter-pg'; import pg from 'pg'; const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL }); const prisma = new PrismaClient({ adapter: new PrismaPg(pool) }); const org = await prisma.organization.findFirst({ where: { slug: 'css' } }); console.log(await prisma.user.findMany({ where: { organizationId: org?.id }, select: { email: true, fullName: true, status: true, role: { select: { name: true } } }, orderBy: { email: 'asc' } })); await prisma.$disconnect(); await pool.end();"
+pnpm exec tsx -e "import { PrismaClient } from '@prisma/client'; import { PrismaPg } from '@prisma/adapter-pg'; import pg from 'pg'; const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL }); const prisma = new PrismaClient({ adapter: new PrismaPg(pool) }); const org = await prisma.organization.findFirst({ where: { slug: 'cssbd' } }); console.log(await prisma.user.findMany({ where: { organizationId: org?.id }, select: { email: true, fullName: true, status: true, role: { select: { name: true } } }, orderBy: { email: 'asc' } })); await prisma.$disconnect(); await pool.end();"
+```
+
+Check seeded training fixtures:
+
+```bash
+pnpm exec tsx -e "import { PrismaClient } from '@prisma/client'; import { PrismaPg } from '@prisma/adapter-pg'; import pg from 'pg'; const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL }); const prisma = new PrismaClient({ adapter: new PrismaPg(pool) }); const org = await prisma.organization.findFirst({ where: { slug: 'cssbd' } }); console.log(await prisma.training.findMany({ where: { organizationId: org?.id, trainingNo: { in: ['TRN-A','TRN-B','TRN-C','TRN-D','TRN-E','TRN-F'] } }, select: { trainingNo: true, title: true, status: true, startDate: true, endDate: true, project: { select: { projectNo: true, name: true } }, _count: { select: { participants: true } } }, orderBy: { trainingNo: 'asc' } })); await prisma.$disconnect(); await pool.end();"
 ```
 
 Health checks:

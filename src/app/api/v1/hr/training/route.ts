@@ -11,15 +11,16 @@ import {
   parsePaginationParams,
 } from '@/lib/api-response'
 import { Prisma } from '@prisma/client'
+import { isInvalidDate } from '@/lib/hr-training'
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAuthFromRequest(request)
+    const auth = await requireAuthFromRequest(request)
 
     const url = new URL(request.url)
     const { page, limit, skip } = parsePaginationParams(url)
 
-    const where: Record<string, unknown> = {}
+    const where: Record<string, unknown> = { organizationId: auth.organizationId }
 
     const status = url.searchParams.get('status')
     if (status) where.status = status
@@ -40,9 +41,11 @@ export async function GET(request: NextRequest) {
           startDate: true,
           endDate: true,
           durationHours: true,
+          capacity: true,
           budget: true,
           actualCost: true,
           status: true,
+          projectId: true,
           createdAt: true,
           _count: { select: { participants: true } },
         },
@@ -75,18 +78,44 @@ export async function POST(request: NextRequest) {
       return apiBadRequest(`type must be one of: ${validTypes.join(', ')}`)
     }
 
+    const parsedStart = new Date(startDate)
+    const parsedEnd = body.endDate ? new Date(body.endDate) : null
+    if (isInvalidDate(parsedStart) || (parsedEnd && isInvalidDate(parsedEnd))) {
+      return apiBadRequest('Invalid startDate or endDate')
+    }
+    if (parsedEnd && parsedEnd <= parsedStart) {
+      return apiBadRequest('endDate must be after startDate')
+    }
+
+    if (body.projectId) {
+      const project = await prisma.project.findFirst({
+        where: { id: body.projectId, organizationId: auth.organizationId, deletedAt: null },
+        select: { id: true },
+      })
+      if (!project) return apiBadRequest('Project not found in this organization')
+    }
+
+    const capacity = body.capacity === undefined || body.capacity === '' || body.capacity === null
+      ? null
+      : Number(body.capacity)
+    if (capacity !== null && (!Number.isInteger(capacity) || capacity <= 0)) {
+      return apiBadRequest('capacity must be a positive whole number')
+    }
+
     const trainingNo = await generateNextNumber(auth.organizationId, 'training')
 
     const training = await prisma.training.create({
       data: {
         trainingNo,
+        organizationId: auth.organizationId,
         title: title.trim(),
         type,
         facilitator: body.facilitator || null,
         venue: body.venue || null,
-        startDate: new Date(startDate),
-        endDate: body.endDate ? new Date(body.endDate) : null,
-        durationHours: body.durationHours || null,
+        startDate: parsedStart,
+        endDate: parsedEnd,
+        durationHours: body.durationHours ? Number(body.durationHours) : null,
+        capacity,
         budget: body.budget ? new Prisma.Decimal(body.budget) : new Prisma.Decimal(0),
         status: 'PLANNED',
         description: body.description || null,

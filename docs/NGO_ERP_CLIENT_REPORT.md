@@ -924,7 +924,7 @@ Complete HR management from recruitment to performance evaluation with Banglades
 
 **What it does:** Organizational holiday calendar management with year-wise calendar creation. Supports holiday types: Public, Organizational, Restricted, and Optional. Each holiday has English name, localized Bengali name, date, and optional description. Year navigation to view historical and future holidays.
 
-**Example Case:** The HR Manager configures the 2026 holiday calendar: 10 public holidays (International Mother Language Day, Independence Day, Eid ul-Fitr, Eid ul-Adha, Victory Day, etc.), 2 organizational holidays (Shapla Foundation Anniversary, Annual Staff Retreat). Each holiday shows the Bengali name alongside English (e.g., "Independence Day / স্বাধীনতা দিবস"). When field staff ask "is Shab-e-Qadr a holiday?" — the calendar is the definitive answer.
+**Example Case:** The HR Manager configures the 2026 holiday calendar: 10 public holidays (International Mother Language Day, Independence Day, Eid ul-Fitr, Eid ul-Adha, Victory Day, etc.), 2 organizational holidays (CSS Anniversary, Annual Staff Retreat). Each holiday shows the Bengali name alongside English (e.g., "Independence Day / স্বাধীনতা দিবস"). When field staff ask "is Shab-e-Qadr a holiday?" — the calendar is the definitive answer.
 
 **When to use:** At the start of each year for calendar setup. Referenced throughout the year for leave planning and payroll calculation.
 
@@ -1280,7 +1280,7 @@ System configuration, user management, and organizational setup.
 
 **What it does:** User account administration. Tracks User ID, Full Name, Email, Role, Department, Last Login, and Status (Active/Inactive/Locked/Pending). Manages all system users.
 
-**Example Case:** A new Finance Officer joins. The IT Admin creates a user: Name "Nasreen Akhter," Email "nasreen@shapla.org," Role "Finance Officer," Department "Finance & Accounts," Status "Active." Nasreen can now log in and access only the Finance module (as defined by her role). When Accountant Rahim resigns, his status is changed to "Inactive" — he can no longer log in, but his historical data (journal entries he created, vouchers he prepared) remains in the system. The ED notices user "Karim" hasn't logged in for 30 days — she asks HR if he's still employed.
+**Example Case:** A new Finance Officer joins. The IT Admin creates a user: Name "Nasreen Akhter," Email "nasreen@cssbd.org," Role "Finance Officer," Department "Finance & Accounts," Status "Active." Nasreen can now log in and access only the Finance module (as defined by her role). When Accountant Rahim resigns, his status is changed to "Inactive" — he can no longer log in, but his historical data (journal entries he created, vouchers he prepared) remains in the system. The ED notices user "Karim" hasn't logged in for 30 days — she asks HR if he's still employed.
 
 **When to use:** When new employees need system access. When employees leave (to deactivate their accounts immediately — security critical). When roles change (promotion means different access level). For periodic access review (who has access? Is it still appropriate?).
 

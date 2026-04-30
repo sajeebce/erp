@@ -2,7 +2,7 @@
  * Seed: CSS Bangladesh Operating Structure
  * Seeds Sector, BusinessUnit, CostCenter, FundClass, and OperatingLocation.
  *
- * Org resolved via CSS_ORG_SLUG env var, falls back to 'css' for dev.
+ * Org resolved via CSS_ORG_SLUG env var, falls back to 'cssbd' for dev.
  *
  * Run: npx tsx prisma/seed-css-operating-structure.ts
  */
@@ -19,7 +19,7 @@ const pool = new pg.Pool({
 const adapter = new PrismaPg(pool)
 const prisma = new PrismaClient({ adapter })
 
-const ORG_SLUG = process.env.CSS_ORG_SLUG || 'css'
+const ORG_SLUG = process.env.CSS_ORG_SLUG || 'cssbd'
 
 // ─── Sectors ────────────────────────────────────────────────────────────────
 

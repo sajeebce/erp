@@ -35,12 +35,6 @@ export async function GET(request: NextRequest) {
     const departmentId = url.searchParams.get('departmentId')
     if (departmentId) where.departmentId = departmentId
 
-    const primaryBusinessUnitId = url.searchParams.get('primaryBusinessUnitId')
-    if (primaryBusinessUnitId) where.primaryBusinessUnitId = primaryBusinessUnitId
-
-    const workLocationId = url.searchParams.get('workLocationId')
-    if (workLocationId) where.workLocationId = workLocationId
-
     const status = url.searchParams.get('status')
     if (status) where.status = status
 
@@ -64,14 +58,10 @@ export async function GET(request: NextRequest) {
           basicSalary: true,
           photo: true,
           dutyStation: true,
-          primaryBusinessUnitId: true,
-          workLocationId: true,
           localizedName: true,
           createdAt: true,
           department: { select: { id: true, name: true } },
           designation: { select: { id: true, title: true } },
-          primaryBusinessUnit: { select: { id: true, code: true, name: true, shortName: true } },
-          workLocation: { select: { id: true, code: true, name: true } },
         },
         orderBy: { [sort]: order },
         skip,

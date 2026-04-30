@@ -234,7 +234,7 @@
     "inactive": "Inactive"
   },
   "demoBanner": {
-    "message": "You are viewing demo data. Editing and deletion are disabled in demo mode.",
+    "message": "Every module and feature is customizable and scalable. Some modules or menus may not work in demo mode because they require specific roles, configuration, or dependent data. This is expected in demo mode. In production, with proper configuration and complete dependent data, all enabled modules will work correctly.",
     "badge": "Demo Mode"
   }
 }
