@@ -9,6 +9,7 @@ import {
   apiCreated,
   handleRouteError,
 } from '@/lib/api-response'
+import { assertCanUseEmployeeAttendance } from '@/lib/hr-attendance-access'
 
 const VALID_MOVEMENT_TYPES = ['OFFICIAL_DUTY', 'BANK_VISIT', 'GOVT_OFFICE', 'FIELD_VISIT', 'CLIENT_VISIT', 'OTHER']
 
@@ -40,9 +41,10 @@ export async function POST(request: NextRequest) {
 
     const employee = await prisma.employee.findFirst({
       where: { id: employeeId, organizationId: auth.organizationId, deletedAt: null },
-      select: { id: true, fullName: true },
+      select: { id: true, fullName: true, userId: true },
     })
     if (!employee) return apiBadRequest('Employee not found in this organization')
+    assertCanUseEmployeeAttendance(auth, employee)
 
     if (operatingLocationId) {
       const operatingLocation = await prisma.operatingLocation.findFirst({

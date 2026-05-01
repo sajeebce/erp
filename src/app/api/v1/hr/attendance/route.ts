@@ -10,6 +10,10 @@ import {
   handleRouteError,
   parsePaginationParams,
 } from '@/lib/api-response'
+import {
+  assertCanUseEmployeeAttendance,
+  getScopedAttendanceEmployeeId,
+} from '@/lib/hr-attendance-access'
 import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
@@ -23,7 +27,7 @@ export async function GET(request: NextRequest) {
       employee: { organizationId: auth.organizationId, deletedAt: null },
     }
 
-    const employeeId = url.searchParams.get('employeeId')
+    const employeeId = await getScopedAttendanceEmployeeId(auth, url.searchParams.get('employeeId'))
     if (employeeId) where.employeeId = employeeId
 
     const departmentId = url.searchParams.get('departmentId')
@@ -91,11 +95,12 @@ export async function POST(request: NextRequest) {
     // Validate employee belongs to org
     const employee = await prisma.employee.findFirst({
       where: { id: employeeId, organizationId: auth.organizationId, deletedAt: null },
-      select: { id: true, fullName: true },
+      select: { id: true, fullName: true, userId: true },
     })
     if (!employee) {
       return apiBadRequest('Employee not found in this organization')
     }
+    assertCanUseEmployeeAttendance(auth, employee)
 
     if (operatingLocationId) {
       const operatingLocation = await prisma.operatingLocation.findFirst({

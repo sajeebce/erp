@@ -1,6 +1,7 @@
 # HR Attendance & Movement Workflow Plan
 
 > Prepared: 2026-04-28  
+> Last updated: 2026-05-01  
 > Scope: HR Module  
 > Related docs: [NGO_ERP_FEATURES.md](./NGO_ERP_FEATURES.md), [multiconcern-hr.md](./multiconcern-hr.md)
 
@@ -15,6 +16,44 @@ Support three client attendance scenarios inside one centralized HR module:
 3. Cross-branch attendance from HQ or other branch visits
 
 The solution must differentiate absence from official duty, support location-aware attendance, preserve centralized reporting, and remain aligned with the multi-concern HR direction.
+
+---
+
+## Implemented Demo Scope
+
+The current implementation supports the demo workflow for attendance self-service and supervisor visibility.
+
+Implemented changes:
+
+- Added live self-service attendance pages:
+  - `/self-service/attendance`
+  - `/self-service/attendance/mobile`
+- Added live admin/supervisor attendance pages:
+  - `/hr/attendance`
+  - `/hr/attendance/movements`
+- Added attendance movement APIs:
+  - `POST /api/v1/hr/attendance/movements/start`
+  - `POST /api/v1/hr/attendance/movements/:id/return`
+  - `GET /api/v1/hr/attendance/movements`
+  - `GET /api/v1/hr/attendance/movements/open`
+- Added mobile/offline sync API:
+  - `POST /api/v1/hr/attendance/mobile-sync`
+- Added backend role scoping:
+  - Admin/HR manager can view and manage all employees.
+  - Staff and store manager can only create, update, and view their own attendance/movement data.
+- Linked demo users to employee records:
+  - `kamal@cssbd.org` -> `EMP-003`
+  - `shakil@cssbd.org` -> `EMP-005`
+  - `rahim@cssbd.org` -> `EMP-006`
+- Updated sidebar naming:
+  - Admin sees `HR & Payroll`.
+  - Staff/store manager sees `Employee Self-Service`.
+
+Verification completed:
+
+- TypeScript check passes with `corepack pnpm exec tsc --noEmit`.
+- Staff access to another employee's attendance returns `403`.
+- Admin monthly summary can still see all employees.
 
 ---
 
@@ -81,7 +120,7 @@ Key outcomes:
 
 ### What exists now
 
-- Basic `Attendance` model with:
+- `Attendance` model with:
   - `employeeId`
   - `date`
   - `status`
@@ -89,22 +128,26 @@ Key outcomes:
   - `checkOut`
   - `otHours`
   - `notes`
+  - `attendanceMode`
+  - `attendanceSource`
+  - `operatingLocationId`
+  - geo fields
+  - validation/sync/device fields
+- `AttendanceMovement` model for official duty movement logs
 - Attendance API for create and list
 - Monthly attendance summary API
+- Self attendance API for the logged-in employee
+- Movement start/return/list/open APIs
+- Mobile sync API for queued attendance events
 - Payroll integration using attendance records
 - `BusinessUnit`, `CostCenter`, and `OperatingLocation` setup models already exist
 
 ### Important gaps
 
-- No official movement entity or workflow
-- No movement type classification
-- No GPS or geo-validation fields in attendance
-- No mobile attendance event model
-- No offline sync support
-- No branch visit log
-- No supervisor live visibility for employees out on duty
+- No dedicated `AttendanceVisit` model yet
 - No employee `primaryBusinessUnitId`, `primaryCostCenterId`, or `workLocationId` yet in HR data model
-- Attendance UI is still static demo data, not live transactional UI
+- Payroll still needs explicit weekend/holiday absence logic correction
+- Advanced geofence configuration is not yet implemented
 
 ### Known inconsistency already identified
 
@@ -255,6 +298,77 @@ This is necessary because:
 ---
 
 ## Workflow Details
+
+## Current Demo User Workflow
+
+This section maps the attendance movement workflow to the current demo users and menus.
+
+### User mapping for demo
+
+| Demo user | Demo purpose | Main pages |
+|---|---|---|
+| `rahim@cssbd.org` | Admin / HR admin / supervisor view | `HR & Payroll > Attendance`, `HR & Payroll > Attendance Movements` |
+| `kamal@cssbd.org` | Staff / employee self-service | `Employee Self-Service > My Attendance`, `Employee Self-Service > Mobile Check-in` |
+| `shakil@cssbd.org` | Store manager / branch or field staff self-service | `Employee Self-Service > My Attendance`, `Employee Self-Service > Mobile Check-in` |
+
+Admin should mainly observe staff attendance and movement status. Staff and store manager should perform their own attendance and movement actions from self-service pages.
+
+### Scenario 1 executable demo: official movement during office hours
+
+Goal: show that an employee who leaves the office for official duty is not treated as absent.
+
+Example:
+
+- Employee: `kamal@cssbd.org`
+- Supervisor/Admin: `rahim@cssbd.org`
+- Movement type: `Official Duty`
+- Destination: `Bank` or `District Commissioner Office`
+- Purpose: `Cheque submission`, `Official document follow-up`, or similar official work
+
+Employee flow:
+
+1. Login as `kamal@cssbd.org`.
+2. Open `Employee Self-Service > My Attendance`.
+3. Check in for the day.
+4. In the same `My Attendance` page, click `Start Movement`.
+5. Enter:
+   - movement type: `Official Duty`
+   - destination: `Bank` or `District Commissioner Office`
+   - purpose
+   - expected return time
+6. Submit/start the movement.
+7. System keeps the employee duty-valid, not absent.
+8. When the employee returns, click `End Movement` in `My Attendance`.
+9. System records actual return time and movement duration.
+10. At day end, click `Check Out`.
+
+Admin / supervisor flow:
+
+1. Login as `rahim@cssbd.org`.
+2. Open `HR & Payroll > Attendance`.
+3. Confirm the employee is visible as present or duty-valid, not absent.
+4. Open `HR & Payroll > Attendance Movements`.
+5. Confirm the movement log shows:
+   - employee name
+   - movement type
+   - destination
+   - check-out/start time
+   - return time, if returned
+   - duration
+   - current status: `Open` or `Returned`
+
+Expected outcome:
+
+- The employee's attendance day remains duty-valid.
+- The out-of-office time is tracked separately as official movement.
+- Admin can see staff/store manager movement status centrally.
+- Movement is reportable for audit and supervisor visibility.
+
+Access control outcome:
+
+- Staff/store manager cannot create or update another employee's attendance.
+- If a staff/store manager tries to access another employee's attendance or movement data, the API returns `403`.
+- Admin can view and manage all employee attendance and movement records.
 
 ## Workflow A: Standard Office Attendance
 

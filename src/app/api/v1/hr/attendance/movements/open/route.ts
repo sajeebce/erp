@@ -2,12 +2,13 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
 import { apiSuccess, handleRouteError } from '@/lib/api-response'
+import { getScopedAttendanceEmployeeId } from '@/lib/hr-attendance-access'
 
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuthFromRequest(request)
     const url = new URL(request.url)
-    const employeeId = url.searchParams.get('employeeId')
+    const employeeId = await getScopedAttendanceEmployeeId(auth, url.searchParams.get('employeeId'))
 
     const openMovements = await prisma.attendanceMovement.findMany({
       where: {

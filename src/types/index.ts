@@ -7,6 +7,7 @@ export interface NavItem {
   items?: NavSubItem[];
   badge?: string;
   allowedRoles?: string[]; // undefined = ADMIN only; ['*'] = all roles; specific list = those + ADMIN
+  hiddenForRoles?: string[];
 }
 
 export interface NavSubItem {
@@ -14,6 +15,7 @@ export interface NavSubItem {
   url: string;
   items?: NavSubItem[];
   allowedRoles?: string[]; // same semantics as NavItem.allowedRoles
+  hiddenForRoles?: string[];
 }
 
 export interface KPICardData {

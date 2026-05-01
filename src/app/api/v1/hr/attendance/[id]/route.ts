@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
 import { logAudit, getAuditContext } from '@/lib/audit'
 import { apiBadRequest, apiNotFound, apiSuccess, handleRouteError } from '@/lib/api-response'
+import { assertCanUseEmployeeAttendance } from '@/lib/hr-attendance-access'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -20,8 +21,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         id,
         employee: { organizationId: auth.organizationId, deletedAt: null },
       },
+      include: {
+        employee: { select: { userId: true } },
+      },
     })
     if (!attendance) return apiNotFound('Attendance record not found')
+    assertCanUseEmployeeAttendance(auth, attendance.employee)
 
     const validStatuses = ['PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'ON_LEAVE', 'HOLIDAY', 'WEEKEND']
     if (body.status && !validStatuses.includes(body.status)) {

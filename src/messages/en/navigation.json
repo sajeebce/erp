@@ -15,6 +15,7 @@
     "procurement": { "title": "Procurement" },
     "assets": { "title": "Assets" },
     "hr": { "title": "HR & Payroll" },
+    "employeeSelfService": { "title": "Employee Self-Service" },
     "microfinance": { "title": "Microfinance" },
     "reports": { "title": "Reports" },
     "settings": { "title": "Settings" }

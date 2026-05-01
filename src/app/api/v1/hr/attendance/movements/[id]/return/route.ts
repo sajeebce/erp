@@ -9,6 +9,7 @@ import {
   apiSuccess,
   handleRouteError,
 } from '@/lib/api-response'
+import { assertCanUseEmployeeAttendance } from '@/lib/hr-attendance-access'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -22,9 +23,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const movement = await prisma.attendanceMovement.findFirst({
       where: { id, organizationId: auth.organizationId },
-      include: { employee: { select: { id: true, fullName: true } } },
+      include: { employee: { select: { id: true, fullName: true, userId: true } } },
     })
     if (!movement) return apiNotFound('Attendance movement not found')
+    assertCanUseEmployeeAttendance(auth, movement.employee)
     if (movement.status !== 'OPEN') return apiBadRequest('Only OPEN movements can be returned')
 
     const actualReturnTime = body.actualReturnTime ? new Date(body.actualReturnTime) : new Date()

@@ -147,8 +147,8 @@ export const navigation: NavItem[] = [
       { title: "items.contracts", url: "/hr/contracts" },
       { title: "items.attendance", url: "/hr/attendance" },
       { title: "items.attendanceMovements", url: "/hr/attendance/movements" },
-      { title: "items.selfServiceAttendance", url: "/self-service/attendance" },
-      { title: "items.mobileAttendance", url: "/self-service/attendance/mobile" },
+      { title: "items.selfServiceAttendance", url: "/self-service/attendance", allowedRoles: ["STAFF", "STORE_MANAGER"], hiddenForRoles: ["ADMIN"] },
+      { title: "items.mobileAttendance", url: "/self-service/attendance/mobile", allowedRoles: ["STAFF", "STORE_MANAGER"], hiddenForRoles: ["ADMIN"] },
       {
         title: "items.leaveManagement",
         url: "/hr/leave",
@@ -172,6 +172,17 @@ export const navigation: NavItem[] = [
       { title: "items.disciplinary", url: "/hr/disciplinary" },
       { title: "items.orgChart", url: "/hr/org-chart" },
       { title: "items.hrAnalytics", url: "/hr/analytics" },
+    ],
+  },
+  {
+    title: "modules.employeeSelfService.title",
+    url: "/self-service",
+    icon: UserCog,
+    allowedRoles: ["STAFF", "STORE_MANAGER"],
+    hiddenForRoles: ["ADMIN"],
+    items: [
+      { title: "items.selfServiceAttendance", url: "/self-service/attendance", allowedRoles: ["STAFF", "STORE_MANAGER"] },
+      { title: "items.mobileAttendance", url: "/self-service/attendance/mobile", allowedRoles: ["STAFF", "STORE_MANAGER"] },
     ],
   },
   {

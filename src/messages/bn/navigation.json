@@ -15,6 +15,7 @@
     "procurement": { "title": "ক্রয় ও সরবরাহ" },
     "assets": { "title": "স্থায়ী সম্পদ" },
     "hr": { "title": "মানব সম্পদ" },
+    "employeeSelfService": { "title": "Employee Self-Service" },
     "microfinance": { "title": "ক্ষুদ্রঋণ" },
     "reports": { "title": "প্রতিবেদন ও বিশ্লেষণ" },
     "settings": { "title": "সেটিংস ও প্রশাসন" }

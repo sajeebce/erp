@@ -6,6 +6,7 @@ import {
   handleRouteError,
   parsePaginationParams,
 } from '@/lib/api-response'
+import { getScopedAttendanceEmployeeId } from '@/lib/hr-attendance-access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
       organizationId: auth.organizationId,
     }
 
-    const employeeId = url.searchParams.get('employeeId')
+    const employeeId = await getScopedAttendanceEmployeeId(auth, url.searchParams.get('employeeId'))
     if (employeeId) where.employeeId = employeeId
 
     const status = url.searchParams.get('status')

@@ -38,7 +38,12 @@ import { navigation } from "@/data/navigation";
 import { type NavItem, type NavSubItem } from "@/types";
 import { cn } from "@/lib/utils";
 
-function canSee(allowedRoles: string[] | undefined, roleName: string): boolean {
+function canSee(
+  allowedRoles: string[] | undefined,
+  roleName: string,
+  hiddenForRoles?: string[]
+): boolean {
+  if (hiddenForRoles?.includes(roleName)) return false;
   if (roleName === "ADMIN") return true;
   if (allowedRoles === undefined) return false;
   if (allowedRoles.includes("*")) return true;
@@ -47,7 +52,7 @@ function canSee(allowedRoles: string[] | undefined, roleName: string): boolean {
 
 function filterSubItems(items: NavSubItem[], roleName: string): NavSubItem[] {
   return items
-    .filter((item) => canSee(item.allowedRoles, roleName))
+    .filter((item) => canSee(item.allowedRoles, roleName, item.hiddenForRoles))
     .map((item) => ({
       ...item,
       items: item.items ? filterSubItems(item.items, roleName) : undefined,
@@ -56,7 +61,7 @@ function filterSubItems(items: NavSubItem[], roleName: string): NavSubItem[] {
 
 function filterNavigation(items: NavItem[], roleName: string): NavItem[] {
   return items
-    .filter((item) => canSee(item.allowedRoles, roleName))
+    .filter((item) => canSee(item.allowedRoles, roleName, item.hiddenForRoles))
     .map((item) => ({
       ...item,
       items: item.items ? filterSubItems(item.items, roleName) : undefined,
@@ -80,7 +85,7 @@ const navGroups = [
     labelKey: "groups.operations" as const,
     borderClass: "border-l-amber-500/40",
     dotClass: "bg-amber-500",
-    urls: ["/procurement", "/assets", "/hr", "/microfinance"],
+    urls: ["/procurement", "/assets", "/hr", "/self-service", "/microfinance"],
   },
   {
     labelKey: "groups.system" as const,

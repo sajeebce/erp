@@ -6,6 +6,7 @@ import {
   apiBadRequest,
   handleRouteError,
 } from '@/lib/api-response'
+import { getScopedAttendanceEmployeeId } from '@/lib/hr-attendance-access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url)
     const month = url.searchParams.get('month')
     const year = url.searchParams.get('year')
-    const employeeId = url.searchParams.get('employeeId')
+    const employeeId = await getScopedAttendanceEmployeeId(auth, url.searchParams.get('employeeId'))
     const departmentId = url.searchParams.get('departmentId')
 
     if (!month || !year) {

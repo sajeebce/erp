@@ -123,6 +123,35 @@ const ITEM_TYPE_OPTIONS = [
   { value: "SERVICE_OR_EXPENSE", label: "Service/Expense" },
 ] as const;
 
+const STOCK_ACCOUNT_CODES = new Set(["309001", "309002", "309007", "309008", "309009", "309010"]);
+
+function accountOptionsForLine(accounts: Account[], itemType: PRLine["itemType"]) {
+  const typeFiltered = accounts.filter((account) => {
+    if (itemType === "SERVICE_OR_EXPENSE") return account.type === "EXPENSE";
+    return account.type === "ASSET";
+  });
+
+  if (itemType === "INVENTORY") {
+    return [...typeFiltered].sort((a, b) => {
+      const aStock = STOCK_ACCOUNT_CODES.has(a.code) || a.name.toLowerCase().includes("stock");
+      const bStock = STOCK_ACCOUNT_CODES.has(b.code) || b.name.toLowerCase().includes("stock");
+      if (aStock !== bStock) return aStock ? -1 : 1;
+      return a.code.localeCompare(b.code);
+    });
+  }
+
+  if (itemType === "FIXED_ASSET") {
+    return [...typeFiltered].sort((a, b) => {
+      const aFixed = a.code.startsWith("401");
+      const bFixed = b.code.startsWith("401");
+      if (aFixed !== bFixed) return aFixed ? -1 : 1;
+      return a.code.localeCompare(b.code);
+    });
+  }
+
+  return [...typeFiltered].sort((a, b) => a.code.localeCompare(b.code));
+}
+
 const blankLine = (): PRLine => ({
   description: "",
   specification: "",
@@ -184,7 +213,7 @@ export default function NewRequisitionPage() {
           setAssetCategories(json.data.assetCategories);
         }
       }),
-      fetch("/api/v1/finance/accounts?limit=300&isActive=true&isGroup=false").then((r) => r.json()).then((json) => { if (json.success) setAccounts(json.data); }),
+      fetch("/api/v1/finance/accounts?limit=300&isActive=true&isGroup=false&sort=code&order=asc").then((r) => r.json()).then((json) => { if (json.success) setAccounts(json.data); }),
     ]).catch(() => {});
   }, []);
 
@@ -543,18 +572,18 @@ export default function NewRequisitionPage() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[1120px] table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[180px]">Description</TableHead>
-                <TableHead className="min-w-[180px]">Specification</TableHead>
-                <TableHead className="w-[200px]">Classification</TableHead>
-                <TableHead className="w-[80px]">GL Account</TableHead>
-                <TableHead className="w-[80px]">Unit</TableHead>
-                <TableHead className="w-[80px]">Qty</TableHead>
+                <TableHead className="w-[180px]">Description</TableHead>
+                <TableHead className="w-[180px]">Specification</TableHead>
+                <TableHead className="w-[240px]">Classification</TableHead>
+                <TableHead className="w-[140px]">GL Account</TableHead>
+                <TableHead className="w-[100px]">Unit</TableHead>
+                <TableHead className="w-[100px]">Qty</TableHead>
                 <TableHead className="w-[130px]">Unit Price (BDT)</TableHead>
-                <TableHead className="text-right w-[120px]">Total</TableHead>
-                <TableHead className="w-[40px]"></TableHead>
+                <TableHead className="text-right w-[130px]">Total</TableHead>
+                <TableHead className="w-[60px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -652,7 +681,7 @@ export default function NewRequisitionPage() {
                         <SelectValue placeholder="GL account" />
                       </SelectTrigger>
                       <SelectContent>
-                        {accounts.map((account) => (
+                        {accountOptionsForLine(accounts, line.itemType).map((account) => (
                           <SelectItem key={account.id} value={account.id}>
                             {account.code} - {account.name}
                           </SelectItem>
@@ -678,7 +707,7 @@ export default function NewRequisitionPage() {
                       min="1"
                       value={line.quantity}
                       onChange={(e) => updateLine(idx, "quantity", e.target.value)}
-                      className="h-8 text-sm"
+                      className="h-8 w-20 text-sm tabular-nums"
                     />
                   </TableCell>
                   <TableCell className="align-top">
