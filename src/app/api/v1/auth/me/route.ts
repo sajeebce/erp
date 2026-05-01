@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
         mustChangePassword: true,
         role: { select: { id: true, name: true, description: true } },
         department: { select: { id: true, name: true, code: true } },
+        employee: { select: { id: true, employeeNo: true, fullName: true } },
         organization: {
           select: {
             id: true,

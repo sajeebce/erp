@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { requireAuthFromRequest } from '@/lib/auth'
+import { requireRoleFromRequest } from '@/lib/auth'
 import { logAudit, getAuditContext } from '@/lib/audit'
+import { enforceProjectManagerId, getProjectAccessWhere } from '@/lib/project-access'
 import {
   apiSuccess,
   apiBadRequest,
@@ -20,11 +21,12 @@ const VALID_SECTORS = ['WASH', 'EDUCATION', 'HEALTH', 'LIVELIHOODS', 'FOOD_SECUR
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, ['PROJECT_MANAGER'])
     const { id } = await params
+    const accessWhere = await getProjectAccessWhere(auth)
 
     const project = await prisma.project.findFirst({
-      where: { id, organizationId: auth.organizationId, deletedAt: null },
+      where: { id, organizationId: auth.organizationId, deletedAt: null, ...accessWhere },
       select: {
         id: true,
         projectNo: true,
@@ -143,11 +145,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, ['PROJECT_MANAGER'])
     const { id } = await params
+    const accessWhere = await getProjectAccessWhere(auth)
 
     const existing = await prisma.project.findFirst({
-      where: { id, organizationId: auth.organizationId, deletedAt: null },
+      where: { id, organizationId: auth.organizationId, deletedAt: null, ...accessWhere },
     })
     if (!existing) return apiNotFound('Project not found')
 
@@ -182,7 +185,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     if (body.region !== undefined) data.region = body.region || null
     if (body.currency !== undefined) data.currency = body.currency || 'USD'
     if (body.implementingPartner !== undefined) data.implementingPartner = body.implementingPartner || null
-    if (body.managerId !== undefined) data.managerId = body.managerId || null
+    if (body.managerId !== undefined) data.managerId = await enforceProjectManagerId(auth, body.managerId || null)
     if (body.donorId !== undefined) data.donorId = body.donorId || null
 
     if (body.status !== undefined) {
@@ -242,11 +245,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, ['PROJECT_MANAGER'])
     const { id } = await params
+    const accessWhere = await getProjectAccessWhere(auth)
 
     const existing = await prisma.project.findFirst({
-      where: { id, organizationId: auth.organizationId, deletedAt: null },
+      where: { id, organizationId: auth.organizationId, deletedAt: null, ...accessWhere },
     })
     if (!existing) return apiNotFound('Project not found')
 

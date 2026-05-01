@@ -19,6 +19,10 @@ const CURRENCIES = ['USD', 'EUR', 'GBP', 'CHF', 'CAD', 'AUD', 'JPY', 'SEK', 'NOK
 
 interface Donor { id: string; name: string }
 interface Employee { id: string; fullName: string }
+interface CurrentUser {
+  role?: { name?: string | null } | null
+  employee?: { id: string; fullName: string } | null
+}
 
 function todayISO() {
   return new Date().toISOString().split('T')[0]
@@ -50,17 +54,37 @@ export default function NewProjectPage() {
 
   const [donors, setDonors] = useState<Donor[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
 
   useEffect(() => {
     fetch('/api/v1/donors?limit=100')
       .then(res => res.json())
       .then(json => { if (json.success) setDonors(json.data) })
       .catch(() => {})
-    fetch('/api/v1/hr/employees?limit=100')
+    fetch('/api/v1/auth/me')
       .then(res => res.json())
-      .then(json => { if (json.success) setEmployees(json.data) })
+      .then(json => {
+        if (!json.success) return
+        const user = json.data as CurrentUser
+        setCurrentUser(user)
+        if (user.role?.name === 'PROJECT_MANAGER') {
+          if (user.employee) {
+            setEmployees([{ id: user.employee.id, fullName: user.employee.fullName }])
+            setManagerId(user.employee.id)
+          } else {
+            setError('Project Manager user is not linked to an employee record.')
+          }
+        } else {
+          fetch('/api/v1/hr/employees?limit=100')
+            .then(res => res.json())
+            .then(employeeJson => { if (employeeJson.success) setEmployees(employeeJson.data) })
+            .catch(() => {})
+        }
+      })
       .catch(() => {})
   }, [])
+
+  const isProjectManager = currentUser?.role?.name === 'PROJECT_MANAGER'
 
   function validate(): boolean {
     if (!name.trim()) { setError(t('form.nameRequired')); return false }
@@ -91,7 +115,11 @@ export default function NewProjectPage() {
     if (region.trim()) payload.region = region.trim()
     if (location.trim()) payload.location = location.trim()
     if (implementingPartner.trim()) payload.implementingPartner = implementingPartner.trim()
-    if (managerId) payload.managerId = managerId
+    if (isProjectManager && currentUser?.employee?.id) {
+      payload.managerId = currentUser.employee.id
+    } else if (managerId) {
+      payload.managerId = managerId
+    }
 
     try {
       const res = await fetch('/api/v1/projects', {
@@ -216,7 +244,18 @@ export default function NewProjectPage() {
             </div>
             <div className="space-y-2">
               <Label>{t('fields.manager')}</Label>
-              <SearchableSelect options={employees.map((e) => ({ value: e.id, label: e.fullName }))} value={managerId} onValueChange={setManagerId} placeholder={t('form.selectManager')} />
+              <SearchableSelect
+                options={employees.map((e) => ({ value: e.id, label: e.fullName }))}
+                value={managerId}
+                onValueChange={setManagerId}
+                placeholder={t('form.selectManager')}
+                disabled={isProjectManager}
+              />
+              {isProjectManager && (
+                <p className="text-xs text-muted-foreground">
+                  Project manager is automatically set to your employee profile.
+                </p>
+              )}
             </div>
           </div>
         </CardContent>

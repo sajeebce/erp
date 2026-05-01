@@ -32,6 +32,7 @@ async function main() {
     { email: 'rahim@cssbd.org', employeeNo: 'EMP-006', fullName: 'Abdur Rahim' },
     { email: 'kamal@cssbd.org', employeeNo: 'EMP-003', fullName: 'Kamal Ahmed' },
     { email: 'shakil@cssbd.org', employeeNo: 'EMP-005', fullName: 'Shakil Ahmed' },
+    { email: 'fatema@cssbd.org', employeeNo: 'EMP-004', fullName: 'Fatema Khatun' },
   ]
 
   for (const link of demoLinks) {

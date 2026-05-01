@@ -74,6 +74,11 @@ interface Employee {
   designation: { id: string; title: string } | null
 }
 
+interface CurrentUser {
+  role?: { name?: string | null } | null
+  employee?: { id: string; fullName: string } | null
+}
+
 interface Project {
   id: string
   projectNo: string
@@ -147,6 +152,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [showExtensionForm, setShowExtensionForm] = useState(false)
   const [extensionSubmitting, setExtensionSubmitting] = useState(false)
   const [extensionActionId, setExtensionActionId] = useState<string | null>(null)
@@ -175,6 +181,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
 
   useEffect(() => {
     fetchProject()
+    fetchCurrentUser()
   }, [id])
 
   async function fetchProject() {
@@ -202,6 +209,21 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
       if (json.success) setEmployees(json.data)
     } catch {
       // silent fail for employee list
+    }
+  }
+
+  async function fetchCurrentUser() {
+    try {
+      const res = await fetch('/api/v1/auth/me')
+      const json = await res.json()
+      if (json.success) {
+        setCurrentUser(json.data)
+        if (json.data.role?.name === 'PROJECT_MANAGER' && json.data.employee) {
+          setEmployees([{ id: json.data.employee.id, fullName: json.data.employee.fullName, designation: null }])
+        }
+      }
+    } catch {
+      // Role-aware controls fail closed for non-admin actions.
     }
   }
 
@@ -435,6 +457,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const canEdit = ['PIPELINE', 'ACTIVE', 'ON_HOLD'].includes(project.status)
   const canDelete = project.status === 'PIPELINE'
   const canRequestExtension = ['ACTIVE', 'ON_HOLD'].includes(project.status) && !!project.endDate
+  const canApproveExtensions = currentUser?.role?.name === 'ADMIN'
   const pendingExtension = project.extensionRequests.find((item) => item.status === 'PENDING_APPROVAL')
   const approvedExtensions = project.extensionRequests.filter((item) => item.status === 'APPROVED')
   const firstApprovedExtension = approvedExtensions[approvedExtensions.length - 1]
@@ -830,7 +853,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                         {extension.approvalNotes && <p className="text-xs text-muted-foreground mt-1">Approved: {extension.approvalNotes}</p>}
                       </td>
                       <td className="py-2 text-right">
-                        {extension.status === 'PENDING_APPROVAL' ? (
+                        {extension.status === 'PENDING_APPROVAL' && canApproveExtensions ? (
                           <div className="flex justify-end gap-2">
                             <Button
                               size="sm"

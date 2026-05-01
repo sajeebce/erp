@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { requireAuthFromRequest } from '@/lib/auth'
+import { requireRoleFromRequest } from '@/lib/auth'
 import { logAudit, getAuditContext } from '@/lib/audit'
+import { getProjectAccessWhere } from '@/lib/project-access'
 import {
   apiCreated,
   apiSuccess,
@@ -25,11 +26,12 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, ['PROJECT_MANAGER'])
     const { id } = await params
+    const accessWhere = await getProjectAccessWhere(auth)
 
     const project = await prisma.project.findFirst({
-      where: { id, organizationId: auth.organizationId, deletedAt: null },
+      where: { id, organizationId: auth.organizationId, deletedAt: null, ...accessWhere },
       select: { id: true },
     })
     if (!project) return apiNotFound('Project not found')
@@ -48,12 +50,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, ['PROJECT_MANAGER'])
     const { id } = await params
     const body = await request.json()
+    const accessWhere = await getProjectAccessWhere(auth)
 
     const project = await prisma.project.findFirst({
-      where: { id, organizationId: auth.organizationId, deletedAt: null },
+      where: { id, organizationId: auth.organizationId, deletedAt: null, ...accessWhere },
       select: {
         id: true,
         projectNo: true,

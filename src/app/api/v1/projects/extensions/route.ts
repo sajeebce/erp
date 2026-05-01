@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { Prisma, ProjectExtensionStatus } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { requireAuthFromRequest } from '@/lib/auth'
+import { requireRoleFromRequest } from '@/lib/auth'
 import {
   apiPaginated,
   apiBadRequest,
@@ -19,7 +19,7 @@ const VALID_STATUSES: ProjectExtensionStatus[] = [
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, [])
     const url = new URL(request.url)
     const { page, limit, skip } = parsePaginationParams(url)
     const statusParam = url.searchParams.get('status') || undefined

@@ -45,7 +45,24 @@ interface GeoState {
   lng: number | null
   accuracy: number | null
   address: string | null
+  coordinatesLabel: string | null
   validationStatus: 'VALID' | 'PENDING'
+}
+
+interface NominatimReverseResponse {
+  display_name?: string
+  address?: {
+    road?: string
+    neighbourhood?: string
+    suburb?: string
+    city_district?: string
+    city?: string
+    town?: string
+    village?: string
+    state?: string
+    postcode?: string
+    country?: string
+  }
 }
 
 interface QueuedAttendanceEvent {
@@ -72,6 +89,44 @@ function formatDateTime(value: string | null, locale: string): string {
   }).format(new Date(value))
 }
 
+function formatCoordinates(lat: number, lng: number): string {
+  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`
+}
+
+function compactAddress(result: NominatimReverseResponse): string | null {
+  const address = result.address
+  if (!address) return result.display_name || null
+
+  const locality = address.neighbourhood || address.suburb || address.city_district || address.city || address.town || address.village
+  const parts = [
+    address.road,
+    locality,
+    address.city && address.city !== locality ? address.city : null,
+    address.postcode,
+  ].filter(Boolean)
+
+  if (parts.length > 0) return parts.join(', ')
+  return result.display_name || null
+}
+
+async function reverseGeocodeLocation(lat: number, lng: number, locale: string): Promise<string | null> {
+  const url = new URL('https://nominatim.openstreetmap.org/reverse')
+  url.searchParams.set('format', 'jsonv2')
+  url.searchParams.set('lat', String(lat))
+  url.searchParams.set('lon', String(lng))
+  url.searchParams.set('zoom', '18')
+  url.searchParams.set('addressdetails', '1')
+  url.searchParams.set('accept-language', locale)
+
+  const response = await fetch(url.toString(), {
+    headers: { Accept: 'application/json' },
+  })
+  if (!response.ok) return null
+
+  const result = await response.json() as NominatimReverseResponse
+  return compactAddress(result)
+}
+
 export default function MobileAttendancePage() {
   const t = useTranslations('hr')
   const locale = useLocale()
@@ -90,6 +145,7 @@ export default function MobileAttendancePage() {
     lng: null,
     accuracy: null,
     address: null,
+    coordinatesLabel: null,
     validationStatus: 'PENDING',
   })
 
@@ -162,6 +218,7 @@ export default function MobileAttendancePage() {
         lng: null,
         accuracy: null,
         address: null,
+        coordinatesLabel: null,
         validationStatus: 'PENDING',
       })
       setMessage(t('attendance.locationPending'))
@@ -169,15 +226,35 @@ export default function MobileAttendancePage() {
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
+        const lat = position.coords.latitude
+        const lng = position.coords.longitude
+        const coordinatesLabel = formatCoordinates(lat, lng)
         setGeo({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
+          lat,
+          lng,
           accuracy: position.coords.accuracy,
-          address: `${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`,
+          address: coordinatesLabel,
+          coordinatesLabel,
           validationStatus: 'VALID',
         })
         setMessage(t('attendance.locationCaptured'))
+
+        try {
+          const readableAddress = await reverseGeocodeLocation(lat, lng, locale)
+          if (readableAddress) {
+            setGeo({
+              lat,
+              lng,
+              accuracy: position.coords.accuracy,
+              address: readableAddress,
+              coordinatesLabel,
+              validationStatus: 'VALID',
+            })
+          }
+        } catch (error) {
+          console.error(error)
+        }
       },
       (error) => {
         console.error(error)
@@ -186,6 +263,7 @@ export default function MobileAttendancePage() {
           lng: null,
           accuracy: null,
           address: null,
+          coordinatesLabel: null,
           validationStatus: 'PENDING',
         })
         setMessage(t('attendance.locationPending'))

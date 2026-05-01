@@ -178,6 +178,19 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    await prisma.employee.updateMany({
+      where: {
+        organizationId: auth.organizationId,
+        userId: null,
+        deletedAt: null,
+        OR: [
+          { email: email.toLowerCase() },
+          { fullName: { equals: fullName.trim(), mode: 'insensitive' } },
+        ],
+      },
+      data: { userId: user.id },
+    })
+
     return apiCreated(user)
   } catch (error) {
     return handleRouteError(error)

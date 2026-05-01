@@ -45,6 +45,11 @@ const STANDARD_ROLES = [
     description: 'Can review high-value purchase requisitions at executive approval step',
     isSystem: false,
   },
+  {
+    name: 'PROJECT_MANAGER',
+    description: 'Can manage assigned projects, create project records, and submit no-cost extension requests without approval authority.',
+    isSystem: false,
+  },
 ]
 
 async function main() {

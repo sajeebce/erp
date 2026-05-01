@@ -82,8 +82,10 @@ export const navigation: NavItem[] = [
     title: "modules.projects.title",
     url: "/projects",
     icon: FolderKanban,
+    allowedRoles: ["PROJECT_MANAGER"],
     items: [
-      { title: "items.projectList", url: "/projects" },
+      { title: "items.projectList", url: "/projects", allowedRoles: ["PROJECT_MANAGER"] },
+      { title: "items.createProject", url: "/projects/new", allowedRoles: ["PROJECT_MANAGER"] },
       { title: "items.projectDashboard", url: "/projects/dashboard" },
       { title: "items.projectExtensions", url: "/projects/extensions" },
       { title: "items.activityPlanning", url: "/projects/activity-planning" },
