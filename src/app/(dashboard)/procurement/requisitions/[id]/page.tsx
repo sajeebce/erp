@@ -35,7 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { AlertTriangle, ArrowLeft, CheckCircle, XCircle, Loader2, ExternalLink, ShoppingCart } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle, XCircle, Loader2, ExternalLink, ShoppingCart, Pencil, Save, Plus, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
 interface PRLine {
@@ -47,6 +47,12 @@ interface PRLine {
   warehouseId: string | null;
   assetCategoryId: string | null;
   accountId: string | null;
+  budgetLineId?: string | null;
+  businessUnitId?: string | null;
+  costCenterId?: string | null;
+  fundClassId?: string | null;
+  projectId?: string | null;
+  grantId?: string | null;
   unit: string;
   quantity: number;
   estimatedPrice: number;
@@ -139,6 +145,8 @@ export default function PRDetailPage() {
   const [approving, setApproving] = useState(false);
   const [creatingPO, setCreatingPO] = useState(false);
   const [runningAction, setRunningAction] = useState(false);
+  const [editingPR, setEditingPR] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [userRole, setUserRole] = useState<string>("");
   const [userId, setUserId] = useState<string>("");
@@ -148,6 +156,11 @@ export default function PRDetailPage() {
   const [actionMode, setActionMode] = useState<"approve" | "reject" | "return" | "modify" | null>(null);
   const [actionNote, setActionNote] = useState("");
   const [editableLines, setEditableLines] = useState<PRLine[]>([]);
+  const [editForm, setEditForm] = useState({
+    priority: "",
+    justification: "",
+    notes: "",
+  });
   const [poForm, setPOForm] = useState({
     vendorId: "",
     deliveryDate: "",
@@ -165,9 +178,17 @@ export default function PRDetailPage() {
       const poJson = await poRes.json();
       const linkedPOs: LinkedPO[] = poJson.success ? poJson.data : [];
       setPr({ ...data, linkedPOs });
+      if (!editingPR) {
+        setEditForm({
+          priority: data.priority ?? "",
+          justification: data.justification ?? "",
+          notes: data.notes ?? "",
+        });
+        setEditableLines(data.lines.map((line: PRLine) => ({ ...line })));
+      }
     }
     setLoading(false);
-  }, [id]);
+  }, [id, editingPR]);
 
   useEffect(() => {
     fetchPR();
@@ -205,6 +226,117 @@ export default function PRDetailPage() {
       updated[index] = { ...updated[index], [field]: value } as PRLine;
       return updated;
     });
+  }
+
+  function addEditableLine() {
+    const source = editableLines[editableLines.length - 1] ?? pr?.lines[0];
+    setEditableLines((prev) => [
+      ...prev,
+      {
+        id: `new-${Date.now()}`,
+        description: "",
+        specification: "",
+        itemType: source?.itemType ?? "SERVICE_OR_EXPENSE",
+        inventoryItemId: source?.inventoryItemId ?? null,
+        warehouseId: source?.warehouseId ?? null,
+        assetCategoryId: source?.assetCategoryId ?? null,
+        accountId: source?.accountId ?? null,
+        budgetLineId: source?.budgetLineId ?? null,
+        businessUnitId: source?.businessUnitId ?? null,
+        costCenterId: source?.costCenterId ?? null,
+        fundClassId: source?.fundClassId ?? null,
+        projectId: source?.projectId ?? null,
+        grantId: source?.grantId ?? null,
+        unit: source?.unit ?? "pcs",
+        quantity: 1,
+        estimatedPrice: 0,
+        totalEstimate: 0,
+        sortOrder: prev.length,
+      },
+    ]);
+  }
+
+  function removeEditableLine(index: number) {
+    setEditableLines((prev) => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
+  }
+
+  function startEditingPR() {
+    if (!pr) return;
+    setEditForm({
+      priority: pr.priority,
+      justification: pr.justification ?? "",
+      notes: pr.notes ?? "",
+    });
+    setEditableLines(pr.lines.map((line) => ({ ...line })));
+    setEditingPR(true);
+  }
+
+  function cancelEditingPR() {
+    if (!pr) return;
+    setEditForm({
+      priority: pr.priority,
+      justification: pr.justification ?? "",
+      notes: pr.notes ?? "",
+    });
+    setEditableLines(pr.lines.map((line) => ({ ...line })));
+    setEditingPR(false);
+  }
+
+  async function handleSaveEdit() {
+    if (!pr) return;
+    if (editableLines.some((line) => !line.description.trim() || !line.unit.trim())) {
+      setActionMsg({ type: "error", text: "Description and unit are required for every line." });
+      return;
+    }
+    if (editableLines.some((line) => Number(line.quantity) <= 0 || Number(line.estimatedPrice) <= 0)) {
+      setActionMsg({ type: "error", text: "Quantity and unit price must be greater than 0 for every line." });
+      return;
+    }
+    setSavingEdit(true);
+    setActionMsg(null);
+    try {
+      const res = await fetch(`/api/v1/procurement/requisitions/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          priority: editForm.priority,
+          justification: editForm.justification,
+          notes: editForm.notes,
+          lines: editableLines.map((line) => ({
+            id: line.id,
+            description: line.description,
+            specification: line.specification || null,
+            itemType: line.itemType,
+            inventoryItemId: line.inventoryItemId || null,
+            warehouseId: line.warehouseId || null,
+            assetCategoryId: line.assetCategoryId || null,
+            accountId: line.accountId || null,
+            budgetLineId: line.budgetLineId || null,
+            businessUnitId: line.businessUnitId || null,
+            costCenterId: line.costCenterId || null,
+            fundClassId: line.fundClassId || null,
+            projectId: line.projectId || null,
+            grantId: line.grantId || null,
+            unit: line.unit,
+            quantity: Number(line.quantity),
+            estimatedPrice: Number(line.estimatedPrice),
+          })),
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setActionMsg({ type: "success", text: "Requisition changes saved. You can submit it again now." });
+        setEditingPR(false);
+        await fetchPR();
+        setEditingPR(false);
+      } else {
+        setActionMsg({ type: "error", text: json.error?.message ?? "Save failed." });
+      }
+    } catch {
+      setActionMsg({ type: "error", text: "Network error." });
+    } finally {
+      setSavingEdit(false);
+    }
   }
 
   async function handleSubmitPR() {
@@ -356,6 +488,7 @@ export default function PRDetailPage() {
   }
 
   const canSubmit = ["DRAFT", "RETURNED"].includes(pr.status) && (userRole === "ADMIN" || pr.requestedById === userId);
+  const canEdit = canSubmit;
   const canReview = userRole === "ADMIN" && ["SUBMITTED", "REVIEWED"].includes(pr.status);
   const canCreatePO = userRole === "ADMIN" && pr.status === "APPROVED" && (!pr.linkedPOs || pr.linkedPOs.length === 0);
 
@@ -369,8 +502,25 @@ export default function PRDetailPage() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
+        {canEdit && !editingPR && (
+          <Button variant="outline" size="sm" onClick={startEditingPR} disabled={runningAction}>
+            <Pencil className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+        )}
+        {editingPR && (
+          <>
+            <Button variant="outline" size="sm" onClick={cancelEditingPR} disabled={savingEdit}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit}>
+              {savingEdit ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Save Changes
+            </Button>
+          </>
+        )}
         {canSubmit && (
-          <Button size="sm" onClick={handleSubmitPR} disabled={runningAction}>
+          <Button size="sm" onClick={handleSubmitPR} disabled={runningAction || editingPR}>
             {runningAction ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
             Submit
           </Button>
@@ -453,7 +603,24 @@ export default function PRDetailPage() {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Priority</p>
-                  <p className="font-medium">{pr.priority}</p>
+                  {editingPR ? (
+                    <Select
+                      value={editForm.priority}
+                      onValueChange={(priority) => setEditForm((prev) => ({ ...prev, priority }))}
+                    >
+                      <SelectTrigger className="mt-1 h-9">
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="LOW">LOW</SelectItem>
+                        <SelectItem value="MEDIUM">MEDIUM</SelectItem>
+                        <SelectItem value="HIGH">HIGH</SelectItem>
+                        <SelectItem value="URGENT">URGENT</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium">{pr.priority}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-muted-foreground">Total Estimate</p>
@@ -466,19 +633,33 @@ export default function PRDetailPage() {
                   </div>
                 )}
               </div>
-              {pr.justification && (
+              {(pr.justification || editingPR) && (
                 <>
                   <Separator />
                   <div>
                     <p className="text-muted-foreground text-sm mb-1">Justification</p>
-                    <p className="text-sm">{pr.justification}</p>
+                    {editingPR ? (
+                      <Textarea
+                        value={editForm.justification}
+                        onChange={(event) => setEditForm((prev) => ({ ...prev, justification: event.target.value }))}
+                      />
+                    ) : (
+                      <p className="text-sm">{pr.justification}</p>
+                    )}
                   </div>
                 </>
               )}
-              {pr.notes && (
+              {(pr.notes || editingPR) && (
                 <div>
                   <p className="text-muted-foreground text-sm mb-1">Notes</p>
-                  <p className="text-sm">{pr.notes}</p>
+                  {editingPR ? (
+                    <Textarea
+                      value={editForm.notes}
+                      onChange={(event) => setEditForm((prev) => ({ ...prev, notes: event.target.value }))}
+                    />
+                  ) : (
+                    <p className="text-sm">{pr.notes}</p>
+                  )}
                 </div>
               )}
               {pr.returnNote && (
@@ -510,29 +691,57 @@ export default function PRDetailPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Line Items</CardTitle>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="text-base">Line Items</CardTitle>
+                {editingPR && (
+                  <Button variant="outline" size="sm" onClick={addEditableLine}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Line
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
-              <Table>
+              <div className="overflow-x-auto">
+              <Table className={editingPR ? "min-w-[980px]" : undefined}>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>#</TableHead>
+                    <TableHead className="w-12">#</TableHead>
                     <TableHead>Description</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Unit</TableHead>
+                    <TableHead className="w-36">Type</TableHead>
+                    <TableHead className="w-32">Unit</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
                     <TableHead className="text-right">Unit Price</TableHead>
                     <TableHead className="text-right">Total</TableHead>
+                    {editingPR && <TableHead className="w-12" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pr.lines.map((line, idx) => (
+                  {(editingPR ? editableLines : pr.lines).map((line, idx) => (
                     <TableRow key={line.id}>
                       <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                       <TableCell>
-                        <p className="font-medium">{line.description}</p>
-                        {line.specification && (
-                          <p className="text-xs text-muted-foreground">{line.specification}</p>
+                        {editingPR ? (
+                          <div className="space-y-1">
+                            <Input
+                              value={line.description}
+                              onChange={(event) => updateEditableLine(idx, "description", event.target.value)}
+                              className="h-8 text-sm"
+                            />
+                            <Input
+                              value={line.specification ?? ""}
+                              onChange={(event) => updateEditableLine(idx, "specification", event.target.value)}
+                              className="h-8 text-sm"
+                              placeholder="Specification"
+                            />
+                          </div>
+                        ) : (
+                          <>
+                            <p className="font-medium">{line.description}</p>
+                            {line.specification && (
+                              <p className="text-xs text-muted-foreground">{line.specification}</p>
+                            )}
+                          </>
                         )}
                       </TableCell>
                       <TableCell>
@@ -540,24 +749,82 @@ export default function PRDetailPage() {
                           {line.itemType === "SERVICE_OR_EXPENSE" ? "Service/Expense" : line.itemType === "FIXED_ASSET" ? "Fixed Asset" : "Inventory"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{line.unit}</TableCell>
-                      <TableCell className="text-right font-mono">{Number(line.quantity)}</TableCell>
+                      <TableCell>
+                        {editingPR ? (
+                          <Input
+                            value={line.unit}
+                            onChange={(event) => updateEditableLine(idx, "unit", event.target.value)}
+                            className="h-8 min-w-20 text-sm"
+                          />
+                        ) : (
+                          line.unit
+                        )}
+                      </TableCell>
                       <TableCell className="text-right font-mono">
-                        {formatCurrency(Number(line.estimatedPrice), locale)}
+                        {editingPR ? (
+                          <Input
+                            type="number"
+                            min="0"
+                            value={Number(line.quantity)}
+                            onChange={(event) => updateEditableLine(idx, "quantity", Number(event.target.value))}
+                            className="h-8 min-w-24 text-right text-sm"
+                          />
+                        ) : (
+                          Number(line.quantity)
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {editingPR ? (
+                          <Input
+                            type="number"
+                            min="0"
+                            value={Number(line.estimatedPrice)}
+                            onChange={(event) => updateEditableLine(idx, "estimatedPrice", Number(event.target.value))}
+                            className="h-8 min-w-28 text-right text-sm"
+                          />
+                        ) : (
+                          formatCurrency(Number(line.estimatedPrice), locale)
+                        )}
                       </TableCell>
                       <TableCell className="text-right font-mono font-medium">
-                        {formatCurrency(Number(line.totalEstimate), locale)}
+                        {formatCurrency(
+                          editingPR
+                            ? Number(line.quantity) * Number(line.estimatedPrice)
+                            : Number(line.totalEstimate),
+                          locale
+                        )}
                       </TableCell>
+                      {editingPR && (
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => removeEditableLine(idx)}
+                            disabled={editableLines.length <= 1}
+                            aria-label="Remove line"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                   <TableRow>
-                    <TableCell colSpan={6} className="text-right font-medium">Total</TableCell>
+                    <TableCell colSpan={editingPR ? 6 : 6} className="text-right font-medium">Total</TableCell>
                     <TableCell className="text-right font-mono font-bold">
-                      {formatCurrency(Number(pr.totalEstimate), locale)}
+                      {formatCurrency(
+                        editingPR
+                          ? editableLines.reduce((sum, line) => sum + Number(line.quantity) * Number(line.estimatedPrice), 0)
+                          : Number(pr.totalEstimate),
+                        locale
+                      )}
                     </TableCell>
+                    {editingPR && <TableCell />}
                   </TableRow>
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </div>
