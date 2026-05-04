@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
+import { SearchableSelect } from "@/components/shared/searchable-select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -18,14 +19,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ArrowLeft, Plus, Trash2, Loader2, AlertTriangle, CheckCircle } from "lucide-react";
+  ArrowLeft,
+  Plus,
+  Trash2,
+  Loader2,
+  AlertTriangle,
+  CheckCircle,
+} from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 
 interface Project {
@@ -308,6 +308,54 @@ export default function NewRequisitionPage() {
     ? Number(selectedProject.totalBudget) - Number(selectedProject.amountSpent)
     : null;
 
+  const businessUnitOptions = useMemo(
+    () => businessUnits.map((bu) => ({ value: bu.id, label: `${bu.code} - ${bu.shortName ?? bu.name}` })),
+    [businessUnits],
+  );
+  const costCenterOptions = useMemo(
+    () =>
+      costCenters
+        .filter((cc) => !form.businessUnitId || cc.businessUnitId === form.businessUnitId)
+        .map((cc) => ({ value: cc.id, label: `${cc.code} - ${cc.name}` })),
+    [costCenters, form.businessUnitId],
+  );
+  const fundClassOptions = useMemo(
+    () => fundClasses.map((fc) => ({ value: fc.id, label: `${fc.code} - ${fc.name}` })),
+    [fundClasses],
+  );
+  const budgetOptions = useMemo(
+    () =>
+      matchingBudgets.map((budget) => ({
+        value: budget.id,
+        label: `${budget.budgetCode} - ${budget.name}`,
+        description: formatCurrency(Number(budget.totalAmount), locale),
+      })),
+    [matchingBudgets, locale],
+  );
+  const projectOptions = useMemo(
+    () => projects.map((p) => ({ value: p.id, label: `${p.projectNo} — ${p.name}` })),
+    [projects],
+  );
+  const inventoryOptions = useMemo(
+    () => inventoryItems.map((item) => ({ value: item.id, label: `${item.itemCode} - ${item.name}` })),
+    [inventoryItems],
+  );
+  const warehouseOptions = useMemo(
+    () => warehouses.map((wh) => ({ value: wh.id, label: `${wh.code} - ${wh.name}` })),
+    [warehouses],
+  );
+  const assetCategoryOptions = useMemo(
+    () => assetCategories.map((cat) => ({ value: cat.id, label: `${cat.code} - ${cat.name}` })),
+    [assetCategories],
+  );
+
+  function accountOptionsFor(itemType: PRLine["itemType"]) {
+    return accountOptionsForLine(accounts, itemType).map((account) => ({
+      value: account.id,
+      label: `${account.code} - ${account.name}`,
+    }));
+  }
+
   async function handleSubmit(submit: boolean) {
     setError(null);
     setBudgetWarning(null);
@@ -400,7 +448,7 @@ export default function NewRequisitionPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6">
       <PageHeader
         title="New Purchase Requisition"
         description="Fill in the details and add line items"
@@ -432,19 +480,20 @@ export default function NewRequisitionPage() {
         <CardHeader>
           <CardTitle className="text-base">Requisition Info</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="space-y-1.5">
-            <Label>Date</Label>
+            <Label htmlFor="pr-date">Date</Label>
             <Input
+              id="pr-date"
               type="date"
               value={form.date}
               onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Priority</Label>
+            <Label htmlFor="pr-priority">Priority</Label>
             <Select value={form.priority} onValueChange={(v) => setForm((f) => ({ ...f, priority: v }))}>
-              <SelectTrigger>
+              <SelectTrigger id="pr-priority">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -454,103 +503,77 @@ export default function NewRequisitionPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5 md:col-span-2">
-            <Label>Concern / Business Unit</Label>
-            <Select
+          <div className="space-y-1.5">
+            <Label htmlFor="pr-bu">Concern / Business Unit</Label>
+            <SearchableSelect
+              id="pr-bu"
+              options={businessUnitOptions}
               value={form.businessUnitId}
               onValueChange={(v) => setForm((f) => ({ ...f, businessUnitId: v, costCenterId: "", budgetId: "" }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select concern" />
-              </SelectTrigger>
-              <SelectContent>
-                {businessUnits.map((bu) => (
-                  <SelectItem key={bu.id} value={bu.id}>
-                    {bu.code} - {bu.shortName ?? bu.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Select concern"
+              searchPlaceholder="Search business units…"
+            />
           </div>
           <div className="space-y-1.5">
-            <Label>Cost Center</Label>
-            <Select
+            <Label htmlFor="pr-cc">Cost Center</Label>
+            <SearchableSelect
+              id="pr-cc"
+              options={costCenterOptions}
               value={form.costCenterId}
               onValueChange={(v) => setForm((f) => ({ ...f, costCenterId: v, budgetId: "" }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select cost center" />
-              </SelectTrigger>
-              <SelectContent>
-                {costCenters
-                  .filter((cc) => !form.businessUnitId || cc.businessUnitId === form.businessUnitId)
-                  .map((cc) => (
-                    <SelectItem key={cc.id} value={cc.id}>
-                      {cc.code} - {cc.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+              placeholder="Select cost center"
+              searchPlaceholder="Search cost centers…"
+            />
           </div>
           <div className="space-y-1.5">
-            <Label>Fund Class</Label>
-            <Select
+            <Label htmlFor="pr-fc">Fund Class</Label>
+            <SearchableSelect
+              id="pr-fc"
+              options={fundClassOptions}
               value={form.fundClassId}
               onValueChange={(v) => setForm((f) => ({ ...f, fundClassId: v, budgetId: "" }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select fund class" />
-              </SelectTrigger>
-              <SelectContent>
-                {fundClasses.map((fc) => (
-                  <SelectItem key={fc.id} value={fc.id}>
-                    {fc.code} - {fc.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Select fund class"
+              searchPlaceholder="Search fund classes…"
+            />
           </div>
-          <div className="space-y-1.5 md:col-span-2">
-            <Label>Approved Budget</Label>
-            <Select value={form.budgetId} onValueChange={(v) => setForm((f) => ({ ...f, budgetId: v }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select approved concern budget" />
-              </SelectTrigger>
-              <SelectContent>
-                {matchingBudgets.map((budget) => (
-                  <SelectItem key={budget.id} value={budget.id}>
-                    {budget.budgetCode} - {budget.name} ({formatCurrency(Number(budget.totalAmount), locale)})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-1.5">
+            <Label htmlFor="pr-budget">Approved Budget</Label>
+            <SearchableSelect
+              id="pr-budget"
+              options={budgetOptions}
+              value={form.budgetId}
+              onValueChange={(v) => setForm((f) => ({ ...f, budgetId: v }))}
+              placeholder="Select approved concern budget"
+              searchPlaceholder="Search budgets…"
+              emptyMessage={form.businessUnitId ? "No matching approved budget" : "Pick a concern first"}
+            />
             {form.businessUnitId && matchingBudgets.length === 0 && (
               <p className="text-xs text-amber-600">No approved/active matching budget found. Submission will carry a budget warning.</p>
             )}
           </div>
-          <div className="space-y-1.5 md:col-span-2">
-            <Label>Project <span className="text-muted-foreground text-xs">(optional)</span></Label>
-            <Select value={form.projectId} onValueChange={(v) => setForm((f) => ({ ...f, projectId: v }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select project" />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.projectNo} — {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedProject && (
+          <div className="space-y-1.5 lg:col-span-2">
+            <Label htmlFor="pr-project">
+              Project <span className="text-muted-foreground text-xs">(optional)</span>
+            </Label>
+            <SearchableSelect
+              id="pr-project"
+              options={projectOptions}
+              value={form.projectId}
+              onValueChange={(v) => setForm((f) => ({ ...f, projectId: v }))}
+              placeholder="Select project"
+              searchPlaceholder="Search projects…"
+            />
+            {selectedProject && remainingBudget !== null && (
               <p className="text-xs text-muted-foreground">
-                Available budget: <span className="font-medium">{formatCurrency(remainingBudget!, locale)}</span>
+                Available budget:{" "}
+                <span className="font-medium">{formatCurrency(remainingBudget, locale)}</span>
               </p>
             )}
           </div>
-          <div className="space-y-1.5 md:col-span-2">
-            <Label>Justification</Label>
+          <div className="space-y-1.5 md:col-span-2 lg:col-span-3">
+            <Label htmlFor="pr-justification">Justification</Label>
             <Textarea
+              id="pr-justification"
               value={form.justification}
               onChange={(e) => setForm((f) => ({ ...f, justification: e.target.value }))}
               placeholder="Why is this purchase needed?"
@@ -570,187 +593,212 @@ export default function NewRequisitionPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-          <Table className="min-w-[1120px] table-fixed">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[180px]">Description</TableHead>
-                <TableHead className="w-[180px]">Specification</TableHead>
-                <TableHead className="w-[240px]">Classification</TableHead>
-                <TableHead className="w-[140px]">GL Account</TableHead>
-                <TableHead className="w-[100px]">Unit</TableHead>
-                <TableHead className="w-[100px]">Qty</TableHead>
-                <TableHead className="w-[130px]">Unit Price (BDT)</TableHead>
-                <TableHead className="text-right w-[130px]">Total</TableHead>
-                <TableHead className="w-[60px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lines.map((line, idx) => (
-                <TableRow key={idx}>
-                  <TableCell className="align-top">
+        <CardContent className="space-y-3">
+          {lines.map((line, idx) => {
+            const lineTotal =
+              (Number(line.quantity) || 0) * (Number(line.estimatedPrice) || 0);
+            return (
+              <div
+                key={idx}
+                className="rounded-lg border bg-card p-4 space-y-4 relative"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Line {idx + 1}
+                  </span>
+                  {lines.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => removeLine(idx)}
+                      aria-label={`Remove line ${idx + 1}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`line-${idx}-desc`}>Description</Label>
                     <Input
+                      id={`line-${idx}-desc`}
                       value={line.description}
                       onChange={(e) => updateLine(idx, "description", e.target.value)}
                       placeholder="e.g. Laptop ThinkPad T14s"
-                      className="h-8 text-sm"
                     />
-                  </TableCell>
-                  <TableCell className="align-top">
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`line-${idx}-spec`}>
+                      Specification <span className="text-muted-foreground text-xs">(optional)</span>
+                    </Label>
                     <Input
+                      id={`line-${idx}-spec`}
                       value={line.specification}
                       onChange={(e) => updateLine(idx, "specification", e.target.value)}
-                      placeholder="Specification (optional)"
-                      className="h-8 text-sm"
+                      placeholder="Specification details"
                     />
-                  </TableCell>
-                  <TableCell className="align-top">
-                    <div className="space-y-1">
-                      <Select value={line.itemType} onValueChange={(v) => updateLine(idx, "itemType", v)}>
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ITEM_TYPE_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {line.itemType === "INVENTORY" && (
-                        <>
-                          <Select value={line.inventoryItemId} onValueChange={(v) => updateLine(idx, "inventoryItemId", v)}>
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Inventory item" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {inventoryItems.map((item) => (
-                                <SelectItem key={item.id} value={item.id}>
-                                  {item.itemCode} - {item.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Select value={line.warehouseId} onValueChange={(v) => updateLine(idx, "warehouseId", v)}>
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Warehouse" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {warehouses.map((warehouse) => (
-                                <SelectItem key={warehouse.id} value={warehouse.id}>
-                                  {warehouse.code} - {warehouse.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </>
-                      )}
-                      {line.itemType === "FIXED_ASSET" && (
-                        <>
-                          <Select value={line.assetCategoryId} onValueChange={(v) => updateLine(idx, "assetCategoryId", v)}>
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Asset category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {assetCategories.map((category) => (
-                                <SelectItem key={category.id} value={category.id}>
-                                  {category.code} - {category.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Select value={line.warehouseId} onValueChange={(v) => updateLine(idx, "warehouseId", v)}>
-                            <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Optional warehouse" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {warehouses.map((warehouse) => (
-                                <SelectItem key={warehouse.id} value={warehouse.id}>
-                                  {warehouse.code} - {warehouse.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="align-top">
-                    <Select value={line.accountId} onValueChange={(v) => updateLine(idx, "accountId", v)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="GL account" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`line-${idx}-itemType`}>Item Type</Label>
+                    <Select
+                      value={line.itemType}
+                      onValueChange={(v) => updateLine(idx, "itemType", v)}
+                    >
+                      <SelectTrigger id={`line-${idx}-itemType`}>
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {accountOptionsForLine(accounts, line.itemType).map((account) => (
-                          <SelectItem key={account.id} value={account.id}>
-                            {account.code} - {account.name}
+                        {ITEM_TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </TableCell>
-                  <TableCell className="align-top">
-                    <Select value={line.unit} onValueChange={(v) => updateLine(idx, "unit", v)}>
-                      <SelectTrigger className="h-8 text-sm">
+                  </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label htmlFor={`line-${idx}-account`}>GL Account</Label>
+                    <SearchableSelect
+                      id={`line-${idx}-account`}
+                      options={accountOptionsFor(line.itemType)}
+                      value={line.accountId}
+                      onValueChange={(v) => updateLine(idx, "accountId", v)}
+                      placeholder="Select GL account"
+                      searchPlaceholder="Search accounts…"
+                    />
+                  </div>
+
+                  {line.itemType === "INVENTORY" && (
+                    <>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <Label htmlFor={`line-${idx}-inv`}>Inventory Item</Label>
+                        <SearchableSelect
+                          id={`line-${idx}-inv`}
+                          options={inventoryOptions}
+                          value={line.inventoryItemId}
+                          onValueChange={(v) => updateLine(idx, "inventoryItemId", v)}
+                          placeholder="Select inventory item"
+                          searchPlaceholder="Search inventory…"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`line-${idx}-wh`}>Warehouse</Label>
+                        <SearchableSelect
+                          id={`line-${idx}-wh`}
+                          options={warehouseOptions}
+                          value={line.warehouseId}
+                          onValueChange={(v) => updateLine(idx, "warehouseId", v)}
+                          placeholder="Select warehouse"
+                          searchPlaceholder="Search warehouses…"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {line.itemType === "FIXED_ASSET" && (
+                    <>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <Label htmlFor={`line-${idx}-cat`}>Asset Category</Label>
+                        <SearchableSelect
+                          id={`line-${idx}-cat`}
+                          options={assetCategoryOptions}
+                          value={line.assetCategoryId}
+                          onValueChange={(v) => updateLine(idx, "assetCategoryId", v)}
+                          placeholder="Select asset category"
+                          searchPlaceholder="Search categories…"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`line-${idx}-wh-fa`}>
+                          Warehouse <span className="text-muted-foreground text-xs">(optional)</span>
+                        </Label>
+                        <SearchableSelect
+                          id={`line-${idx}-wh-fa`}
+                          options={warehouseOptions}
+                          value={line.warehouseId}
+                          onValueChange={(v) => updateLine(idx, "warehouseId", v)}
+                          placeholder="Optional warehouse"
+                          searchPlaceholder="Search warehouses…"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-3 border-t">
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`line-${idx}-unit`}>Unit</Label>
+                    <Select
+                      value={line.unit}
+                      onValueChange={(v) => updateLine(idx, "unit", v)}
+                    >
+                      <SelectTrigger id={`line-${idx}-unit`}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {UNIT_OPTIONS.map((u) => (
-                          <SelectItem key={u} value={u}>{u}</SelectItem>
+                          <SelectItem key={u} value={u}>
+                            {u}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </TableCell>
-                  <TableCell className="align-top">
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`line-${idx}-qty`}>Quantity</Label>
                     <Input
+                      id={`line-${idx}-qty`}
                       type="number"
                       min="1"
                       value={line.quantity}
                       onChange={(e) => updateLine(idx, "quantity", e.target.value)}
-                      className="h-8 w-20 text-sm tabular-nums"
+                      className="tabular-nums"
                     />
-                  </TableCell>
-                  <TableCell className="align-top">
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`line-${idx}-price`}>Unit Price (BDT)</Label>
                     <Input
+                      id={`line-${idx}-price`}
                       type="number"
                       min="0"
                       value={line.estimatedPrice}
                       onChange={(e) => updateLine(idx, "estimatedPrice", e.target.value)}
                       placeholder="0"
-                      className="h-8 text-sm"
+                      className="tabular-nums"
                     />
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm align-top pt-3">
-                    {formatCurrency((Number(line.quantity) || 0) * (Number(line.estimatedPrice) || 0), locale)}
-                  </TableCell>
-                  <TableCell className="align-top">
-                    {lines.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => removeLine(idx)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-muted-foreground">Line Total</Label>
+                    <div className="h-9 flex items-center px-3 rounded-md border bg-muted/30 font-mono text-sm tabular-nums">
+                      {formatCurrency(lineTotal, locale)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
 
-          <div className="flex justify-end mt-4 pt-4 border-t">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-4 border-t">
+            <Button variant="outline" size="sm" onClick={addLine}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add another line
+            </Button>
             <div className="text-right">
               <p className="text-sm text-muted-foreground">Total Estimate</p>
-              <p className="text-2xl font-bold font-mono">{formatCurrency(totalEstimate, locale)}</p>
+              <p className="text-2xl font-bold font-mono tabular-nums">
+                {formatCurrency(totalEstimate, locale)}
+              </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="flex justify-end gap-3">
+      <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
         <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
         <Button variant="outline" onClick={() => handleSubmit(false)} disabled={submitting || savingDraft || lines.length === 0}>
           {savingDraft
