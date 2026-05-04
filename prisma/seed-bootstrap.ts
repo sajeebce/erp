@@ -52,6 +52,53 @@ const STANDARD_ROLES = [
   },
 ]
 
+const DEMO_PASSWORD = 'SecurePass@2026!'
+
+const DEMO_USERS = [
+  {
+    roleName: 'ADMIN',
+    email: 'rahim@cssbd.org',
+    fullName: 'Abdur Rahim',
+    phone: '+8801712345678',
+  },
+  {
+    roleName: 'STAFF',
+    email: 'kamal@cssbd.org',
+    fullName: 'Kamal Ahmed',
+    phone: '+8801712345679',
+  },
+  {
+    roleName: 'STORE_MANAGER',
+    email: 'shakil@cssbd.org',
+    fullName: 'Shakil Ahmed',
+    phone: '+8801712345680',
+  },
+  {
+    roleName: 'PROGRAM_COORDINATOR',
+    email: 'program@cssbd.org',
+    fullName: 'Program Coordinator',
+    phone: '+8801712345681',
+  },
+  {
+    roleName: 'FINANCE_MANAGER',
+    email: 'finance@cssbd.org',
+    fullName: 'Finance Manager',
+    phone: '+8801712345682',
+  },
+  {
+    roleName: 'EXECUTIVE_DIRECTOR',
+    email: 'ed@cssbd.org',
+    fullName: 'Executive Director',
+    phone: '+8801712345683',
+  },
+  {
+    roleName: 'PROJECT_MANAGER',
+    email: 'fatema@cssbd.org',
+    fullName: 'Fatema Khatun',
+    phone: '+8801712345684',
+  },
+]
+
 async function main() {
   console.log('🌱 Bootstrap seeding...')
 
@@ -123,23 +170,59 @@ async function main() {
     }
   }
 
-  // Upsert user
-  let user = await prisma.user.findFirst({ where: { email: 'rahim@cssbd.org' } })
-  if (!user) {
-    user = await prisma.user.create({
-    data: {
-      email: 'rahim@cssbd.org',
-      passwordHash: hashSync('SecurePass@2026!', 10),
-      fullName: 'Abdur Rahim',
-      phone: '+8801712345678',
-      organizationId: org.id,
-      roleId: role.id,
-      status: 'ACTIVE',
-    }
+  const roles = await prisma.role.findMany({
+    where: { organizationId: org.id },
+    select: { id: true, name: true },
   })
-    console.log('✓ Admin user created:', user.email)
-  } else {
-    console.log('✓ Admin user already exists')
+  const roleByName = new Map(roles.map((item) => [item.name, item]))
+  const demoPasswordHash = hashSync(DEMO_PASSWORD, 10)
+
+  for (const demoUser of DEMO_USERS) {
+    const demoRole = roleByName.get(demoUser.roleName)
+    if (!demoRole) {
+      console.log('SKIP: demo user role missing:', demoUser.roleName)
+      continue
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: {
+        organizationId_email: {
+          organizationId: org.id,
+          email: demoUser.email,
+        },
+      },
+    })
+
+    if (existingUser) {
+      await prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          passwordHash: demoPasswordHash,
+          fullName: demoUser.fullName,
+          phone: demoUser.phone,
+          roleId: demoRole.id,
+          status: 'ACTIVE',
+          lockedUntil: null,
+          failedLoginCount: 0,
+          mustChangePassword: false,
+        },
+      })
+      console.log('Demo user already exists:', demoUser.email, `(${demoUser.roleName})`)
+    } else {
+      await prisma.user.create({
+        data: {
+          email: demoUser.email,
+          passwordHash: demoPasswordHash,
+          fullName: demoUser.fullName,
+          phone: demoUser.phone,
+          organizationId: org.id,
+          roleId: demoRole.id,
+          status: 'ACTIVE',
+          mustChangePassword: false,
+        },
+      })
+      console.log('Demo user created:', demoUser.email, `(${demoUser.roleName})`)
+    }
   }
 
   // Upsert fiscal year

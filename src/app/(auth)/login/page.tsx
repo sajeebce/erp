@@ -4,11 +4,24 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { Landmark, Eye, EyeOff, Loader2, Copy } from 'lucide-react'
+import { Landmark, Eye, EyeOff, Loader2, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+
+const DEMO_ORG_SLUG = 'cssbd'
+const DEMO_PASSWORD = 'SecurePass@2026!'
+
+const DEMO_ACCOUNTS = [
+  { role: 'ADMIN', label: 'Admin', email: 'rahim@cssbd.org' },
+  { role: 'STAFF', label: 'Staff', email: 'kamal@cssbd.org' },
+  { role: 'STORE_MANAGER', label: 'Store Manager', email: 'shakil@cssbd.org' },
+  { role: 'PROGRAM_COORDINATOR', label: 'Program Coordinator', email: 'program@cssbd.org' },
+  { role: 'FINANCE_MANAGER', label: 'Finance Manager', email: 'finance@cssbd.org' },
+  { role: 'EXECUTIVE_DIRECTOR', label: 'Executive Director', email: 'ed@cssbd.org' },
+  { role: 'PROJECT_MANAGER', label: 'Project Manager', email: 'fatema@cssbd.org' },
+]
 
 export default function LoginPage() {
   const router = useRouter()
@@ -19,6 +32,24 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [copiedRole, setCopiedRole] = useState('')
+
+  async function applyDemoAccount(account: (typeof DEMO_ACCOUNTS)[number]) {
+    setOrgSlug(DEMO_ORG_SLUG)
+    setEmail(account.email)
+    setPassword(DEMO_PASSWORD)
+    setError('')
+
+    try {
+      await navigator.clipboard.writeText(
+        `Organization: ${DEMO_ORG_SLUG}\nEmail: ${account.email}\nPassword: ${DEMO_PASSWORD}`
+      )
+      setCopiedRole(account.role)
+      window.setTimeout(() => setCopiedRole(''), 1500)
+    } catch {
+      setCopiedRole('')
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -52,7 +83,7 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-lg">
       <CardHeader className="text-center space-y-2">
         <div className="flex justify-center mb-2">
           <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center">
@@ -65,23 +96,6 @@ export default function LoginPage() {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <CardContent className="space-y-4">
-          <button
-            type="button"
-            onClick={() => {
-              setOrgSlug('cssbd')
-              setEmail('rahim@cssbd.org')
-              setPassword('SecurePass@2026!')
-              setError('')
-            }}
-            className="w-full flex items-center justify-between rounded-lg border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-sm transition-colors hover:bg-primary/10 hover:border-primary/60"
-          >
-            <div className="flex flex-col items-start gap-0.5">
-              <span className="font-medium text-foreground">{t('login.demoAccount')}</span>
-              <span className="text-xs text-muted-foreground">{t('login.demoDesc')}</span>
-            </div>
-            <Copy className="h-4 w-4 text-primary shrink-0" />
-          </button>
-
           {error && (
             <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
               {error}
@@ -142,6 +156,43 @@ export default function LoginPage() {
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">{t('login.demoAccount')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {DEMO_ORG_SLUG} / {DEMO_PASSWORD}
+                </p>
+              </div>
+              <Copy className="h-4 w-4 shrink-0 text-primary" />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {DEMO_ACCOUNTS.map((account) => {
+                const copied = copiedRole === account.role
+
+                return (
+                  <button
+                    key={account.role}
+                    type="button"
+                    onClick={() => applyDemoAccount(account)}
+                    className="flex min-h-14 items-center justify-between gap-2 rounded-md border bg-background px-3 py-2 text-left text-sm transition-colors hover:border-primary/60 hover:bg-primary/5"
+                    aria-label={`Copy ${account.label} login credentials`}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-foreground">{account.label}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{account.email}</span>
+                    </span>
+                    {copied ? (
+                      <Check className="h-4 w-4 shrink-0 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4 shrink-0 text-primary" />
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>
         </CardContent>

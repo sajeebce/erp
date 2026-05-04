@@ -173,8 +173,8 @@ export async function DELETE(
       return apiNotFound('Role not found')
     }
 
-    if (role.isSystem) {
-      return apiBadRequest('Cannot delete system roles')
+    if (role.name === 'ADMIN') {
+      return apiBadRequest('Cannot delete the ADMIN role')
     }
 
     if (role._count.users > 0) {

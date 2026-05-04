@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -17,16 +19,21 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Shield, Users, Loader2, CheckCircle, Wand2, Trash2 } from "lucide-react";
+import { Plus, Shield, Users, Loader2, CheckCircle, Wand2, Trash2, Pencil, LayoutGrid, List } from "lucide-react";
+import type { RoleListItem } from "@/components/settings/role-edit-form";
 
-interface Role {
-  id: string;
-  name: string;
-  description: string | null;
-  isSystem: boolean;
-  userCount: number;
-  permissionCount: number;
+interface Role extends RoleListItem {
   createdAt: string;
+}
+
+function canDeleteRole(role: Role) {
+  return role.name !== "ADMIN" && role.userCount === 0;
+}
+
+function getDeleteTitle(role: Role) {
+  if (role.name === "ADMIN") return "ADMIN is the primary role and cannot be deleted.";
+  if (role.userCount > 0) return "Reassign users before deleting this role.";
+  return `Delete ${role.name}`;
 }
 
 export default function RolesPage() {
@@ -34,6 +41,7 @@ export default function RolesPage() {
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [seeding, setSeeding] = useState(false);
@@ -50,7 +58,10 @@ export default function RolesPage() {
     setLoading(false);
   }
 
-  useEffect(() => { fetchRoles(); }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchRoles();
+  }, []);
 
   async function handleCreate() {
     if (!formName.trim()) return;
@@ -137,16 +148,44 @@ export default function RolesPage() {
         </Alert>
       )}
 
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm text-muted-foreground">
+          {roles.length} role{roles.length !== 1 ? "s" : ""} configured
+        </div>
+        <div className="inline-flex rounded-md border bg-background p-1">
+          <Button
+            type="button"
+            variant={viewMode === "cards" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-8 gap-2"
+            onClick={() => setViewMode("cards")}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            Cards
+          </Button>
+          <Button
+            type="button"
+            variant={viewMode === "table" ? "secondary" : "ghost"}
+            size="sm"
+            className="h-8 gap-2"
+            onClick={() => setViewMode("table")}
+          >
+            <List className="h-4 w-4" />
+            Table
+          </Button>
+        </div>
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin mr-2" />
           Loading roles...
         </div>
-      ) : (
+      ) : viewMode === "cards" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {roles.length === 0 ? (
             <div className="col-span-3 text-center py-12 text-muted-foreground">
-              No roles found. Click "Seed Standard Roles" to create STORE_MANAGER and REQUESTER.
+              No roles found. Click Seed Standard Roles to create standard CSS roles.
             </div>
           ) : (
             roles.map((role) => (
@@ -159,21 +198,35 @@ export default function RolesPage() {
                         <Badge variant="secondary" className="text-[10px]">System</Badge>
                       )}
                     </CardTitle>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Users className="h-3 w-3" />
-                      <span>{role.userCount}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Users className="h-3 w-3" />
+                        <span>{role.userCount}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        asChild
+                        title="Edit role"
+                      >
+                        <Link href={`/settings/roles/${role.id}`}>
+                          <Pencil className="h-4 w-4" />
+                        </Link>
+                      </Button>
                     </div>
                   </div>
                   {role.description && (
                     <CardDescription>{role.description}</CardDescription>
                   )}
-                  {!role.isSystem && role.userCount === 0 && (
+                  {role.name !== "ADMIN" && (
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-destructive hover:text-destructive mt-1"
+                      className="h-7 w-7 text-destructive hover:text-destructive mt-1 disabled:opacity-40"
                       onClick={() => handleDelete(role)}
-                      disabled={deletingId === role.id}
+                      disabled={deletingId === role.id || !canDeleteRole(role)}
+                      title={getDeleteTitle(role)}
                     >
                       {deletingId === role.id
                         ? <Loader2 className="h-4 w-4 animate-spin" />
@@ -191,6 +244,79 @@ export default function RolesPage() {
               </Card>
             ))
           )}
+        </div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Role</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="text-right">Permissions</TableHead>
+                <TableHead className="text-right">Users</TableHead>
+                <TableHead className="w-24 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {roles.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                    No roles found. Click Seed Standard Roles to create standard CSS roles.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                roles.map((role) => (
+                  <TableRow key={role.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{role.name}</span>
+                        {role.isSystem && (
+                          <Badge variant="secondary" className="text-[10px]">System</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[360px] whitespace-normal text-muted-foreground">
+                      {role.description || "No description"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {role.permissionCount} permission{role.permissionCount !== 1 ? "s" : ""}
+                    </TableCell>
+                    <TableCell className="text-right">{role.userCount}</TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          asChild
+                          title="Edit role"
+                        >
+                          <Link href={`/settings/roles/${role.id}`}>
+                            <Pencil className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        {role.name !== "ADMIN" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive disabled:opacity-40"
+                            onClick={() => handleDelete(role)}
+                            disabled={deletingId === role.id || !canDeleteRole(role)}
+                            title={getDeleteTitle(role)}
+                          >
+                            {deletingId === role.id
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <Trash2 className="h-4 w-4" />
+                            }
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
       )}
 
@@ -228,6 +354,7 @@ export default function RolesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

@@ -51,13 +51,23 @@ async function main() {
       continue
     }
 
-    await prisma.employee.update({
-      where: { id: employee.id },
-      data: {
-        userId: user.id,
-        fullName: link.fullName,
-      },
-    })
+    await prisma.$transaction([
+      prisma.employee.updateMany({
+        where: {
+          organizationId: org.id,
+          userId: user.id,
+          id: { not: employee.id },
+        },
+        data: { userId: null },
+      }),
+      prisma.employee.update({
+        where: { id: employee.id },
+        data: {
+          userId: user.id,
+          fullName: link.fullName,
+        },
+      }),
+    ])
 
     console.log(`Linked ${link.email} -> ${link.employeeNo} (${link.fullName})`)
   }
