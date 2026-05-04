@@ -115,12 +115,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return apiBadRequest(`Insufficient bank/cash balance. Available: ${Number(bankAccount.currentBalance).toFixed(2)}`)
     }
 
-    const apAccount = pickAccount(accounts.filter((account) => account.type === 'LIABILITY'), '2101', /accounts payable|supplier|sundry creditor/i)
+    const apAccount = pickAccount(accounts.filter((account) => account.type === 'LIABILITY'), '201002', /accounts payable|sundry creditor|bills payable|supplier/i)
     const tdsAccount = tdsAmount > 0
-      ? pickAccount(accounts.filter((account) => account.type === 'LIABILITY'), '2109', /tds payable|tax payable/i)
+      ? pickAccount(accounts.filter((account) => account.type === 'LIABILITY'), '201008', /tds payable|tax payable|withholding tax|advance collection.*income tax/i)
       : null
     const vdsAccount = vdsAmount > 0
-      ? pickAccount(accounts.filter((account) => account.type === 'LIABILITY'), '2108', /vds payable|vat payable/i)
+      ? pickAccount(accounts.filter((account) => account.type === 'LIABILITY'), '201010', /vds payable|vat payable|withholding vat|collection against vat/i)
       : null
     const bankGlAccount = bankAccount.glAccount && bankAccount.glAccount.isActive && !bankAccount.glAccount.isGroup
       ? bankAccount.glAccount
@@ -138,8 +138,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       bankAccount.type === 'CASH' ? 'voucher_cv' : 'voucher_bv'
     )
     const voucherType = bankAccount.type === 'CASH' ? 'CASH' : 'BANK'
-    const newOutstanding = Math.round((outstanding - amount) * 100) / 100
-    const newStatus = newOutstanding <= 0 ? 'PAID' : 'PARTIALLY_PAID'
 
     const result = await prisma.$transaction(async (tx) => {
       const freshInvoice = await tx.vendorInvoice.findFirst({
@@ -153,6 +151,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       if (amount > Number(freshInvoice.outstandingAmount)) {
         throw new Error(`Payment amount exceeds invoice outstanding amount (${Number(freshInvoice.outstandingAmount).toFixed(2)})`)
       }
+
+      // Compute next status from the freshly-read outstanding so concurrent payments
+      // don't leave the invoice PARTIALLY_PAID after outstanding hits 0.
+      const newOutstanding = Math.round((Number(freshInvoice.outstandingAmount) - amount) * 100) / 100
+      const newStatus = newOutstanding <= 0 ? 'PAID' : 'PARTIALLY_PAID'
 
       const payment = await tx.vendorPayment.create({
         data: {
@@ -268,7 +271,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
       })
 
-      return { payment, journalEntry, voucher }
+      return { payment, journalEntry, voucher, newStatus, newOutstanding }
     })
 
     const auditCtx = getAuditContext(request)
@@ -304,8 +307,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       entryNo: result.journalEntry.entryNo,
       voucherId: result.voucher.id,
       voucherNo: result.voucher.voucherNo,
-      invoiceStatus: newStatus,
-      invoiceOutstandingAmount: newOutstanding,
+      invoiceStatus: result.newStatus,
+      invoiceOutstandingAmount: result.newOutstanding,
     })
   } catch (error) {
     return handleRouteError(error)

@@ -34,6 +34,8 @@ export const navigation: NavItem[] = [
       { title: "items.chartOfAccounts", url: "/finance/chart-of-accounts" },
       { title: "items.journalEntries", url: "/finance/journal-entries" },
       { title: "items.vouchers", url: "/finance/vouchers" },
+      { title: "items.vendorInvoices", url: "/finance/vendor-invoices" },
+      { title: "items.payments", url: "/finance/payments" },
       { title: "items.bankReconciliation", url: "/finance/bank-reconciliation" },
       { title: "items.bankCash", url: "/finance/bank-cash" },
       { title: "items.financialReports", url: "/finance/financial-reports" },

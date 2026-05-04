@@ -1,12 +1,11 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
-import { requireAuthFromRequest } from '@/lib/auth'
+import { requireRoleFromRequest } from '@/lib/auth'
 import { logAudit, getAuditContext } from '@/lib/audit'
-import { processApproval, startApproval } from '@/lib/approval-engine'
+import { startApproval } from '@/lib/approval-engine'
 import {
   apiSuccess,
   apiBadRequest,
-  apiForbidden,
   apiNotFound,
   handleRouteError,
 } from '@/lib/api-response'
@@ -19,10 +18,8 @@ const VENDOR_INVOICE_WORKFLOW_NAME = 'Vendor Invoice Approval'
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const auth = await requireAuthFromRequest(request)
+    const auth = await requireRoleFromRequest(request, ['ADMIN'])
     const { id } = await params
-    const body = await request.json().catch(() => ({}))
-    const note = typeof body.note === 'string' ? body.note.trim() : ''
 
     const invoice = await prisma.vendorInvoice.findFirst({
       where: { id, organizationId: auth.organizationId, deletedAt: null },
@@ -37,7 +34,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (!invoice) return apiNotFound('Vendor invoice not found')
     if (invoice.status !== 'MATCHED' && invoice.status !== 'SUBMITTED') {
-      return apiBadRequest(`Only MATCHED or SUBMITTED invoices can be approved. Current status: ${invoice.status}`)
+      return apiBadRequest(`Only MATCHED or SUBMITTED invoices can be submitted for approval. Current status: ${invoice.status}`)
     }
 
     const approval = await startApproval({
@@ -49,26 +46,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       amount: Number(invoice.netPayable),
     })
 
-    let approvalResult
-    try {
-      approvalResult = await processApproval(approval.instanceId, auth.userId, 'APPROVE', note || undefined)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Approval failed'
-      if (message.startsWith('Forbidden:')) return apiForbidden(message.replace('Forbidden: ', ''))
-      return apiBadRequest(message)
-    }
-
-    const isFinalApproval = approvalResult.isComplete && approvalResult.status === 'APPROVED'
-    const now = new Date()
-    const nextStatus = isFinalApproval ? 'APPROVED' : 'SUBMITTED'
-
     const updated = await prisma.vendorInvoice.update({
       where: { id },
       data: {
-        status: nextStatus,
-        approvedById: isFinalApproval ? auth.userId : null,
-        approvedAt: isFinalApproval ? now : null,
-        notes: note || undefined,
+        status: 'SUBMITTED',
       },
       include: { grns: true, payments: true },
     })
@@ -77,23 +58,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     await logAudit({
       organizationId: auth.organizationId,
       userId: auth.userId,
-      action: 'APPROVE',
+      action: 'UPDATE',
       module: 'FINANCE',
       resource: 'VendorInvoice',
       resourceId: id,
-      description: isFinalApproval
-        ? `Approved vendor invoice ${invoice.invoiceNo}`
-        : `Approved workflow step ${approval.currentStep} for vendor invoice ${invoice.invoiceNo}`,
+      description: `Submitted vendor invoice ${invoice.invoiceNo} for approval`,
       oldValues: { status: invoice.status },
-      newValues: {
-        status: nextStatus,
-        approvalInstanceId: approvalResult.instanceId,
-        approvalStep: approval.currentStep,
-      },
+      newValues: { status: 'SUBMITTED', approvalInstanceId: approval.instanceId },
       ...auditCtx,
     })
 
-    return apiSuccess({ ...updated, approval: approvalResult })
+    return apiSuccess({ ...updated, approval })
   } catch (error) {
     return handleRouteError(error)
   }

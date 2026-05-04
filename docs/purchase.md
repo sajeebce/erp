@@ -358,10 +358,14 @@ Status: implemented for the backend vendor invoice and AP payment settlement flo
 Phase 8 implementation update:
 
 - Added `VendorInvoice`, `VendorInvoiceGrn`, and `VendorPayment` finance tables plus migration `20260429090000_phase8_vendor_invoice_payment`.
-- Added Admin-only APIs under `/api/v1/finance/vendor-invoices` for listing, matching/creating invoices, detail view, approval, rejection, and payments.
+- Admin-only APIs under `/api/v1/finance/vendor-invoices` for listing, matching/creating invoices, detail view, submit, approve, reject, cancel, and payments.
+- Top-level `/api/v1/finance/payments` list and detail endpoints expose vendor payments alongside vouchers and journal entries.
 - Three-way matching blocks duplicate vendor invoice numbers, invoices without accepted GRNs, GRNs that are already linked to another active invoice, and invoice gross amounts above the accepted GRN value calculated from PO unit prices.
-- Payment posting creates approved journal entries and bank/cash vouchers, supports partial settlement, reduces selected bank account balance by the net paid amount, and posts optional TDS/VDS payable lines.
-- Verified with curl and DB queries against local CSS demo data: Staff invoice access returned 403, over-invoicing was rejected, duplicate invoice number was rejected, invoice `INV-PH8-084657` moved from `MATCHED` to `APPROVED` to `PARTIALLY_PAID` to `PAID`, payments `VP-2026-0001` and `VP-2026-0002` created balanced journal entries `JE-2026-015` and `JE-2026-016`, bank vouchers `BV-2026-002` and `BV-2026-003` were linked, and SB-MOTHER balance reduced by the net disbursement.
+- Payment posting creates approved journal entries and bank/cash vouchers, supports partial settlement, reduces selected bank account balance by the net paid amount, and posts optional TDS/VDS payable lines. The JE has a unique `(sourceModule, sourceId)` index so duplicate posting is blocked.
+- Approval is now wired through the shared approval engine (`startApproval` + `processApproval`); Settings > Approval Workflows seeds default single-step ADMIN workflows for `VENDOR_INVOICE` and `PAYMENT_VOUCHER` via `prisma/seed-bootstrap.ts`. The engine enforces approver role server-side and tolerates additional approver tiers without code change.
+- UI added under `/finance/vendor-invoices` (list/new/detail with submit/approve/reject/cancel/record-payment actions) and `/finance/payments` (list + detail with linked JE and bank balance). Navigation entries added between Vouchers and Bank Reconciliation.
+- Verified with `prisma/smoke-phase8.ts` end-to-end: 26 assertions pass covering happy-path, over-invoice rejection, duplicate invoice number, multi-GRN matching, partial payment progression, TDS+VDS four-leg JE balance, idempotent re-pay rejection, and APPROVED-then-cancel transition.
+- Bank reconciliation auto-match continues to work: the payment JE writes a CR line to the bank's GL account (`304001 Cash at Bank Head Office`) which the existing `/api/v1/finance/bank-reconciliation/[id]/auto-match` flow already pulls from `JournalEntryLine` for matching against imported bank statement entries — no schema change needed.
 
 ## Browser Test Plan
 
@@ -723,113 +727,189 @@ Steps:
 
 ### Test Case 9: Vendor invoice, payment, and AP settlement
 
-Scenario: Verify the purchase is financially closed after GRN posting. These tests should run after Test Case 1 or Test Case 2 has produced an accepted GRN and a GRN accounting entry.
+Scenario: Verify the purchase is financially closed after GRN posting. The Phase 8 backend has been smoke-tested end-to-end (`pnpm tsx --env-file=.env prisma/smoke-phase8.ts` — 26 assertions pass). The browser tests below exercise the UI for the same flow.
 
-Test 9a: Happy-path full payment
+> Common preconditions (apply to every sub-test):
+> - Dev server running at `http://localhost:3000` (`pnpm exec next dev --webpack --port 3000`).
+> - Login URL: `http://localhost:3000/login`. Org slug: `cssbd`. Admin: `rahim@cssbd.org` / `SecurePass@2026!`.
+> - Phase 1–7 already executed at least once so an APPROVED PO exists with at least one ACCEPTED or PARTIAL GRN whose accounting entry has been posted (TC1 or TC2 produces this).
+> - At least one active bank account with a linked GL account exists at Finance > Bank & Cash. The seeded `SB-MOTHER` (Sonali Bank — NGOAB Mother Account, opening balance BDT 5,000,000) maps to GL `304001 Cash at Bank Head Office` and is the recommended target.
+> - Standard COA is loaded (`pnpm db:seed:all`). The payment route picks: AP = `201002 Bills Payable`, TDS Payable = `201008 Advance Collection (Income Tax)`, VDS Payable = `201010 Collection Against VAT`.
 
-Example:
+Test 9a: Happy-path single-invoice full payment with 7.5% TDS
 
-- Vendor invoice: `INV-CSS-001`
-- Related PO: the PO created from the approved PR
-- Related GRN: the accepted GRN
-- Invoice amount: same as accepted GRN amount
-- Payment method: bank transfer
+Prerequisite: any APPROVED PO and one accepted+posted GRN whose accepted amount = BDT 10,000 (e.g. TC1 toner of qty 5 × BDT 2,000). Run TC1 once if no GRN is available.
 
-Steps:
+1. Login as Admin (`rahim@cssbd.org`).
+2. Click **Finance > Vendor Invoices** in the sidebar; URL becomes `http://localhost:3000/finance/vendor-invoices`.
+3. Click **New Invoice** (top right). URL becomes `/finance/vendor-invoices/new`.
+4. Fill the form:
+   - Vendor: the vendor from the prepared PO (only approved+active vendors appear).
+   - Purchase order: the PO whose status is `ISSUED`/`PARTIALLY_RECEIVED`/`COMPLETED`.
+   - Goods Receipts: tick the single accepted GRN (only `ACCEPTED`/`PARTIAL` GRNs whose accounting JE is `APPROVED` are listed).
+   - Vendor invoice no: `INV-9A-001`.
+   - Invoice date: today.
+   - Gross amount: `10000`.
+   - TDS rate (%): `7.5`. The form shows TDS amount auto-calc to `750`.
+   - VDS rate (%): `0`.
+5. Click **Match & save**.
+6. Expected:
+   - Browser navigates to `/finance/vendor-invoices/<id>`.
+   - Header status badge: `MATCHED`.
+   - Summary panel shows: Gross 10,000 / TDS 750 / VDS 0 / Net payable 9,250 / Paid 0 / Outstanding 10,000.
+7. Click **Approve** on the detail page. (You may also click **Submit for approval** first — the workflow is single-step ADMIN, so `/submit` then `/approve` and `/approve` directly both transition to `APPROVED`.)
+8. Expected:
+   - Status badge becomes `APPROVED`.
+   - **Record payment** button appears.
+9. Click **Record payment**. In the dialog:
+   - Payment date: today.
+   - Method: `Bank transfer`.
+   - Bank/cash account: `SB-MOTHER — Sonali Bank - NGOAB Mother Account (BDT 5,000,000)`.
+   - Amount: `10000`. The dialog auto-splits TDS=750 and VDS=0 proportionally — leave defaults.
+   - Reference: `BANK-TXN-9A-001`.
+10. Click **Post payment**.
+11. Expected on detail page:
+    - Status badge becomes `PAID`. Outstanding becomes `0`.
+    - Payments table now has one row with payment number `VP-2026-NNNN` (auto-generated).
+    - Click the payment row → navigates to `/finance/payments/<id>`.
+12. On the payment detail page, expected:
+    - Status badge `APPROVED`.
+    - Linked Voucher: `BV-2026-NNNN` (clickable into `/finance/vouchers/<id>`).
+    - Linked Journal entry: `JE-2026-NNNN`.
+    - Bank balance after: `4,990,750` (5,000,000 − 9,250 net disbursed).
+    - "Journal entry lines" table:
+      - DR `201002 Bills Payable` 10,000.00 / 0
+      - CR `304001 Cash at Bank Head Office` 0 / 9,250.00
+      - CR `201008 Advance Collection (Income Tax)` 0 / 750.00
+      - Totals row: 10,000.00 / 10,000.00 (balanced).
+13. Click **Finance > Vouchers**. Expected: a new `BV-2026-NNNN` row dated today, type `BANK`, amount `9,250.00`, status `APPROVED`.
+14. Click **Finance > Journal Entries**. Expected: the `JE-2026-NNNN` row, status `APPROVED`, source `VENDOR_PAYMENT`.
+15. Click **Finance > Bank & Cash**. Expected: SB-MOTHER current balance shows `4,990,750.00`.
+16. Click **Finance > Bank Reconciliation**, open or create a reconciliation for the SB-MOTHER period containing today, click **Auto match** (or refresh). Expected: the new payment JE line is available for matching against bank statement entries.
+17. Click **Finance > Financial Reports > Trial Balance** (or filter by the GL accounts). Expected:
+    - `201002 Bills Payable`: total credit reduced by 10,000 (the GRN AP credit is netted out by today's payment debit).
+    - `304001 Cash at Bank Head Office`: credit 9,250 today.
+    - `201008 Advance Collection (Income Tax)`: credit 750 today (will clear when withheld tax is remitted to NBR).
 
-1. Login as Finance/Admin.
-2. Open Finance > Vouchers or the future Vendor Invoices/AP Invoices page.
-3. Create vendor invoice:
-   - Vendor: same vendor from PO
-   - PO: selected PO
-   - GRN: selected accepted GRN
-   - Invoice No: `INV-CSS-001`
-   - Invoice Date: today
-   - Invoice Amount: accepted GRN amount
-4. Expected invoice matching output:
-   - PO quantity/price, GRN accepted quantity, and invoice amount match.
-   - Invoice status becomes `MATCHED` or `SUBMITTED`, depending on final workflow.
-5. Approve the invoice/payment request through the configured workflow.
-6. Expected approval output:
-   - Invoice status becomes `APPROVED`.
-   - Audit trail records approver, timestamp, and notes.
-7. Create payment voucher:
-   - Payment method: bank transfer
-   - Bank account: selected active bank account
-   - Amount: full outstanding invoice amount
-   - Reference: `BANK-TXN-001`
-   - Withholding: select applicable TDS/VDS rate from rate table (or 0% if exempt)
-8. Post/approve payment.
-9. Expected payment accounting output:
-   - A payment JE or voucher-linked JE is created.
-   - Debit Accounts Payable for the full invoice amount (gross).
-   - Credit selected Bank/Cash account for the **net** amount disbursed.
-   - Credit TDS Payable / VDS Payable for any withheld tax (zero legs allowed when withholding rate is 0).
-   - JE balances: DR AP = CR Bank + CR TDS + CR VDS.
-   - Invoice status becomes `PAID`.
-   - Outstanding payable becomes `0`.
-10. Open Finance > Bank & Cash.
-11. Expected bank/cash output:
-    - Selected bank account balance decreases by the **net paid** amount, not the gross invoice amount.
-    - Payment transaction is visible with vendor/invoice reference.
-12. Open Finance > Bank Reconciliation.
-13. Expected reconciliation output:
-    - Payment (net amount) is available for matching against bank statement/import.
-14. Open Finance > Financial Reports.
-15. Expected report output:
-    - Accounts Payable created at GRN posting is cleared by payment.
-    - Bank/Cash decreases by net.
-    - TDS Payable / VDS Payable liability appears on balance sheet (cleared later when remitted to NBR).
-    - Expense/Inventory/Asset recognition remains from the GRN accounting entry, not duplicated by payment.
+Test 9b: Over-invoice rejection (three-way match)
 
-Test 9b: Over-invoice rejection (three-way matching)
+Prerequisite: any APPROVED PO and one accepted+posted GRN whose accepted amount = X (e.g. BDT 10,000 from TC1). Do not reuse the GRN from TC9a — pick a different one or set up a fresh chain via TC1.
 
-1. Repeat steps 1–2 of Test 9a.
-2. Create a vendor invoice for the same PO/GRN, but enter Invoice Amount **higher** than the accepted GRN amount (e.g. GRN accepted BDT 10,000 but invoice claims BDT 12,000).
-3. Expected output:
-   - System rejects the invoice or marks it `OVER_INVOICED` and blocks approval.
-   - Error message names the variance and the relevant GRN/PO line.
-   - No `MATCHED` status is allowed until the variance is resolved (credit note, additional GRN, or invoice correction).
+1. Login as Admin.
+2. Open `/finance/vendor-invoices/new`.
+3. Fill the form with the prepared vendor / PO / GRN.
+4. Vendor invoice no: `INV-9B-OVER`.
+5. Gross amount: `12000` (deliberately higher than GRN accepted BDT 10,000).
+6. TDS rate: `0`. VDS rate: `0`.
+7. Click **Match & save**.
+8. Expected:
+   - Page stays on `/finance/vendor-invoices/new`.
+   - Red error banner reads: `Invoice amount 12000.00 exceeds accepted GRN amount 10000.00`.
+   - No invoice row is created (verify by going back to the list — `INV-9B-OVER` is not present).
 
 Test 9c: Duplicate invoice number rejection
 
-1. Successfully create invoice `INV-CSS-001` for vendor V1 (Test 9a).
-2. Try to create another invoice with the **same number** `INV-CSS-001` for the **same vendor V1**.
-3. Expected output:
-   - System rejects the second invoice with a duplicate-number error.
-   - Audit log records the rejected attempt.
-4. Create another invoice with the same number `INV-CSS-001` for a **different vendor V2**.
-5. Expected output:
-   - This is allowed — duplicate-number rule scopes to `(vendorId, invoiceNo)`, not globally.
+Prerequisite: TC9a has been completed so `INV-9A-001` exists for the TC9a vendor.
 
-Test 9d: Partial payment
+1. Login as Admin. Open `/finance/vendor-invoices/new`.
+2. Fill form with the **same** vendor as TC9a, any APPROVED PO + ACCEPTED GRN of that vendor (different GRN from TC9a), gross any positive amount within the GRN value, invoice no `INV-9A-001`.
+3. Click **Match & save**.
+4. Expected: red error banner `Duplicate invoice number for this vendor`. No row created.
+5. Switch the **Vendor** field to a different approved vendor that has its own APPROVED PO + accepted+posted GRN (set up a second vendor's procurement chain via TC1 if needed).
+6. Keep invoice no `INV-9A-001`. Choose that other vendor's PO and GRN.
+7. Click **Match & save**.
+8. Expected: success — invoice `INV-9A-001` is created for the second vendor (the duplicate rule is `(organizationId, vendorId, invoiceNo)`, not global).
 
-Example:
+Test 9d: Partial payment progression
 
-- Invoice amount: BDT 100,000
-- First payment: BDT 60,000
-- Second payment: BDT 40,000
+Prerequisite: an APPROVED PO with one accepted+posted GRN whose accepted amount is BDT 100,000 (set up a fresh PR with qty 100 × unit price 1,000 in TC1, approve, PO, GRN, post accounting).
 
-Steps:
+1. Login as Admin. Create vendor invoice as in TC9a steps 2–5: gross `100000`, TDS rate `0`, VDS rate `0`, invoice no `INV-9D-PARTIAL`.
+2. Approve the invoice (TC9a step 7).
+3. Click **Record payment**. Amount `60000`. Bank: SB-MOTHER. Reference `BANK-TXN-9D-1`. Click **Post payment**.
+4. Expected after first payment:
+   - Status badge: `PARTIALLY_PAID`. Outstanding: `40,000`. Paid: `60,000`.
+   - Payments table: 1 row (gross 60,000 / net 60,000).
+   - Bank balance reduced by 60,000.
+   - **Record payment** button still present.
+5. Click **Record payment** again. Amount `40000`. Bank: SB-MOTHER. Reference `BANK-TXN-9D-2`. **Post payment**.
+6. Expected after second payment:
+   - Status badge: `PAID`. Outstanding: `0`. Paid: `100,000`.
+   - Payments table: 2 rows.
+   - Bank balance reduced by another 40,000 (total 100,000 less).
+   - **Record payment** button no longer visible.
+7. (Sanity attempt for the rejected third payment.) Open `/finance/payments`, confirm two distinct payment vouchers (different `VP-2026-NNNN` numbers, different JE numbers).
+8. Try a third payment via API (the UI hides the button on PAID invoices, so this is a curl check):
+   `curl -sb /tmp/cookies.txt -X POST 'http://localhost:3000/api/v1/finance/vendor-invoices/<INVOICE-ID>/payments' -H 'Content-Type: application/json' -d '{"bankAccountId":"<SB-MOTHER-ID>","amount":1,"paymentMethod":"BANK_TRANSFER"}'`
+   Expected: HTTP 400 with message `Only APPROVED or PARTIALLY_PAID invoices can be paid. Current status: PAID`.
 
-1. Approve a vendor invoice for BDT 100,000 (Test 9a steps 1–6).
-2. Create a payment voucher for BDT 60,000.
-3. Post the payment.
-4. Expected output after first payment:
-   - Invoice status becomes `PARTIALLY_PAID`.
-   - Outstanding payable = BDT 40,000.
-   - JE: DR AP 60,000 / CR Bank ~60,000 (less withholding).
-   - Bank balance decreases by net of first payment only.
-5. Create a second payment voucher for BDT 40,000 against the same invoice.
-6. Post the second payment.
-7. Expected output after second payment:
-   - Invoice status becomes `PAID`.
-   - Outstanding payable = `0`.
-   - Two separate payment JEs exist, both linked to the same invoice.
-   - Bank Reconciliation shows two distinct transactions.
-8. Try to create a third payment of BDT 1 against the same invoice.
-9. Expected output:
-   - System rejects with "invoice fully paid, cannot exceed outstanding amount".
+Test 9e: Multi-GRN single invoice
+
+Prerequisite: a single APPROVED PO that has been received as **two** separate GRNs (run TC1 with quantity 10, then create the GRN twice — first for qty 5, then a second GRN for qty 5; both ACCEPTED and accounting-posted). Both GRNs must be from the same vendor and same PO.
+
+1. Login as Admin. Open `/finance/vendor-invoices/new`.
+2. Pick the vendor and the PO. The GRN list now shows both GRNs.
+3. Tick **both** GRN checkboxes.
+4. Vendor invoice no: `INV-9E-MULTI`. Gross: full PO accepted amount (e.g. 10 × 1,000 = `10000`). TDS rate `0`. VDS rate `0`.
+5. Click **Match & save**.
+6. Expected on detail page:
+   - Status `MATCHED`. The "Linked Goods Receipts" card shows both GRN rows with their accepted amounts (5,000 each).
+   - Both GRNs are now bound — attempting to create another invoice on either GRN must fail (verify: open `/finance/vendor-invoices/new`, tick one of these GRNs, error: `One or more GRNs are already linked to an active vendor invoice`).
+7. Approve the invoice (Approve → status `APPROVED`).
+8. Record payment for the full amount. Confirm status `PAID` and both GRNs remain linked.
+
+Test 9f: Combined TDS (5%) + VDS (7.5%) split
+
+Prerequisite: APPROVED PO + accepted+posted GRN of accepted amount BDT 20,000 (run TC1 with qty 20 × unit price 1,000 if not already available, distinct from the other sub-tests).
+
+1. Login as Admin. Open `/finance/vendor-invoices/new`.
+2. Pick the vendor / PO / GRN. Invoice no: `INV-9F-WITHHOLD`. Gross: `20000`. TDS rate: `5`. VDS rate: `7.5`.
+   - Form auto-shows TDS amount `1,000` and VDS amount `1,500`. Net payable preview: `17,500`.
+3. Click **Match & save**.
+4. Approve the invoice.
+5. Click **Record payment**. Amount `20000`, TDS `1000`, VDS `1500`. Bank: SB-MOTHER. Reference `BANK-TXN-9F`. **Post payment**.
+6. Expected on payment detail page:
+   - Status `APPROVED`. Net disbursed: `17,500`.
+   - Journal entry lines:
+     - DR `201002 Bills Payable` 20,000 / 0
+     - CR `304001 Cash at Bank Head Office` 0 / 17,500
+     - CR `201008 Advance Collection (Income Tax)` 0 / 1,000
+     - CR `201010 Collection Against VAT` 0 / 1,500
+     - Totals: 20,000 / 20,000 (balanced — exactly four legs).
+   - Bank balance reduced by 17,500.
+7. Trial balance reflects: AP cleared by 20,000, Bank reduced by 17,500, TDS Payable +1,000, VDS Payable +1,500.
+
+Test 9g: Cancel APPROVED + unpaid invoice
+
+Prerequisite: an APPROVED PO + accepted+posted GRN of any amount (e.g. BDT 5,000), set up via TC1.
+
+1. Login as Admin. Create invoice via TC9a steps 2–5: gross `5000`, invoice no `INV-9G-CANCEL`.
+2. Approve the invoice. Status becomes `APPROVED`.
+3. **Do not** record any payment.
+4. On the detail page, click **Cancel** (button only appears for invoices with `paidAmount = 0`).
+5. In the dialog, enter reason `Vendor delivered wrong service; rebill required.` and confirm.
+6. Expected:
+   - Status badge becomes `CANCELLED`.
+   - **Approve / Submit / Record payment** buttons disappear.
+   - Linked GRN status remains `ACCEPTED`. The GRN's original AP credit JE is **not** reversed (cancellation does not touch posted accounting; the AP balance stays as a hanging credit until corrected via separate reversal voucher — by design).
+   - Notes field shows `[CANCELLED] Vendor delivered wrong service; rebill required.`
+7. Now attempt to create a new invoice on the same GRN: open `/finance/vendor-invoices/new`, pick same vendor / PO / GRN. Expected: the GRN appears in the list (cancelled invoice no longer holds the lock) — a fresh invoice can be created against this GRN.
+
+Cross-test verification (run after TC9a, 9d, 9f):
+
+- `/finance/payments` lists every payment with vendor, invoice, method, gross, net, status. The page is keyboard-friendly and click-through navigates to the detail page.
+- `/finance/vouchers` includes the bank vouchers created by each payment.
+- `/finance/journal-entries` includes the source-tagged `VENDOR_PAYMENT` entries; opening one shows DR AP / CR Bank / CR TDS / CR VDS legs and the linked source ID.
+- The `JournalEntry.@@unique([sourceModule, sourceId])` constraint and the `(organizationId, vendorId, invoiceNo)` invoice-number unique constraint together make duplicate posting and duplicate matching idempotent.
+
+Smoke-test verification command:
+
+```bash
+pnpm tsx --env-file=.env prisma/smoke-phase8.ts
+# Expected: "Done. 26 passed, 0 failed."
+```
+
+Idempotency note: posting payments and approving invoices are wrapped in `prisma.$transaction`. Re-attempting the same payment posts a fresh payment voucher only if the invoice still has outstanding amount; otherwise the API returns 400 with `Only APPROVED or PARTIALLY_PAID invoices can be paid`.
 
 ## Quick Answer To The Menu Question
 

@@ -225,6 +225,86 @@ async function main() {
     }
   }
 
+  // Upsert default approval workflows for procurement and finance modules.
+  // The PR module also has a fallback in src/lib/approval-engine.ts findOrCreateWorkflow,
+  // but seeding makes the routing visible in Settings > Approval Workflows immediately.
+  const adminRoleRecord = roleByName.get('ADMIN')
+  if (adminRoleRecord) {
+    const workflowDefs: Array<{
+      name: string
+      module: string
+      entityType: string
+      description: string
+    }> = [
+      {
+        name: 'Purchase Requisition Approval',
+        module: 'PROCUREMENT',
+        entityType: 'PURCHASE_REQUISITION',
+        description: 'Default one-step admin approval for purchase requisitions.',
+      },
+      {
+        name: 'Vendor Invoice Approval',
+        module: 'FINANCE',
+        entityType: 'VENDOR_INVOICE',
+        description: 'Default one-step admin approval for vendor invoices.',
+      },
+      {
+        name: 'Vendor Payment Approval',
+        module: 'FINANCE',
+        entityType: 'PAYMENT_VOUCHER',
+        description: 'Default one-step admin approval for vendor payment vouchers.',
+      },
+    ]
+
+    for (const def of workflowDefs) {
+      const existing = await prisma.approvalWorkflowDef.findFirst({
+        where: {
+          organizationId: org.id,
+          entityType: def.entityType,
+          name: def.name,
+        },
+        include: { steps: true },
+      })
+
+      if (existing) {
+        if (existing.steps.length === 0) {
+          await prisma.approvalWorkflowStep.create({
+            data: {
+              workflowId: existing.id,
+              stepNumber: 1,
+              name: 'Admin Approval',
+              roleId: adminRoleRecord.id,
+              isRequired: true,
+            },
+          })
+          console.log(`Workflow step added for: ${def.name}`)
+        } else {
+          console.log(`Workflow already exists: ${def.name}`)
+        }
+      } else {
+        await prisma.approvalWorkflowDef.create({
+          data: {
+            organizationId: org.id,
+            name: def.name,
+            module: def.module,
+            entityType: def.entityType,
+            description: def.description,
+            isActive: true,
+            steps: {
+              create: {
+                stepNumber: 1,
+                name: 'Admin Approval',
+                roleId: adminRoleRecord.id,
+                isRequired: true,
+              },
+            },
+          },
+        })
+        console.log(`Workflow created: ${def.name}`)
+      }
+    }
+  }
+
   // Upsert fiscal year
   let fy = await prisma.fiscalYear.findFirst({ where: { organizationId: org.id, isCurrent: true } })
   if (!fy) {

@@ -27,6 +27,8 @@
     "chartOfAccounts": "Chart of Accounts",
     "journalEntries": "Journal Entries",
     "vouchers": "Vouchers",
+    "vendorInvoices": "Vendor Invoices",
+    "payments": "Payments",
     "bankReconciliation": "Bank Reconciliation",
     "bankCash": "Bank & Cash",
     "financialReports": "Financial Reports",
