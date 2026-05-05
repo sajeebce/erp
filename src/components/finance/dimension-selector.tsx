@@ -33,6 +33,13 @@ export interface DimensionLookups {
   fundClasses: FundClass[]
   projects: Project[]
   grants: Grant[]
+  sectors: Sector[]
+}
+
+interface Sector {
+  id: string
+  code: string
+  name: string
 }
 
 interface BusinessUnit {
@@ -40,6 +47,7 @@ interface BusinessUnit {
   code: string
   name: string
   shortName?: string | null
+  sectorId?: string | null
 }
 interface CostCenter {
   id: string
@@ -98,12 +106,13 @@ function getServerSnapshot(): CacheEntry {
 }
 
 async function fetchLookups(): Promise<DimensionLookups> {
-  const [buRes, ccRes, fcRes, projRes, grantsRes] = await Promise.all([
+  const [buRes, ccRes, fcRes, projRes, grantsRes, sectorsRes] = await Promise.all([
     fetch('/api/v1/settings/business-units?limit=200&isActive=true').then((r) => r.json()).catch(() => ({ success: false, data: [] })),
     fetch('/api/v1/settings/cost-centers?limit=500&isActive=true').then((r) => r.json()).catch(() => ({ success: false, data: [] })),
     fetch('/api/v1/settings/fund-classes?limit=100&isActive=true').then((r) => r.json()).catch(() => ({ success: false, data: [] })),
     fetch('/api/v1/projects?limit=200').then((r) => r.json()).catch(() => ({ success: false, data: [] })),
     fetch('/api/v1/donors/grants?limit=200').then((r) => r.json()).catch(() => ({ success: false, data: [] })),
+    fetch('/api/v1/settings/sectors?limit=100&isActive=true').then((r) => r.json()).catch(() => ({ success: false, data: [] })),
   ])
   return {
     businessUnits: buRes.success ? buRes.data : [],
@@ -111,6 +120,7 @@ async function fetchLookups(): Promise<DimensionLookups> {
     fundClasses: fcRes.success ? fcRes.data : [],
     projects: projRes.success ? projRes.data : [],
     grants: grantsRes.success ? grantsRes.data : [],
+    sectors: sectorsRes.success ? sectorsRes.data : [],
   }
 }
 

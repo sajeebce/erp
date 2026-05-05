@@ -211,6 +211,13 @@ export const navigation: NavItem[] = [
     allowedRoles: ["STORE_MANAGER"],
     items: [
       { title: "items.financialReports2", url: "/reports/financial" },
+      { title: "items.sectorTrialBalance", url: "/reports/sector-trial-balance" },
+      { title: "items.concernIncomeStatement", url: "/reports/concern-income-statement" },
+      { title: "items.concernBalanceSheet", url: "/reports/concern-balance-sheet" },
+      { title: "items.fundPosition", url: "/reports/fund-position" },
+      { title: "items.interConcernTransactions", url: "/reports/inter-concern-transactions" },
+      { title: "items.costCenterExpenses", url: "/reports/cost-center-expenses" },
+      { title: "items.donorProjectFinancials", url: "/reports/donor-project-financials" },
       { title: "items.ngoabReports", url: "/reports/ngoab" },
       { title: "items.donorReports2", url: "/reports/donor" },
       { title: "items.projectReports", url: "/reports/project" },

@@ -841,3 +841,86 @@ and procurement-sourced JE lines unchanged by the refactor.
    reports to reflect prior periods. Today those 139 lines silently fall under
    "Unassigned" in concern-filtered reports.
 
+---
+
+## Concern-wise Report UI — Test Cases
+
+These tests cover the shared `<ReportFilterBar>` wired into the existing financial
+report renderer, plus the seven dedicated routes added under `/reports/`.
+
+> Common preconditions:
+> - Dev server at `http://localhost:3000` (`pnpm exec next dev --webpack --port 3000`).
+> - Login: `rahim@cssbd.org` / `SecurePass@2026!` / orgSlug `cssbd`.
+> - Operating structure seed loaded (`pnpm tsx --env-file=.env prisma/seed-css-operating-structure.ts`) so the org has 19 BUs / 29 CCs / 4 FCs / 5 Sectors.
+> - At least one APPROVED journal entry exists in the current fiscal year. If none, run TC-DIM-1 from the dimension UI test plan first to create one.
+
+### TCR1 — Filter by single Business Unit on Trial Balance
+
+1. Login as Admin. Open `http://localhost:3000/finance/financial-reports/trial-balance`.
+2. The new "Filters" card appears above the fiscal year row.
+3. Pick **Business Unit** = `BU-001 · Reverend Abdul Wadud Memorial Hospital`.
+4. The URL updates to `?...&businessUnitId=<uuid>` and the report auto-refreshes.
+5. Expected: rows show only accounts that have at least one approved JE line tagged to BU-001 in the current fiscal year. Period debit total equals period credit total (balanced).
+6. Verify in DB:
+   ```
+   pnpm tsx --env-file=.env -e "import {prisma} from './src/lib/db';(async()=>{const lines=await prisma.journalEntryLine.findMany({where:{businessUnitId:'<bu-uuid>',journalEntry:{status:'APPROVED'}}});const dr=lines.reduce((s,l)=>s+Number(l.debit),0);const cr=lines.reduce((s,l)=>s+Number(l.credit),0);console.log({dr,cr});await prisma.\$disconnect();})()"
+   ```
+   The numbers should match the periodDebit/periodCredit totals on screen.
+
+### TCR2 — Filter by Fund Class + Project on Income Statement
+
+1. Open `/reports/concern-income-statement`.
+2. Filters: Fund Class = `FC-RES · Restricted`, Project = any project tagged restricted.
+3. Expected: only income/expense accounts with lines matching BOTH dimensions appear. The Net Surplus / (Deficit) row at the bottom equals total income − total expenses computed for that filtered scope.
+
+### TCR3 — Sector-wise Trial Balance grand total equals unfiltered TB grand total
+
+1. Open `/reports/sector-trial-balance` with no filters. Note the bottom Grand Total `periodDebit` and `periodCredit`.
+2. Open `/finance/financial-reports/trial-balance` with no filters.
+3. Expected: the unfiltered trial balance's totals match the sector-trial-balance grand total to within rounding tolerance. The sector report may include a "Sector unassigned" group that holds rows whose BU has no `sectorId`.
+
+### TCR4 — Date range filter excludes JEs outside the range
+
+1. Open `/finance/financial-reports/day-book`.
+2. Filters: From = a future date (e.g. `2099-01-01`), To = `2099-12-31`.
+3. Expected: empty result and "No data" message; no JEs appear.
+4. Clear the From date. Expected: rows return.
+
+### TCR5 — Clear-filters button restores unfiltered view
+
+1. On `/finance/financial-reports/trial-balance`, apply BU + FC + Project filters.
+2. Click **Clear** in the filter card.
+3. Expected: all dropdowns reset to "All …", URL drops the dimension query params, and the report re-fetches the unfiltered data set.
+
+### TCR6 — Inter-Concern Transactions report
+
+1. Open `/reports/inter-concern-transactions` with no filters. The current seed produces zero cross-BU JEs (see API summary `crossBuCount: 0`).
+2. Expected: the page renders without crashing and shows the empty-state message "No journal entries spanning multiple Business Units or Fund Classes for the selected period."
+3. To populate: post a manual JE with Line 1 BU=A, Line 2 BU=B (TC-DIM-1 in the dimension UI test plan does this). Refresh the report; the new JE appears with `businessUnits` showing both BU codes.
+
+### TCR7 — CSV export downloads filtered rows
+
+1. On `/reports/cost-center-expenses`, apply Business Unit = any BU.
+2. Click the **CSV** button in the ReportViewer toolbar.
+3. Expected: a `.csv` file downloads with the same column headers and rows shown on screen, restricted to the filtered set. Open in Excel/LibreOffice — totals row at the bottom matches the on-screen Grand Total.
+
+### TCR8 — URL-based deep link pre-applies the filter
+
+1. Copy the URL after applying a BU filter on `/finance/financial-reports/trial-balance` (it should look like `…/trial-balance?businessUnitId=<uuid>`).
+2. Open the URL in an incognito window. Login.
+3. Expected: the BU filter is **already** applied (the dropdown shows the selected BU and the report shows the filtered totals immediately). Sharing the URL produces the same filtered view for the recipient.
+
+### Outstanding follow-ups
+
+1. **Multi-select** filters — today each dimension picks exactly one value. The
+   spec hinted "multi-select if convenient"; defer until a real demand surfaces
+   (the API would need `IN`-clause expansion).
+2. **Sector-wise income statement / balance sheet** as separate routes — the
+   existing `/reports/concern-income-statement` and `/reports/concern-balance-sheet`
+   accept the `sectorId` filter so a sector view is reachable today; dedicated
+   "by sector" group-by could be added later with an extra `groupBy=sector`
+   query param on the income-statement / balance-sheet APIs.
+3. **Voucher line override** dimension overrides cascading into the auto-posted
+   JE on approval — same gap noted in TC-DIM-5; relevant when reports want to
+   distinguish per-leg dimensions on voucher-sourced JEs.
+

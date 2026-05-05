@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { ArrowLeft, Loader2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,12 @@ import { SearchableSelect } from '@/components/shared/searchable-select'
 import { Switch } from '@/components/ui/switch'
 import { PageHeader } from '@/components/shared/page-header'
 import { ReportViewer } from '@/components/shared/report-viewer'
+import {
+  ReportFilterBar,
+  readReportFiltersFromSearchParams,
+  type ReportFilters,
+  type ReportFilterDimension,
+} from '@/components/reports/concern-filter-bar'
 
 interface FiscalYear {
   id: string
@@ -371,13 +377,40 @@ function transformData(type: string, data: Record<string, unknown>): { rows: Rec
   return { rows: [] }
 }
 
+// Reports that ignore dimension filters at the API level — show only fiscal year + dates
+const NON_DIMENSIONAL_REPORTS = new Set([
+  'bank-reconciliation-statement',
+  'petty-cash-statement',
+  'per-diem-utilization',
+  'receipt-compliance',
+  'tds-vds-register',
+  'advance-aging',
+])
+
+// Reports whose getAccountBalances path honours all 6 dimension filters
+function dimensionsSupportedFor(reportType: string): ReportFilterDimension[] {
+  if (NON_DIMENSIONAL_REPORTS.has(reportType)) {
+    return []
+  }
+  // Grant-scoped reports honour grantId via top-level filter, not via getAccountBalances
+  if (reportType === 'fund-position' || reportType === 'grant-financial' || reportType === 'donor-expense-report' || reportType === 'fund-balance-changes') {
+    return ['projectId', 'grantId']
+  }
+  // The standard line-level reports support all 6 dimensions
+  return ['sectorId', 'businessUnitId', 'costCenterId', 'fundClassId', 'projectId', 'grantId']
+}
+
 export default function ReportDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const type = params.type as string
   const t = useTranslations('finance.financialReports')
   const tr = useTranslations('finance.financialReports.reportViewer')
   const tc = useTranslations('common')
+
+  const dimensionSupports = dimensionsSupportedFor(type)
+  const showDimensionFilters = dimensionSupports.length > 0
 
   const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([])
   const [fiscalYearId, setFiscalYearId] = useState('')
@@ -387,6 +420,11 @@ export default function ReportDetailPage() {
   const [loading, setLoading] = useState(false)
   const [reportData, setReportData] = useState<Record<string, unknown> | null>(null)
   const [orgName, setOrgName] = useState('')
+
+  // Initialise dimension filters from URL on mount; updates re-mirror to URL via the bar.
+  const [dimensionFilters, setDimensionFilters] = useState<ReportFilters>(() =>
+    readReportFiltersFromSearchParams(new URLSearchParams(searchParams?.toString() ?? ''), dimensionSupports),
+  )
 
   // Ledger-specific: account filter
   const [accounts, setAccounts] = useState<{ id: string; code: string; name: string }[]>([])
@@ -427,21 +465,39 @@ export default function ReportDetailPage() {
     if (!fiscalYearId) return
     setLoading(true)
     try {
-      let url = `/api/v1/finance/reports/${type}?fiscalYearId=${fiscalYearId}`
-      if (startDate) url += `&startDate=${startDate}`
-      if (endDate) url += `&endDate=${endDate}`
-      if (type === 'ledger' && accountId && accountId !== '_all') url += `&accountId=${accountId}`
-      const res = await fetch(url)
+      const params = new URLSearchParams()
+      params.set('fiscalYearId', fiscalYearId)
+      if (startDate) params.set('startDate', startDate)
+      if (endDate) params.set('endDate', endDate)
+      if (type === 'ledger' && accountId && accountId !== '_all') params.set('accountId', accountId)
+      // Mix in dimension filters that the API actually honours.
+      for (const key of dimensionSupports) {
+        const v = dimensionFilters[key]
+        if (v && key !== 'startDate' && key !== 'endDate') params.set(key, v)
+      }
+      const res = await fetch(`/api/v1/finance/reports/${type}?${params.toString()}`)
       const json = await res.json()
       if (json.success) setReportData(json.data)
     } catch { /* ignore */ }
     setLoading(false)
   }
 
-  // Auto-generate when fiscal year or account changes
+  // Auto-generate when fiscal year, account, or any dimension filter changes.
+  // generateReport is a stable closure over the same state we depend on, so
+  // including it in deps would cause infinite re-fetches.
   useEffect(() => {
     if (fiscalYearId) generateReport()
-  }, [fiscalYearId, accountId]) // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    fiscalYearId,
+    accountId,
+    dimensionFilters.sectorId,
+    dimensionFilters.businessUnitId,
+    dimensionFilters.costCenterId,
+    dimensionFilters.fundClassId,
+    dimensionFilters.projectId,
+    dimensionFilters.grantId,
+  ])
 
   const reportTitle = type === 'ledger' && reportData?.accountName
     ? `${t(`types.${type}.title`)} — ${reportData.accountName}`
@@ -474,7 +530,18 @@ export default function ReportDetailPage() {
         </PageHeader>
       </div>
 
-      {/* Filters — hidden in print */}
+      {/* Concern-wise dimension filters — hidden for non-dimensional reports */}
+      {showDimensionFilters && (
+        <div className="print:hidden">
+          <ReportFilterBar
+            supports={dimensionSupports}
+            value={dimensionFilters}
+            onChange={setDimensionFilters}
+          />
+        </div>
+      )}
+
+      {/* Period filters — hidden in print */}
       <Card className="print:hidden">
         <CardContent className="pt-6">
           <div className="flex flex-wrap items-end gap-4">
