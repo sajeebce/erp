@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
           fiscalYearId: true,
           projectId: true,
           grantId: true,
+          businessUnitId: true,
           currencyCode: true,
           exchangeRate: true,
           totalDebit: true,

@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { SearchableSelect } from '@/components/shared/searchable-select'
+import { DimensionSummary } from '@/components/finance/dimension-selector'
 import {
   Table,
   TableBody,
@@ -39,6 +40,11 @@ interface JournalLine {
   description: string
   debit: number
   credit: number
+  businessUnitId?: string | null
+  costCenterId?: string | null
+  fundClassId?: string | null
+  projectId?: string | null
+  grantId?: string | null
   account?: {
     id: string
     code: string
@@ -56,6 +62,7 @@ interface JournalEntry {
   fiscalYearId: string | null
   projectId: string | null
   grantId: string | null
+  businessUnitId: string | null
   currencyCode: string
   notes: string | null
   totalDebit: number | string
@@ -218,6 +225,13 @@ export default function JournalEntryDetailPage() {
         description: line.description || '',
         debit: Number(line.debit) || 0,
         credit: Number(line.credit) || 0,
+        // Preserve dimensions on edit. The detail page does not surface dimension
+        // editors yet, but we must not strip them when the user just edits text fields.
+        businessUnitId: line.businessUnitId ?? null,
+        costCenterId: line.costCenterId ?? null,
+        fundClassId: line.fundClassId ?? null,
+        projectId: line.projectId ?? null,
+        grantId: line.grantId ?? null,
       }))
     )
     setEditing(true)
@@ -304,6 +318,7 @@ export default function JournalEntryDetailPage() {
         fiscalYearId: fiscalYearId || undefined,
         projectId: projectId || undefined,
         grantId: grantId || undefined,
+        businessUnitId: entry?.businessUnitId || undefined,
         currencyCode,
         notes: notes.trim() || undefined,
         lines: lines.map((line) => ({
@@ -311,6 +326,13 @@ export default function JournalEntryDetailPage() {
           description: line.description.trim(),
           debit: line.debit || 0,
           credit: line.credit || 0,
+          // Preserve persisted line dimensions through edit so non-text
+          // edits don't silently strip multi-concern dimensions.
+          businessUnitId: line.businessUnitId || undefined,
+          costCenterId: line.costCenterId || undefined,
+          fundClassId: line.fundClassId || undefined,
+          projectId: line.projectId || undefined,
+          grantId: line.grantId || undefined,
         })),
       }
 
@@ -872,6 +894,7 @@ export default function JournalEntryDetailPage() {
                   <TableHead>{t('accountCode')}</TableHead>
                   <TableHead>{t('accountName')}</TableHead>
                   <TableHead>{t('lineDescription')}</TableHead>
+                  <TableHead>Dimensions</TableHead>
                   <TableHead className="text-right">{t('debit')}</TableHead>
                   <TableHead className="text-right">{t('credit')}</TableHead>
                 </TableRow>
@@ -885,6 +908,17 @@ export default function JournalEntryDetailPage() {
                     <TableCell>{line.account?.name || '\u2014'}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {line.description || '\u2014'}
+                    </TableCell>
+                    <TableCell>
+                      <DimensionSummary
+                        value={{
+                          businessUnitId: line.businessUnitId,
+                          costCenterId: line.costCenterId,
+                          fundClassId: line.fundClassId,
+                          projectId: line.projectId,
+                          grantId: line.grantId,
+                        }}
+                      />
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm">
                       {Number(line.debit) > 0
@@ -901,7 +935,7 @@ export default function JournalEntryDetailPage() {
               </TableBody>
               <TableFooter>
                 <TableRow className="font-semibold">
-                  <TableCell colSpan={3} className="text-right">
+                  <TableCell colSpan={4} className="text-right">
                     {tc('labels.total')}
                   </TableCell>
                   <TableCell className="text-right font-mono">

@@ -59,6 +59,11 @@ export async function GET(request: NextRequest) {
       where.projectId = projectId
     }
 
+    const grantId = url.searchParams.get('grantId')
+    if (grantId) {
+      where.grantId = grantId
+    }
+
     const businessUnitId = url.searchParams.get('businessUnitId')
     if (businessUnitId) {
       where.businessUnitId = businessUnitId

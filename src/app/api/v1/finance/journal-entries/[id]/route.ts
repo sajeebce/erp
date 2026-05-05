@@ -9,6 +9,7 @@ import {
   handleRouteError,
 } from '@/lib/api-response'
 import { Prisma } from '@prisma/client'
+import { validateDimensions } from '@/lib/dimension-validation'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -80,6 +81,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       reference,
       projectId,
       grantId,
+      businessUnitId,
       notes,
       lines,
     } = body
@@ -138,23 +140,36 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Validate projectId if provided
-    if (projectId) {
-      const project = await prisma.project.findFirst({
-        where: { id: projectId, organizationId: auth.organizationId },
-      })
-      if (!project) {
-        return apiBadRequest('Invalid project ID')
-      }
-    }
+    // Validate header dimensions (BU/project/grant) and per-line dimensions in one pass.
+    const headerDimError = await validateDimensions(auth.organizationId, {
+      businessUnitId: businessUnitId ?? null,
+      projectId: projectId ?? null,
+      grantId: grantId ?? null,
+    })
+    if (headerDimError) return headerDimError
 
-    // Validate grantId if provided (Grant links to org through donor)
-    if (grantId) {
-      const grant = await prisma.grant.findFirst({
-        where: { id: grantId, donor: { organizationId: auth.organizationId } },
-      })
-      if (!grant) {
-        return apiBadRequest('Invalid grant ID')
+    if (Array.isArray(lines)) {
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        if (
+          !line.businessUnitId &&
+          !line.costCenterId &&
+          !line.fundClassId &&
+          !line.projectId &&
+          !line.grantId
+        ) {
+          continue
+        }
+        // CC requires BU — fall back to header if line BU is missing.
+        const lineBuId = line.businessUnitId ?? businessUnitId ?? null
+        const lineDimError = await validateDimensions(auth.organizationId, {
+          businessUnitId: lineBuId,
+          costCenterId: line.costCenterId ?? null,
+          fundClassId: line.fundClassId ?? null,
+          projectId: line.projectId ?? null,
+          grantId: line.grantId ?? null,
+        })
+        if (lineDimError) return lineDimError
       }
     }
 
@@ -167,6 +182,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       if (reference !== undefined) updateData.reference = reference || null
       if (projectId !== undefined) updateData.projectId = projectId || null
       if (grantId !== undefined) updateData.grantId = grantId || null
+      if (businessUnitId !== undefined) updateData.businessUnitId = businessUnitId || null
       if (notes !== undefined) updateData.notes = notes || null
 
       if (lines !== undefined) {
@@ -187,15 +203,25 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             description?: string
             debit?: number
             credit?: number
+            businessUnitId?: string
+            costCenterId?: string
+            fundClassId?: string
             projectId?: string
-          }) => ({
-            journalEntryId: id,
-            accountId: line.accountId,
-            description: line.description || null,
-            debit: new Prisma.Decimal(Number(line.debit || 0)),
-            credit: new Prisma.Decimal(Number(line.credit || 0)),
-            projectId: line.projectId || null,
-          })),
+          }) => {
+            // CC requires BU; fall back to header BU if line didn't override.
+            const lineBuId = line.businessUnitId ?? businessUnitId ?? null
+            return {
+              journalEntryId: id,
+              accountId: line.accountId,
+              description: line.description || null,
+              debit: new Prisma.Decimal(Number(line.debit || 0)),
+              credit: new Prisma.Decimal(Number(line.credit || 0)),
+              businessUnitId: lineBuId,
+              costCenterId: line.costCenterId || null,
+              fundClassId: line.fundClassId || null,
+              projectId: line.projectId || null,
+            }
+          }),
         })
       }
 

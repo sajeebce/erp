@@ -694,3 +694,150 @@ Do not build:
 - CSS-only hard-coded report logic
 
 The priority is correct line-level dimensions first.
+
+---
+
+## Browser Test Plan: JE / Voucher Dimension UI
+
+These tests cover the manual JE form + Voucher form dimension selectors and the
+filters they enable on the JE / Voucher list pages and Budget vs Actual report.
+The Phase 13 backend already accepts these dimensions; this UI work makes them
+reachable from the browser.
+
+> Common preconditions (apply to every sub-test):
+> - Dev server running at `http://localhost:3000` (`pnpm exec next dev --webpack --port 3000`).
+> - Login URL: `http://localhost:3000/login`. Org slug: `cssbd`. Admin: `rahim@cssbd.org` / `SecurePass@2026!`.
+> - Operating structure seeded (`pnpm tsx --env-file=.env prisma/seed-css-operating-structure.ts`) so 19 BUs / 29 CCs / 4 FCs exist.
+> - Backend smoke: `pnpm tsx --env-file=.env prisma/smoke-dimensions.ts` should report `15 passed, 0 failed` before starting browser tests.
+
+### TC-DIM-1: Manual JE saves header + per-line dimensions
+
+Goal: confirm the new form actually writes `businessUnitId/costCenterId/fundClassId` into JournalEntryLine.
+
+1. Login as Admin. Open `http://localhost:3000/finance/journal-entries/new`.
+2. Fill header:
+   - Date: today.
+   - Narration: `Dimension UI test entry`.
+   - Default Dimensions card → Business Unit: `BU-001 · Reverend Abdul Wadud Memorial Hospital`. Fund Class: `FC-RES · Restricted`. Project: any one.
+3. Line 1: Account = any expense, Debit = `600000000`, click **Edit** under Dimensions on this line. Override Cost Center to `CC-OPD · OPD` (auto-filtered to BU-001). Click **Hide**.
+4. Line 2: Account = any liability/income, Credit = `600000000`. Leave Dimensions unedited; the chips should read `BU (from header)` and `FC (from header)`.
+5. Click **Save as Draft**.
+6. Browser navigates to the new JE detail page.
+7. Expected:
+   - Status badge `DRAFT`.
+   - Dimensions column on each line shows the BU and FC chips with the codes (`BU-001`, `FC-RES`, `CC-OPD` for line 1).
+8. DB sanity: `pnpm tsx --env-file=.env -e "import {prisma} from './src/lib/db'; (async()=>{const lines = await prisma.journalEntryLine.findMany({where:{journalEntry:{description:'Dimension UI test entry'}}, select:{businessUnitId:true,costCenterId:true,fundClassId:true,debit:true,credit:true}}); console.log(lines); await prisma.\$disconnect();})()"`. Expected: both lines have `businessUnitId` set; line 1 also has `costCenterId` and `fundClassId`.
+
+### TC-DIM-2: Cost Center dropdown is filtered by Business Unit
+
+1. Open `/finance/journal-entries/new`. On Line 1, click **Edit** under Dimensions.
+2. Set Business Unit = `BU-001 · Hospital`. Open Cost Center dropdown.
+3. Expected: list contains only cost centers under BU-001 (e.g. `CC-OPD`, `CC-IPD`, etc.); BU-002 cost centers are hidden.
+4. Change Business Unit to `BU-006 · ...` (any other BU). The Cost Center field auto-clears, and reopening shows only that BU's cost centers.
+5. Clear Business Unit completely. Cost Center becomes disabled with placeholder "Pick BU first".
+
+### TC-DIM-3: Server rejects Cost Center without Business Unit
+
+1. Open `/finance/journal-entries/new`. Fill the form so it would otherwise save (DR + CR balance, accounts selected, narration set).
+2. Skip header BU. On Line 1 click **Edit** → leave BU blank but pick a Cost Center via the dropdown is impossible (the field is disabled — see TC-DIM-2). The client-side guard kicks in.
+3. To exercise the SERVER guard, post directly:
+   ```bash
+   curl -sb /tmp/cookies.txt -X POST 'http://localhost:3000/api/v1/finance/journal-entries' \
+     -H 'Content-Type: application/json' \
+     -d '{"date":"2026-05-05","description":"bad","fiscalYearId":"<fy-id>","lines":[{"accountId":"<a1>","debit":100,"credit":0,"costCenterId":"<cc-id>"},{"accountId":"<a2>","debit":0,"credit":100}]}'
+   ```
+4. Expected: HTTP 400, body `{"success":false,"error":{"code":"BAD_REQUEST","message":"businessUnitId is required when costCenterId is provided"}}`.
+
+### TC-DIM-4: Voucher header BU cascades into the auto-posted JE on approval
+
+1. Login as Admin (preparer). Open `/finance/vouchers/new`.
+2. Fill: Type = `JOURNAL`, Date = today, Description = `Dim cascade test`, Amount = `5000`.
+3. Dimensions card → Business Unit: `BU-006 · Education Sector` (or any other), leave Fund Class / Project / Grant blank.
+4. Click **Save as Draft**. Browser navigates to voucher detail.
+5. The voucher detail Info card shows a "Business Unit" row — confirm.
+6. Login as a different ADMIN/FINANCE_ADMIN (segregation of duty). Open the voucher, click **Approve**.
+7. Open the linked Journal Entry from the voucher detail.
+8. Expected: the JE header `businessUnitId` and BOTH JE line `businessUnitId` columns equal `BU-006`. Verify in DB:
+   ```bash
+   pnpm tsx --env-file=.env -e "import {prisma} from './src/lib/db'; (async()=>{const v=await prisma.voucher.findFirst({where:{description:'Dim cascade test'}}); const je=await prisma.journalEntry.findFirst({where:{sourceModule:'voucher',sourceId:v.id},include:{lines:true}}); console.log({je_bu:je.businessUnitId, line_bus: je.lines.map(l=>l.businessUnitId)}); await prisma.\$disconnect();})()"
+   ```
+
+### TC-DIM-5: Voucher line override (current limitation note)
+
+Voucher lines are not stored as a separate model in this codebase — a voucher generates two JE lines on approval (one DR, one CR), and they currently both inherit the voucher header dimensions. So a true "line override" is not supported through the voucher form. To override one leg's dimension, post the matching manual JE directly via `/finance/journal-entries/new` (TC-DIM-1).
+
+This is documented as an outstanding follow-up: extend the voucher schema with `VoucherLine` to support per-leg overrides.
+
+### TC-DIM-6: Budget vs Actual picks up dimensioned manual JE
+
+Pre-condition: an APPROVED budget exists for some `(businessUnitId, costCenterId, fundClassId)` combination. If none exists, create one via `/budget/new` with BU=BU-001, CC=CC-OPD, FC=FC-RES and a budget line on (e.g.) the Salary GL account for BDT 100,000.
+
+1. Open `/finance/journal-entries/new` and create a JE matching the budget's dimensions:
+   - Header BU = BU-001, FC = FC-RES.
+   - Line 1: DR Salary account `50000`, CC = `CC-OPD` (override).
+   - Line 2: CR Cash/Bank `50000` (let it inherit BU and FC from header).
+2. Save as Draft, then click **Post Entry** on the JE detail. Status becomes `APPROVED`.
+3. Open `/budget/budget-vs-actual` (or `/budget/{id}/vs-actual`) and select the matching budget.
+4. Expected: the line item that matched on `(BU=BU-001, CC=CC-OPD, FC=FC-RES, account=Salary)` shows an **Actual** value of `50,000` (or increased by 50,000 if there were prior actuals).
+
+### TC-DIM-7: Concern-wise filter on JE list
+
+1. Open `/finance/journal-entries`.
+2. In the filter row at the top, select Business Unit = `BU-001`.
+3. Expected: only JEs whose **header** `businessUnitId = BU-001` are listed. The `Dimensions` column on each row shows the BU chip.
+4. Also try Project and Grant filters. Combine with the Status filter — all four should compose correctly.
+5. Clear all filters → full list returns.
+
+### TC-DIM-8: Existing dimensionless JEs still display
+
+Pre-condition: the DB has 139 pre-existing JE lines with NULL dimensions (verified by smoke).
+
+1. Open `/finance/journal-entries`. Don't apply any filter.
+2. Expected: the page renders without errors. Old JEs whose header has no BU/project show the "Unassigned" pill in the Dimensions column. Click into one — its read-only lines table shows "Unassigned" or "—" per line.
+3. The same applies on `/finance/vouchers` for old vouchers without `businessUnitId`.
+
+### TC-DIM-9: Procurement auto-posted JE preserves dimensions
+
+Pre-condition: complete one full P2P cycle (TC1 of `docs/purchase.md`) so a `PROCUREMENT_GRN`-sourced JE is created.
+
+1. Run a fresh PR with Business Unit + Cost Center + Fund Class set on its lines (the PR new form already supports this since the procurement-classification phase).
+2. Approve PR → create PO → Store Manager creates GRN → ACCEPTED → Admin clicks **Post Accounting**.
+3. Open the auto-posted JE at `/finance/journal-entries/{id}`.
+4. Expected: every line's Dimensions column shows the BU + CC + FC chips inherited from the originating PR/PO line. The header also shows the BU. The procurement-driven JE flow is unchanged after the UI work.
+
+### TC-DIM-10: Bangla labels visible (i18n smoke)
+
+1. With the dev server up, switch the UI language to Bangla via the language switcher in the top bar.
+2. Open `/finance/journal-entries`.
+3. Expected: list page filter labels and column headers translate where translations exist (e.g. status, debit, credit). The DimensionSelector `BU · code` chips remain English-coded because the **codes** are not localized — but the master data's `localizedName.bn` (e.g. `রেভ. আবদুল ওয়াদুদ মেমোরিয়াল হাসপাতাল` for BU-001) appears wherever the page joins to BU/CC/FC name fields. Confirm at least the BU dropdown options in the new JE form display Bangla short names where seeded.
+4. Switch back to English to confirm parity.
+
+### Smoke verification command
+
+The dimension flow is also covered by a non-HTTP smoke test that exercises the
+exact DB calls the API routes do:
+
+```bash
+pnpm tsx --env-file=.env prisma/smoke-dimensions.ts
+# Expected: "Done. 15 passed, 0 failed."
+```
+
+This script validates: header + line dimension persistence, `validateDimensions`
+helper rejecting CC-without-BU and CC-mismatched-with-BU, voucher → JE BU
+cascade, line-level BU filter on the list, NULL dimension rows still queryable,
+and procurement-sourced JE lines unchanged by the refactor.
+
+### Outstanding follow-ups
+
+1. **Voucher schema extension for line-level dimensions** (TC-DIM-5 limitation).
+   Add a `VoucherLine` table so a single voucher can post multiple JE legs with
+   different `businessUnitId/costCenterId/fundClassId` per leg. Today the
+   voucher generates exactly two JE lines on approval, both inheriting the
+   single voucher-header BU.
+2. **Reports** (`/finance/financial-reports`, trial balance, income statement)
+   should expose BU/CC/FC filters in their UI; the API already accepts them.
+3. **Backfill** a one-off script to fill in `businessUnitId` on the 139 legacy
+   JE lines that have NULL dimensions, if the org wants its concern-wise
+   reports to reflect prior periods. Today those 139 lines silently fall under
+   "Unassigned" in concern-filtered reports.
+

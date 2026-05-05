@@ -9,6 +9,7 @@ import {
   handleRouteError,
 } from '@/lib/api-response'
 import { Prisma } from '@prisma/client'
+import { validateDimensions } from '@/lib/dimension-validation'
 
 const VALID_VOUCHER_TYPES = ['DEBIT', 'RECEIPT', 'CASH', 'BANK', 'JOURNAL', 'CONTRA'] as const
 
@@ -30,6 +31,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         grant: {
           select: { id: true, title: true },
         },
+        businessUnit: {
+          select: { id: true, code: true, name: true, shortName: true },
+        },
         bankAccount: {
           select: { id: true, accountName: true, bankName: true, accountNumber: true },
         },
@@ -38,6 +42,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             lines: {
               include: {
                 account: {
+                  select: { id: true, code: true, name: true },
+                },
+                businessUnit: {
+                  select: { id: true, code: true, name: true, shortName: true },
+                },
+                costCenter: {
+                  select: { id: true, code: true, name: true },
+                },
+                fundClass: {
                   select: { id: true, code: true, name: true },
                 },
               },
@@ -82,6 +95,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       payee,
       projectId,
       grantId,
+      businessUnitId,
       bankAccountId,
       chequeNo,
       chequeDate,
@@ -146,6 +160,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         }
       }
       updateData.grantId = grantId || null
+    }
+
+    // Validate businessUnitId if provided (and persist so DRAFT edits don't strip it)
+    if (businessUnitId !== undefined) {
+      if (businessUnitId) {
+        const dimError = await validateDimensions(auth.organizationId, { businessUnitId })
+        if (dimError) return dimError
+      }
+      updateData.businessUnitId = businessUnitId || null
     }
 
     if (date !== undefined) updateData.date = new Date(date)

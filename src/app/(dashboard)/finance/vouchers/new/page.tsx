@@ -11,6 +11,10 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { SearchableSelect } from '@/components/shared/searchable-select'
+import {
+  DimensionSelector,
+  type DimensionValue,
+} from '@/components/finance/dimension-selector'
 import { PageHeader } from '@/components/shared/page-header'
 
 const VOUCHER_TYPES = ['DEBIT', 'RECEIPT', 'CASH', 'BANK', 'JOURNAL', 'CONTRA'] as const
@@ -26,20 +30,18 @@ interface BankAccount {
   accountNumber?: string
 }
 
-interface Project {
-  id: string
-  name: string
-  code?: string
-}
-
-interface Grant {
-  id: string
-  name: string
-  code?: string
-}
-
 function todayISO() {
   return new Date().toISOString().split('T')[0]
+}
+
+function emptyDimensions(): DimensionValue {
+  return {
+    businessUnitId: null,
+    costCenterId: null,
+    fundClassId: null,
+    projectId: null,
+    grantId: null,
+  }
 }
 
 export default function NewVoucherPage() {
@@ -60,28 +62,15 @@ export default function NewVoucherPage() {
   const [bankAccountId, setBankAccountId] = useState('')
   const [chequeNo, setChequeNo] = useState('')
   const [chequeDate, setChequeDate] = useState('')
-  const [projectId, setProjectId] = useState('')
-  const [grantId, setGrantId] = useState('')
+  const [dimensions, setDimensions] = useState<DimensionValue>(emptyDimensions())
 
   // Lookup data
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
-  const [grants, setGrants] = useState<Grant[]>([])
 
   useEffect(() => {
     fetch('/api/v1/finance/bank-accounts')
       .then(res => res.json())
       .then(json => { if (json.success) setBankAccounts(json.data) })
-      .catch(() => {})
-
-    fetch('/api/v1/projects?limit=100')
-      .then(res => res.json())
-      .then(json => { if (json.success) setProjects(json.data) })
-      .catch(() => {})
-
-    fetch('/api/v1/donors/grants?limit=100')
-      .then(res => res.json())
-      .then(json => { if (json.success) setGrants(json.data) })
       .catch(() => {})
   }, [])
 
@@ -120,8 +109,12 @@ export default function NewVoucherPage() {
     if (showBank && bankAccountId) payload.bankAccountId = bankAccountId
     if (showCheque && chequeNo.trim()) payload.chequeNo = chequeNo.trim()
     if (showChequeDate && chequeDate) payload.chequeDate = chequeDate
-    if (projectId) payload.projectId = projectId
-    if (grantId) payload.grantId = grantId
+    // Voucher schema only stores businessUnitId/projectId/grantId at header today.
+    // CC/FC are accepted by the form but applied to the auto-generated JE on approval
+    // via the line-level cascade (the approve handler reads voucher.businessUnitId).
+    if (dimensions.businessUnitId) payload.businessUnitId = dimensions.businessUnitId
+    if (dimensions.projectId) payload.projectId = dimensions.projectId
+    if (dimensions.grantId) payload.grantId = dimensions.grantId
 
     try {
       const res = await fetch('/api/v1/finance/vouchers', {
@@ -266,29 +259,20 @@ export default function NewVoucherPage() {
             </div>
           )}
 
-          {/* Row: Project + Grant */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="voucher-project">{t('project')}</Label>
-              <SearchableSelect
-                id="voucher-project"
-                options={[{ value: '_none', label: t('noProject') }, ...projects.map((p) => ({ value: p.id, label: `${p.code ? `${p.code} - ` : ''}${p.name}` }))]}
-                value={projectId}
-                onValueChange={(v) => setProjectId(v === '_none' ? '' : v)}
-                placeholder={t('selectProject')}
-              />
+          {/* Multi-concern dimensions */}
+          <div className="space-y-2 pt-2 border-t">
+            <div className="flex items-baseline justify-between">
+              <Label className="text-sm font-medium">Dimensions</Label>
+              <span className="text-xs text-muted-foreground">
+                Cascade to the auto-posted JE on approval
+              </span>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="voucher-grant">{t('grant')}</Label>
-              <SearchableSelect
-                id="voucher-grant"
-                options={[{ value: '_none', label: t('noGrant') }, ...grants.map((g) => ({ value: g.id, label: `${g.code ? `${g.code} - ` : ''}${g.name}` }))]}
-                value={grantId}
-                onValueChange={(v) => setGrantId(v === '_none' ? '' : v)}
-                placeholder={t('selectGrant')}
-              />
-            </div>
+            <DimensionSelector
+              level="header"
+              value={dimensions}
+              onChange={setDimensions}
+              idPrefix="voucher"
+            />
           </div>
 
           {/* Attachments */}

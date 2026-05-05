@@ -63,6 +63,8 @@ interface VoucherData {
   project?: { id: string; name: string; code?: string } | null
   grantId: string | null
   grant?: { id: string; name: string; code?: string } | null
+  businessUnitId: string | null
+  businessUnit?: { id: string; code: string; name: string; shortName?: string | null } | null
   status: string
   journalEntry?: JournalEntry | null
   createdBy?: { name: string; email?: string } | null
@@ -388,6 +390,12 @@ export default function VoucherDetailPage() {
               )}
               {voucher.chequeDate && (
                 <DetailItem label={t('chequeDate')} value={formatDate(voucher.chequeDate)} />
+              )}
+              {voucher.businessUnit && (
+                <DetailItem
+                  label="Business Unit"
+                  value={`${voucher.businessUnit.code} · ${voucher.businessUnit.shortName ?? voucher.businessUnit.name}`}
+                />
               )}
               {voucher.project && (
                 <DetailItem
