@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import {
   Dialog,
   DialogContent,
@@ -582,18 +583,18 @@ export default function VendorInvoiceDetailPage({ params }: PageProps) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="payBank">Bank/cash account</Label>
-              <Select value={payBank} onValueChange={setPayBank}>
-                <SelectTrigger id="payBank">
-                  <SelectValue placeholder="Select bank/cash account" />
-                </SelectTrigger>
-                <SelectContent>
-                  {bankAccounts.map((account) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.accountCode} — {account.accountName} ({formatCurrency(Number(account.currentBalance))})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="payBank"
+                options={bankAccounts.map((account) => ({
+                  value: account.id,
+                  label: `${account.accountCode} — ${account.accountName}`,
+                  description: formatCurrency(Number(account.currentBalance)),
+                }))}
+                value={payBank}
+                onValueChange={setPayBank}
+                placeholder="Select bank/cash account"
+                searchPlaceholder="Search bank/cash accounts…"
+              />
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">

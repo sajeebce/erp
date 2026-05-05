@@ -9,13 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { formatCurrency, formatDate } from '@/lib/formatters'
@@ -186,33 +180,34 @@ export default function NewVendorInvoicePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="vendor">Vendor</Label>
-              <Select value={vendorId} onValueChange={setVendorId}>
-                <SelectTrigger id="vendor">
-                  <SelectValue placeholder="Select vendor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vendors.map((vendor) => (
-                    <SelectItem key={vendor.id} value={vendor.id}>
-                      {vendor.companyName} ({vendor.vendorNo})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="vendor"
+                options={vendors.map((vendor) => ({
+                  value: vendor.id,
+                  label: `${vendor.companyName} (${vendor.vendorNo})`,
+                }))}
+                value={vendorId}
+                onValueChange={setVendorId}
+                placeholder="Select vendor"
+                searchPlaceholder="Search vendors…"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="po">Purchase order</Label>
-              <Select value={poId} onValueChange={setPoId} disabled={!vendorId}>
-                <SelectTrigger id="po">
-                  <SelectValue placeholder={vendorId ? 'Select PO' : 'Select vendor first'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {pos.map((po) => (
-                    <SelectItem key={po.id} value={po.id}>
-                      {po.poNo} — {formatCurrency(Number(po.totalAmount))} — {po.status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="po"
+                options={pos.map((po) => ({
+                  value: po.id,
+                  label: `${po.poNo} — ${formatCurrency(Number(po.totalAmount))}`,
+                  description: po.status,
+                }))}
+                value={poId}
+                onValueChange={setPoId}
+                placeholder={vendorId ? 'Select PO' : 'Select vendor first'}
+                searchPlaceholder="Search purchase orders…"
+                disabled={!vendorId}
+                emptyMessage={vendorId ? 'No matching POs' : 'Pick a vendor first'}
+              />
             </div>
           </div>
 

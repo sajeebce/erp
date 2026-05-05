@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import Link from "next/link";
 import { PageHeader } from "@/components/shared/page-header";
+import { SearchableSelect } from "@/components/shared/searchable-select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -702,129 +703,156 @@ export default function PRDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-              <Table className={editingPR ? "min-w-[980px]" : undefined}>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">#</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="w-36">Type</TableHead>
-                    <TableHead className="w-32">Unit</TableHead>
-                    <TableHead className="text-right">Qty</TableHead>
-                    <TableHead className="text-right">Unit Price</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    {editingPR && <TableHead className="w-12" />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(editingPR ? editableLines : pr.lines).map((line, idx) => (
-                    <TableRow key={line.id}>
-                      <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
-                      <TableCell>
-                        {editingPR ? (
-                          <div className="space-y-1">
+              {editingPR ? (
+                <div className="space-y-3">
+                  {editableLines.map((line, idx) => {
+                    const lineTotal = Number(line.quantity) * Number(line.estimatedPrice)
+                    return (
+                      <div key={line.id} className="rounded-lg border bg-card p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                              Line {idx + 1}
+                            </span>
+                            <Badge variant="outline" className="text-[10px]">
+                              {line.itemType === "SERVICE_OR_EXPENSE" ? "Service/Expense" : line.itemType === "FIXED_ASSET" ? "Fixed Asset" : "Inventory"}
+                            </Badge>
+                          </div>
+                          {editableLines.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => removeEditableLine(idx)}
+                              aria-label={`Remove line ${idx + 1}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`pr-edit-${idx}-desc`}>Description</Label>
                             <Input
+                              id={`pr-edit-${idx}-desc`}
                               value={line.description}
                               onChange={(event) => updateEditableLine(idx, "description", event.target.value)}
-                              className="h-8 text-sm"
-                            />
-                            <Input
-                              value={line.specification ?? ""}
-                              onChange={(event) => updateEditableLine(idx, "specification", event.target.value)}
-                              className="h-8 text-sm"
-                              placeholder="Specification"
                             />
                           </div>
-                        ) : (
-                          <>
-                            <p className="font-medium">{line.description}</p>
-                            {line.specification && (
-                              <p className="text-xs text-muted-foreground">{line.specification}</p>
-                            )}
-                          </>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-[10px]">
-                          {line.itemType === "SERVICE_OR_EXPENSE" ? "Service/Expense" : line.itemType === "FIXED_ASSET" ? "Fixed Asset" : "Inventory"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {editingPR ? (
-                          <Input
-                            value={line.unit}
-                            onChange={(event) => updateEditableLine(idx, "unit", event.target.value)}
-                            className="h-8 min-w-20 text-sm"
-                          />
-                        ) : (
-                          line.unit
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {editingPR ? (
-                          <Input
-                            type="number"
-                            min="0"
-                            value={Number(line.quantity)}
-                            onChange={(event) => updateEditableLine(idx, "quantity", Number(event.target.value))}
-                            className="h-8 min-w-24 text-right text-sm"
-                          />
-                        ) : (
-                          Number(line.quantity)
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {editingPR ? (
-                          <Input
-                            type="number"
-                            min="0"
-                            value={Number(line.estimatedPrice)}
-                            onChange={(event) => updateEditableLine(idx, "estimatedPrice", Number(event.target.value))}
-                            className="h-8 min-w-28 text-right text-sm"
-                          />
-                        ) : (
-                          formatCurrency(Number(line.estimatedPrice), locale)
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-medium">
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`pr-edit-${idx}-spec`}>
+                              Specification <span className="text-muted-foreground text-xs">(optional)</span>
+                            </Label>
+                            <Input
+                              id={`pr-edit-${idx}-spec`}
+                              value={line.specification ?? ""}
+                              onChange={(event) => updateEditableLine(idx, "specification", event.target.value)}
+                              placeholder="Specification details"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t">
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`pr-edit-${idx}-unit`}>Unit</Label>
+                            <Input
+                              id={`pr-edit-${idx}-unit`}
+                              value={line.unit}
+                              onChange={(event) => updateEditableLine(idx, "unit", event.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`pr-edit-${idx}-qty`}>Quantity</Label>
+                            <Input
+                              id={`pr-edit-${idx}-qty`}
+                              type="number"
+                              min="0"
+                              value={Number(line.quantity)}
+                              onChange={(event) => updateEditableLine(idx, "quantity", Number(event.target.value))}
+                              className="tabular-nums"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`pr-edit-${idx}-price`}>Unit Price</Label>
+                            <Input
+                              id={`pr-edit-${idx}-price`}
+                              type="number"
+                              min="0"
+                              value={Number(line.estimatedPrice)}
+                              onChange={(event) => updateEditableLine(idx, "estimatedPrice", Number(event.target.value))}
+                              className="tabular-nums"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-muted-foreground">Line Total</Label>
+                            <div className="h-9 flex items-center px-3 rounded-md border bg-muted/30 font-mono text-sm tabular-nums">
+                              {formatCurrency(lineTotal, locale)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <div className="flex justify-end pt-3 border-t">
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Total Estimate</p>
+                      <p className="text-2xl font-bold font-mono tabular-nums">
                         {formatCurrency(
-                          editingPR
-                            ? Number(line.quantity) * Number(line.estimatedPrice)
-                            : Number(line.totalEstimate),
+                          editableLines.reduce((sum, line) => sum + Number(line.quantity) * Number(line.estimatedPrice), 0),
                           locale
                         )}
-                      </TableCell>
-                      {editingPR && (
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => removeEditableLine(idx)}
-                            disabled={editableLines.length <= 1}
-                            aria-label="Remove line"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">#</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="w-36">Type</TableHead>
+                      <TableHead className="w-32">Unit</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead className="text-right">Unit Price</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
                     </TableRow>
-                  ))}
-                  <TableRow>
-                    <TableCell colSpan={editingPR ? 6 : 6} className="text-right font-medium">Total</TableCell>
-                    <TableCell className="text-right font-mono font-bold">
-                      {formatCurrency(
-                        editingPR
-                          ? editableLines.reduce((sum, line) => sum + Number(line.quantity) * Number(line.estimatedPrice), 0)
-                          : Number(pr.totalEstimate),
-                        locale
-                      )}
-                    </TableCell>
-                    {editingPR && <TableCell />}
-                  </TableRow>
-                </TableBody>
-              </Table>
-              </div>
+                  </TableHeader>
+                  <TableBody>
+                    {pr.lines.map((line, idx) => (
+                      <TableRow key={line.id}>
+                        <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                        <TableCell>
+                          <p className="font-medium">{line.description}</p>
+                          {line.specification && (
+                            <p className="text-xs text-muted-foreground">{line.specification}</p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px]">
+                            {line.itemType === "SERVICE_OR_EXPENSE" ? "Service/Expense" : line.itemType === "FIXED_ASSET" ? "Fixed Asset" : "Inventory"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{line.unit}</TableCell>
+                        <TableCell className="text-right font-mono">{Number(line.quantity)}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(Number(line.estimatedPrice), locale)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-medium">
+                          {formatCurrency(Number(line.totalEstimate), locale)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-right font-medium">Total</TableCell>
+                      <TableCell className="text-right font-mono font-bold">
+                        {formatCurrency(Number(pr.totalEstimate), locale)}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -935,64 +963,82 @@ export default function PRDetailPage() {
 
           <div className="space-y-4 py-2">
             {actionMode === "modify" && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="w-[90px]">Unit</TableHead>
-                    <TableHead className="w-[100px] text-right">Qty</TableHead>
-                    <TableHead className="w-[140px] text-right">Unit Price</TableHead>
-                    <TableHead className="w-[130px] text-right">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {editableLines.map((line, index) => (
-                    <TableRow key={line.id}>
-                      <TableCell>
-                        <Input
-                          value={line.description}
-                          onChange={(event) => updateEditableLine(index, "description", event.target.value)}
-                          className="h-8 text-sm"
-                        />
-                        <Input
-                          value={line.specification ?? ""}
-                          onChange={(event) => updateEditableLine(index, "specification", event.target.value)}
-                          className="h-7 text-xs mt-1"
-                          placeholder="Specification"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          value={line.unit}
-                          onChange={(event) => updateEditableLine(index, "unit", event.target.value)}
-                          className="h-8 text-sm"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={Number(line.quantity)}
-                          onChange={(event) => updateEditableLine(index, "quantity", Number(event.target.value))}
-                          className="h-8 text-sm text-right"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={Number(line.estimatedPrice)}
-                          onChange={(event) => updateEditableLine(index, "estimatedPrice", Number(event.target.value))}
-                          className="h-8 text-sm text-right"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {formatCurrency(Number(line.quantity) * Number(line.estimatedPrice), locale)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-3">
+                {editableLines.map((line, index) => {
+                  const lineTotal = Number(line.quantity) * Number(line.estimatedPrice)
+                  return (
+                    <div key={line.id} className="rounded-lg border bg-card p-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          Line {index + 1}
+                        </span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {line.itemType === "SERVICE_OR_EXPENSE" ? "Service/Expense" : line.itemType === "FIXED_ASSET" ? "Fixed Asset" : "Inventory"}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`pr-mod-${index}-desc`}>Description</Label>
+                          <Input
+                            id={`pr-mod-${index}-desc`}
+                            value={line.description}
+                            onChange={(event) => updateEditableLine(index, "description", event.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`pr-mod-${index}-spec`}>
+                            Specification <span className="text-muted-foreground text-xs">(optional)</span>
+                          </Label>
+                          <Input
+                            id={`pr-mod-${index}-spec`}
+                            value={line.specification ?? ""}
+                            onChange={(event) => updateEditableLine(index, "specification", event.target.value)}
+                            placeholder="Specification details"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t">
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`pr-mod-${index}-unit`}>Unit</Label>
+                          <Input
+                            id={`pr-mod-${index}-unit`}
+                            value={line.unit}
+                            onChange={(event) => updateEditableLine(index, "unit", event.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`pr-mod-${index}-qty`}>Qty</Label>
+                          <Input
+                            id={`pr-mod-${index}-qty`}
+                            type="number"
+                            min="0"
+                            value={Number(line.quantity)}
+                            onChange={(event) => updateEditableLine(index, "quantity", Number(event.target.value))}
+                            className="tabular-nums"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`pr-mod-${index}-price`}>Unit Price</Label>
+                          <Input
+                            id={`pr-mod-${index}-price`}
+                            type="number"
+                            min="0"
+                            value={Number(line.estimatedPrice)}
+                            onChange={(event) => updateEditableLine(index, "estimatedPrice", Number(event.target.value))}
+                            className="tabular-nums"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-muted-foreground">Line Total</Label>
+                          <div className="h-9 flex items-center px-3 rounded-md border bg-muted/30 font-mono text-sm tabular-nums">
+                            {formatCurrency(lineTotal, locale)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             )}
 
             <div className="space-y-1.5">
@@ -1046,22 +1092,19 @@ export default function PRDetailPage() {
 
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Vendor</Label>
-              <Select
+              <Label htmlFor="po-vendor">Vendor</Label>
+              <SearchableSelect
+                id="po-vendor"
+                options={vendors.map((vendor) => ({
+                  value: vendor.id,
+                  label: `${vendor.companyName} (${vendor.vendorNo})`,
+                }))}
                 value={poForm.vendorId}
                 onValueChange={(vendorId) => setPOForm((prev) => ({ ...prev, vendorId }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select approved vendor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vendors.map((vendor) => (
-                    <SelectItem key={vendor.id} value={vendor.id}>
-                      {vendor.companyName} ({vendor.vendorNo})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select approved vendor"
+                searchPlaceholder="Search vendors…"
+                emptyMessage="No approved vendors found"
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -5,19 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import Link from "next/link";
 import { PageHeader } from "@/components/shared/page-header";
+import { SearchableSelect } from "@/components/shared/searchable-select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -651,21 +645,13 @@ export default function GRNDetailPage() {
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Category</Label>
-                    <Select
+                    <SearchableSelect
+                      options={categories.map((cat) => ({ value: cat.id, label: cat.name }))}
                       value={line.categoryId}
                       onValueChange={(v) => updateLine(idx, "categoryId", v)}
-                    >
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Select category"
+                      searchPlaceholder="Search categories…"
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Unit Price (BDT)</Label>
