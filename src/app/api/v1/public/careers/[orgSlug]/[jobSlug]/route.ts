@@ -2,6 +2,28 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { apiSuccess, apiNotFound, handleRouteError } from '@/lib/api-response'
 
+function normalizePublicLanguages(value: unknown): { language: string; level?: string }[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => {
+      if (typeof item === 'string') {
+        const language = item.trim()
+        return language ? { language } : null
+      }
+      if (item && typeof item === 'object') {
+        const language = typeof (item as { language?: unknown }).language === 'string'
+          ? (item as { language: string }).language.trim()
+          : ''
+        const level = typeof (item as { level?: unknown }).level === 'string'
+          ? (item as { level: string }).level.trim()
+          : ''
+        return language ? { language, ...(level ? { level } : {}) } : null
+      }
+      return null
+    })
+    .filter((item): item is { language: string; level?: string } => Boolean(item))
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ orgSlug: string; jobSlug: string }> }
@@ -40,6 +62,11 @@ export async function GET(
         qualifications: true,
         preferredSkills: true,
         benefits: true,
+        minEducation: true,
+        minExperience: true,
+        requiredSkills: true,
+        requiredLanguages: true,
+        requiredCertifications: true,
         requireCoverLetter: true,
         customQuestions: true,
         department: { select: { name: true } },
@@ -48,7 +75,11 @@ export async function GET(
 
     if (!job) return apiNotFound('Job posting not found')
 
-    return apiSuccess({ ...job, organization: org })
+    return apiSuccess({
+      ...job,
+      requiredLanguages: normalizePublicLanguages(job.requiredLanguages),
+      organization: org,
+    })
   } catch (error) {
     return handleRouteError(error)
   }

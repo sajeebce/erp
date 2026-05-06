@@ -12,6 +12,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Checkbox } from '@/components/ui/checkbox'
 import { SearchableSelect } from '@/components/shared/searchable-select'
 import { PageHeader } from '@/components/shared/page-header'
+import { TagInput } from '@/components/shared/tag-input'
 
 const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'CONSULTANT', 'INTERN', 'VOLUNTEER'] as const
 const EDUCATION_LEVELS = ['PHD', 'MASTERS', 'BACHELORS', 'DIPLOMA', 'HIGH_SCHOOL'] as const
@@ -20,6 +21,8 @@ interface Department {
   id: string
   name: string
 }
+
+type RecruitmentTagType = 'SKILL' | 'LANGUAGE' | 'CERTIFICATION'
 
 export default function NewJobPostingPage() {
   const router = useRouter()
@@ -52,9 +55,14 @@ export default function NewJobPostingPage() {
   // Requirements (Auto-Scoring)
   const [minEducation, setMinEducation] = useState('')
   const [minExperience, setMinExperience] = useState('')
-  const [requiredSkills, setRequiredSkills] = useState('')
-  const [requiredLanguages, setRequiredLanguages] = useState('')
-  const [requiredCertifications, setRequiredCertifications] = useState('')
+  const [requiredSkills, setRequiredSkills] = useState<string[]>([])
+  const [requiredLanguages, setRequiredLanguages] = useState<string[]>([])
+  const [requiredCertifications, setRequiredCertifications] = useState<string[]>([])
+  const [tagSuggestions, setTagSuggestions] = useState<Record<RecruitmentTagType, string[]>>({
+    SKILL: [],
+    LANGUAGE: [],
+    CERTIFICATION: [],
+  })
 
   // Settings
   const [isInternal, setIsInternal] = useState(false)
@@ -70,8 +78,47 @@ export default function NewJobPostingPage() {
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    ;(['SKILL', 'LANGUAGE', 'CERTIFICATION'] as const).forEach((type) => {
+      fetch(`/api/v1/hr/recruitment/tags?type=${type}`)
+        .then(res => res.json())
+        .then(json => {
+          if (json.success) {
+            setTagSuggestions((current) => ({
+              ...current,
+              [type]: json.data.map((tag: { name: string }) => tag.name),
+            }))
+          }
+        })
+        .catch(() => {})
+    })
+  }, [])
+
+  function handleCreateTag(type: RecruitmentTagType, name: string) {
+    setTagSuggestions((current) => ({
+      ...current,
+      [type]: current[type].some((tag) => tag.toLowerCase() === name.toLowerCase())
+        ? current[type]
+        : [...current[type], name],
+    }))
+
+    fetch('/api/v1/hr/recruitment/tags', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, name }),
+    }).catch(() => {})
+  }
+
   function validate(): boolean {
-    if (!title.trim() || !departmentId || !applicationDeadline) {
+    if (
+      !title.trim() ||
+      !departmentId ||
+      !location.trim() ||
+      !applicationDeadline ||
+      !description.trim() ||
+      !responsibilities.trim() ||
+      !qualifications.trim()
+    ) {
       setError(t('recruitment.form.requiredFields'))
       return false
     }
@@ -111,9 +158,11 @@ export default function NewJobPostingPage() {
     if (benefits.trim()) payload.benefits = benefits.trim()
     if (minEducation) payload.minEducation = minEducation
     if (minExperience) payload.minExperience = parseInt(minExperience)
-    if (requiredSkills.trim()) payload.requiredSkills = requiredSkills.split(',').map(s => s.trim()).filter(Boolean)
-    if (requiredLanguages.trim()) payload.requiredLanguages = requiredLanguages.split(',').map(s => s.trim()).filter(Boolean)
-    if (requiredCertifications.trim()) payload.requiredCertifications = requiredCertifications.split(',').map(s => s.trim()).filter(Boolean)
+    if (requiredSkills.length > 0) payload.requiredSkills = requiredSkills
+    if (requiredLanguages.length > 0) {
+      payload.requiredLanguages = requiredLanguages.map((language) => ({ language }))
+    }
+    if (requiredCertifications.length > 0) payload.requiredCertifications = requiredCertifications
 
     try {
       const res = await fetch('/api/v1/hr/recruitment/jobs', {
@@ -125,7 +174,7 @@ export default function NewJobPostingPage() {
       if (res.ok && json.success) {
         router.push(`/hr/recruitment/${json.data.id}`)
       } else {
-        setError(json.error || t('recruitment.form.failedToCreate'))
+        setError(json.error?.message || t('recruitment.form.failedToCreate'))
       }
     } catch {
       setError(t('recruitment.form.failedToCreate'))
@@ -180,7 +229,7 @@ export default function NewJobPostingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="job-location">{t('recruitment.location')}</Label>
+              <Label htmlFor="job-location">{t('recruitment.location')} *</Label>
               <Input
                 id="job-location"
                 value={location}
@@ -288,7 +337,7 @@ export default function NewJobPostingPage() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="job-description">{t('recruitment.form.description')}</Label>
+            <Label htmlFor="job-description">{t('recruitment.form.description')} *</Label>
             <Textarea
               id="job-description"
               value={description}
@@ -299,7 +348,7 @@ export default function NewJobPostingPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="job-responsibilities">{t('recruitment.form.responsibilities')}</Label>
+            <Label htmlFor="job-responsibilities">{t('recruitment.form.responsibilities')} *</Label>
             <Textarea
               id="job-responsibilities"
               value={responsibilities}
@@ -310,7 +359,7 @@ export default function NewJobPostingPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="job-qualifications">{t('recruitment.form.qualifications')}</Label>
+            <Label htmlFor="job-qualifications">{t('recruitment.form.qualifications')} *</Label>
             <Textarea
               id="job-qualifications"
               value={qualifications}
@@ -374,31 +423,33 @@ export default function NewJobPostingPage() {
 
           <div className="space-y-2">
             <Label htmlFor="job-required-skills">{t('recruitment.form.requiredSkills')}</Label>
-            <Input
-              id="job-required-skills"
+            <TagInput
               value={requiredSkills}
-              onChange={(e) => setRequiredSkills(e.target.value)}
+              onChange={setRequiredSkills}
+              suggestions={tagSuggestions.SKILL}
+              onCreateSuggestion={(name) => handleCreateTag('SKILL', name)}
               placeholder={t('recruitment.form.commaSeparatedPlaceholder')}
             />
-            <p className="text-xs text-muted-foreground">{t('recruitment.form.commaSeparatedHint')}</p>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="job-required-languages">{t('recruitment.form.requiredLanguages')}</Label>
-            <Input
-              id="job-required-languages"
+            <TagInput
               value={requiredLanguages}
-              onChange={(e) => setRequiredLanguages(e.target.value)}
+              onChange={setRequiredLanguages}
+              suggestions={tagSuggestions.LANGUAGE}
+              onCreateSuggestion={(name) => handleCreateTag('LANGUAGE', name)}
               placeholder={t('recruitment.form.commaSeparatedPlaceholder')}
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="job-required-certs">{t('recruitment.form.requiredCertifications')}</Label>
-            <Input
-              id="job-required-certs"
+            <TagInput
               value={requiredCertifications}
-              onChange={(e) => setRequiredCertifications(e.target.value)}
+              onChange={setRequiredCertifications}
+              suggestions={tagSuggestions.CERTIFICATION}
+              onCreateSuggestion={(name) => handleCreateTag('CERTIFICATION', name)}
               placeholder={t('recruitment.form.commaSeparatedPlaceholder')}
             />
           </div>

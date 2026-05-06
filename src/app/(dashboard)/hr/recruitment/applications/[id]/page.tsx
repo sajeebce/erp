@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import {
   ArrowLeft, Loader2, ChevronRight, XCircle, CalendarPlus,
-  Sparkles, GraduationCap, BriefcaseBusiness, Code2, Languages, Award, UserCheck,
+  Calculator, GraduationCap, BriefcaseBusiness, Code2, Languages, Award, UserCheck,
+  FileText, ExternalLink,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,7 +36,8 @@ interface ApplicationDetail {
   applicantName: string
   applicantEmail: string
   applicantPhone: string | null
-  stage: string
+  stage?: string
+  status?: string
   autoScore: number | null
   manualScore: number | null
   finalScore: number | null
@@ -46,13 +48,21 @@ interface ApplicationDetail {
     languages: number
     certifications: number
   } | null
-  parsedCV: {
+  parsedCV?: {
     education: string[]
     experience: string[]
     skills: string[]
     languages: string[]
     certifications: string[]
   } | null
+  parsedEducation?: { degree?: string; institution?: string; year?: string; field?: string }[] | null
+  parsedExperience?: { title?: string; org?: string; startDate?: string; endDate?: string }[] | null
+  parsedSkills?: string[] | null
+  parsedLanguages?: { language?: string; level?: string }[] | null
+  parsedCertifications?: string[] | null
+  totalExperienceYears?: string | number | null
+  cvFilePath: string | null
+  coverLetterPath: string | null
   coverLetter: string | null
   customResponses: { question: string; answer: string }[] | null
   notes: string | null
@@ -74,6 +84,44 @@ interface ApplicationDetail {
   }[]
   offerSalary: number | null
   offerLetterUrl: string | null
+}
+
+function buildDeclaration(application: ApplicationDetail) {
+  const parsedCV = application.parsedCV
+  const education = parsedCV?.education?.length
+    ? parsedCV.education
+    : (application.parsedEducation || []).map((item) =>
+        [item.degree, item.field, item.institution, item.year].filter(Boolean).join(' - ')
+      )
+  const experience = parsedCV?.experience?.length
+    ? parsedCV.experience
+    : [
+        application.totalExperienceYears !== null && application.totalExperienceYears !== undefined
+          ? `${application.totalExperienceYears} years`
+          : '',
+        ...(application.parsedExperience || []).map((item) =>
+          [item.title, item.org].filter(Boolean).join(' - ')
+        ),
+      ].filter(Boolean)
+  const skills = parsedCV?.skills?.length ? parsedCV.skills : application.parsedSkills || []
+  const languages = parsedCV?.languages?.length
+    ? parsedCV.languages
+    : (application.parsedLanguages || []).map((item) =>
+        [item.language, item.level].filter(Boolean).join(' - ')
+      )
+  const certifications = parsedCV?.certifications?.length
+    ? parsedCV.certifications
+    : application.parsedCertifications || []
+
+  return { education, experience, skills, languages, certifications }
+}
+
+function getStoredFileName(path: string) {
+  return path.split('/').pop()?.replace(/^[0-9a-f-]+-/i, '') || path
+}
+
+function isDownloadableDocument(path: string) {
+  return path.includes('/hr/recruitment/')
 }
 
 export default function ApplicationDetailPage() {
@@ -100,26 +148,35 @@ export default function ApplicationDetailPage() {
   const [interviewLocation, setInterviewLocation] = useState('')
   const [interviewerName, setInterviewerName] = useState('')
 
+  const fetchApplication = useCallback(async () => {
+    if (!params.id) return
+
+    const res = await fetch(`/api/v1/hr/recruitment/applications/${params.id}`)
+    const json = await res.json()
+    if (res.ok && json.success) {
+      setApplication(json.data)
+      return true
+    }
+
+    setError(json.error?.message || tc('errors.notFound'))
+    return false
+  }, [params.id, tc])
+
   useEffect(() => {
     if (!params.id) return
 
-    fetch(`/api/v1/hr/recruitment/applications/${params.id}`)
-      .then(res => res.json())
-      .then(json => {
-        if (json.success) setApplication(json.data)
-        else setError(tc('errors.notFound'))
-      })
+    fetchApplication()
       .catch(() => setError(tc('errors.loadFailed')))
       .finally(() => setLoading(false))
-  }, [params.id, tc])
+  }, [params.id, tc, fetchApplication])
 
   async function handleScore() {
     setActionLoading('score')
     try {
       const res = await fetch(`/api/v1/hr/recruitment/applications/${params.id}/score`, { method: 'POST' })
       const json = await res.json()
-      if (res.ok && json.success) setApplication(json.data)
-      else setError(json.error || t('recruitment.form.actionFailed'))
+      if (res.ok && json.success) await fetchApplication()
+      else setError(json.error?.message || t('recruitment.form.actionFailed'))
     } catch {
       setError(t('recruitment.form.actionFailed'))
     } finally {
@@ -132,8 +189,8 @@ export default function ApplicationDetailPage() {
     try {
       const res = await fetch(`/api/v1/hr/recruitment/applications/${params.id}/advance`, { method: 'POST' })
       const json = await res.json()
-      if (res.ok && json.success) setApplication(json.data)
-      else setError(json.error || t('recruitment.form.actionFailed'))
+      if (res.ok && json.success) await fetchApplication()
+      else setError(json.error?.message || t('recruitment.form.actionFailed'))
     } catch {
       setError(t('recruitment.form.actionFailed'))
     } finally {
@@ -151,11 +208,11 @@ export default function ApplicationDetailPage() {
       })
       const json = await res.json()
       if (res.ok && json.success) {
-        setApplication(json.data)
+        await fetchApplication()
         setShowRejectDialog(false)
         setRejectReason('')
       } else {
-        setError(json.error || t('recruitment.form.actionFailed'))
+        setError(json.error?.message || t('recruitment.form.actionFailed'))
       }
     } catch {
       setError(t('recruitment.form.actionFailed'))
@@ -167,21 +224,23 @@ export default function ApplicationDetailPage() {
   async function handleScheduleInterview() {
     if (!interviewDate) return
     setActionLoading('schedule')
+    setError('')
     try {
-      const res = await fetch(`/api/v1/hr/recruitment/applications/${params.id}/interviews`, {
+      const res = await fetch('/api/v1/hr/recruitment/interviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          applicationId: params.id,
           interviewType,
           scheduledAt: interviewDate,
-          duration: parseInt(interviewDuration) || 30,
+          durationMinutes: parseInt(interviewDuration) || 30,
           location: interviewLocation.trim() || undefined,
           interviewerName: interviewerName.trim() || undefined,
         }),
       })
       const json = await res.json()
       if (res.ok && json.success) {
-        setApplication(json.data)
+        await fetchApplication()
         setShowScheduleDialog(false)
         setInterviewType('PHONE')
         setInterviewDate('')
@@ -189,7 +248,7 @@ export default function ApplicationDetailPage() {
         setInterviewLocation('')
         setInterviewerName('')
       } else {
-        setError(json.error || t('recruitment.form.actionFailed'))
+        setError(json.error?.message || t('recruitment.form.actionFailed'))
       }
     } catch {
       setError(t('recruitment.form.actionFailed'))
@@ -200,7 +259,8 @@ export default function ApplicationDetailPage() {
 
   function getCurrentStageIndex(): number {
     if (!application) return 0
-    const idx = PIPELINE_STAGES.indexOf(application.stage as typeof PIPELINE_STAGES[number])
+    const currentStage = application.stage || application.status || 'APPLIED'
+    const idx = PIPELINE_STAGES.indexOf(currentStage as typeof PIPELINE_STAGES[number])
     return idx >= 0 ? idx : 0
   }
 
@@ -231,8 +291,22 @@ export default function ApplicationDetailPage() {
   }
 
   const stageIndex = getCurrentStageIndex()
-  const isRejected = application.stage === 'REJECTED'
-  const isHired = application.stage === 'HIRED'
+  const currentStage = application.stage || application.status || 'APPLIED'
+  const isRejected = currentStage === 'REJECTED'
+  const isHired = currentStage === 'HIRED'
+  const declaration = buildDeclaration(application)
+  const cvUrl = `/api/v1/hr/recruitment/applications/${application.id}/documents/cv`
+  const coverLetterUrl = `/api/v1/hr/recruitment/applications/${application.id}/documents/cover-letter`
+  const canDownloadCv = Boolean(application.cvFilePath && isDownloadableDocument(application.cvFilePath))
+  const canDownloadCoverLetter = Boolean(
+    application.coverLetterPath && isDownloadableDocument(application.coverLetterPath)
+  )
+  const hasDeclaration =
+    declaration.education.length > 0 ||
+    declaration.experience.length > 0 ||
+    declaration.skills.length > 0 ||
+    declaration.languages.length > 0 ||
+    declaration.certifications.length > 0
 
   return (
     <div className="space-y-6">
@@ -259,7 +333,7 @@ export default function ApplicationDetailPage() {
         <CardContent className="py-4">
           <div className="flex items-center gap-1 overflow-x-auto">
             {PIPELINE_STAGES.map((stage, idx) => {
-              const isCurrent = application.stage === stage
+              const isCurrent = currentStage === stage
               const isPast = idx < stageIndex
               return (
                 <div key={stage} className="flex items-center gap-1 flex-shrink-0">
@@ -296,66 +370,69 @@ export default function ApplicationDetailPage() {
         {/* Left column (2/3) */}
         <div className="lg:col-span-2 space-y-6">
           {/* Parsed CV */}
-          {application.parsedCV && (
+          {hasDeclaration && (
             <Card>
-              <CardHeader><CardTitle>{t('recruitment.parsedCV')}</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle>Applicant Self-Declaration</CardTitle>
+                <p className="text-sm text-muted-foreground">Verify these claims at interview.</p>
+              </CardHeader>
               <CardContent className="space-y-4">
-                {application.parsedCV.education.length > 0 && (
+                {declaration.education.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <GraduationCap className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">{t('recruitment.cvSections.education')}</span>
                     </div>
                     <ul className="text-sm space-y-1 ml-6 list-disc">
-                      {application.parsedCV.education.map((item, i) => <li key={i}>{item}</li>)}
+                      {declaration.education.map((item, i) => <li key={i}>{item}</li>)}
                     </ul>
                   </div>
                 )}
-                {application.parsedCV.experience.length > 0 && (
+                {declaration.experience.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <BriefcaseBusiness className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">{t('recruitment.cvSections.experience')}</span>
                     </div>
                     <ul className="text-sm space-y-1 ml-6 list-disc">
-                      {application.parsedCV.experience.map((item, i) => <li key={i}>{item}</li>)}
+                      {declaration.experience.map((item, i) => <li key={i}>{item}</li>)}
                     </ul>
                   </div>
                 )}
-                {application.parsedCV.skills.length > 0 && (
+                {declaration.skills.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Code2 className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">{t('recruitment.cvSections.skills')}</span>
                     </div>
                     <div className="flex flex-wrap gap-1 ml-6">
-                      {application.parsedCV.skills.map((skill, i) => (
+                      {declaration.skills.map((skill, i) => (
                         <Badge key={i} variant="outline" className="text-xs">{skill}</Badge>
                       ))}
                     </div>
                   </div>
                 )}
-                {application.parsedCV.languages.length > 0 && (
+                {declaration.languages.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Languages className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">{t('recruitment.cvSections.languages')}</span>
                     </div>
                     <div className="flex flex-wrap gap-1 ml-6">
-                      {application.parsedCV.languages.map((lang, i) => (
+                      {declaration.languages.map((lang, i) => (
                         <Badge key={i} variant="outline" className="text-xs">{lang}</Badge>
                       ))}
                     </div>
                   </div>
                 )}
-                {application.parsedCV.certifications.length > 0 && (
+                {declaration.certifications.length > 0 && (
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Award className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">{t('recruitment.cvSections.certifications')}</span>
                     </div>
                     <div className="flex flex-wrap gap-1 ml-6">
-                      {application.parsedCV.certifications.map((cert, i) => (
+                      {declaration.certifications.map((cert, i) => (
                         <Badge key={i} variant="outline" className="text-xs">{cert}</Badge>
                       ))}
                     </div>
@@ -438,6 +515,67 @@ export default function ApplicationDetailPage() {
 
         {/* Right column (1/3) */}
         <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Documents</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {application.cvFilePath ? (
+                  <div className="rounded-md border px-3 py-2 text-sm">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="truncate">CV / Resume: {getStoredFileName(application.cvFilePath)}</span>
+                    </span>
+                    {canDownloadCv ? (
+                      <a
+                        href={cvUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-primary hover:underline"
+                      >
+                        View PDF
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    ) : (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Stored as filename only. Ask candidate to submit again with the new upload flow.
+                      </p>
+                    )}
+                  </div>
+              ) : (
+                <div className="rounded-md border border-dashed px-3 py-3 text-sm text-muted-foreground">
+                  No CV / Resume uploaded for this application.
+                </div>
+              )}
+
+              {application.coverLetterPath ? (
+                  <div className="rounded-md border px-3 py-2 text-sm">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="truncate">Cover Letter: {getStoredFileName(application.coverLetterPath)}</span>
+                    </span>
+                    {canDownloadCoverLetter ? (
+                      <a
+                        href={coverLetterUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-primary hover:underline"
+                      >
+                        View File
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    ) : (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Stored as filename only. Ask candidate to submit again with the new upload flow.
+                      </p>
+                    )}
+                  </div>
+              ) : (
+                <div className="rounded-md border border-dashed px-3 py-3 text-sm text-muted-foreground">
+                  No cover letter file uploaded.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Score Card */}
           <Card>
             <CardHeader><CardTitle>{t('recruitment.scoreCard')}</CardTitle></CardHeader>
@@ -504,7 +642,7 @@ export default function ApplicationDetailPage() {
               </div>
               <div>
                 <span className="text-muted-foreground">{t('recruitment.currentStage')}:</span>{' '}
-                <StatusBadge status={application.stage} />
+                <StatusBadge status={currentStage} />
               </div>
               <div>
                 <span className="text-muted-foreground">{t('recruitment.jobTitle')}:</span>{' '}
@@ -531,7 +669,7 @@ export default function ApplicationDetailPage() {
           </Card>
 
           {/* Offer Section */}
-          {application.stage === 'OFFER' && (
+          {currentStage === 'OFFER' && (
             <Card>
               <CardHeader><CardTitle>{t('recruitment.offerDetails')}</CardTitle></CardHeader>
               <CardContent className="space-y-3 text-sm">
@@ -584,7 +722,7 @@ export default function ApplicationDetailPage() {
                   {actionLoading === 'score' ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
-                    <Sparkles className="h-4 w-4 mr-2" />
+                    <Calculator className="h-4 w-4 mr-2" />
                   )}
                   {t('recruitment.scoreCV')}
                 </Button>
@@ -670,7 +808,7 @@ export default function ApplicationDetailPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="interview-duration">{t('recruitment.duration')}</Label>
+                <Label htmlFor="interview-duration">{t('recruitment.duration')} (minutes)</Label>
                 <Input
                   id="interview-duration"
                   type="number"
@@ -678,7 +816,9 @@ export default function ApplicationDetailPage() {
                   step="15"
                   value={interviewDuration}
                   onChange={(e) => setInterviewDuration(e.target.value)}
+                  placeholder="30"
                 />
+                <p className="text-xs text-muted-foreground">Example: 30, 45, 60, 75</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="interview-location">{t('recruitment.location')}</Label>

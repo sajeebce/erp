@@ -9,9 +9,39 @@ import {
   handleRouteError,
 } from '@/lib/api-response'
 import { Prisma } from '@prisma/client'
+import { upsertRecruitmentTags } from '@/lib/recruitment-tags'
 
 interface RouteParams {
   params: Promise<{ id: string }>
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean)
+}
+
+function normalizeRequiredLanguages(value: unknown): { language: string; level?: string }[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => {
+      if (typeof item === 'string') {
+        const language = item.trim()
+        return language ? { language } : null
+      }
+      if (item && typeof item === 'object') {
+        const language = typeof (item as { language?: unknown }).language === 'string'
+          ? (item as { language: string }).language.trim()
+          : ''
+        const level = typeof (item as { level?: unknown }).level === 'string'
+          ? (item as { level: string }).level.trim()
+          : ''
+        return language ? { language, ...(level ? { level } : {}) } : null
+      }
+      return null
+    })
+    .filter((item): item is { language: string; level?: string } => Boolean(item))
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
@@ -23,6 +53,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       where: { id, organizationId: auth.organizationId },
       include: {
         department: { select: { id: true, name: true, code: true } },
+        organization: { select: { slug: true } },
         _count: { select: { applications: true } },
       },
     })
@@ -71,9 +102,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.benefits !== undefined) data.benefits = body.benefits || null
     if (body.minEducation !== undefined) data.minEducation = body.minEducation || null
     if (body.minExperience !== undefined) data.minExperience = body.minExperience ?? null
-    if (body.requiredSkills !== undefined) data.requiredSkills = body.requiredSkills || null
-    if (body.requiredLanguages !== undefined) data.requiredLanguages = body.requiredLanguages || null
-    if (body.requiredCertifications !== undefined) data.requiredCertifications = body.requiredCertifications || null
+    const normalizedSkills = body.requiredSkills !== undefined ? normalizeStringArray(body.requiredSkills) : null
+    const normalizedLanguages = body.requiredLanguages !== undefined ? normalizeRequiredLanguages(body.requiredLanguages) : null
+    const normalizedCertifications = body.requiredCertifications !== undefined ? normalizeStringArray(body.requiredCertifications) : null
+
+    if (body.requiredSkills !== undefined) data.requiredSkills = normalizedSkills && normalizedSkills.length > 0 ? normalizedSkills : Prisma.JsonNull
+    if (body.requiredLanguages !== undefined) data.requiredLanguages = normalizedLanguages && normalizedLanguages.length > 0 ? normalizedLanguages : Prisma.JsonNull
+    if (body.requiredCertifications !== undefined) data.requiredCertifications = normalizedCertifications && normalizedCertifications.length > 0 ? normalizedCertifications : Prisma.JsonNull
     if (body.projectId !== undefined) data.projectId = body.projectId || null
     if (body.grantId !== undefined) data.grantId = body.grantId || null
     if (body.applicationDeadline !== undefined) data.applicationDeadline = new Date(body.applicationDeadline)
@@ -88,6 +123,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updated = await prisma.jobPosting.update({ where: { id }, data })
+
+    await Promise.all([
+      normalizedSkills ? upsertRecruitmentTags(auth.organizationId, 'SKILL', normalizedSkills) : Promise.resolve(),
+      normalizedLanguages ? upsertRecruitmentTags(auth.organizationId, 'LANGUAGE', normalizedLanguages.map((item) => item.language)) : Promise.resolve(),
+      normalizedCertifications ? upsertRecruitmentTags(auth.organizationId, 'CERTIFICATION', normalizedCertifications) : Promise.resolve(),
+    ])
 
     const auditCtx = getAuditContext(request)
     await logAudit({

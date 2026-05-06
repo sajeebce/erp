@@ -13,8 +13,8 @@ const EDUCATION_LEVELS: Record<string, number> = {
   'ssc': 0,
 }
 
-function scoreEducation(parsed: Array<{ degree?: string }> | null, minEducation: string | null, weight: number): number {
-  if (!minEducation) return weight
+function scoreEducation(parsed: Array<{ degree?: string }> | null, minEducation: string | null): number {
+  if (!minEducation) return 100
   if (!parsed || parsed.length === 0) return 0
 
   const requiredLevel = EDUCATION_LEVELS[minEducation.toLowerCase()] ?? 0
@@ -31,24 +31,24 @@ function scoreEducation(parsed: Array<{ degree?: string }> | null, minEducation:
     }
   }
 
-  if (highestLevel >= requiredLevel) return weight
-  if (highestLevel === requiredLevel - 1) return Math.round(weight * 0.6)
-  return Math.round(weight * 0.2)
+  if (highestLevel >= requiredLevel) return 100
+  if (highestLevel === requiredLevel - 1) return 60
+  return 20
 }
 
-function scoreExperience(totalYears: number | null, minExperience: number | null, weight: number): number {
-  if (!minExperience || minExperience === 0) return weight
+function scoreExperience(totalYears: number | null, minExperience: number | null): number {
+  if (!minExperience || minExperience === 0) return 100
   if (!totalYears || totalYears === 0) return 0
 
   const ratio = totalYears / minExperience
-  if (ratio >= 1) return weight
-  if (ratio >= 0.75) return Math.round(weight * 0.73)
-  if (ratio >= 0.5) return Math.round(weight * 0.5)
-  return Math.round(weight * 0.17)
+  if (ratio >= 1) return 100
+  if (ratio >= 0.75) return 73
+  if (ratio >= 0.5) return 50
+  return 17
 }
 
-function scoreSkills(parsedSkills: string[] | null, requiredSkills: string[] | null, weight: number): number {
-  if (!requiredSkills || requiredSkills.length === 0) return weight
+function scoreSkills(parsedSkills: string[] | null, requiredSkills: string[] | null): number {
+  if (!requiredSkills || requiredSkills.length === 0) return 100
   if (!parsedSkills || parsedSkills.length === 0) return 0
 
   const normalizedParsed = parsedSkills.map(s => s.toLowerCase().trim())
@@ -61,15 +61,14 @@ function scoreSkills(parsedSkills: string[] | null, requiredSkills: string[] | n
     }
   }
 
-  return Math.round((matched / requiredSkills.length) * weight)
+  return Math.round((matched / requiredSkills.length) * 100)
 }
 
 function scoreLanguages(
   parsedLanguages: Array<{ language?: string; level?: string }> | null,
-  requiredLanguages: Array<{ language?: string; level?: string }> | null,
-  weight: number
+  requiredLanguages: Array<{ language?: string; level?: string }> | null
 ): number {
-  if (!requiredLanguages || requiredLanguages.length === 0) return weight
+  if (!requiredLanguages || requiredLanguages.length === 0) return 100
   if (!parsedLanguages || parsedLanguages.length === 0) return 0
 
   const parsedMap = new Map<string, string>()
@@ -86,11 +85,11 @@ function scoreLanguages(
     }
   }
 
-  return Math.round((matched / requiredLanguages.length) * weight)
+  return Math.round((matched / requiredLanguages.length) * 100)
 }
 
-function scoreCertifications(parsedCerts: string[] | null, requiredCerts: string[] | null, weight: number): number {
-  if (!requiredCerts || requiredCerts.length === 0) return weight
+function scoreCertifications(parsedCerts: string[] | null, requiredCerts: string[] | null): number {
+  if (!requiredCerts || requiredCerts.length === 0) return 100
   if (!parsedCerts || parsedCerts.length === 0) return 0
 
   const normalizedParsed = parsedCerts.map(c => c.toLowerCase().trim())
@@ -103,7 +102,7 @@ function scoreCertifications(parsedCerts: string[] | null, requiredCerts: string
     }
   }
 
-  return Math.round((matched / requiredCerts.length) * weight)
+  return Math.round((matched / requiredCerts.length) * 100)
 }
 
 /**
@@ -123,11 +122,6 @@ export async function autoScoreApplication(applicationId: string): Promise<void>
           requiredSkills: true,
           requiredLanguages: true,
           requiredCertifications: true,
-          scoreWeightEducation: true,
-          scoreWeightExperience: true,
-          scoreWeightSkills: true,
-          scoreWeightLanguages: true,
-          scoreWeightCertifications: true,
         },
       },
     },
@@ -136,41 +130,31 @@ export async function autoScoreApplication(applicationId: string): Promise<void>
   if (!application) return
 
   const job = application.jobPosting
-  const weights = {
-    education: job.scoreWeightEducation,
-    experience: job.scoreWeightExperience,
-    skills: job.scoreWeightSkills,
-    languages: job.scoreWeightLanguages,
-    certifications: job.scoreWeightCertifications,
-  }
 
   const educationScore = scoreEducation(
     application.parsedEducation as Array<{ degree?: string }> | null,
-    job.minEducation,
-    weights.education
+    job.minEducation
   )
   const experienceScore = scoreExperience(
     application.totalExperienceYears ? Number(application.totalExperienceYears) : null,
-    job.minExperience,
-    weights.experience
+    job.minExperience
   )
   const skillsScore = scoreSkills(
     application.parsedSkills as string[] | null,
-    job.requiredSkills as string[] | null,
-    weights.skills
+    job.requiredSkills as string[] | null
   )
   const languagesScore = scoreLanguages(
     application.parsedLanguages as Array<{ language?: string; level?: string }> | null,
-    job.requiredLanguages as Array<{ language?: string; level?: string }> | null,
-    weights.languages
+    job.requiredLanguages as Array<{ language?: string; level?: string }> | null
   )
   const certificationsScore = scoreCertifications(
     application.parsedCertifications as string[] | null,
-    job.requiredCertifications as string[] | null,
-    weights.certifications
+    job.requiredCertifications as string[] | null
   )
 
-  const totalScore = educationScore + experienceScore + skillsScore + languagesScore + certificationsScore
+  const totalScore = Math.round(
+    (educationScore + experienceScore + skillsScore + languagesScore + certificationsScore) / 5
+  )
 
   const scoreBreakdown = {
     education: educationScore,
@@ -179,7 +163,6 @@ export async function autoScoreApplication(applicationId: string): Promise<void>
     languages: languagesScore,
     certifications: certificationsScore,
     total: totalScore,
-    weights,
   }
 
   await prisma.jobApplication.update({

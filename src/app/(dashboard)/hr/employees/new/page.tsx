@@ -84,8 +84,8 @@ export default function NewEmployeePage() {
           if (json.success) {
             const { prefill, jobPosting } = json.data
             setFullName(prefill.fullName || '')
-            setEmail(prefill.applicantEmail || '')
-            setPhone(prefill.applicantPhone || '')
+            setEmail(prefill.email || '')
+            setPhone(prefill.phone || '')
             if (jobPosting.departmentId) setDepartmentId(jobPosting.departmentId)
             if (jobPosting.designationId) setDesignationId(jobPosting.designationId)
             if (jobPosting.employmentType) setEmploymentType(jobPosting.employmentType)

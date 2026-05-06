@@ -14,6 +14,8 @@ const DEFAULT_SEQUENCE_CONFIG: Record<string, { prefix: string; padLength?: numb
   contract: { prefix: 'CON', padLength: 4 },
   asset: { prefix: 'AST', padLength: 4 },
   employee: { prefix: 'EMP', padLength: 4 },
+  'employee-contract': { prefix: 'EC', padLength: 4 },
+  'job-posting': { prefix: 'JOB', padLength: 4 },
   beneficiary: { prefix: 'BEN', padLength: 4 },
   enrollment: { prefix: 'ENR', padLength: 4 },
   grant: { prefix: 'GR', padLength: 4 },

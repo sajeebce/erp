@@ -515,6 +515,12 @@ enum JobPostingStatus {
   ON_HOLD
 }
 
+enum RecruitmentTagType {
+  SKILL
+  LANGUAGE
+  CERTIFICATION
+}
+
 enum ApplicationStatus {
   APPLIED
   SCREENED

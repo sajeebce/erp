@@ -26,6 +26,14 @@ export async function GET(request: NextRequest) {
     const status = url.searchParams.get('status')
     if (status) where.status = status
 
+    const jobId = url.searchParams.get('jobId')
+    if (jobId) {
+      where.application = {
+        organizationId: auth.organizationId,
+        jobPostingId: jobId,
+      }
+    }
+
     const from = url.searchParams.get('from')
     const to = url.searchParams.get('to')
     if (from || to) {

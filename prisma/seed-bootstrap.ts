@@ -50,6 +50,11 @@ const STANDARD_ROLES = [
     description: 'Can manage assigned projects, create project records, and submit no-cost extension requests without approval authority.',
     isSystem: false,
   },
+  {
+    name: 'HR',
+    description: 'Human Resources — manages employees, recruitment, payroll, leave, attendance, training, and performance.',
+    isSystem: false,
+  },
 ]
 
 const DEMO_PASSWORD = 'SecurePass@2026!'
@@ -96,6 +101,12 @@ const DEMO_USERS = [
     email: 'fatema@cssbd.org',
     fullName: 'Fatema Khatun',
     phone: '+8801712345684',
+  },
+  {
+    roleName: 'HR',
+    email: 'hr@cssbd.org',
+    fullName: 'Sumi Akhtar',
+    phone: '+8801712345685',
   },
 ]
 

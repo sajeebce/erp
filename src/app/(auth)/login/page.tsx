@@ -15,6 +15,7 @@ const DEMO_PASSWORD = 'SecurePass@2026!'
 
 const DEMO_ACCOUNTS = [
   { role: 'ADMIN', label: 'Admin', email: 'rahim@cssbd.org' },
+  { role: 'HR', label: 'HR', email: 'hr@cssbd.org' },
   { role: 'STAFF', label: 'Staff', email: 'kamal@cssbd.org' },
   { role: 'STORE_MANAGER', label: 'Store Manager', email: 'shakil@cssbd.org' },
   { role: 'PROGRAM_COORDINATOR', label: 'Program Coordinator', email: 'program@cssbd.org' },

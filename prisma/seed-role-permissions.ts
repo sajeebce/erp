@@ -61,6 +61,10 @@ const ROLE_PERMISSION_RULES: Record<string, PermissionRule[] | 'ALL'> = {
     { module: 'donors', resources: ['donors', 'grants'], actions: ['read'] },
     { module: 'reports', resources: ['project'], actions: ['read', 'export'] },
   ],
+  HR: [
+    { module: 'hr', actions: ['read', 'create', 'update', 'approve', 'export'] },
+    { module: 'reports', resources: ['hr', 'audit-trail'], actions: ['read', 'export'] },
+  ],
 }
 
 function matchesRule(

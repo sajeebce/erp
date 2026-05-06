@@ -11,6 +11,36 @@ import {
   parsePaginationParams,
 } from '@/lib/api-response'
 import { Prisma } from '@prisma/client'
+import { upsertRecruitmentTags } from '@/lib/recruitment-tags'
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean)
+}
+
+function normalizeRequiredLanguages(value: unknown): { language: string; level?: string }[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => {
+      if (typeof item === 'string') {
+        const language = item.trim()
+        return language ? { language } : null
+      }
+      if (item && typeof item === 'object') {
+        const language = typeof (item as { language?: unknown }).language === 'string'
+          ? (item as { language: string }).language.trim()
+          : ''
+        const level = typeof (item as { level?: unknown }).level === 'string'
+          ? (item as { level: string }).level.trim()
+          : ''
+        return language ? { language, ...(level ? { level } : {}) } : null
+      }
+      return null
+    })
+    .filter((item): item is { language: string; level?: string } => Boolean(item))
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -58,6 +88,7 @@ export async function GET(request: NextRequest) {
           isInternal: true,
           createdAt: true,
           department: { select: { id: true, name: true } },
+          organization: { select: { slug: true } },
           _count: { select: { applications: true } },
         },
         orderBy: { [sort]: order },
@@ -67,7 +98,15 @@ export async function GET(request: NextRequest) {
       prisma.jobPosting.count({ where }),
     ])
 
-    return apiPaginated(jobs, total, page, limit)
+    return apiPaginated(
+      jobs.map((job) => ({
+        ...job,
+        applicationsCount: job._count.applications,
+      })),
+      total,
+      page,
+      limit
+    )
   } catch (error) {
     return handleRouteError(error)
   }
@@ -118,6 +157,10 @@ export async function POST(request: NextRequest) {
       slug = `${slug}-${Date.now()}`
     }
 
+    const normalizedSkills = normalizeStringArray(body.requiredSkills)
+    const normalizedLanguages = normalizeRequiredLanguages(body.requiredLanguages)
+    const normalizedCertifications = normalizeStringArray(body.requiredCertifications)
+
     const jobPosting = await prisma.jobPosting.create({
       data: {
         organizationId: auth.organizationId,
@@ -142,9 +185,9 @@ export async function POST(request: NextRequest) {
         benefits: body.benefits || null,
         minEducation: body.minEducation || null,
         minExperience: body.minExperience ?? null,
-        requiredSkills: body.requiredSkills || null,
-        requiredLanguages: body.requiredLanguages || null,
-        requiredCertifications: body.requiredCertifications || null,
+        requiredSkills: normalizedSkills.length > 0 ? normalizedSkills : Prisma.JsonNull,
+        requiredLanguages: normalizedLanguages.length > 0 ? normalizedLanguages : Prisma.JsonNull,
+        requiredCertifications: normalizedCertifications.length > 0 ? normalizedCertifications : Prisma.JsonNull,
         projectId: body.projectId || null,
         grantId: body.grantId || null,
         applicationDeadline: new Date(applicationDeadline),
@@ -156,6 +199,12 @@ export async function POST(request: NextRequest) {
         createdById: auth.userId,
       },
     })
+
+    await Promise.all([
+      upsertRecruitmentTags(auth.organizationId, 'SKILL', normalizedSkills),
+      upsertRecruitmentTags(auth.organizationId, 'LANGUAGE', normalizedLanguages.map((item) => item.language)),
+      upsertRecruitmentTags(auth.organizationId, 'CERTIFICATION', normalizedCertifications),
+    ])
 
     const auditCtx = getAuditContext(request)
     await logAudit({

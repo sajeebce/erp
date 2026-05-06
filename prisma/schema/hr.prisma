@@ -640,26 +640,26 @@ model PerformanceReview {
 }
 
 model Training {
-  id            String         @id @default(uuid()) @db.Uuid
-  organizationId String        @db.Uuid
-  trainingNo    String
-  title         String
-  type          TrainingType
-  facilitator   String?
-  venue         String?
-  startDate     DateTime
-  endDate       DateTime?
-  durationHours Int?
-  capacity      Int?
-  budget        Decimal        @default(0) @db.Decimal(18, 2)
-  actualCost    Decimal        @default(0) @db.Decimal(18, 2)
-  status        TrainingStatus @default(PLANNED)
-  description   String?
-  projectId     String?        @db.Uuid
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @db.Uuid
+  trainingNo     String
+  title          String
+  type           TrainingType
+  facilitator    String?
+  venue          String?
+  startDate      DateTime
+  endDate        DateTime?
+  durationHours  Int?
+  capacity       Int?
+  budget         Decimal        @default(0) @db.Decimal(18, 2)
+  actualCost     Decimal        @default(0) @db.Decimal(18, 2)
+  status         TrainingStatus @default(PLANNED)
+  description    String?
+  projectId      String?        @db.Uuid
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id])
+  organization Organization          @relation(fields: [organizationId], references: [id])
   participants TrainingParticipant[]
 
   @@unique([organizationId, trainingNo])
@@ -761,6 +761,21 @@ model JobPosting {
   @@index([status])
   @@index([slug])
   @@index([applicationDeadline])
+}
+
+model RecruitmentTag {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @db.Uuid
+  type           RecruitmentTagType
+  name           String
+  nameLower      String
+  usageCount     Int                @default(0)
+  createdAt      DateTime           @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, type, nameLower])
+  @@index([organizationId, type, usageCount(sort: Desc)])
 }
 
 model JobApplication {

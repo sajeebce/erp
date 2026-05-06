@@ -118,59 +118,7 @@ export async function POST(request: NextRequest) {
     }
 
     const employeeNo = await generateNextNumber(auth.organizationId, 'employee')
-
-    const employee = await prisma.employee.create({
-      data: {
-        organizationId: auth.organizationId,
-        employeeNo,
-        fullName: fullName.trim(),
-        localizedName: body.localizedName || null,
-        fatherName: body.fatherName || null,
-        motherName: body.motherName || null,
-        dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
-        gender: body.gender || null,
-        maritalStatus: body.maritalStatus || null,
-        nidNumber: body.nidNumber || null,
-        passport: body.passport || null,
-        phone: body.phone || null,
-        email: body.email || null,
-        emergencyContact: body.emergencyContact || null,
-        presentAddress: body.presentAddress || null,
-        permanentAddress: body.permanentAddress || null,
-        departmentId,
-        designationId,
-        primaryBusinessUnitId: primaryBusinessUnitId || null,
-        workLocationId: workLocationId || null,
-        employmentType: body.employmentType || 'FULL_TIME',
-        joiningDate: new Date(joiningDate),
-        confirmationDate: body.confirmationDate ? new Date(body.confirmationDate) : null,
-        endDate: body.endDate ? new Date(body.endDate) : null,
-        reportingToId: body.reportingToId || null,
-        status: body.status || 'ACTIVE',
-        basicSalary: body.basicSalary ? new Prisma.Decimal(body.basicSalary) : null,
-        bankAccountNo: body.bankAccountNo || null,
-        bankName: body.bankName || null,
-        tinNumber: body.tinNumber || null,
-        notes: body.notes || null,
-        convertedFromApplicationId: body.convertedFromApplicationId || null,
-      },
-    })
-
-    // Auto-create Contract (DRAFT)
     const contractNo = await generateNextNumber(auth.organizationId, 'employee-contract')
-    await prisma.employeeContract.create({
-      data: {
-        organizationId: auth.organizationId,
-        contractNo,
-        employeeId: employee.id,
-        contractType: body.employmentType || 'FULL_TIME',
-        title: `${body.fullName} - Employment Contract`,
-        startDate: new Date(body.joiningDate),
-        endDate: body.endDate ? new Date(body.endDate) : null,
-        basicSalary: body.basicSalary ? new Prisma.Decimal(body.basicSalary) : new Prisma.Decimal(0),
-        status: 'DRAFT',
-      },
-    })
 
     // Auto-start Onboarding
     const checklists = await prisma.onboardingChecklist.findMany({
@@ -182,14 +130,70 @@ export async function POST(request: NextRequest) {
         ],
       },
     })
-    if (checklists.length > 0) {
-      await prisma.onboardingProgress.createMany({
-        data: checklists.map((c) => ({
-          employeeId: employee.id,
-          checklistId: c.id,
-        })),
+
+    const employee = await prisma.$transaction(async (tx) => {
+      const createdEmployee = await tx.employee.create({
+        data: {
+          organizationId: auth.organizationId,
+          employeeNo,
+          fullName: fullName.trim(),
+          localizedName: body.localizedName || null,
+          fatherName: body.fatherName || null,
+          motherName: body.motherName || null,
+          dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
+          gender: body.gender || null,
+          maritalStatus: body.maritalStatus || null,
+          nidNumber: body.nidNumber || null,
+          passport: body.passport || null,
+          phone: body.phone || null,
+          email: body.email || null,
+          emergencyContact: body.emergencyContact || null,
+          presentAddress: body.presentAddress || null,
+          permanentAddress: body.permanentAddress || null,
+          departmentId,
+          designationId,
+          primaryBusinessUnitId: primaryBusinessUnitId || null,
+          workLocationId: workLocationId || null,
+          employmentType: body.employmentType || 'FULL_TIME',
+          joiningDate: new Date(joiningDate),
+          confirmationDate: body.confirmationDate ? new Date(body.confirmationDate) : null,
+          endDate: body.endDate ? new Date(body.endDate) : null,
+          reportingToId: body.reportingToId || null,
+          status: body.status || 'ACTIVE',
+          basicSalary: body.basicSalary ? new Prisma.Decimal(body.basicSalary) : null,
+          bankAccountNo: body.bankAccountNo || null,
+          bankName: body.bankName || null,
+          tinNumber: body.tinNumber || null,
+          notes: body.notes || null,
+          convertedFromApplicationId: body.convertedFromApplicationId || null,
+        },
       })
-    }
+
+      await tx.employeeContract.create({
+        data: {
+          organizationId: auth.organizationId,
+          contractNo,
+          employeeId: createdEmployee.id,
+          contractType: body.employmentType || 'FULL_TIME',
+          title: `${body.fullName} - Employment Contract`,
+          startDate: new Date(body.joiningDate),
+          endDate: body.endDate ? new Date(body.endDate) : null,
+          basicSalary: body.basicSalary ? new Prisma.Decimal(body.basicSalary) : new Prisma.Decimal(0),
+          status: 'DRAFT',
+        },
+      })
+
+      if (checklists.length > 0) {
+        await tx.onboardingProgress.createMany({
+          data: checklists.map((c) => ({
+            employeeId: createdEmployee.id,
+            checklistId: c.id,
+          })),
+        })
+      }
+
+      return createdEmployee
+    })
 
     const auditCtx = getAuditContext(request)
     await logAudit({

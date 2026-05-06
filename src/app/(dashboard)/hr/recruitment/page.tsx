@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Plus, Briefcase, Users, Clock, CalendarCheck, Loader2 } from 'lucide-react'
+import { Plus, Briefcase, Users, Clock, CalendarCheck } from 'lucide-react'
 import { ColumnDef } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,11 +12,14 @@ import { DataTable } from '@/components/shared/data-table'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
+import { ShareJobLinkButton } from '@/components/hr/share-job-link-button'
 
 interface JobPosting {
   id: string
   postingNo: string
   title: string
+  slug: string
+  organization: { slug: string }
   department: { id: string; name: string } | null
   location: string
   vacancies: number
@@ -89,6 +92,19 @@ export default function RecruitmentPage() {
       accessorKey: 'status',
       header: tc('labels.status'),
       cell: ({ row }) => <StatusBadge status={row.getValue('status')} />,
+    },
+    {
+      id: 'share',
+      header: '',
+      cell: ({ row }) => (
+        <div className="flex justify-end">
+          <ShareJobLinkButton
+            orgSlug={row.original.organization.slug}
+            jobSlug={row.original.slug}
+            status={row.original.status}
+          />
+        </div>
+      ),
     },
   ]
 

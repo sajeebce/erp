@@ -12,7 +12,7 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-export async function POST(request: NextRequest, { params }: RouteParams) {
+async function getConversionPrefill(request: NextRequest, { params }: RouteParams) {
   try {
     const auth = await requireAuthFromRequest(request)
     const { id } = await params
@@ -63,4 +63,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   } catch (error) {
     return handleRouteError(error)
   }
+}
+
+export async function GET(request: NextRequest, context: RouteParams) {
+  return getConversionPrefill(request, context)
+}
+
+export async function POST(request: NextRequest, context: RouteParams) {
+  return getConversionPrefill(request, context)
 }

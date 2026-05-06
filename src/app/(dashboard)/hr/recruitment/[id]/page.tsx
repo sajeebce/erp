@@ -1,19 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import {
   ArrowLeft, Loader2, Pencil, Send, XCircle, MapPin, Building2,
-  Briefcase, Users, CalendarDays, DollarSign, Sparkles, CheckCircle2,
+  Briefcase, Users, CalendarDays, DollarSign, Calculator, RotateCcw,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Checkbox } from '@/components/ui/checkbox'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
+import { ShareJobLinkButton } from '@/components/hr/share-job-link-button'
 
 const PIPELINE_STAGES = [
   'APPLIED',
@@ -30,6 +32,8 @@ interface JobPosting {
   id: string
   postingNo: string
   title: string
+  slug: string
+  organization: { slug: string }
   department: { id: string; name: string } | null
   location: string
   isRemote: boolean
@@ -48,17 +52,23 @@ interface JobPosting {
   minEducation: string | null
   minExperience: number | null
   requiredSkills: string[] | null
-  requiredLanguages: string[] | null
+  requiredLanguages: ({ language: string; level?: string } | string)[] | null
   requiredCertifications: string[] | null
   status: string
   createdAt: string
+}
+
+function formatRequiredLanguage(language: { language: string; level?: string } | string) {
+  if (typeof language === 'string') return language
+  return [language.language, language.level].filter(Boolean).join(' - ')
 }
 
 interface Application {
   id: string
   applicantName: string
   applicantEmail: string
-  stage: string
+  stage?: string
+  status?: string
   autoScore: number | null
   manualScore: number | null
   appliedAt: string
@@ -78,16 +88,84 @@ interface Interview {
 export default function JobPostingDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const t = useTranslations('hr')
   const tc = useTranslations('common')
   const { formatDate, formatCurrency } = useFormatters()
 
   const [job, setJob] = useState<JobPosting | null>(null)
   const [applications, setApplications] = useState<Application[]>([])
+  const [allApplications, setAllApplications] = useState<Application[]>([])
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [loading, setLoading] = useState(true)
+  const [applicationsLoading, setApplicationsLoading] = useState(false)
+  const [allApplicationsLoading, setAllApplicationsLoading] = useState(false)
   const [error, setError] = useState('')
   const [actionLoading, setActionLoading] = useState('')
+  const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([])
+  const [bulkTargetStage, setBulkTargetStage] = useState<(typeof PIPELINE_STAGES)[number]>('SCREENED')
+
+  const q = searchParams.get('q') || ''
+  const minScore = searchParams.get('minScore') || ''
+  const skillsParam = searchParams.get('skills') || ''
+  const selectedSkills = useMemo(
+    () => skillsParam.split(',').map((skill) => skill.trim()).filter(Boolean),
+    [skillsParam]
+  )
+  const selectedSkillsKey = selectedSkills.join(',')
+  const hasActiveFilters = Boolean(q || minScore || selectedSkills.length > 0)
+  const selectedApplicationIdSet = useMemo(
+    () => new Set(selectedApplicationIds),
+    [selectedApplicationIds]
+  )
+  const allVisibleSelected = applications.length > 0
+    && applications.every((application) => selectedApplicationIdSet.has(application.id))
+  const allApplicationRowsSelected = allApplications.length > 0
+    && allApplications.every((application) => selectedApplicationIdSet.has(application.id))
+
+  const fetchApplications = useCallback(async () => {
+    if (!params.id) return
+
+    const query = new URLSearchParams()
+    query.set('limit', '100')
+    if (q) query.set('q', q)
+    if (minScore) query.set('minScore', minScore)
+    if (selectedSkills.length > 0) query.set('skills', selectedSkills.join(','))
+
+    setApplicationsLoading(true)
+    try {
+      const res = await fetch(`/api/v1/hr/recruitment/jobs/${params.id}/applications?${query.toString()}`)
+      const json = await res.json()
+      if (json.success) {
+        setApplications(json.data)
+        setSelectedApplicationIds((current) => {
+          const visibleIds = new Set(json.data.map((application: Application) => application.id))
+          return current.filter((id) => visibleIds.has(id))
+        })
+      }
+    } catch {
+      setError(t('recruitment.form.actionFailed'))
+    } finally {
+      setApplicationsLoading(false)
+    }
+  }, [params.id, q, minScore, selectedSkills, t])
+
+  const fetchAllApplications = useCallback(async () => {
+    if (!params.id) return
+
+    setAllApplicationsLoading(true)
+    try {
+      const res = await fetch(`/api/v1/hr/recruitment/jobs/${params.id}/applications?limit=500`)
+      const json = await res.json()
+      if (json.success) {
+        setAllApplications(json.data)
+      }
+    } catch {
+      setError(t('recruitment.form.actionFailed'))
+    } finally {
+      setAllApplicationsLoading(false)
+    }
+  }, [params.id, t])
 
   useEffect(() => {
     if (!params.id) return
@@ -101,16 +179,43 @@ export default function JobPostingDetailPage() {
       .catch(() => setError(tc('errors.loadFailed')))
       .finally(() => setLoading(false))
 
-    fetch(`/api/v1/hr/recruitment/jobs/${params.id}/applications`)
+    fetch(`/api/v1/hr/recruitment/interviews?jobId=${params.id}`)
       .then(res => res.json())
-      .then(json => { if (json.success) setApplications(json.data) })
-      .catch(() => {})
-
-    fetch(`/api/v1/hr/recruitment/jobs/${params.id}/interviews`)
-      .then(res => res.json())
-      .then(json => { if (json.success) setInterviews(json.data) })
+      .then(json => {
+        if (json.success) {
+          setInterviews(
+            json.data.map((interview: {
+              id: string
+              interviewType: string
+              scheduledAt: string
+              durationMinutes: number
+              location: string | null
+              status: string
+              overallRating: number | null
+              application: { applicantName: string }
+            }) => ({
+              id: interview.id,
+              applicantName: interview.application.applicantName,
+              interviewType: interview.interviewType,
+              scheduledAt: interview.scheduledAt,
+              duration: interview.durationMinutes,
+              location: interview.location || '',
+              status: interview.status,
+              rating: interview.overallRating,
+            }))
+          )
+        }
+      })
       .catch(() => {})
   }, [params.id, tc])
+
+  useEffect(() => {
+    fetchApplications()
+  }, [fetchApplications, selectedSkillsKey])
+
+  useEffect(() => {
+    fetchAllApplications()
+  }, [fetchAllApplications])
 
   async function handlePublish() {
     setActionLoading('publish')
@@ -153,6 +258,8 @@ export default function JobPostingDetailPage() {
       const json = await res.json()
       if (res.ok && json.success) {
         setApplications(json.data)
+        setSelectedApplicationIds([])
+        await fetchAllApplications()
       }
     } catch {
       setError(t('recruitment.form.actionFailed'))
@@ -162,7 +269,80 @@ export default function JobPostingDetailPage() {
   }
 
   function getStageApplications(stage: string) {
-    return applications.filter(a => a.stage === stage)
+    return applications.filter(a => (a.stage || a.status) === stage)
+  }
+
+  function toggleApplicationSelection(applicationId: string) {
+    setSelectedApplicationIds((current) => (
+      current.includes(applicationId)
+        ? current.filter((id) => id !== applicationId)
+        : [...current, applicationId]
+    ))
+  }
+
+  function toggleAllVisibleApplications() {
+    setSelectedApplicationIds(allVisibleSelected ? [] : applications.map((application) => application.id))
+  }
+
+  function toggleAllApplicationRows() {
+    setSelectedApplicationIds(allApplicationRowsSelected ? [] : allApplications.map((application) => application.id))
+  }
+
+  async function handleBulkStage(mode: 'ids' | 'filtered') {
+    setActionLoading(`bulk-${mode}`)
+    setError('')
+    try {
+      const res = await fetch(`/api/v1/hr/recruitment/jobs/${params.id}/bulk-stage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode,
+          targetStage: bulkTargetStage,
+          applicationIds: mode === 'ids' ? selectedApplicationIds : undefined,
+          filters: mode === 'filtered'
+            ? { q, minScore, skills: selectedSkills }
+            : undefined,
+        }),
+      })
+      const json = await res.json()
+      if (res.ok && json.success) {
+        await Promise.all([fetchApplications(), fetchAllApplications()])
+        setSelectedApplicationIds([])
+      } else {
+        setError(json.error?.message || t('recruitment.form.actionFailed'))
+      }
+    } catch {
+      setError(t('recruitment.form.actionFailed'))
+    } finally {
+      setActionLoading('')
+    }
+  }
+
+  function updateFilters(next: { q?: string; minScore?: string; skills?: string[] }) {
+    const query = new URLSearchParams(searchParams.toString())
+    const nextQ = next.q ?? q
+    const nextMinScore = next.minScore ?? minScore
+    const nextSkills = next.skills ?? selectedSkills
+
+    if (nextQ) query.set('q', nextQ)
+    else query.delete('q')
+
+    if (nextMinScore) query.set('minScore', nextMinScore)
+    else query.delete('minScore')
+
+    if (nextSkills.length > 0) query.set('skills', nextSkills.join(','))
+    else query.delete('skills')
+
+    router.replace(`/hr/recruitment/${params.id}?${query.toString()}`)
+  }
+
+  function toggleSkillFilter(skill: string) {
+    const exists = selectedSkills.some((item) => item.toLowerCase() === skill.toLowerCase())
+    updateFilters({
+      skills: exists
+        ? selectedSkills.filter((item) => item.toLowerCase() !== skill.toLowerCase())
+        : [...selectedSkills, skill],
+    })
   }
 
   if (loading) {
@@ -199,6 +379,7 @@ export default function JobPostingDetailPage() {
       >
         <div className="flex gap-2 items-center">
           <StatusBadge status={job.status} />
+          <ShareJobLinkButton orgSlug={job.organization.slug} jobSlug={job.slug} status={job.status} />
           <Button variant="outline" size="sm" onClick={() => router.push('/hr/recruitment')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             {tc('buttons.back')}
@@ -300,9 +481,12 @@ export default function JobPostingDetailPage() {
         </Card>
       </div>
 
-      {/* Tabs: Pipeline, Details, Interviews */}
-      <Tabs defaultValue="pipeline">
+      {/* Tabs: Applications, Pipeline, Details, Interviews */}
+      <Tabs defaultValue="applications">
         <TabsList>
+          <TabsTrigger value="applications">
+            Applications ({allApplications.length})
+          </TabsTrigger>
           <TabsTrigger value="pipeline">
             {t('recruitment.applicationsPipeline')} ({applications.length})
           </TabsTrigger>
@@ -312,18 +496,232 @@ export default function JobPostingDetailPage() {
           </TabsTrigger>
         </TabsList>
 
+        {/* Applications Tab */}
+        <TabsContent value="applications" className="space-y-4">
+          <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3 md:flex-row md:items-center md:justify-between">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <Checkbox
+                checked={allApplicationRowsSelected}
+                onCheckedChange={toggleAllApplicationRows}
+                disabled={allApplications.length === 0 || allApplicationsLoading}
+              />
+              Select all applications ({allApplications.length})
+            </label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <span className="text-sm text-muted-foreground">
+                {selectedApplicationIds.length} selected
+              </span>
+              <select
+                className="h-9 rounded-md border bg-background px-3 text-sm"
+                value={bulkTargetStage}
+                onChange={(event) => setBulkTargetStage(event.target.value as typeof PIPELINE_STAGES[number])}
+              >
+                {PIPELINE_STAGES.slice(1).map((stage) => (
+                  <option key={stage} value={stage}>
+                    Move to {t(`recruitment.stages.${stage}`)}
+                  </option>
+                ))}
+              </select>
+              <Button
+                size="sm"
+                onClick={() => handleBulkStage('ids')}
+                disabled={selectedApplicationIds.length === 0 || !!actionLoading}
+              >
+                {actionLoading === 'bulk-ids' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Move Selected
+              </Button>
+            </div>
+          </div>
+
+          <Card>
+            <CardContent className="p-0">
+              {allApplicationsLoading ? (
+                <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading applications...
+                </div>
+              ) : allApplications.length === 0 ? (
+                <div className="py-10 text-center text-sm text-muted-foreground">
+                  {t('recruitment.noApplications')}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="border-b bg-muted/40 text-left">
+                      <tr>
+                        <th className="w-12 px-4 py-3">
+                          <Checkbox
+                            checked={allApplicationRowsSelected}
+                            onCheckedChange={toggleAllApplicationRows}
+                            aria-label="Select all applications"
+                          />
+                        </th>
+                        <th className="px-4 py-3 font-medium">Applicant</th>
+                        <th className="px-4 py-3 font-medium">Email</th>
+                        <th className="px-4 py-3 font-medium">Stage</th>
+                        <th className="px-4 py-3 font-medium">Score</th>
+                        <th className="px-4 py-3 font-medium">Applied</th>
+                        <th className="px-4 py-3 text-right font-medium">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allApplications.map((app) => {
+                        const currentAppStage = app.stage || app.status || 'APPLIED'
+                        return (
+                          <tr key={app.id} className="border-b last:border-b-0 hover:bg-muted/30">
+                            <td className="px-4 py-3">
+                              <Checkbox
+                                checked={selectedApplicationIdSet.has(app.id)}
+                                onCheckedChange={() => toggleApplicationSelection(app.id)}
+                                aria-label={`Select ${app.applicantName}`}
+                              />
+                            </td>
+                            <td className="px-4 py-3 font-medium">{app.applicantName}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{app.applicantEmail}</td>
+                            <td className="px-4 py-3">
+                              <StatusBadge status={currentAppStage} />
+                            </td>
+                            <td className="px-4 py-3">
+                              {app.autoScore != null ? (
+                                <Badge variant={app.autoScore >= 70 ? 'default' : 'secondary'}>
+                                  {app.autoScore}%
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">{formatDate(app.appliedAt)}</td>
+                            <td className="px-4 py-3 text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => router.push(`/hr/recruitment/applications/${app.id}`)}
+                              >
+                                View
+                              </Button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Pipeline Tab */}
         <TabsContent value="pipeline" className="space-y-4">
-          <div className="flex items-center gap-2">
+          <div className="sticky top-0 z-10 flex flex-col gap-3 rounded-lg border bg-background p-3 md:flex-row md:items-end">
+            <div className="min-w-0 flex-1 space-y-1">
+              <label htmlFor="pipeline-search" className="text-xs font-medium text-muted-foreground">Search</label>
+              <input
+                id="pipeline-search"
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={q}
+                onChange={(e) => updateFilters({ q: e.target.value })}
+                placeholder="Search name/email..."
+              />
+            </div>
+            <div className="w-full space-y-1 md:w-40">
+              <label htmlFor="pipeline-min-score" className="text-xs font-medium text-muted-foreground">Min score</label>
+              <input
+                id="pipeline-min-score"
+                type="number"
+                min="0"
+                max="100"
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+                value={minScore}
+                onChange={(e) => updateFilters({ minScore: e.target.value })}
+                placeholder="60"
+              />
+            </div>
+            {job.requiredSkills && job.requiredSkills.length > 0 && (
+              <div className="min-w-0 flex-1 space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Skills</p>
+                <div className="flex flex-wrap gap-1">
+                  {job.requiredSkills.map((skill) => {
+                    const selected = selectedSkills.some((item) => item.toLowerCase() === skill.toLowerCase())
+                    return (
+                      <button
+                        key={skill}
+                        type="button"
+                        className={`rounded-md border px-2 py-1 text-xs ${selected ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
+                        onClick={() => toggleSkillFilter(skill)}
+                      >
+                        {skill}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.replace(`/hr/recruitment/${params.id}`)}
+              disabled={!q && !minScore && selectedSkills.length === 0}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Reset
+            </Button>
             <Button variant="outline" size="sm" onClick={handleScoreAll} disabled={!!actionLoading}>
               {actionLoading === 'score' ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
-                <Sparkles className="h-4 w-4 mr-2" />
+                <Calculator className="h-4 w-4 mr-2" />
               )}
               {t('recruitment.scoreAll')}
             </Button>
           </div>
+          <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3 md:flex-row md:items-center md:justify-between">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <Checkbox
+                checked={allVisibleSelected}
+                onCheckedChange={toggleAllVisibleApplications}
+                disabled={applications.length === 0 || applicationsLoading}
+              />
+              Select visible ({applications.length})
+            </label>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <span className="text-sm text-muted-foreground">
+                {selectedApplicationIds.length} selected
+              </span>
+              <select
+                className="h-9 rounded-md border bg-background px-3 text-sm"
+                value={bulkTargetStage}
+                onChange={(event) => setBulkTargetStage(event.target.value as typeof PIPELINE_STAGES[number])}
+              >
+                {PIPELINE_STAGES.slice(1).map((stage) => (
+                  <option key={stage} value={stage}>
+                    Move to {t(`recruitment.stages.${stage}`)}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkStage('ids')}
+                disabled={selectedApplicationIds.length === 0 || !!actionLoading}
+              >
+                {actionLoading === 'bulk-ids' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Move Selected
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleBulkStage('filtered')}
+                disabled={!hasActiveFilters || applications.length === 0 || !!actionLoading}
+                title={hasActiveFilters ? undefined : 'Use score/search/skill filters first'}
+              >
+                {actionLoading === 'bulk-filtered' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Move Filtered
+              </Button>
+            </div>
+          </div>
+          {applicationsLoading && (
+            <div className="text-sm text-muted-foreground">Loading filtered applications...</div>
+          )}
 
           <div className="flex gap-4 overflow-x-auto pb-4">
             {PIPELINE_STAGES.map(stage => {
@@ -347,8 +745,18 @@ export default function JobPostingDetailPage() {
                           onClick={() => router.push(`/hr/recruitment/applications/${app.id}`)}
                         >
                           <CardContent className="p-3">
-                            <p className="font-medium text-sm">{app.applicantName}</p>
-                            <p className="text-xs text-muted-foreground">{app.applicantEmail}</p>
+                            <div className="flex items-start gap-2">
+                              <Checkbox
+                                checked={selectedApplicationIdSet.has(app.id)}
+                                onClick={(event) => event.stopPropagation()}
+                                onCheckedChange={() => toggleApplicationSelection(app.id)}
+                                aria-label={`Select ${app.applicantName}`}
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="font-medium text-sm">{app.applicantName}</p>
+                                <p className="text-xs text-muted-foreground">{app.applicantEmail}</p>
+                              </div>
+                            </div>
                             <div className="flex items-center gap-2 mt-1">
                               {app.autoScore != null && (
                                 <Badge variant={app.autoScore >= 70 ? 'default' : 'secondary'} className="text-[10px]">
@@ -428,7 +836,7 @@ export default function JobPostingDetailPage() {
                   <span className="text-muted-foreground">{t('recruitment.form.requiredLanguages')}:</span>{' '}
                   <div className="flex flex-wrap gap-1 mt-1">
                     {job.requiredLanguages.map((lang, i) => (
-                      <Badge key={i} variant="outline" className="text-xs">{lang}</Badge>
+                      <Badge key={i} variant="outline" className="text-xs">{formatRequiredLanguage(lang)}</Badge>
                     ))}
                   </div>
                 </div>

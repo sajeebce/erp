@@ -57,6 +57,7 @@ model Organization {
   vouchers           Voucher[]
   fundReceipts       FundReceipt[]
   jobPostings        JobPosting[]
+  recruitmentTags    RecruitmentTag[]
   pettyCashFunds     PettyCashFund[]
   expenseClaims      ExpenseClaim[]
   employeeAdvances   EmployeeAdvance[]
