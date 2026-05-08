@@ -31,6 +31,51 @@ interface RequiredLanguage {
   level?: string
 }
 
+interface AddressForm {
+  village: string
+  postOffice: string
+  union: string
+  thana: string
+  district: string
+}
+
+interface EducationRow {
+  examName: string
+  passingYear: string
+  gradeGpa: string
+  institution: string
+  board: string
+}
+
+interface EmploymentRow {
+  orgName: string
+  designation: string
+  period: string
+  lastSalary: string
+  reasonForLeaving: string
+}
+
+interface ReferenceRow {
+  name: string
+  relationship: string
+  address: string
+  mobile: string
+}
+
+interface EmergencyRow {
+  name: string
+  relationship: string
+  mobile: string
+}
+
+const EMPTY_ADDRESS: AddressForm = { village: '', postOffice: '', union: '', thana: '', district: '' }
+const EMPTY_EDU_ROW: EducationRow = { examName: '', passingYear: '', gradeGpa: '', institution: '', board: '' }
+const EMPTY_EMP_ROW: EmploymentRow = { orgName: '', designation: '', period: '', lastSalary: '', reasonForLeaving: '' }
+const EMPTY_REF_ROW: ReferenceRow = { name: '', relationship: '', address: '', mobile: '' }
+const EMPTY_EMG_ROW: EmergencyRow = { name: '', relationship: '', mobile: '' }
+
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
+
 interface JobDetail {
   id: string
   title: string
@@ -115,9 +160,40 @@ export default function PublicJobDetailPage() {
     applicantName: '',
     applicantEmail: '',
     applicantPhone: '',
-    applicantAddress: '',
     coverLetter: '',
   })
+
+  // CSS Personal Info state
+  const [personalInfo, setPersonalInfo] = useState({
+    applicantNameBn: '',
+    parNo: '',
+    motherName: '',
+    fatherSpouseName: '',
+    phoneAlt: '',
+    dateOfBirth: '',
+    gender: '',
+    nationality: 'Bangladeshi',
+    nidNumber: '',
+    religion: '',
+    bloodGroup: '',
+    maritalStatus: '',
+    hasRelativeInOrg: '',
+    trainingDetails: '',
+    hasProfessionalLicense: '',
+    professionName: '',
+    hasLegalCase: '',
+  })
+  const [presentAddress, setPresentAddress] = useState<AddressForm>({ ...EMPTY_ADDRESS })
+  const [permanentAddress, setPermanentAddress] = useState<AddressForm>({ ...EMPTY_ADDRESS })
+  const [sameAddress, setSameAddress] = useState(false)
+  const [educationRows, setEducationRows] = useState<EducationRow[]>([
+    { ...EMPTY_EDU_ROW }, { ...EMPTY_EDU_ROW }, { ...EMPTY_EDU_ROW }, { ...EMPTY_EDU_ROW },
+  ])
+  const [employmentRows, setEmploymentRows] = useState<EmploymentRow[]>([
+    { ...EMPTY_EMP_ROW }, { ...EMPTY_EMP_ROW },
+  ])
+  const [refRows, setRefRows] = useState<ReferenceRow[]>([{ ...EMPTY_REF_ROW }, { ...EMPTY_REF_ROW }])
+  const [emergencyRows, setEmergencyRows] = useState<EmergencyRow[]>([{ ...EMPTY_EMG_ROW }, { ...EMPTY_EMG_ROW }])
   const [declaredEducation, setDeclaredEducation] = useState('')
   const [declaredExperienceYears, setDeclaredExperienceYears] = useState('')
   const [declaredSkills, setDeclaredSkills] = useState<string[]>([])
@@ -175,7 +251,31 @@ export default function PublicJobDetailPage() {
         body.set('applicantName', formData.applicantName)
         body.set('applicantEmail', formData.applicantEmail)
         if (formData.applicantPhone) body.set('applicantPhone', formData.applicantPhone)
-        if (formData.applicantAddress) body.set('applicantAddress', formData.applicantAddress)
+
+        // CSS Personal Info
+        if (personalInfo.applicantNameBn) body.set('applicantNameBn', personalInfo.applicantNameBn)
+        if (personalInfo.parNo) body.set('parNo', personalInfo.parNo)
+        if (personalInfo.motherName) body.set('motherName', personalInfo.motherName)
+        if (personalInfo.fatherSpouseName) body.set('fatherSpouseName', personalInfo.fatherSpouseName)
+        if (personalInfo.phoneAlt) body.set('phoneAlt', personalInfo.phoneAlt)
+        if (personalInfo.dateOfBirth) body.set('dateOfBirth', personalInfo.dateOfBirth)
+        if (personalInfo.gender) body.set('gender', personalInfo.gender)
+        if (personalInfo.nationality) body.set('nationality', personalInfo.nationality)
+        if (personalInfo.nidNumber) body.set('nidNumber', personalInfo.nidNumber)
+        if (personalInfo.religion) body.set('religion', personalInfo.religion)
+        if (personalInfo.bloodGroup) body.set('bloodGroup', personalInfo.bloodGroup)
+        if (personalInfo.maritalStatus) body.set('maritalStatus', personalInfo.maritalStatus)
+        if (personalInfo.hasRelativeInOrg !== '') body.set('hasRelativeInOrg', personalInfo.hasRelativeInOrg)
+        if (personalInfo.trainingDetails) body.set('trainingDetails', personalInfo.trainingDetails)
+        if (personalInfo.hasProfessionalLicense !== '') body.set('hasProfessionalLicense', personalInfo.hasProfessionalLicense)
+        if (personalInfo.professionName) body.set('professionName', personalInfo.professionName)
+        if (personalInfo.hasLegalCase !== '') body.set('hasLegalCase', personalInfo.hasLegalCase)
+        body.set('presentAddress', JSON.stringify(presentAddress))
+        body.set('permanentAddress', JSON.stringify(sameAddress ? presentAddress : permanentAddress))
+        body.set('educationRecords', JSON.stringify(educationRows.filter(r => r.examName || r.institution)))
+        body.set('previousEmployments', JSON.stringify(employmentRows.filter(r => r.orgName || r.designation)))
+        body.set('references', JSON.stringify(refRows.filter(r => r.name || r.mobile)))
+        body.set('emergencyContacts', JSON.stringify(emergencyRows.filter(r => r.name || r.mobile)))
         if (declaredEducation) body.set('declaredEducation', declaredEducation)
         if (declaredExperienceYears !== '') body.set('declaredExperienceYears', declaredExperienceYears)
         body.set('declaredSkills', JSON.stringify(declaredSkills))
@@ -209,6 +309,14 @@ export default function PublicJobDetailPage() {
     [
       job,
       formData,
+      personalInfo,
+      presentAddress,
+      permanentAddress,
+      sameAddress,
+      educationRows,
+      employmentRows,
+      refRows,
+      emergencyRows,
       declaredEducation,
       declaredExperienceYears,
       declaredSkills,
@@ -463,51 +571,431 @@ export default function PublicJobDetailPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Personal Info */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="applicantName">
-                    Full Name <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="applicantName"
-                    required
-                    value={formData.applicantName}
-                    onChange={(e) => setFormData((p) => ({ ...p, applicantName: e.target.value }))}
-                    placeholder="Enter your full name"
-                  />
+              {/* ── Section 1: Personal Information ── */}
+              <div className="space-y-4 rounded-lg border p-4">
+                <h3 className="font-semibold">Personal Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="applicantNameBn">Name (Bengali)</Label>
+                    <Input
+                      id="applicantNameBn"
+                      value={personalInfo.applicantNameBn}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, applicantNameBn: e.target.value }))}
+                      placeholder="Name in Bengali"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="applicantName">
+                      Name (English) <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="applicantName"
+                      required
+                      value={formData.applicantName}
+                      onChange={(e) => setFormData((p) => ({ ...p, applicantName: e.target.value }))}
+                      placeholder="FULL NAME IN CAPITAL LETTERS"
+                      className="uppercase"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="parNo">Par No.</Label>
+                    <Input
+                      id="parNo"
+                      value={personalInfo.parNo}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, parNo: e.target.value }))}
+                      placeholder="Par number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="applicantEmail">
+                      Email <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="applicantEmail"
+                      type="email"
+                      required
+                      value={formData.applicantEmail}
+                      onChange={(e) => setFormData((p) => ({ ...p, applicantEmail: e.target.value }))}
+                      placeholder="your.email@example.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="motherName">Mother&apos;s Name</Label>
+                    <Input
+                      id="motherName"
+                      value={personalInfo.motherName}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, motherName: e.target.value }))}
+                      placeholder="Mother's full name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="fatherSpouseName">Father&apos;s / Spouse&apos;s Name</Label>
+                    <Input
+                      id="fatherSpouseName"
+                      value={personalInfo.fatherSpouseName}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, fatherSpouseName: e.target.value }))}
+                      placeholder="Father's or spouse's full name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="applicantPhone">Mobile (Primary)</Label>
+                    <Input
+                      id="applicantPhone"
+                      type="tel"
+                      value={formData.applicantPhone}
+                      onChange={(e) => setFormData((p) => ({ ...p, applicantPhone: e.target.value }))}
+                      placeholder="+880 1XX XXXX XXX"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneAlt">Mobile (Secondary)</Label>
+                    <Input
+                      id="phoneAlt"
+                      type="tel"
+                      value={personalInfo.phoneAlt}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, phoneAlt: e.target.value }))}
+                      placeholder="+880 1XX XXXX XXX"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                    <Input
+                      id="dateOfBirth"
+                      type="date"
+                      value={personalInfo.dateOfBirth}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, dateOfBirth: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="gender">Gender</Label>
+                    <select
+                      id="gender"
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      value={personalInfo.gender}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, gender: e.target.value }))}
+                    >
+                      <option value="">Select...</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nationality">Nationality</Label>
+                    <Input
+                      id="nationality"
+                      value={personalInfo.nationality}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, nationality: e.target.value }))}
+                      placeholder="Bangladeshi"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nidNumber">National ID Number</Label>
+                    <Input
+                      id="nidNumber"
+                      value={personalInfo.nidNumber}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, nidNumber: e.target.value }))}
+                      placeholder="NID number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="religion">Religion</Label>
+                    <Input
+                      id="religion"
+                      value={personalInfo.religion}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, religion: e.target.value }))}
+                      placeholder="Islam / Hindu / Christian..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bloodGroup">Blood Group</Label>
+                    <select
+                      id="bloodGroup"
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      value={personalInfo.bloodGroup}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, bloodGroup: e.target.value }))}
+                    >
+                      <option value="">Select...</option>
+                      {BLOOD_GROUPS.map(bg => <option key={bg} value={bg}>{bg}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="maritalStatus">Marital Status</Label>
+                    <select
+                      id="maritalStatus"
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      value={personalInfo.maritalStatus}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, maritalStatus: e.target.value }))}
+                    >
+                      <option value="">Select...</option>
+                      <option value="Married">Married</option>
+                      <option value="Unmarried">Unmarried</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="applicantEmail">
-                    Email <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="applicantEmail"
-                    type="email"
-                    required
-                    value={formData.applicantEmail}
-                    onChange={(e) => setFormData((p) => ({ ...p, applicantEmail: e.target.value }))}
-                    placeholder="your.email@example.com"
-                  />
+                  <Label>Does any relative work at CSS?</Label>
+                  <div className="flex gap-4">
+                    {['true', 'false'].map((val) => (
+                      <label key={val} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="radio"
+                          name="hasRelativeInOrg"
+                          value={val}
+                          checked={personalInfo.hasRelativeInOrg === val}
+                          onChange={(e) => setPersonalInfo((p) => ({ ...p, hasRelativeInOrg: e.target.value }))}
+                          className="h-4 w-4"
+                        />
+                        {val === 'true' ? 'Yes' : 'No'}
+                      </label>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="applicantPhone">Phone</Label>
-                  <Input
-                    id="applicantPhone"
-                    type="tel"
-                    value={formData.applicantPhone}
-                    onChange={(e) => setFormData((p) => ({ ...p, applicantPhone: e.target.value }))}
-                    placeholder="+880 1XX XXXX XXX"
-                  />
+              </div>
+
+              {/* ── Section 2: Present Address ── */}
+              <div className="space-y-3 rounded-lg border p-4">
+                <h3 className="font-semibold">Present Address</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {([
+                    ['village', 'Village / Area / Road'],
+                    ['postOffice', 'Post Office / Ward No.'],
+                    ['union', 'Union / Municipality / City Corporation'],
+                    ['thana', 'Thana / Upazila'],
+                    ['district', 'District'],
+                  ] as [keyof AddressForm, string][]).map(([field, label]) => (
+                    <div key={field} className="space-y-1">
+                      <Label htmlFor={`present-${field}`}>{label}</Label>
+                      <Input
+                        id={`present-${field}`}
+                        value={presentAddress[field]}
+                        onChange={(e) => setPresentAddress((p) => ({ ...p, [field]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="applicantAddress">Address</Label>
-                  <Input
-                    id="applicantAddress"
-                    value={formData.applicantAddress}
-                    onChange={(e) => setFormData((p) => ({ ...p, applicantAddress: e.target.value }))}
-                    placeholder="Your address"
-                  />
+              </div>
+
+              {/* ── Section 3: Permanent Address ── */}
+              <div className="space-y-3 rounded-lg border p-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">Permanent Address</h3>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={sameAddress}
+                      onChange={(e) => setSameAddress(e.target.checked)}
+                    />
+                    Same as present address
+                  </label>
+                </div>
+                {!sameAddress && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {([
+                      ['village', 'Village / Area / Road'],
+                      ['postOffice', 'Post Office / Ward No.'],
+                      ['union', 'Union / Municipality / City Corporation'],
+                      ['thana', 'Thana / Upazila'],
+                      ['district', 'District'],
+                    ] as [keyof AddressForm, string][]).map(([field, label]) => (
+                      <div key={field} className="space-y-1">
+                        <Label htmlFor={`permanent-${field}`}>{label}</Label>
+                        <Input
+                          id={`permanent-${field}`}
+                          value={permanentAddress[field]}
+                          onChange={(e) => setPermanentAddress((p) => ({ ...p, [field]: e.target.value }))}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Section 4: Training Details ── */}
+              <div className="space-y-2 rounded-lg border p-4">
+                <h3 className="font-semibold">Training</h3>
+                <p className="text-xs text-muted-foreground">Provide details of any training you have received</p>
+                <Textarea
+                  rows={3}
+                  value={personalInfo.trainingDetails}
+                  onChange={(e) => setPersonalInfo((p) => ({ ...p, trainingDetails: e.target.value }))}
+                  placeholder="Training details..."
+                />
+              </div>
+
+              {/* ── Section 5: Education Records ── */}
+              <div className="space-y-3 rounded-lg border p-4">
+                <h3 className="font-semibold">Educational Qualifications</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-muted/40">
+                        <th className="border px-2 py-1.5 text-left font-medium">Exam Name</th>
+                        <th className="border px-2 py-1.5 text-left font-medium">Passing Year</th>
+                        <th className="border px-2 py-1.5 text-left font-medium">Division / CGPA</th>
+                        <th className="border px-2 py-1.5 text-left font-medium">School / College</th>
+                        <th className="border px-2 py-1.5 text-left font-medium">Board / University</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {educationRows.map((row, i) => (
+                        <tr key={i}>
+                          {(['examName', 'passingYear', 'gradeGpa', 'institution', 'board'] as (keyof EducationRow)[]).map((field) => (
+                            <td key={field} className="border px-1 py-1">
+                              <Input
+                                className="h-8 text-xs border-0 focus-visible:ring-0 px-1"
+                                value={row[field]}
+                                onChange={(e) => setEducationRows((rows) => rows.map((r, idx) => idx === i ? { ...r, [field]: e.target.value } : r))}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* ── Section 6: Previous Employment ── */}
+              <div className="space-y-3 rounded-lg border p-4">
+                <h3 className="font-semibold">Previous Employment</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-muted/40">
+                        <th className="border px-2 py-1.5 text-left font-medium">Organization</th>
+                        <th className="border px-2 py-1.5 text-left font-medium">Designation</th>
+                        <th className="border px-2 py-1.5 text-left font-medium">Period</th>
+                        <th className="border px-2 py-1.5 text-left font-medium">Last Salary</th>
+                        <th className="border px-2 py-1.5 text-left font-medium">Reason for Leaving</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {employmentRows.map((row, i) => (
+                        <tr key={i}>
+                          {(['orgName', 'designation', 'period', 'lastSalary', 'reasonForLeaving'] as (keyof EmploymentRow)[]).map((field) => (
+                            <td key={field} className="border px-1 py-1">
+                              <Input
+                                className="h-8 text-xs border-0 focus-visible:ring-0 px-1"
+                                value={row[field]}
+                                onChange={(e) => setEmploymentRows((rows) => rows.map((r, idx) => idx === i ? { ...r, [field]: e.target.value } : r))}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* ── Section 7: Other Information ── */}
+              <div className="space-y-4 rounded-lg border p-4">
+                <h3 className="font-semibold">Other Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Do you have a valid driving / professional license?</Label>
+                    <div className="flex gap-4">
+                      {['true', 'false'].map((val) => (
+                        <label key={val} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="radio"
+                            name="hasProfessionalLicense"
+                            value={val}
+                            checked={personalInfo.hasProfessionalLicense === val}
+                            onChange={(e) => setPersonalInfo((p) => ({ ...p, hasProfessionalLicense: e.target.value }))}
+                            className="h-4 w-4"
+                          />
+                          {val === 'true' ? 'Yes' : 'No'}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="professionName">Profession</Label>
+                    <Input
+                      id="professionName"
+                      value={personalInfo.professionName}
+                      onChange={(e) => setPersonalInfo((p) => ({ ...p, professionName: e.target.value }))}
+                      placeholder="Your profession"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Do you have any pending legal case?</Label>
+                    <div className="flex gap-4">
+                      {['true', 'false'].map((val) => (
+                        <label key={val} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="radio"
+                            name="hasLegalCase"
+                            value={val}
+                            checked={personalInfo.hasLegalCase === val}
+                            onChange={(e) => setPersonalInfo((p) => ({ ...p, hasLegalCase: e.target.value }))}
+                            className="h-4 w-4"
+                          />
+                          {val === 'true' ? 'Yes' : 'No'}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Section 8: References ── */}
+              <div className="space-y-3 rounded-lg border p-4">
+                <h3 className="font-semibold">References</h3>
+                <p className="text-xs text-muted-foreground">Two reputable persons (excluding immediate family members)</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {refRows.map((row, i) => (
+                    <div key={i} className="rounded-md border p-3 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Reference {i + 1}</p>
+                      {([
+                        ['name', 'Name'],
+                        ['relationship', 'Relationship'],
+                        ['address', 'Address'],
+                        ['mobile', 'Mobile Number'],
+                      ] as [keyof ReferenceRow, string][]).map(([field, label]) => (
+                        <div key={field} className="space-y-1">
+                          <Label className="text-xs">{label}</Label>
+                          <Input
+                            className="h-8 text-sm"
+                            value={row[field]}
+                            onChange={(e) => setRefRows((rows) => rows.map((r, idx) => idx === i ? { ...r, [field]: e.target.value } : r))}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Section 9: Emergency Contacts ── */}
+              <div className="space-y-3 rounded-lg border p-4">
+                <h3 className="font-semibold">Emergency Contacts</h3>
+                <p className="text-xs text-muted-foreground">Other family members or nearest relatives</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {emergencyRows.map((row, i) => (
+                    <div key={i} className="rounded-md border p-3 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Emergency Contact {i + 1}</p>
+                      {([
+                        ['name', 'Name'],
+                        ['relationship', 'Relationship'],
+                        ['mobile', 'Mobile Number'],
+                      ] as [keyof EmergencyRow, string][]).map(([field, label]) => (
+                        <div key={field} className="space-y-1">
+                          <Label className="text-xs">{label}</Label>
+                          <Input
+                            className="h-8 text-sm"
+                            value={row[field]}
+                            onChange={(e) => setEmergencyRows((rows) => rows.map((r, idx) => idx === i ? { ...r, [field]: e.target.value } : r))}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
                 </div>
               </div>
 

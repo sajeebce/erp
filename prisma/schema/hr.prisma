@@ -790,6 +790,31 @@ model JobApplication {
   applicantPhone   String?
   applicantAddress String?
 
+  // CSS Personal Info Form fields
+  applicantNameBn       String?
+  parNo                 String?
+  motherName            String?
+  fatherSpouseName      String?
+  presentAddress        Json? // {village, postOffice, union, thana, district}
+  permanentAddress      Json? // {village, postOffice, union, thana, district}
+  phoneAlt              String?
+  dateOfBirth           DateTime?
+  gender                String?
+  nationality           String?
+  nidNumber             String?
+  religion              String?
+  bloodGroup            String?
+  maritalStatus         String?
+  hasRelativeInOrg      Boolean?
+  trainingDetails       String?
+  educationRecords      Json? // [{examName, passingYear, gradeGpa, institution, board}]
+  previousEmployments   Json? // [{orgName, designation, period, lastSalary, reasonForLeaving}]
+  hasProfessionalLicense Boolean?
+  professionName        String?
+  hasLegalCase          Boolean?
+  references            Json? // [{name, relationship, address, mobile}]
+  emergencyContacts     Json? // [{name, relationship, mobile}]
+
   // Internal applicant
   isInternal Boolean @default(false)
   employeeId String? @db.Uuid

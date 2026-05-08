@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl'
 import {
   ArrowLeft, Loader2, ChevronRight, XCircle, CalendarPlus,
   Calculator, GraduationCap, BriefcaseBusiness, Code2, Languages, Award, UserCheck,
-  FileText, ExternalLink,
+  FileText, ExternalLink, User,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,11 +31,72 @@ const PIPELINE_STAGES = [
   'HIRED',
 ] as const
 
+interface AddressData {
+  village?: string
+  postOffice?: string
+  union?: string
+  thana?: string
+  district?: string
+}
+
+interface EducationRecord {
+  examName?: string
+  passingYear?: string
+  gradeGpa?: string
+  institution?: string
+  board?: string
+}
+
+interface EmploymentRecord {
+  orgName?: string
+  designation?: string
+  period?: string
+  lastSalary?: string
+  reasonForLeaving?: string
+}
+
+interface ReferenceRecord {
+  name?: string
+  relationship?: string
+  address?: string
+  mobile?: string
+}
+
+interface EmergencyRecord {
+  name?: string
+  relationship?: string
+  mobile?: string
+}
+
 interface ApplicationDetail {
   id: string
   applicantName: string
   applicantEmail: string
   applicantPhone: string | null
+  // CSS Personal Info fields
+  applicantNameBn?: string | null
+  parNo?: string | null
+  motherName?: string | null
+  fatherSpouseName?: string | null
+  presentAddress?: AddressData | null
+  permanentAddress?: AddressData | null
+  phoneAlt?: string | null
+  dateOfBirth?: string | null
+  gender?: string | null
+  nationality?: string | null
+  nidNumber?: string | null
+  religion?: string | null
+  bloodGroup?: string | null
+  maritalStatus?: string | null
+  hasRelativeInOrg?: boolean | null
+  trainingDetails?: string | null
+  educationRecords?: EducationRecord[] | null
+  previousEmployments?: EmploymentRecord[] | null
+  hasProfessionalLicense?: boolean | null
+  professionName?: string | null
+  hasLegalCase?: boolean | null
+  references?: ReferenceRecord[] | null
+  emergencyContacts?: EmergencyRecord[] | null
   stage?: string
   status?: string
   autoScore: number | null
@@ -114,6 +175,17 @@ function buildDeclaration(application: ApplicationDetail) {
     : application.parsedCertifications || []
 
   return { education, experience, skills, languages, certifications }
+}
+
+function formatAddress(addr: AddressData | null | undefined): string {
+  if (!addr) return ''
+  return [addr.village, addr.postOffice, addr.union, addr.thana, addr.district].filter(Boolean).join(', ')
+}
+
+function boolLabel(val: boolean | null | undefined): string {
+  if (val === true) return 'হ্যাঁ (Yes)'
+  if (val === false) return 'না (No)'
+  return '—'
 }
 
 function getStoredFileName(path: string) {
@@ -308,6 +380,22 @@ export default function ApplicationDetailPage() {
     declaration.languages.length > 0 ||
     declaration.certifications.length > 0
 
+  const hasPersonalInfo =
+    application.applicantNameBn ||
+    application.parNo ||
+    application.motherName ||
+    application.fatherSpouseName ||
+    application.dateOfBirth ||
+    application.gender ||
+    application.nidNumber ||
+    application.religion ||
+    application.bloodGroup ||
+    application.maritalStatus ||
+    application.nationality ||
+    application.presentAddress ||
+    application.permanentAddress ||
+    application.phoneAlt
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -369,6 +457,193 @@ export default function ApplicationDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column (2/3) */}
         <div className="lg:col-span-2 space-y-6">
+
+          {/* Personal Info Card */}
+          {hasPersonalInfo && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Personal Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Identity */}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                  {application.applicantNameBn && (
+                    <><span className="text-muted-foreground">Name (Bengali)</span><span className="font-medium">{application.applicantNameBn}</span></>
+                  )}
+                  {application.parNo && (
+                    <><span className="text-muted-foreground">Par No.</span><span className="font-medium">{application.parNo}</span></>
+                  )}
+                  {application.motherName && (
+                    <><span className="text-muted-foreground">Mother&apos;s Name</span><span className="font-medium">{application.motherName}</span></>
+                  )}
+                  {application.fatherSpouseName && (
+                    <><span className="text-muted-foreground">Father&apos;s / Spouse&apos;s Name</span><span className="font-medium">{application.fatherSpouseName}</span></>
+                  )}
+                  {application.dateOfBirth && (
+                    <><span className="text-muted-foreground">Date of Birth</span><span className="font-medium">{new Date(application.dateOfBirth).toLocaleDateString('en-BD')}</span></>
+                  )}
+                  {application.gender && (
+                    <><span className="text-muted-foreground">Gender</span><span className="font-medium">{application.gender}</span></>
+                  )}
+                  {application.nationality && (
+                    <><span className="text-muted-foreground">Nationality</span><span className="font-medium">{application.nationality}</span></>
+                  )}
+                  {application.nidNumber && (
+                    <><span className="text-muted-foreground">NID Number</span><span className="font-medium">{application.nidNumber}</span></>
+                  )}
+                  {application.religion && (
+                    <><span className="text-muted-foreground">Religion</span><span className="font-medium">{application.religion}</span></>
+                  )}
+                  {application.bloodGroup && (
+                    <><span className="text-muted-foreground">Blood Group</span><span className="font-medium">{application.bloodGroup}</span></>
+                  )}
+                  {application.maritalStatus && (
+                    <><span className="text-muted-foreground">Marital Status</span><span className="font-medium">{application.maritalStatus}</span></>
+                  )}
+                  {application.phoneAlt && (
+                    <><span className="text-muted-foreground">Mobile (Secondary)</span><span className="font-medium">{application.phoneAlt}</span></>
+                  )}
+                  {application.hasRelativeInOrg !== null && application.hasRelativeInOrg !== undefined && (
+                    <><span className="text-muted-foreground">Relative at CSS?</span><span className="font-medium">{boolLabel(application.hasRelativeInOrg)}</span></>
+                  )}
+                  {application.professionName && (
+                    <><span className="text-muted-foreground">Profession</span><span className="font-medium">{application.professionName}</span></>
+                  )}
+                  {application.hasProfessionalLicense !== null && application.hasProfessionalLicense !== undefined && (
+                    <><span className="text-muted-foreground">Professional License?</span><span className="font-medium">{boolLabel(application.hasProfessionalLicense)}</span></>
+                  )}
+                  {application.hasLegalCase !== null && application.hasLegalCase !== undefined && (
+                    <><span className="text-muted-foreground">Pending Legal Case?</span><span className="font-medium">{boolLabel(application.hasLegalCase)}</span></>
+                  )}
+                </div>
+
+                {/* Addresses */}
+                {(application.presentAddress || application.permanentAddress) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t text-sm">
+                    {application.presentAddress && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Present Address</p>
+                        <p>{formatAddress(application.presentAddress)}</p>
+                      </div>
+                    )}
+                    {application.permanentAddress && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Permanent Address</p>
+                        <p>{formatAddress(application.permanentAddress)}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Training */}
+                {application.trainingDetails && (
+                  <div className="pt-2 border-t text-sm">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Training</p>
+                    <p className="whitespace-pre-wrap">{application.trainingDetails}</p>
+                  </div>
+                )}
+
+                {/* Education Records Table */}
+                {application.educationRecords && application.educationRecords.length > 0 && (
+                  <div className="pt-2 border-t">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Educational Qualifications</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-muted/40">
+                            <th className="border px-2 py-1 text-left">Exam</th>
+                            <th className="border px-2 py-1 text-left">Passing Year</th>
+                            <th className="border px-2 py-1 text-left">Division / CGPA</th>
+                            <th className="border px-2 py-1 text-left">Institution</th>
+                            <th className="border px-2 py-1 text-left">Board / University</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {application.educationRecords.map((row, i) => (
+                            <tr key={i}>
+                              <td className="border px-2 py-1">{row.examName || '—'}</td>
+                              <td className="border px-2 py-1">{row.passingYear || '—'}</td>
+                              <td className="border px-2 py-1">{row.gradeGpa || '—'}</td>
+                              <td className="border px-2 py-1">{row.institution || '—'}</td>
+                              <td className="border px-2 py-1">{row.board || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Previous Employments Table */}
+                {application.previousEmployments && application.previousEmployments.length > 0 && (
+                  <div className="pt-2 border-t">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Previous Employment</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-muted/40">
+                            <th className="border px-2 py-1 text-left">Organization</th>
+                            <th className="border px-2 py-1 text-left">Designation</th>
+                            <th className="border px-2 py-1 text-left">Period</th>
+                            <th className="border px-2 py-1 text-left">Last Salary</th>
+                            <th className="border px-2 py-1 text-left">Reason for Leaving</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {application.previousEmployments.map((row, i) => (
+                            <tr key={i}>
+                              <td className="border px-2 py-1">{row.orgName || '—'}</td>
+                              <td className="border px-2 py-1">{row.designation || '—'}</td>
+                              <td className="border px-2 py-1">{row.period || '—'}</td>
+                              <td className="border px-2 py-1">{row.lastSalary || '—'}</td>
+                              <td className="border px-2 py-1">{row.reasonForLeaving || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* References */}
+                {application.references && application.references.length > 0 && (
+                  <div className="pt-2 border-t">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">References</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      {application.references.map((ref, i) => (
+                        <div key={i} className="rounded-md border p-2 space-y-0.5">
+                          <p className="font-medium">{ref.name}</p>
+                          {ref.relationship && <p className="text-xs text-muted-foreground">{ref.relationship}</p>}
+                          {ref.address && <p className="text-xs text-muted-foreground">{ref.address}</p>}
+                          {ref.mobile && <p className="text-xs">{ref.mobile}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Emergency Contacts */}
+                {application.emergencyContacts && application.emergencyContacts.length > 0 && (
+                  <div className="pt-2 border-t">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Emergency Contacts</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      {application.emergencyContacts.map((c, i) => (
+                        <div key={i} className="rounded-md border p-2 space-y-0.5">
+                          <p className="font-medium">{c.name}</p>
+                          {c.relationship && <p className="text-xs text-muted-foreground">{c.relationship}</p>}
+                          {c.mobile && <p className="text-xs">{c.mobile}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Parsed CV */}
           {hasDeclaration && (
             <Card>

@@ -16,6 +16,43 @@ interface RawLanguage {
   level?: string
 }
 
+interface AddressFields {
+  village?: string
+  postOffice?: string
+  union?: string
+  thana?: string
+  district?: string
+}
+
+interface EducationRecord {
+  examName?: string
+  passingYear?: string
+  gradeGpa?: string
+  institution?: string
+  board?: string
+}
+
+interface EmploymentRecord {
+  orgName?: string
+  designation?: string
+  period?: string
+  lastSalary?: string
+  reasonForLeaving?: string
+}
+
+interface ReferenceRecord {
+  name?: string
+  relationship?: string
+  address?: string
+  mobile?: string
+}
+
+interface EmergencyContactRecord {
+  name?: string
+  relationship?: string
+  mobile?: string
+}
+
 interface ApplyBody {
   [key: string]: unknown
 }
@@ -136,6 +173,30 @@ async function readApplyRequest(request: NextRequest) {
       declaredLanguages: parseJsonField(formData.get('declaredLanguages')),
       declaredCertifications: parseJsonField(formData.get('declaredCertifications')),
       customResponses: parseJsonField(formData.get('customResponses')),
+      // CSS Personal Info fields
+      applicantNameBn: formData.get('applicantNameBn'),
+      parNo: formData.get('parNo'),
+      motherName: formData.get('motherName'),
+      fatherSpouseName: formData.get('fatherSpouseName'),
+      presentAddress: parseJsonField(formData.get('presentAddress')),
+      permanentAddress: parseJsonField(formData.get('permanentAddress')),
+      phoneAlt: formData.get('phoneAlt'),
+      dateOfBirth: formData.get('dateOfBirth'),
+      gender: formData.get('gender'),
+      nationality: formData.get('nationality'),
+      nidNumber: formData.get('nidNumber'),
+      religion: formData.get('religion'),
+      bloodGroup: formData.get('bloodGroup'),
+      maritalStatus: formData.get('maritalStatus'),
+      hasRelativeInOrg: formData.get('hasRelativeInOrg'),
+      trainingDetails: formData.get('trainingDetails'),
+      educationRecords: parseJsonField(formData.get('educationRecords')),
+      previousEmployments: parseJsonField(formData.get('previousEmployments')),
+      hasProfessionalLicense: formData.get('hasProfessionalLicense'),
+      professionName: formData.get('professionName'),
+      hasLegalCase: formData.get('hasLegalCase'),
+      references: parseJsonField(formData.get('references')),
+      emergencyContacts: parseJsonField(formData.get('emergencyContacts')),
     } as ApplyBody,
     cvFile: formData.get('cvFile') instanceof File ? formData.get('cvFile') as File : null,
     coverLetterFile: formData.get('coverLetterFile') instanceof File
@@ -205,6 +266,57 @@ export async function POST(
     const applicantName = normalizeText(body.applicantName)
     const applicantPhone = normalizeText(body.applicantPhone)
     const applicantAddress = normalizeText(body.applicantAddress)
+
+    // CSS Personal Info fields
+    const applicantNameBn = normalizeText(body.applicantNameBn)
+    const parNo = normalizeText(body.parNo)
+    const motherName = normalizeText(body.motherName)
+    const fatherSpouseName = normalizeText(body.fatherSpouseName)
+    const presentAddress = body.presentAddress && typeof body.presentAddress === 'object'
+      ? body.presentAddress as AddressFields
+      : null
+    const permanentAddress = body.permanentAddress && typeof body.permanentAddress === 'object'
+      ? body.permanentAddress as AddressFields
+      : null
+    const phoneAlt = normalizeText(body.phoneAlt)
+    const dateOfBirth = typeof body.dateOfBirth === 'string' && body.dateOfBirth.trim()
+      ? new Date(body.dateOfBirth)
+      : null
+    const gender = normalizeText(body.gender)
+    const nationality = normalizeText(body.nationality)
+    const nidNumber = normalizeText(body.nidNumber)
+    const religion = normalizeText(body.religion)
+    const bloodGroup = normalizeText(body.bloodGroup)
+    const maritalStatus = normalizeText(body.maritalStatus)
+    const hasRelativeInOrg = body.hasRelativeInOrg === 'true' || body.hasRelativeInOrg === true
+      ? true
+      : body.hasRelativeInOrg === 'false' || body.hasRelativeInOrg === false
+        ? false
+        : null
+    const trainingDetails = normalizeText(body.trainingDetails)
+    const educationRecords = Array.isArray(body.educationRecords)
+      ? (body.educationRecords as EducationRecord[]).filter(r => Object.values(r).some(v => v))
+      : null
+    const previousEmployments = Array.isArray(body.previousEmployments)
+      ? (body.previousEmployments as EmploymentRecord[]).filter(r => Object.values(r).some(v => v))
+      : null
+    const hasProfessionalLicense = body.hasProfessionalLicense === 'true' || body.hasProfessionalLicense === true
+      ? true
+      : body.hasProfessionalLicense === 'false' || body.hasProfessionalLicense === false
+        ? false
+        : null
+    const professionName = normalizeText(body.professionName)
+    const hasLegalCase = body.hasLegalCase === 'true' || body.hasLegalCase === true
+      ? true
+      : body.hasLegalCase === 'false' || body.hasLegalCase === false
+        ? false
+        : null
+    const references = Array.isArray(body.references)
+      ? (body.references as ReferenceRecord[]).filter(r => r.name || r.mobile)
+      : null
+    const emergencyContacts = Array.isArray(body.emergencyContacts)
+      ? (body.emergencyContacts as EmergencyContactRecord[]).filter(r => r.name || r.mobile)
+      : null
 
     // Validate required fields
     if (!applicantName) {
@@ -307,6 +419,29 @@ export async function POST(
         applicantEmail,
         applicantPhone: applicantPhone || null,
         applicantAddress: applicantAddress || null,
+        applicantNameBn: applicantNameBn || null,
+        parNo: parNo || null,
+        motherName: motherName || null,
+        fatherSpouseName: fatherSpouseName || null,
+        presentAddress: presentAddress ? presentAddress as Prisma.InputJsonValue : Prisma.JsonNull,
+        permanentAddress: permanentAddress ? permanentAddress as Prisma.InputJsonValue : Prisma.JsonNull,
+        phoneAlt: phoneAlt || null,
+        dateOfBirth: dateOfBirth,
+        gender: gender || null,
+        nationality: nationality || null,
+        nidNumber: nidNumber || null,
+        religion: religion || null,
+        bloodGroup: bloodGroup || null,
+        maritalStatus: maritalStatus || null,
+        hasRelativeInOrg: hasRelativeInOrg,
+        trainingDetails: trainingDetails || null,
+        educationRecords: educationRecords && educationRecords.length > 0 ? educationRecords as unknown as Prisma.InputJsonValue : Prisma.JsonNull,
+        previousEmployments: previousEmployments && previousEmployments.length > 0 ? previousEmployments as unknown as Prisma.InputJsonValue : Prisma.JsonNull,
+        hasProfessionalLicense: hasProfessionalLicense,
+        professionName: professionName || null,
+        hasLegalCase: hasLegalCase,
+        references: references && references.length > 0 ? references as unknown as Prisma.InputJsonValue : Prisma.JsonNull,
+        emergencyContacts: emergencyContacts && emergencyContacts.length > 0 ? emergencyContacts as unknown as Prisma.InputJsonValue : Prisma.JsonNull,
         parsedEducation: declaredEducation ? [{ degree: declaredEducation }] : Prisma.JsonNull,
         totalExperienceYears: declaredExperienceYears,
         parsedSkills: declaredSkills.length > 0 ? declaredSkills : Prisma.JsonNull,

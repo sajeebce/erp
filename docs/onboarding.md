@@ -363,6 +363,72 @@ Existing default sort `autoScore DESC` stays — top candidates always on top.
 
 ---
 
+---
+
+## 5. Recruitment — CSS Personal Info Form
+
+> Extends the public apply form to capture the full personal information required by Christian Service Society (CSS).
+
+### Goal
+
+Public apply form at `/careers/{orgSlug}/{jobSlug}` now includes all 23 additional fields from the CSS paper form. These fields are stored in the `JobApplication` record and displayed in the admin detail view.
+
+### New Fields Added to `JobApplication`
+
+| Field | Type | Description |
+|---|---|---|
+| `applicantNameBn` | String? | Name in Bengali |
+| `parNo` | String? | Par number |
+| `motherName` | String? | Mother's name |
+| `fatherSpouseName` | String? | Father's / spouse's name |
+| `presentAddress` | Json? | `{village, postOffice, union, thana, district}` |
+| `permanentAddress` | Json? | same structure |
+| `phoneAlt` | String? | Secondary mobile number |
+| `dateOfBirth` | DateTime? | Date of birth |
+| `gender` | String? | Male / Female / Other |
+| `nationality` | String? | Nationality (default: Bangladeshi) |
+| `nidNumber` | String? | National ID number |
+| `religion` | String? | Religion |
+| `bloodGroup` | String? | Blood group |
+| `maritalStatus` | String? | Married / Unmarried / Other |
+| `hasRelativeInOrg` | Boolean? | Does any relative work at CSS? |
+| `trainingDetails` | String? | Training details (free text) |
+| `educationRecords` | Json? | `[{examName, passingYear, gradeGpa, institution, board}]` × 4 rows |
+| `previousEmployments` | Json? | `[{orgName, designation, period, lastSalary, reasonForLeaving}]` × 2 rows |
+| `hasProfessionalLicense` | Boolean? | Valid driving / professional license? |
+| `professionName` | String? | Profession |
+| `hasLegalCase` | Boolean? | Any pending legal case? |
+| `references` | Json? | `[{name, relationship, address, mobile}]` × 2 |
+| `emergencyContacts` | Json? | `[{name, relationship, mobile}]` × 2 |
+
+### Form Sections (public page)
+
+1. **Personal Information** — extended from basic name/email/phone to full identity panel
+2. **Present Address** — structured 5-field address (village, post office, union, thana, district)
+3. **Permanent Address** — same structure with "Same as present address" toggle
+4. **Training** — free-text training description
+5. **Educational Qualifications** — 4-row inline table (exam, year, division/CGPA, institution, board)
+6. **Previous Employment** — 2-row inline table (org, designation, period, salary, reason for leaving)
+7. **Other Information** — license, profession, legal case (Yes/No)
+8. **References** — 2-card panel (name, relationship, address, mobile)
+9. **Emergency Contacts** — 2-card panel (name, relationship, mobile)
+
+### Admin Detail View
+
+`/hr/recruitment/applications/[id]` shows a **Personal Information** card (above Self-Declaration) that renders all filled CSS fields: identity grid, address blocks, training text, education table, employment table, references cards, emergency contact cards.
+
+### Schema Migration
+
+Applied via `prisma db push` (no migration files — project uses push pattern).
+
+### Out of Scope
+
+- Validating NID format
+- Verifying relatives inside the org by name lookup
+- Bengali character validation on `applicantNameBn`
+
+---
+
 ## Summary — What Will Be Implemented
 
 | # | Feature | Days | Schema change | Priority |
