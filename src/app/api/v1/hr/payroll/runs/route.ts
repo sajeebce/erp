@@ -19,8 +19,13 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url)
     const { page, limit, skip } = parsePaginationParams(url)
 
-    // PayrollRun doesn't have organizationId, filter through entries → employee
-    const where: Record<string, unknown> = {}
+    const where: Record<string, unknown> = {
+      OR: [
+        { organizationId: auth.organizationId },
+        // Backward compatibility for runs created before organizationId was populated.
+        { organizationId: null },
+      ],
+    }
 
     const status = url.searchParams.get('status')
     if (status) where.status = status
@@ -83,6 +88,7 @@ export async function POST(request: NextRequest) {
 
     const run = await prisma.payrollRun.create({
       data: {
+        organizationId: auth.organizationId,
         runNo,
         month,
         year,

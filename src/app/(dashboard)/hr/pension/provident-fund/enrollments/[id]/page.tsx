@@ -32,8 +32,10 @@ interface EnrollmentDetail {
   policy?: { name: string }
   enrollmentDate: string
   effectiveDate: string
-  employeeContribRate: number
-  employerContribRate: number
+  employeeContribRate?: number
+  employerContribRate?: number
+  employeeRate?: number
+  employerRate?: number
   status: string
   balanceBreakdown: {
     employeeContrib: number
@@ -88,6 +90,8 @@ export default function PFEnrollmentDetailPage() {
   }
 
   const bal = data.balanceBreakdown || { employeeContrib: 0, employerContrib: 0, interestEarned: 0, withdrawals: 0, loanOutstanding: 0, netBalance: 0 }
+  const employeeRate = data.employeeContribRate ?? data.employeeRate ?? 0
+  const employerRate = data.employerContribRate ?? data.employerRate ?? 0
 
   return (
     <div className="space-y-6">
@@ -115,8 +119,8 @@ export default function PFEnrollmentDetailPage() {
             <div><span className="text-muted-foreground">Department:</span> {data.employee?.department?.name || '\u2014'}</div>
             <div><span className="text-muted-foreground">Enrollment Date:</span> {formatDate(data.enrollmentDate)}</div>
             <div><span className="text-muted-foreground">Effective Date:</span> {formatDate(data.effectiveDate)}</div>
-            <div><span className="text-muted-foreground">Employee Rate:</span> <span className="font-mono">{data.employeeContribRate}%</span></div>
-            <div><span className="text-muted-foreground">Employer Rate:</span> <span className="font-mono">{data.employerContribRate}%</span></div>
+            <div><span className="text-muted-foreground">Employee Rate:</span> <span className="font-mono">{employeeRate}%</span></div>
+            <div><span className="text-muted-foreground">Employer Rate:</span> <span className="font-mono">{employerRate}%</span></div>
             <div><span className="text-muted-foreground">Status:</span> <StatusBadge status={data.status} /></div>
           </CardContent>
         </Card>

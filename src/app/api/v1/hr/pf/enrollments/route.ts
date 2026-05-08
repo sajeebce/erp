@@ -54,7 +54,16 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuthFromRequest(request)
     const body = await request.json()
 
-    const { employeeId, policyId, enrollmentDate, effectiveDate, employeeRate, employerRate } = body
+    const {
+      employeeId,
+      policyId,
+      enrollmentDate,
+      effectiveDate,
+      employeeRate,
+      employerRate,
+      employeeContribRate,
+      employerContribRate,
+    } = body
 
     if (!employeeId || !policyId) {
       return apiBadRequest('employeeId and policyId are required')
@@ -62,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     const employee = await prisma.employee.findFirst({
       where: { id: employeeId, organizationId: auth.organizationId, deletedAt: null },
-      select: { id: true, fullName: true },
+      select: { id: true, fullName: true, joiningDate: true, employmentType: true },
     })
     if (!employee) {
       return apiBadRequest('Employee not found')
@@ -83,15 +92,33 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date()
+    const requestedEffectiveDate = effectiveDate ? new Date(effectiveDate) : now
+
+    if (policy.eligibilityMonths > 0) {
+      const eligibilityDate = new Date(employee.joiningDate)
+      eligibilityDate.setMonth(eligibilityDate.getMonth() + policy.eligibilityMonths)
+
+      if (requestedEffectiveDate < eligibilityDate) {
+        return apiBadRequest(`Employee is eligible for PF from ${eligibilityDate.toISOString().slice(0, 10)}`)
+      }
+    }
+
+    if (Array.isArray(policy.eligibilityTypes) && policy.eligibilityTypes.length > 0) {
+      const eligibleTypes = policy.eligibilityTypes.map(String)
+      if (!eligibleTypes.includes(employee.employmentType)) {
+        return apiBadRequest(`Employee type ${employee.employmentType} is not eligible for this PF policy`)
+      }
+    }
+
     const enrollment = await prisma.pFEnrollment.create({
       data: {
         organizationId: auth.organizationId,
         employeeId,
         policyId,
         enrollmentDate: enrollmentDate ? new Date(enrollmentDate) : now,
-        effectiveDate: effectiveDate ? new Date(effectiveDate) : now,
-        employeeRate: employeeRate ?? policy.employeeContribRate,
-        employerRate: employerRate ?? policy.employerContribRate,
+        effectiveDate: requestedEffectiveDate,
+        employeeRate: employeeRate ?? employeeContribRate ?? policy.employeeContribRate,
+        employerRate: employerRate ?? employerContribRate ?? policy.employerContribRate,
       },
     })
 

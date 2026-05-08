@@ -8,7 +8,7 @@ import {
   parsePaginationParams,
   apiPaginated,
 } from '@/lib/api-response'
-import { buildPayslipData } from '@/app/api/v1/hr/payroll/entries/[entryId]/payslip/route'
+import { buildPayslipData } from '@/lib/hr/payslip'
 
 interface RouteParams {
   params: Promise<{ id: string }>

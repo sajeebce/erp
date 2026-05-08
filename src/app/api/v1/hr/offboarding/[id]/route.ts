@@ -42,7 +42,27 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return apiNotFound('Offboarding not found')
     }
 
-    return apiSuccess(offboarding)
+    return apiSuccess({
+      ...offboarding,
+      settlement: offboarding.finalSettlement !== null
+        ? {
+            leaveEncashment: Number(offboarding.leaveEncashment ?? 0),
+            gratuity: Number(offboarding.gratuity ?? 0),
+            otherPayments: Number(offboarding.otherPayments ?? 0),
+            deductions: Number(offboarding.deductions ?? 0),
+            netSettlement: Number(offboarding.finalSettlement ?? 0),
+          }
+        : null,
+      exitInterview: offboarding.exitInterviewDate || offboarding.exitReason || offboarding.exitInterviewNotes || offboarding.wouldRehire !== null
+        ? {
+            date: offboarding.exitInterviewDate,
+            interviewer: offboarding.exitInterviewerId,
+            notes: offboarding.exitInterviewNotes,
+            exitReason: offboarding.exitReason,
+            wouldRehire: offboarding.wouldRehire ?? false,
+          }
+        : null,
+    })
   } catch (error) {
     return handleRouteError(error)
   }

@@ -20,11 +20,13 @@ export async function GET(request: NextRequest) {
 
     const monthInt = parseInt(month)
     const yearInt = parseInt(year)
+    const periodEnd = new Date(yearInt, monthInt, 0, 23, 59, 59)
 
     const enrollments = await prisma.pFEnrollment.findMany({
       where: {
         organizationId: auth.organizationId,
         status: 'ACTIVE',
+        effectiveDate: { lte: periodEnd },
       },
       include: {
         employee: {

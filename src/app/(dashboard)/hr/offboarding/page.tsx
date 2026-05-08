@@ -41,7 +41,7 @@ export default function OffboardingPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const inProgress = records.filter(r => r.status === 'IN_PROGRESS')
+  const inProgress = records.filter(r => ['INITIATED', 'IN_PROGRESS'].includes(r.status))
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   const completedThisMonth = records.filter(r => r.status === 'COMPLETED' && new Date(r.lastWorkingDay) >= startOfMonth)

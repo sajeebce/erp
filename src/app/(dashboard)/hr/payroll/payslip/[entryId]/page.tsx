@@ -40,6 +40,196 @@ interface PayslipData {
   }
 }
 
+function formatPayPeriod(payPeriod: unknown): string {
+  if (typeof payPeriod === 'string') return payPeriod
+  if (
+    payPeriod &&
+    typeof payPeriod === 'object' &&
+    'month' in payPeriod &&
+    'year' in payPeriod
+  ) {
+    const { month, year } = payPeriod as { month: number; year: number }
+    if (month && year) {
+      return new Date(year, month - 1, 1).toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      })
+    }
+  }
+  return ''
+}
+
+function normalizePayslipData(data: any): PayslipData {
+  const employee = data.employee ?? {}
+  const summary = data.summary ?? data
+
+  return {
+    organizationName: data.organizationName ?? 'CSS BD',
+    payPeriod: formatPayPeriod(data.payPeriod),
+    paymentDate: data.paymentDate ?? '',
+    employee: {
+      name: employee.name ?? employee.fullName ?? '',
+      employeeId: employee.employeeId ?? employee.employeeNo ?? '',
+      department: employee.department ?? '',
+      designation: employee.designation ?? '',
+      grade: employee.grade ?? '',
+      bankAccountLast4: employee.bankAccountLast4 ?? employee.bankLast4 ?? '',
+    },
+    earnings: data.earnings ?? [],
+    deductions: data.deductions ?? [],
+    employerContributions: data.employerContributions ?? [],
+    grossPay: Number(summary.grossPay ?? 0),
+    totalDeductions: Number(summary.totalDeductions ?? 0),
+    netPay: Number(summary.netPay ?? 0),
+    netPayInWords: summary.netPayInWords ?? '',
+    attendance: data.attendance,
+    ytd: data.ytd,
+  }
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+function formatPrintCurrency(amount: number): string {
+  return `BDT ${new Intl.NumberFormat('en-BD').format(Number(amount || 0))}`
+}
+
+function printPayslip(payslip: PayslipData) {
+  const printWindow = window.open('', '_blank', 'width=900,height=700')
+  if (!printWindow) {
+    window.print()
+    return
+  }
+
+  const earningsRows = payslip.earnings.map((earning) => `
+    <tr>
+      <td>${escapeHtml(earning.component)}</td>
+      <td class="amount">${formatPrintCurrency(earning.amount)}</td>
+    </tr>
+  `).join('')
+
+  const deductionRows = payslip.deductions.map((deduction) => `
+    <tr>
+      <td>${escapeHtml(deduction.component)}</td>
+      <td class="amount">${formatPrintCurrency(deduction.amount)}</td>
+    </tr>
+  `).join('')
+
+  const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Payslip - ${escapeHtml(payslip.employee.employeeId)}</title>
+  <style>
+    @page { size: A4; margin: 14mm; }
+    body { font-family: Arial, sans-serif; color: #111827; margin: 0; }
+    .payslip { max-width: 760px; margin: 0 auto; }
+    .header { text-align: center; border-bottom: 1px solid #d1d5db; padding-bottom: 14px; margin-bottom: 18px; }
+    h1 { font-size: 18px; margin: 0 0 4px; text-transform: uppercase; }
+    h2 { font-size: 15px; margin: 0 0 8px; text-transform: uppercase; color: #4b5563; }
+    .muted { color: #6b7280; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 28px; margin-bottom: 18px; border-bottom: 1px solid #d1d5db; padding-bottom: 14px; }
+    .field { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; }
+    .field strong { text-align: right; }
+    .tables { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 18px; }
+    h3 { font-size: 13px; margin: 0 0 8px; text-transform: uppercase; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; color: #6b7280; border-bottom: 1px solid #d1d5db; padding: 6px 0; font-weight: 600; }
+    td { border-bottom: 1px dashed #d1d5db; padding: 7px 0; }
+    tfoot td { border-bottom: none; font-weight: 700; padding-top: 9px; }
+    .amount { text-align: right; font-family: Consolas, monospace; }
+    .summary { border: 1px solid #d1d5db; background: #f9fafb; padding: 14px; margin-bottom: 18px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center; }
+    .summary-label { color: #6b7280; font-size: 12px; margin-bottom: 4px; }
+    .summary-value { font-family: Consolas, monospace; font-size: 18px; font-weight: 700; }
+    .net { color: #047857; font-size: 22px; }
+    .words { border-top: 1px solid #d1d5db; margin-top: 12px; padding-top: 10px; text-align: center; font-size: 12px; color: #6b7280; font-style: italic; }
+    .attendance { border-top: 1px solid #d1d5db; padding-top: 12px; }
+    .attendance-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; text-align: center; font-size: 13px; }
+    .footer { border-top: 1px solid #d1d5db; margin-top: 22px; padding-top: 12px; text-align: center; color: #6b7280; font-size: 10px; }
+  </style>
+</head>
+<body>
+  <div class="payslip">
+    <div class="header">
+      <h1>${escapeHtml(payslip.organizationName)}</h1>
+      <h2>Payslip</h2>
+      <div class="muted">Pay Period: ${escapeHtml(payslip.payPeriod)}${payslip.paymentDate ? ` | Payment Date: ${escapeHtml(new Date(payslip.paymentDate).toLocaleDateString())}` : ''}</div>
+    </div>
+
+    <div class="grid">
+      <div class="field"><span class="muted">Name:</span><strong>${escapeHtml(payslip.employee.name)}</strong></div>
+      <div class="field"><span class="muted">Employee ID:</span><strong>${escapeHtml(payslip.employee.employeeId)}</strong></div>
+      <div class="field"><span class="muted">Department:</span><strong>${escapeHtml(payslip.employee.department)}</strong></div>
+      <div class="field"><span class="muted">Designation:</span><strong>${escapeHtml(payslip.employee.designation)}</strong></div>
+      ${payslip.employee.grade ? `<div class="field"><span class="muted">Grade:</span><strong>${escapeHtml(payslip.employee.grade)}</strong></div>` : ''}
+      ${payslip.employee.bankAccountLast4 ? `<div class="field"><span class="muted">Bank A/C:</span><strong>****${escapeHtml(payslip.employee.bankAccountLast4)}</strong></div>` : ''}
+    </div>
+
+    <div class="tables">
+      <div>
+        <h3>Earnings</h3>
+        <table>
+          <thead><tr><th>Component</th><th class="amount">Amount</th></tr></thead>
+          <tbody>${earningsRows}</tbody>
+          <tfoot><tr><td>Gross Pay</td><td class="amount">${formatPrintCurrency(payslip.grossPay)}</td></tr></tfoot>
+        </table>
+      </div>
+      <div>
+        <h3>Deductions</h3>
+        <table>
+          <thead><tr><th>Component</th><th class="amount">Amount</th></tr></thead>
+          <tbody>${deductionRows}</tbody>
+          <tfoot><tr><td>Total Deductions</td><td class="amount">${formatPrintCurrency(payslip.totalDeductions)}</td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div class="summary">
+      <div class="summary-grid">
+        <div><div class="summary-label">Gross Pay</div><div class="summary-value">${formatPrintCurrency(payslip.grossPay)}</div></div>
+        <div><div class="summary-label">Total Deductions</div><div class="summary-value">${formatPrintCurrency(payslip.totalDeductions)}</div></div>
+        <div><div class="summary-label">Net Pay</div><div class="summary-value net">${formatPrintCurrency(payslip.netPay)}</div></div>
+      </div>
+      ${payslip.netPayInWords ? `<div class="words">Net Pay In Words: ${escapeHtml(payslip.netPayInWords)}</div>` : ''}
+    </div>
+
+    ${payslip.attendance ? `
+      <div class="attendance">
+        <h3>Attendance Summary</h3>
+        <div class="attendance-grid">
+          <div><div class="muted">Working Days</div><strong>${escapeHtml(payslip.attendance.workingDays)}</strong></div>
+          <div><div class="muted">Present Days</div><strong>${escapeHtml(payslip.attendance.presentDays)}</strong></div>
+          <div><div class="muted">Absent Days</div><strong>${escapeHtml(payslip.attendance.absentDays)}</strong></div>
+          <div><div class="muted">OT Hours</div><strong>${escapeHtml(payslip.attendance.otHours)}</strong></div>
+        </div>
+      </div>
+    ` : ''}
+
+    <div class="footer">This is a computer-generated payslip. No signature required.</div>
+  </div>
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        window.focus();
+        window.print();
+      }, 150);
+    });
+  </script>
+</body>
+</html>`
+
+  printWindow.document.open()
+  printWindow.document.write(html)
+  printWindow.document.close()
+}
+
 export default function PayslipViewerPage() {
   const params = useParams()
   const router = useRouter()
@@ -56,7 +246,7 @@ export default function PayslipViewerPage() {
     fetch(`/api/v1/hr/payroll/entries/${entryId}/payslip`)
       .then(res => res.json())
       .then(json => {
-        if (json.success) setPayslip(json.data)
+        if (json.success) setPayslip(normalizePayslipData(json.data))
         else setError('Failed to load payslip')
       })
       .catch(() => setError('Failed to load payslip'))
@@ -91,14 +281,14 @@ export default function PayslipViewerPage() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           {t('payroll.title')}
         </Button>
-        <Button size="sm" onClick={() => window.print()}>
+        <Button size="sm" onClick={() => printPayslip(payslip)}>
           <Printer className="h-4 w-4 mr-2" />
           Print
         </Button>
       </div>
 
       {/* Payslip Content */}
-      <Card className="max-w-3xl mx-auto print:shadow-none print:border-0">
+      <Card className="payslip-print-area max-w-3xl mx-auto print:shadow-none print:border-0">
         <CardContent className="p-8 print:p-4 space-y-6">
           {/* Header */}
           <div className="text-center border-b pb-4">
@@ -313,8 +503,17 @@ export default function PayslipViewerPage() {
         @media print {
           body * { visibility: hidden; }
           .print\\:hidden { display: none !important; }
-          [data-slot="card"] { visibility: visible; position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; }
-          [data-slot="card"] * { visibility: visible; }
+          .payslip-print-area {
+            visibility: visible !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: none !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+          .payslip-print-area * { visibility: visible !important; }
           .print\\:block { display: block !important; }
           nav, header, aside, [data-sidebar] { display: none !important; }
         }

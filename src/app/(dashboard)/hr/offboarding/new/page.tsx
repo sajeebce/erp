@@ -12,7 +12,17 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { SearchableSelect } from '@/components/shared/searchable-select'
 import { PageHeader } from '@/components/shared/page-header'
 
-const SEPARATION_TYPES = ['RESIGNATION', 'TERMINATION', 'END_OF_CONTRACT', 'RETIREMENT', 'REDUNDANCY', 'MUTUAL_SEPARATION'] as const
+const SEPARATION_TYPES = ['RESIGNATION', 'TERMINATION', 'END_OF_CONTRACT', 'RETIREMENT', 'REDUNDANCY', 'MUTUAL_SEPARATION', 'DEATH_IN_SERVICE'] as const
+
+const SEPARATION_TYPE_LABELS: Record<typeof SEPARATION_TYPES[number], string> = {
+  RESIGNATION: 'Resignation',
+  TERMINATION: 'Termination',
+  END_OF_CONTRACT: 'End of Contract',
+  RETIREMENT: 'Retirement',
+  REDUNDANCY: 'Redundancy',
+  MUTUAL_SEPARATION: 'Mutual Separation',
+  DEATH_IN_SERVICE: 'Death in Service',
+}
 
 interface Employee {
   id: string
@@ -124,7 +134,7 @@ export default function NewOffboardingPage() {
               <Label htmlFor="exit-type">{t('offboarding.fields.separationType')} *</Label>
               <SearchableSelect
                 id="exit-type"
-                options={SEPARATION_TYPES.map((st) => ({ value: st, label: t(`offboarding.separationTypes.${st}`) }))}
+                options={SEPARATION_TYPES.map((st) => ({ value: st, label: SEPARATION_TYPE_LABELS[st] }))}
                 value={separationType}
                 onValueChange={setSeparationType}
                 placeholder={t('offboarding.form.selectSeparationType')}

@@ -17,6 +17,7 @@ interface ContributionRun {
   id: string
   month: number
   year: number
+  period?: string
   totalEmployee: number
   totalEmployer: number
   totalAmount: number
@@ -30,6 +31,35 @@ interface PreviewItem {
   employeeAmount: number
   employerAmount: number
   total: number
+}
+
+function toNumber(value: unknown): number {
+  const n = Number(value ?? 0)
+  return Number.isFinite(n) ? n : 0
+}
+
+function normalizeRun(data: any): ContributionRun {
+  return {
+    id: data.id ?? `${data.year}-${String(data.month).padStart(2, '0')}`,
+    month: Number(data.month),
+    year: Number(data.year),
+    period: data.period ?? `${data.month}/${data.year}`,
+    totalEmployee: toNumber(data.totalEmployee ?? data.totalEmployeeAmount),
+    totalEmployer: toNumber(data.totalEmployer ?? data.totalEmployerAmount),
+    totalAmount: toNumber(data.totalAmount),
+    employeeCount: toNumber(data.employeeCount ?? data.processedCount),
+    status: data.status ?? 'PROCESSED',
+    createdAt: data.createdAt ?? new Date().toISOString(),
+  }
+}
+
+function normalizePreviewItem(item: any): PreviewItem {
+  return {
+    employeeName: item.employeeName ?? item.fullName ?? '',
+    employeeAmount: toNumber(item.employeeAmount),
+    employerAmount: toNumber(item.employerAmount),
+    total: toNumber(item.total ?? item.totalAmount),
+  }
 }
 
 export default function PFContributionsPage() {
@@ -50,7 +80,7 @@ export default function PFContributionsPage() {
   const [year, setYear] = useState(String(now.getFullYear()))
 
   const columns: ColumnDef<ContributionRun>[] = [
-    { id: 'period', header: 'Period', accessorFn: (row) => `${row.month}/${row.year}`, cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span> },
+    { accessorKey: 'period', header: 'Period', cell: ({ row }) => <span className="font-medium">{row.original.period ?? `${row.original.month}/${row.original.year}`}</span> },
     { accessorKey: 'totalEmployee', header: 'Employee Total', cell: ({ row }) => <span className="font-mono text-sm">{formatCurrency(row.getValue('totalEmployee'))}</span> },
     { accessorKey: 'totalEmployer', header: 'Employer Total', cell: ({ row }) => <span className="font-mono text-sm">{formatCurrency(row.getValue('totalEmployer'))}</span> },
     { accessorKey: 'totalAmount', header: 'Grand Total', cell: ({ row }) => <span className="font-mono text-sm font-medium">{formatCurrency(row.getValue('totalAmount'))}</span> },
@@ -60,7 +90,7 @@ export default function PFContributionsPage() {
   useEffect(() => {
     fetch('/api/v1/hr/pf/contributions/runs?limit=50')
       .then(res => res.json())
-      .then(json => { if (json.success) setRuns(json.data) })
+      .then(json => { if (json.success) setRuns((json.data ?? []).map(normalizeRun)) })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
@@ -72,7 +102,7 @@ export default function PFContributionsPage() {
     try {
       const res = await fetch(`/api/v1/hr/pf/contributions/preview?month=${month}&year=${year}`)
       const json = await res.json()
-      if (json.success) setPreviewData(json.data)
+      if (json.success) setPreviewData((json.data.employees ?? []).map(normalizePreviewItem))
       else setError(json.error || 'Failed to load preview')
     } catch {
       setError('Failed to load preview')
@@ -92,7 +122,11 @@ export default function PFContributionsPage() {
       })
       const json = await res.json()
       if (res.ok && json.success) {
-        setRuns(prev => [json.data, ...prev])
+        const runsRes = await fetch('/api/v1/hr/pf/contributions/runs?limit=50')
+        const runsJson = await runsRes.json()
+        if (runsJson.success) {
+          setRuns((runsJson.data ?? []).map(normalizeRun))
+        }
         setPreviewData(null)
       } else {
         setError(json.error || 'Failed to run contributions')

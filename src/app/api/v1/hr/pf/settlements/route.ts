@@ -29,7 +29,33 @@ export async function GET(request: NextRequest) {
       prisma.pFSettlement.count({ where }),
     ])
 
-    return apiPaginated(settlements, total, page, limit)
+    const employees = settlements.length > 0
+      ? await prisma.employee.findMany({
+          where: {
+            organizationId: auth.organizationId,
+            id: { in: [...new Set(settlements.map((settlement) => settlement.employeeId))] },
+          },
+          select: {
+            id: true,
+            fullName: true,
+            employeeNo: true,
+          },
+        })
+      : []
+    const employeeById = new Map(employees.map((employee) => [employee.id, employee]))
+
+    const data = settlements.map((settlement) => ({
+      ...settlement,
+      employee: employeeById.get(settlement.employeeId) ?? null,
+      employeeName: employeeById.get(settlement.employeeId)?.fullName ?? '',
+      totalAmount:
+        Number(settlement.employeeContrib) +
+        Number(settlement.employerContrib) +
+        Number(settlement.interestEarned),
+      netPayable: Number(settlement.netPayable),
+    }))
+
+    return apiPaginated(data, total, page, limit)
   } catch (error) {
     return handleRouteError(error)
   }

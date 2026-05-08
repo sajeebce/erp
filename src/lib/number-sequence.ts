@@ -23,6 +23,8 @@ const DEFAULT_SEQUENCE_CONFIG: Record<string, { prefix: string; padLength?: numb
   fund_requisition: { prefix: 'FRQ', padLength: 4 },
   project: { prefix: 'PRJ', padLength: 4 },
   grievance: { prefix: 'GRV', padLength: 4 },
+  offboarding: { prefix: 'EXIT', padLength: 3 },
+  pf_settlement: { prefix: 'PFS', padLength: 4 },
   loan_application: { prefix: 'LA', padLength: 4 },
   loan_account: { prefix: 'LN', padLength: 4 },
   disbursement: { prefix: 'DSB', padLength: 4 },

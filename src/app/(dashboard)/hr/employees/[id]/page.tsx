@@ -81,6 +81,8 @@ const TAB_ITEMS: { value: string; labelKey: string; icon: typeof User }[] = [
 
 interface Department { id: string; name: string; code?: string }
 interface Designation { id: string; title: string; level?: number }
+interface BusinessUnit { id: string; code: string; name: string; shortName?: string | null }
+interface ProjectOption { id: string; projectNo?: string; name: string; status?: string }
 
 interface EmergencyContact {
   id: string; contactName: string; relationship: string;
@@ -187,6 +189,8 @@ interface Employee {
   numberOfDependents?: number | null
   departmentId: string
   designationId: string
+  primaryBusinessUnitId?: string | null
+  primaryBusinessUnit?: BusinessUnit | null
   employmentType: string
   joiningDate: string
   confirmationDate?: string | null
@@ -286,6 +290,39 @@ function calculateAge(dob: string): number {
 function num(v: string | number | null | undefined): number {
   if (v == null) return 0
   return typeof v === 'number' ? v : parseFloat(v) || 0
+}
+
+function RequiredLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span>
+      {children} <span className="text-destructive">*</span>
+    </span>
+  )
+}
+
+function getPayrollReadinessIssues(employee: Employee): string[] {
+  const issues: string[] = []
+  const activeAllocationTotal = (employee.projectAllocations || [])
+    .filter(a => a.isActive)
+    .reduce((sum, a) => sum + num(a.percentage), 0)
+
+  if (employee.status !== 'ACTIVE') issues.push('Employee status must be Active')
+  if (!employee.departmentId) issues.push('Department is required')
+  if (!employee.designationId) issues.push('Designation is required')
+  if (!employee.primaryBusinessUnitId) issues.push('Business Unit / Concern is required')
+  if (!employee.employmentType) issues.push('Employment type is required')
+  if (!employee.joiningDate) issues.push('Joining date is required')
+  if (num(employee.basicSalary) <= 0) issues.push('Basic salary must be greater than 0')
+  if (!employee.payFrequency) issues.push('Pay frequency is required')
+  if (!employee.paymentMethod) issues.push('Payment method is required')
+  if (employee.paymentMethod === 'BANK_TRANSFER' && !employee.bankName) issues.push('Bank name is required')
+  if (employee.paymentMethod === 'BANK_TRANSFER' && !employee.bankAccountNo) issues.push('Bank account no is required')
+  if (employee.paymentMethod === 'MOBILE_BANKING' && !employee.mobileBankingProvider) issues.push('Mobile banking provider is required')
+  if (employee.paymentMethod === 'MOBILE_BANKING' && !employee.mobileBankingNumber) issues.push('Mobile banking number is required')
+  if (activeAllocationTotal <= 0) issues.push('Project allocation is required')
+  if (activeAllocationTotal > 0 && activeAllocationTotal !== 100) issues.push('Active project allocation total must be 100%')
+
+  return issues
 }
 
 function dateStr(v: string | null | undefined): string {
@@ -461,6 +498,8 @@ export default function EmployeeDetailPage() {
   // ── Lookup Data ──
   const [departments, setDepartments] = useState<Department[]>([])
   const [designations, setDesignations] = useState<Designation[]>([])
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([])
+  const [projects, setProjects] = useState<ProjectOption[]>([])
 
   // ── Edit Form State (grouped) ──
   const [personalForm, setPersonalForm] = useState<Record<string, string | boolean | null>>({})
@@ -493,6 +532,15 @@ export default function EmployeeDetailPage() {
   const [editingCertId, setEditingCertId] = useState<string | null>(null)
   const [certForm, setCertForm] = useState<Partial<Certification>>({})
   const [showAddCert, setShowAddCert] = useState(false)
+  const [showAddProjectAllocation, setShowAddProjectAllocation] = useState(false)
+  const [projectAllocationForm, setProjectAllocationForm] = useState({
+    projectId: '',
+    percentage: '100',
+    startDate: '',
+    endDate: '',
+  })
+  const [projectAllocationSaving, setProjectAllocationSaving] = useState(false)
+  const [contractActionId, setContractActionId] = useState<string | null>(null)
 
   // ── Tab loaded tracking ──
   const [loadedTabs, setLoadedTabs] = useState<Set<string>>(new Set(['personal']))
@@ -522,15 +570,32 @@ export default function EmployeeDetailPage() {
       fetch(`/api/v1/hr/employees/${employeeId}/profile-summary`).then(r => r.json()),
       fetch('/api/v1/hr/departments').then(r => r.json()),
       fetch('/api/v1/hr/designations').then(r => r.json()),
-    ]).then(([empJson, summaryJson, deptJson, desigJson]) => {
+      fetch('/api/v1/settings/business-units?isActive=true').then(r => r.json()),
+    ]).then(([empJson, summaryJson, deptJson, desigJson, buJson]) => {
       if (empJson.success) setEmployee(empJson.data)
       else setError(tc('errors.notFound'))
       if (summaryJson.success) setProfileSummary(summaryJson.data)
       if (deptJson.success) setDepartments(deptJson.data)
       if (desigJson.success) setDesignations(desigJson.data)
+      if (buJson.success) setBusinessUnits(Array.isArray(buJson.data) ? buJson.data : [])
     }).catch(() => setError(tc('errors.loadFailed')))
       .finally(() => setLoading(false))
   }, [employeeId, tc])
+
+  const fetchProfileSummary = useCallback(async () => {
+    const res = await fetch(`/api/v1/hr/employees/${employeeId}/profile-summary`).then(r => r.json()).catch(() => ({ success: false }))
+    if (res.success) setProfileSummary(res.data)
+  }, [employeeId])
+
+  const fetchContracts = useCallback(async () => {
+    const res = await fetch(`/api/v1/hr/contracts?employeeId=${employeeId}`).then(r => r.json()).catch(() => ({ success: false }))
+    setContracts(res.success ? (Array.isArray(res.data) ? res.data : res.data?.items || []) : [])
+  }, [employeeId])
+
+  const fetchProjects = useCallback(async () => {
+    const res = await fetch('/api/v1/hr/projects/options?status=ACTIVE').then(r => r.json()).catch(() => ({ success: false }))
+    setProjects(res.success ? (Array.isArray(res.data) ? res.data : res.data?.items || []) : [])
+  }, [])
 
   const fetchTabData = useCallback(async (tab: string) => {
     if (loadedTabs.has(tab)) return
@@ -554,8 +619,11 @@ export default function EmployeeDetailPage() {
         break
       }
       case 'contracts': {
-        const res = await fetch(`/api/v1/hr/contracts?employeeId=${employeeId}`).then(r => r.json()).catch(() => ({ success: false }))
-        setContracts(res.success ? (Array.isArray(res.data) ? res.data : res.data?.items || []) : [])
+        await fetchContracts()
+        break
+      }
+      case 'projects': {
+        await fetchProjects()
         break
       }
       case 'timeline': {
@@ -564,7 +632,7 @@ export default function EmployeeDetailPage() {
         break
       }
     }
-  }, [employeeId, loadedTabs])
+  }, [employeeId, fetchContracts, fetchProjects, loadedTabs])
 
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab)
@@ -603,6 +671,7 @@ export default function EmployeeDetailPage() {
       status: emp.status,
       departmentId: emp.departmentId,
       designationId: emp.designationId,
+      primaryBusinessUnitId: emp.primaryBusinessUnitId || '',
       employmentType: emp.employmentType,
       gradeLevel: emp.gradeLevel || '',
       joiningDate: dateStr(emp.joiningDate),
@@ -707,12 +776,27 @@ export default function EmployeeDetailPage() {
         permanentAddress: personalForm.permanentAddress || null,
       }
     } else if (activeTab === 'employment') {
+      const missing = [
+        !employmentForm.status && 'Status',
+        !employmentForm.departmentId && 'Department',
+        !employmentForm.designationId && 'Designation',
+        !employmentForm.primaryBusinessUnitId && 'Business Unit / Concern',
+        !employmentForm.employmentType && 'Employment type',
+        !employmentForm.joiningDate && 'Joining date',
+      ].filter(Boolean)
+      if (missing.length > 0) {
+        setError(`Required for payroll: ${missing.join(', ')}`)
+        setSaving(false)
+        return
+      }
       payload = {
         status: employmentForm.status,
         departmentId: employmentForm.departmentId,
         designationId: employmentForm.designationId,
+        primaryBusinessUnitId: employmentForm.primaryBusinessUnitId || null,
         employmentType: employmentForm.employmentType,
         gradeLevel: employmentForm.gradeLevel || null,
+        joiningDate: employmentForm.joiningDate,
         confirmationDate: employmentForm.confirmationDate || null,
         probationEndDate: employmentForm.probationEndDate || null,
         endDate: employmentForm.endDate || null,
@@ -724,8 +808,23 @@ export default function EmployeeDetailPage() {
         isExpatriate: Boolean(employmentForm.isExpatriate),
       }
     } else if (activeTab === 'compensation') {
+      const basicSalary = num(compensationForm.basicSalary)
+      const missing = [
+        basicSalary <= 0 && 'Basic salary greater than 0',
+        !compensationForm.payFrequency && 'Pay frequency',
+        !compensationForm.paymentMethod && 'Payment method',
+        compensationForm.paymentMethod === 'BANK_TRANSFER' && !compensationForm.bankName && 'Bank name',
+        compensationForm.paymentMethod === 'BANK_TRANSFER' && !compensationForm.bankAccountNo && 'Bank account no',
+        compensationForm.paymentMethod === 'MOBILE_BANKING' && !compensationForm.mobileBankingProvider && 'Mobile banking provider',
+        compensationForm.paymentMethod === 'MOBILE_BANKING' && !compensationForm.mobileBankingNumber && 'Mobile banking number',
+      ].filter(Boolean)
+      if (missing.length > 0) {
+        setError(`Required for payroll: ${missing.join(', ')}`)
+        setSaving(false)
+        return
+      }
       payload = {
-        basicSalary: compensationForm.basicSalary ? parseFloat(compensationForm.basicSalary) : null,
+        basicSalary,
         houseRentAllowance: compensationForm.houseRentAllowance ? parseFloat(compensationForm.houseRentAllowance) : null,
         medicalAllowance: compensationForm.medicalAllowance ? parseFloat(compensationForm.medicalAllowance) : null,
         transportAllowance: compensationForm.transportAllowance ? parseFloat(compensationForm.transportAllowance) : null,
@@ -780,6 +879,81 @@ export default function EmployeeDetailPage() {
   }, [activeTab, employee, personalForm, employmentForm, compensationForm, complianceForm, employeeId, fetchEmployee, t])
 
   // ═══ Sub-resource CRUD helpers ═══
+
+  const saveProjectAllocation = useCallback(async () => {
+    const percentage = num(projectAllocationForm.percentage)
+    if (!projectAllocationForm.projectId || percentage <= 0 || percentage > 100 || !projectAllocationForm.startDate) {
+      setError('Project, allocation percentage between 0.01 and 100, and start date are required')
+      return
+    }
+
+    setProjectAllocationSaving(true)
+    setError('')
+
+    try {
+      const res = await fetch(`/api/v1/hr/employees/${employeeId}/project-allocations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: projectAllocationForm.projectId,
+          percentage,
+          startDate: projectAllocationForm.startDate,
+          endDate: projectAllocationForm.endDate || null,
+        }),
+      })
+      const json = await res.json()
+
+      if (res.ok && json.success) {
+        setShowAddProjectAllocation(false)
+        setProjectAllocationForm({
+          projectId: '',
+          percentage: '100',
+          startDate: dateStr(employee?.joiningDate) || '',
+          endDate: '',
+        })
+        await fetchEmployee()
+        await fetchProfileSummary()
+      } else {
+        setError(json.error || 'Failed to save project allocation')
+      }
+    } catch {
+      setError('Failed to save project allocation')
+    } finally {
+      setProjectAllocationSaving(false)
+    }
+  }, [employee?.joiningDate, employeeId, fetchEmployee, fetchProfileSummary, projectAllocationForm])
+
+  const activateContract = useCallback(async (contract: Contract) => {
+    if (!employee) return
+    const readinessIssues = getPayrollReadinessIssues(employee)
+    if (readinessIssues.length > 0) {
+      setError(`Before activating contract, complete: ${readinessIssues.join(', ')}`)
+      return
+    }
+
+    setContractActionId(contract.id)
+    setError('')
+
+    try {
+      const res = await fetch(`/api/v1/hr/contracts/${contract.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'ACTIVE' }),
+      })
+      const json = await res.json()
+
+      if (res.ok && json.success) {
+        await fetchContracts()
+        await fetchProfileSummary()
+      } else {
+        setError(json.error || 'Failed to activate contract')
+      }
+    } catch {
+      setError('Failed to activate contract')
+    } finally {
+      setContractActionId(null)
+    }
+  }, [employee, fetchContracts, fetchProfileSummary])
 
   const apiSubResource = useCallback(async (
     resource: string, method: string, id?: string, body?: unknown
@@ -1454,6 +1628,13 @@ export default function EmployeeDetailPage() {
                   <Field label={t('fields.status')} value={<StatusBadge status={employee.status} />} />
                   <Field label={t('fields.department')} value={employee.department?.name} />
                   <Field label={t('fields.designation')} value={employee.designation?.title} />
+                  <Field
+                    label="Business Unit / Concern"
+                    value={(() => {
+                      const unit = employee.primaryBusinessUnit || businessUnits.find(bu => bu.id === employee.primaryBusinessUnitId)
+                      return unit ? `${unit.code} - ${unit.shortName || unit.name}` : null
+                    })()}
+                  />
                   <Field label={t('fields.employmentType')} value={<StatusBadge status={employee.employmentType} />} />
                   <Field label={t('form.gradeLevel')} value={employee.gradeLevel} />
                   <Field label={t('fields.joiningDate')} value={formatDate(employee.joiningDate)} />
@@ -1488,7 +1669,7 @@ export default function EmployeeDetailPage() {
                     <Input value={employee.employeeNo} disabled className="bg-muted" />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('fields.status')}</Label>
+                    <Label><RequiredLabel>{t('fields.status')}</RequiredLabel></Label>
                     <SearchableSelect
                       options={STATUSES.map(s => ({ value: s, label: tc(`status.${s}`) }))}
                       value={String(employmentForm.status || '')}
@@ -1496,7 +1677,7 @@ export default function EmployeeDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('fields.department')}</Label>
+                    <Label><RequiredLabel>{t('fields.department')}</RequiredLabel></Label>
                     <SearchableSelect
                       options={departments.map(d => ({ value: d.id, label: d.name }))}
                       value={String(employmentForm.departmentId || '')}
@@ -1504,7 +1685,7 @@ export default function EmployeeDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('fields.designation')}</Label>
+                    <Label><RequiredLabel>{t('fields.designation')}</RequiredLabel></Label>
                     <SearchableSelect
                       options={designations.map(d => ({ value: d.id, label: d.title }))}
                       value={String(employmentForm.designationId || '')}
@@ -1512,7 +1693,21 @@ export default function EmployeeDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('fields.employmentType')}</Label>
+                    <Label><RequiredLabel>Business Unit / Concern</RequiredLabel></Label>
+                    <SearchableSelect
+                      options={[
+                        { value: '', label: 'No concern assigned' },
+                        ...businessUnits.map(bu => ({
+                          value: bu.id,
+                          label: `${bu.code} - ${bu.shortName || bu.name}`,
+                        })),
+                      ]}
+                      value={String(employmentForm.primaryBusinessUnitId || '')}
+                      onValueChange={v => setEmploymentForm(p => ({ ...p, primaryBusinessUnitId: v }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>{t('fields.employmentType')}</RequiredLabel></Label>
                     <SearchableSelect
                       options={EMPLOYMENT_TYPES.map(et => ({ value: et, label: tc(`employmentTypes.${et}`) }))}
                       value={String(employmentForm.employmentType || '')}
@@ -1524,8 +1719,8 @@ export default function EmployeeDetailPage() {
                     <Input value={String(employmentForm.gradeLevel || '')} onChange={e => setEmploymentForm(p => ({ ...p, gradeLevel: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('fields.joiningDate')}</Label>
-                    <Input type="date" value={String(employmentForm.joiningDate || '')} onChange={e => setEmploymentForm(p => ({ ...p, joiningDate: e.target.value }))} />
+                    <Label><RequiredLabel>{t('fields.joiningDate')}</RequiredLabel></Label>
+                    <Input required type="date" value={String(employmentForm.joiningDate || '')} onChange={e => setEmploymentForm(p => ({ ...p, joiningDate: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
                     <Label>{t('form.confirmationDate')}</Label>
@@ -1806,8 +2001,8 @@ export default function EmployeeDetailPage() {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>{t('fields.basicSalary')}</Label>
-                    <Input type="number" min="0" step="0.01" value={compensationForm.basicSalary || ''} onChange={e => setCompensationForm(p => ({ ...p, basicSalary: e.target.value }))} />
+                    <Label><RequiredLabel>{t('fields.basicSalary')}</RequiredLabel></Label>
+                    <Input required type="number" min="0.01" step="0.01" value={compensationForm.basicSalary || ''} onChange={e => setCompensationForm(p => ({ ...p, basicSalary: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
                     <Label>{t('form.houseRentAllowance')}</Label>
@@ -1826,7 +2021,7 @@ export default function EmployeeDetailPage() {
                     <Input type="number" min="0" step="0.01" value={compensationForm.grossSalary || ''} onChange={e => setCompensationForm(p => ({ ...p, grossSalary: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('form.payFrequency')}</Label>
+                    <Label><RequiredLabel>{t('form.payFrequency')}</RequiredLabel></Label>
                     <SearchableSelect
                       options={PAY_FREQUENCIES.map(f => ({ value: f, label: t(`form.payFrequencies.${f}`) }))}
                       value={compensationForm.payFrequency || ''}
@@ -1834,7 +2029,7 @@ export default function EmployeeDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('form.paymentMethod')}</Label>
+                    <Label><RequiredLabel>{t('form.paymentMethod')}</RequiredLabel></Label>
                     <SearchableSelect
                       options={PAYMENT_METHODS.map(m => ({ value: m, label: t(`form.paymentMethods.${m}`) }))}
                       value={compensationForm.paymentMethod || ''}
@@ -1843,7 +2038,7 @@ export default function EmployeeDetailPage() {
                   </div>
                   <Separator className="md:col-span-2 my-2" />
                   <div className="space-y-2">
-                    <Label>{t('form.bankName')}</Label>
+                    <Label>{compensationForm.paymentMethod === 'BANK_TRANSFER' ? <RequiredLabel>{t('form.bankName')}</RequiredLabel> : t('form.bankName')}</Label>
                     <Input value={compensationForm.bankName || ''} onChange={e => setCompensationForm(p => ({ ...p, bankName: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
@@ -1851,7 +2046,7 @@ export default function EmployeeDetailPage() {
                     <Input value={compensationForm.bankBranch || ''} onChange={e => setCompensationForm(p => ({ ...p, bankBranch: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('form.bankAccountNo')}</Label>
+                    <Label>{compensationForm.paymentMethod === 'BANK_TRANSFER' ? <RequiredLabel>{t('form.bankAccountNo')}</RequiredLabel> : t('form.bankAccountNo')}</Label>
                     <Input value={compensationForm.bankAccountNo || ''} onChange={e => setCompensationForm(p => ({ ...p, bankAccountNo: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
@@ -1859,11 +2054,11 @@ export default function EmployeeDetailPage() {
                     <Input value={compensationForm.bankRoutingNo || ''} onChange={e => setCompensationForm(p => ({ ...p, bankRoutingNo: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('form.mobileBankingProvider')}</Label>
+                    <Label>{compensationForm.paymentMethod === 'MOBILE_BANKING' ? <RequiredLabel>{t('form.mobileBankingProvider')}</RequiredLabel> : t('form.mobileBankingProvider')}</Label>
                     <Input value={compensationForm.mobileBankingProvider || ''} onChange={e => setCompensationForm(p => ({ ...p, mobileBankingProvider: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('form.mobileBankingNumber')}</Label>
+                    <Label>{compensationForm.paymentMethod === 'MOBILE_BANKING' ? <RequiredLabel>{t('form.mobileBankingNumber')}</RequiredLabel> : t('form.mobileBankingNumber')}</Label>
                     <Input value={compensationForm.mobileBankingNumber || ''} onChange={e => setCompensationForm(p => ({ ...p, mobileBankingNumber: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
@@ -2085,8 +2280,85 @@ export default function EmployeeDetailPage() {
         {/* ══════════════════════════════════════════════════════════ */}
         <TabsContent value="projects" className="space-y-6 mt-6">
           <Card>
-            <CardHeader><CardTitle>{t('profile.projectAllocations')}</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>{t('profile.projectAllocations')}</CardTitle>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  if (projects.length === 0) await fetchProjects()
+                  setProjectAllocationForm({
+                    projectId: '',
+                    percentage: '100',
+                    startDate: dateStr(employee.joiningDate),
+                    endDate: '',
+                  })
+                  setShowAddProjectAllocation(true)
+                }}
+              >
+                <Plus className="h-4 w-4 mr-1" />Add Allocation
+              </Button>
+            </CardHeader>
             <CardContent>
+              {showAddProjectAllocation && (
+                <div className="mb-5 rounded-lg border bg-muted/20 p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Project</Label>
+                      <SearchableSelect
+                        options={projects.map(project => ({
+                          value: project.id,
+                          label: `${project.projectNo || 'PRJ'} - ${project.name}`,
+                        }))}
+                        value={projectAllocationForm.projectId}
+                        onValueChange={v => setProjectAllocationForm(p => ({ ...p, projectId: v }))}
+                        placeholder="Select project"
+                        searchPlaceholder="Search projects..."
+                        emptyMessage="No active projects found"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Allocation %</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={projectAllocationForm.percentage}
+                        onChange={e => setProjectAllocationForm(p => ({ ...p, percentage: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{t('fields.startDate')}</Label>
+                      <Input
+                        type="date"
+                        value={projectAllocationForm.startDate}
+                        onChange={e => setProjectAllocationForm(p => ({ ...p, startDate: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{t('fields.endDate')}</Label>
+                      <Input
+                        type="date"
+                        value={projectAllocationForm.endDate}
+                        onChange={e => setProjectAllocationForm(p => ({ ...p, endDate: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowAddProjectAllocation(false)}
+                    >
+                      {tc('buttons.cancel')}
+                    </Button>
+                    <Button size="sm" onClick={saveProjectAllocation} disabled={projectAllocationSaving}>
+                      {projectAllocationSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                      {tc('buttons.save')}
+                    </Button>
+                  </div>
+                </div>
+              )}
               {(!employee.projectAllocations || employee.projectAllocations.length === 0) ? (
                 <p className="text-sm text-muted-foreground text-center py-6">{tc('labels.noData')}</p>
               ) : (
@@ -2842,6 +3114,7 @@ export default function EmployeeDetailPage() {
                       <TableHead>{t('fields.startDate')}</TableHead>
                       <TableHead>{t('fields.endDate')}</TableHead>
                       <TableHead>{tc('labels.status')}</TableHead>
+                      <TableHead className="text-right">{tc('labels.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -2852,6 +3125,27 @@ export default function EmployeeDetailPage() {
                         <TableCell>{formatDate(c.startDate)}</TableCell>
                         <TableCell>{c.endDate ? formatDate(c.endDate) : '\u2014'}</TableCell>
                         <TableCell><StatusBadge status={c.status} /></TableCell>
+                        <TableCell className="text-right">
+                          {c.status === 'DRAFT' ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => activateContract(c)}
+                              disabled={contractActionId === c.id}
+                            >
+                              {contractActionId === c.id ? (
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              ) : (
+                                <Check className="h-4 w-4 mr-1" />
+                              )}
+                              Activate
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="ghost" onClick={() => router.push(`/hr/contracts/${c.id}`)}>
+                              <ExternalLink className="h-4 w-4 mr-1" />Open
+                            </Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

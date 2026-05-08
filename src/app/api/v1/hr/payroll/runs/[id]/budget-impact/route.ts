@@ -16,8 +16,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const auth = await requireAuthFromRequest(request)
     const { id } = await params
 
-    const run = await prisma.payrollRun.findUnique({
-      where: { id },
+    const run = await prisma.payrollRun.findFirst({
+      where: {
+        id,
+        OR: [
+          { organizationId: auth.organizationId },
+          { organizationId: null },
+        ],
+      },
       include: {
         entries: {
           include: {
@@ -38,6 +44,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return apiNotFound('Payroll run not found')
     }
 
+    const periodStart = new Date(run.year, run.month - 1, 1)
+    const periodEnd = new Date(run.year, run.month, 0, 23, 59, 59)
+
     // Get all employee IDs from the run
     const employeeIds = run.entries.map((e) => e.employeeId)
 
@@ -46,6 +55,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       where: {
         employeeId: { in: employeeIds },
         isActive: true,
+        startDate: { lte: periodEnd },
+        OR: [
+          { endDate: null },
+          { endDate: { gte: periodStart } },
+        ],
       },
       include: {
         project: { select: { id: true, projectNo: true, name: true } },

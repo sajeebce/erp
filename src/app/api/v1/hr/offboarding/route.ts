@@ -55,6 +55,11 @@ export async function GET(request: NextRequest) {
               department: { select: { id: true, name: true } },
             },
           },
+          tasks: {
+            select: {
+              isCompleted: true,
+            },
+          },
         },
         orderBy: { [sort]: order },
         skip,
@@ -63,7 +68,17 @@ export async function GET(request: NextRequest) {
       prisma.offboarding.count({ where }),
     ])
 
-    return apiPaginated(offboardings, total, page, limit)
+    const data = offboardings.map((offboarding) => {
+      const tasksCompleted = offboarding.tasks.filter((task) => task.isCompleted).length
+      const tasksTotal = offboarding.tasks.length
+      return {
+        ...offboarding,
+        tasksCompleted,
+        tasksTotal,
+      }
+    })
+
+    return apiPaginated(data, total, page, limit)
   } catch (error) {
     return handleRouteError(error)
   }

@@ -18,10 +18,13 @@ export async function POST(request: NextRequest) {
       return apiBadRequest('month and year are required')
     }
 
+    const periodEnd = new Date(year, month, 0, 23, 59, 59)
+
     const enrollments = await prisma.pFEnrollment.findMany({
       where: {
         organizationId: auth.organizationId,
         status: 'ACTIVE',
+        effectiveDate: { lte: periodEnd },
       },
       include: {
         employee: {

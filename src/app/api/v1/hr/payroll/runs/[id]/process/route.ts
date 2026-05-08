@@ -61,19 +61,38 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const auth = await requireAuthFromRequest(request)
     const { id } = await params
 
-    const run = await prisma.payrollRun.findUnique({ where: { id } })
+    const run = await prisma.payrollRun.findFirst({
+      where: {
+        id,
+        OR: [
+          { organizationId: auth.organizationId },
+          { organizationId: null },
+        ],
+      },
+    })
     if (!run) return apiNotFound('Payroll run not found')
 
-    if (run.status !== 'DRAFT') {
-      return apiBadRequest('Payroll run has already been processed')
+    if (!['DRAFT', 'PROCESSED'].includes(run.status)) {
+      return apiBadRequest('Only draft or processed payroll runs can be processed')
     }
 
-    // Get active employees for this org
+    // Get attendance for the month
+    const startDate = new Date(run.year, run.month - 1, 1)
+    const endDate = new Date(run.year, run.month, 0, 23, 59, 59)
+    const daysInMonth = new Date(run.year, run.month, 0).getDate()
+    const weekendDays = countWeekendDays(run.year, run.month)
+
+    // Get active employees for this org who are employed during the payroll month.
     const employees = await prisma.employee.findMany({
       where: {
         organizationId: auth.organizationId,
         status: 'ACTIVE',
         deletedAt: null,
+        joiningDate: { lte: endDate },
+        OR: [
+          { endDate: null },
+          { endDate: { gte: startDate } },
+        ],
       },
       include: {
         salaryGrade: { include: { steps: true } },
@@ -88,14 +107,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         },
         department: { select: { id: true, name: true } },
         designation: { select: { id: true, title: true } },
+        pfEnrollment: {
+          select: {
+            id: true,
+            status: true,
+            effectiveDate: true,
+          },
+        },
       },
     })
-
-    // Get attendance for the month
-    const startDate = new Date(run.year, run.month - 1, 1)
-    const endDate = new Date(run.year, run.month, 0, 23, 59, 59)
-    const daysInMonth = new Date(run.year, run.month, 0).getDate()
-    const weekendDays = countWeekendDays(run.year, run.month)
 
     const attendanceRecords = await prisma.attendance.findMany({
       where: {
@@ -259,7 +279,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         ['PRESENT', 'LATE', 'HALF_DAY'].includes(a.status)
       ).length
       const leaveDays = empAttendance.filter((a) => a.status === 'ON_LEAVE').length
-      const absentDays = Math.max(0, workingCalendarDays - presentDays - leaveDays)
+      const hasAttendanceData = empAttendance.length > 0
+      const effectivePresentDays = hasAttendanceData ? presentDays : workingCalendarDays
+      const absentDays = hasAttendanceData ? Math.max(0, workingCalendarDays - presentDays - leaveDays) : 0
       const otHours = empAttendance.reduce((sum, a) => sum + Number(a.otHours), 0)
 
       // ── Calculate components ──
@@ -273,6 +295,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       let tdsDeduction = 0
       let otherDeductions = 0
       let grossSalary = 0
+      const hasActivePFEnrollment =
+        emp.pfEnrollment?.status === 'ACTIVE' &&
+        emp.pfEnrollment.effectiveDate <= endDate
 
       if (structureLines.length > 0) {
         useStructure = true
@@ -283,6 +308,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
         for (const line of structureLines) {
           const comp = line.component
+          const componentCode = comp.code.toUpperCase()
+          const isPFComponent = componentCode === 'PF' || componentCode === 'PF_DEDUCTION'
+
+          if (isPFComponent && !hasActivePFEnrollment) {
+            continue
+          }
+
           if (line.calculationType === 'PERCENT_OF_GROSS') {
             pendingGrossLines.push(line)
             continue
@@ -324,6 +356,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         // Second pass: PERCENT_OF_GROSS
         for (const line of pendingGrossLines) {
           const comp = line.component
+          const componentCode = comp.code.toUpperCase()
+          const isPFComponent = componentCode === 'PF' || componentCode === 'PF_DEDUCTION'
+
+          if (isPFComponent && !hasActivePFEnrollment) {
+            continue
+          }
+
           const pct = Number(line.percentage ?? 0)
           const amount = r2(grossSalary * pct / 100)
 
@@ -378,13 +417,30 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         }
       } else {
         // ── FALLBACK: Legacy flat calculation ──
-        houseRent = r2(basicSalary * 0.5)
-        medical = r2(basicSalary * 0.1)
-        transport = r2(basicSalary * 0.1)
+        const hasManualCompensation =
+          emp.houseRentAllowance !== null ||
+          emp.medicalAllowance !== null ||
+          emp.transportAllowance !== null ||
+          emp.grossSalary !== null
 
-        grossSalary = r2(basicSalary + houseRent + medical + transport)
+        if (hasManualCompensation) {
+          houseRent = r2(Number(emp.houseRentAllowance ?? 0))
+          medical = r2(Number(emp.medicalAllowance ?? 0))
+          transport = r2(Number(emp.transportAllowance ?? 0))
 
-        pfDeduction = r2(basicSalary * 0.1)
+          const manualGross = Number(emp.grossSalary ?? 0)
+          grossSalary = manualGross > 0
+            ? r2(manualGross)
+            : r2(basicSalary + houseRent + medical + transport)
+        } else {
+          houseRent = r2(basicSalary * 0.5)
+          medical = r2(basicSalary * 0.1)
+          transport = r2(basicSalary * 0.1)
+
+          grossSalary = r2(basicSalary + houseRent + medical + transport)
+        }
+
+        pfDeduction = hasActivePFEnrollment ? r2(basicSalary * 0.1) : 0
         tdsDeduction = r2(basicSalary * 0.05)
       }
 
@@ -413,7 +469,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         absentDeduction: new Prisma.Decimal(absentDeduction),
         netSalary: new Prisma.Decimal(netSalary),
         workingDays: workingCalendarDays,
-        presentDays,
+        presentDays: effectivePresentDays,
         absentDays,
         otHours: new Prisma.Decimal(otHours),
       })
@@ -429,6 +485,27 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Execute in transaction
     await prisma.$transaction(async (tx) => {
+      const existingEntries = await tx.payrollEntry.findMany({
+        where: { payrollRunId: id },
+        select: { id: true },
+      })
+      const existingEntryIds = existingEntries.map((entry) => entry.id)
+
+      if (existingEntryIds.length > 0) {
+        await tx.payrollBudgetAllocation.deleteMany({
+          where: { payrollEntryId: { in: existingEntryIds } },
+        })
+        await tx.payslipDistribution.deleteMany({
+          where: { payrollEntryId: { in: existingEntryIds } },
+        })
+        await tx.payrollEntryLine.deleteMany({
+          where: { payrollEntryId: { in: existingEntryIds } },
+        })
+        await tx.payrollEntry.deleteMany({
+          where: { id: { in: existingEntryIds } },
+        })
+      }
+
       // Create all payroll entries
       await tx.payrollEntry.createMany({ data: entries })
 

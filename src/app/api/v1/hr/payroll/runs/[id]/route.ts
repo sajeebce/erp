@@ -13,16 +13,28 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    await requireAuthFromRequest(request)
+    const auth = await requireAuthFromRequest(request)
     const { id } = await params
 
-    const run = await prisma.payrollRun.findUnique({
-      where: { id },
+    const run = await prisma.payrollRun.findFirst({
+      where: {
+        id,
+        OR: [
+          { organizationId: auth.organizationId },
+          { organizationId: null },
+        ],
+      },
       include: {
         entries: {
           include: {
             employee: {
-              select: { id: true, employeeNo: true, fullName: true, departmentId: true },
+              select: {
+                id: true,
+                employeeNo: true,
+                fullName: true,
+                departmentId: true,
+                designation: { select: { title: true } },
+              },
             },
           },
           orderBy: { employee: { fullName: 'asc' } },

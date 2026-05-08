@@ -134,7 +134,7 @@ export default function OffboardingDetailPage() {
       })
       const json = await res.json()
       if (res.ok && json.success) {
-        setRecord(prev => prev ? { ...prev, settlement: json.data } : prev)
+        setRecord(prev => prev ? { ...prev, settlement: json.data.settlement ?? json.data } : prev)
       } else {
         setError(json.error || tc('errors.somethingWentWrong'))
       }
@@ -150,9 +150,19 @@ export default function OffboardingDetailPage() {
     setError('')
     try {
       const res = await fetch(`/api/v1/hr/offboarding/${params.id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          exitInterviewDate: interviewDate || null,
+          exitInterviewNotes: interviewNotes.trim() || null,
+          exitReason: exitReason.trim() || null,
+          wouldRehire,
+        }),
+      })
+      const json = await res.json()
+      if (res.ok && json.success) {
+        setRecord(prev => prev ? {
+          ...prev,
           exitInterview: {
             date: interviewDate || null,
             interviewer: interviewer.trim() || null,
@@ -160,11 +170,7 @@ export default function OffboardingDetailPage() {
             exitReason: exitReason.trim() || null,
             wouldRehire,
           },
-        }),
-      })
-      const json = await res.json()
-      if (res.ok && json.success) {
-        setRecord(prev => prev ? { ...prev, exitInterview: json.data.exitInterview } : prev)
+        } : prev)
       } else {
         setError(json.error || t('form.failedToSave'))
       }
@@ -186,6 +192,8 @@ export default function OffboardingDetailPage() {
       const json = await res.json()
       if (res.ok && json.success) {
         setRecord(prev => prev ? { ...prev, status: 'COMPLETED' } : prev)
+        router.refresh()
+        router.push('/hr/offboarding')
       } else {
         setError(json.error || tc('errors.somethingWentWrong'))
       }
@@ -369,10 +377,10 @@ export default function OffboardingDetailPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>{t('offboarding.settlement.title')}</CardTitle>
-            {!record.settlement && record.status !== 'COMPLETED' && (
+            {record.status !== 'COMPLETED' && (
               <Button size="sm" variant="outline" onClick={calculateSettlement} disabled={settlementLoading}>
                 {settlementLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                {t('offboarding.settlement.calculate')}
+                {record.settlement ? 'Recalculate Settlement' : t('offboarding.settlement.calculate')}
               </Button>
             )}
           </div>
