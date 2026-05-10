@@ -68,6 +68,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const data: Record<string, unknown> = {}
 
     if (body.name !== undefined) data.name = body.name.trim()
+    if (body.code !== undefined) data.code = body.code.trim()
     if (body.headId !== undefined) data.headId = body.headId || null
     if (body.parentId !== undefined) data.parentId = body.parentId || null
     if (body.isActive !== undefined) data.isActive = body.isActive

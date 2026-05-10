@@ -15,6 +15,7 @@ import { PageHeader } from '@/components/shared/page-header'
 const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'CONSULTANT', 'INTERN', 'VOLUNTEER'] as const
 const GENDERS = ['MALE', 'FEMALE', 'OTHER'] as const
 const MARITAL_STATUSES = ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED'] as const
+const RELIGIONS = ['Islam', 'Hinduism', 'Christianity', 'Buddhism', 'Other', 'Prefer not to say'] as const
 
 interface Department {
   id: string
@@ -24,6 +25,15 @@ interface Department {
 interface Designation {
   id: string
   title: string
+}
+
+interface SalaryGrade {
+  id: string
+  code: string
+  name: string
+  midSalary: number | string
+  maxSalary: number | string
+  minSalary: number | string
 }
 
 export default function NewEmployeePage() {
@@ -49,9 +59,12 @@ export default function NewEmployeePage() {
   const [joiningDate, setJoiningDate] = useState('')
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [gender, setGender] = useState('')
+  const [religion, setReligion] = useState('')
   const [maritalStatus, setMaritalStatus] = useState('')
   const [nidNumber, setNidNumber] = useState('')
   const [basicSalary, setBasicSalary] = useState('')
+  const [salaryGradeId, setSalaryGradeId] = useState('')
+  const [salaryStructureId, setSalaryStructureId] = useState('')
   const [presentAddress, setPresentAddress] = useState('')
   const [permanentAddress, setPermanentAddress] = useState('')
   const [emergencyContact, setEmergencyContact] = useState('')
@@ -62,6 +75,7 @@ export default function NewEmployeePage() {
   // Lookup data
   const [departments, setDepartments] = useState<Department[]>([])
   const [designations, setDesignations] = useState<Designation[]>([])
+  const [salaryGrades, setSalaryGrades] = useState<SalaryGrade[]>([])
 
   useEffect(() => {
     fetch('/api/v1/hr/departments')
@@ -72,6 +86,11 @@ export default function NewEmployeePage() {
     fetch('/api/v1/hr/designations')
       .then(res => res.json())
       .then(json => { if (json.success) setDesignations(json.data) })
+      .catch(() => {})
+
+    fetch('/api/v1/hr/salary-grades?isActive=true&limit=100')
+      .then(res => res.json())
+      .then(json => { if (json.success) setSalaryGrades(json.data) })
       .catch(() => {})
   }, [])
 
@@ -86,9 +105,13 @@ export default function NewEmployeePage() {
             setFullName(prefill.fullName || '')
             setEmail(prefill.email || '')
             setPhone(prefill.phone || '')
+            setReligion(prefill.religion || '')
             if (jobPosting.departmentId) setDepartmentId(jobPosting.departmentId)
             if (jobPosting.designationId) setDesignationId(jobPosting.designationId)
             if (jobPosting.employmentType) setEmploymentType(jobPosting.employmentType)
+            if (prefill.salaryGradeId) setSalaryGradeId(prefill.salaryGradeId)
+            if (prefill.salaryStructureId) setSalaryStructureId(prefill.salaryStructureId)
+            if (prefill.basicSalary) setBasicSalary(String(prefill.basicSalary))
             setConvertedFromApplicationId(fromApplicationId)
           }
         })
@@ -127,9 +150,12 @@ export default function NewEmployeePage() {
     if (phone.trim()) payload.phone = phone.trim()
     if (dateOfBirth) payload.dateOfBirth = dateOfBirth
     if (gender) payload.gender = gender
+    if (religion) payload.religion = religion
     if (maritalStatus) payload.maritalStatus = maritalStatus
     if (nidNumber.trim()) payload.nidNumber = nidNumber.trim()
     if (basicSalary) payload.basicSalary = parseFloat(basicSalary)
+    if (salaryGradeId) payload.salaryGradeId = salaryGradeId
+    if (salaryStructureId) payload.salaryStructureId = salaryStructureId
     if (presentAddress.trim()) payload.presentAddress = presentAddress.trim()
     if (permanentAddress.trim()) payload.permanentAddress = permanentAddress.trim()
     if (emergencyContact.trim()) payload.emergencyContact = emergencyContact.trim()
@@ -257,13 +283,25 @@ export default function NewEmployeePage() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="emp-nid">{t('form.nidNumber')}</Label>
-            <Input
-              id="emp-nid"
-              value={nidNumber}
-              onChange={(e) => setNidNumber(e.target.value)}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="emp-nid">{t('form.nidNumber')}</Label>
+              <Input
+                id="emp-nid"
+                value={nidNumber}
+                onChange={(e) => setNidNumber(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="emp-religion">{t('form.religion')}</Label>
+              <SearchableSelect
+                id="emp-religion"
+                options={RELIGIONS.map((item) => ({ value: item, label: item }))}
+                value={religion}
+                onValueChange={setReligion}
+                placeholder="Select religion"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -327,6 +365,25 @@ export default function NewEmployeePage() {
                 onChange={(e) => setBasicSalary(e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="emp-salary-grade">Salary Grade</Label>
+            <SearchableSelect
+              id="emp-salary-grade"
+              options={salaryGrades.map((grade) => ({
+                value: grade.id,
+                label: `${grade.code} - ${grade.name}`,
+                description: `Gross ${Number(grade.midSalary || grade.maxSalary || grade.minSalary || 0).toLocaleString('en-BD')} BDT`,
+              }))}
+              value={salaryGradeId}
+              onValueChange={(value) => {
+                setSalaryGradeId(value)
+                const grade = salaryGrades.find((item) => item.id === value)
+                if (grade) setBasicSalary(String(grade.midSalary || grade.maxSalary || grade.minSalary || ''))
+              }}
+              placeholder="Select salary grade"
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

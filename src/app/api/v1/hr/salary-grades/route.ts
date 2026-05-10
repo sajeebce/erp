@@ -38,7 +38,18 @@ export async function GET(request: NextRequest) {
     const [grades, total] = await Promise.all([
       prisma.salaryGrade.findMany({
         where,
-        include: { steps: { orderBy: { stepNumber: 'asc' } } },
+        include: {
+          steps: { orderBy: { stepNumber: 'asc' } },
+          structures: {
+            where: { isActive: true },
+            include: {
+              lines: {
+                include: { component: true },
+                orderBy: { sortOrder: 'asc' },
+              },
+            },
+          },
+        },
         orderBy: { level: 'asc' },
         skip,
         take: limit,
@@ -93,7 +104,7 @@ export async function POST(request: NextRequest) {
               create: steps.map((s: { stepNumber: number; basicSalary: number; effectiveFrom: string }) => ({
                 stepNumber: s.stepNumber,
                 basicSalary: s.basicSalary,
-                effectiveFrom: new Date(s.effectiveFrom),
+                effectiveFrom: s.effectiveFrom ? new Date(s.effectiveFrom) : new Date(effectiveFrom),
               })),
             }
           : undefined,

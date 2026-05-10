@@ -7,6 +7,7 @@ import { Plus, X, Filter } from 'lucide-react'
 import { ColumnDef } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/shared/data-table'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
@@ -19,10 +20,12 @@ interface Employee {
   fullName: string
   photo?: string | null
   dutyStation?: string | null
+  religion?: string | null
   department?: { id: string; name: string }
   departmentName?: string
   departmentId?: string
   designation?: { title: string }
+  designationId?: string
   designationTitle?: string
   basicSalary: string | number
   employmentType: string
@@ -30,9 +33,7 @@ interface Employee {
 }
 
 interface Department { id: string; name: string }
-
-const STATUSES = ['ACTIVE', 'INACTIVE', 'ON_LEAVE', 'SUSPENDED'] as const
-const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'CONSULTANT', 'INTERN', 'VOLUNTEER'] as const
+interface Designation { id: string; title: string }
 
 function getInitials(name: string): string {
   return name.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
@@ -45,15 +46,15 @@ export default function HRPage() {
   const router = useRouter()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
+  const [designations, setDesignations] = useState<Designation[]>([])
   const [loading, setLoading] = useState(true)
 
   // Filters
   const [filterDept, setFilterDept] = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
-  const [filterType, setFilterType] = useState('')
+  const [filterDesignation, setFilterDesignation] = useState('')
   const [filterStation, setFilterStation] = useState('')
 
-  const hasFilters = filterDept || filterStatus || filterType || filterStation
+  const hasFilters = filterDept || filterDesignation || filterStation
 
   // Derive unique duty stations from data
   const dutyStations = useMemo(() => {
@@ -62,16 +63,26 @@ export default function HRPage() {
     return Array.from(set).sort()
   }, [employees])
 
+  const religionCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    employees
+      .filter((employee) => employee.status === 'ACTIVE')
+      .forEach((employee) => {
+        const key = employee.religion || 'Not specified'
+        counts.set(key, (counts.get(key) || 0) + 1)
+      })
+    return Array.from(counts.entries()).sort(([a], [b]) => a.localeCompare(b))
+  }, [employees])
+
   // Apply client-side filters
   const filteredEmployees = useMemo(() => {
     return employees.filter(e => {
       if (filterDept && (e.department?.id || e.departmentId) !== filterDept) return false
-      if (filterStatus && e.status !== filterStatus) return false
-      if (filterType && e.employmentType !== filterType) return false
+      if (filterDesignation && e.designationId !== filterDesignation) return false
       if (filterStation && e.dutyStation !== filterStation) return false
       return true
     })
-  }, [employees, filterDept, filterStatus, filterType, filterStation])
+  }, [employees, filterDept, filterDesignation, filterStation])
 
   const columns: ColumnDef<Employee>[] = [
     {
@@ -112,9 +123,11 @@ export default function HRPage() {
     Promise.all([
       fetch('/api/v1/hr/employees?limit=500').then(r => r.json()),
       fetch('/api/v1/hr/departments').then(r => r.json()),
-    ]).then(([empJson, deptJson]) => {
+      fetch('/api/v1/hr/designations').then(r => r.json()),
+    ]).then(([empJson, deptJson, desigJson]) => {
       if (empJson.success) setEmployees(empJson.data)
       if (deptJson.success) setDepartments(deptJson.data)
+      if (desigJson.success) setDesignations(desigJson.data)
     }).catch(console.error)
       .finally(() => setLoading(false))
   }, [])
@@ -127,37 +140,48 @@ export default function HRPage() {
         </Button>
       </PageHeader>
 
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Religion-wise Employee Count</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {religionCounts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No active employee religion data found.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {religionCounts.map(([religion, count]) => (
+                <Badge key={religion} variant="outline" className="px-3 py-1">
+                  {religion}: {count}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <Filter className="h-4 w-4 text-muted-foreground" />
         <SearchableSelect
-          options={[{ value: '', label: tc('buttons.all') }, ...departments.map(d => ({ value: d.id, label: d.name }))]}
+          options={[{ value: '', label: 'All Departments' }, ...departments.map(d => ({ value: d.id, label: d.name }))]}
           value={filterDept}
           onValueChange={setFilterDept}
           placeholder={t('fields.department')}
         />
         <SearchableSelect
-          options={[{ value: '', label: tc('buttons.all') }, ...STATUSES.map(s => ({ value: s, label: tc(`status.${s}`) }))]}
-          value={filterStatus}
-          onValueChange={setFilterStatus}
-          placeholder={tc('labels.status')}
+          options={[{ value: '', label: 'All Designations' }, ...designations.map(d => ({ value: d.id, label: d.title }))]}
+          value={filterDesignation}
+          onValueChange={setFilterDesignation}
+          placeholder={t('fields.designation')}
         />
         <SearchableSelect
-          options={[{ value: '', label: tc('buttons.all') }, ...EMPLOYMENT_TYPES.map(et => ({ value: et, label: tc(`employmentTypes.${et}`) }))]}
-          value={filterType}
-          onValueChange={setFilterType}
-          placeholder={t('fields.type')}
+          options={[{ value: '', label: 'All Duty Stations' }, ...dutyStations.map(s => ({ value: s, label: s }))]}
+          value={filterStation}
+          onValueChange={setFilterStation}
+          placeholder={t('form.dutyStation')}
         />
-        {dutyStations.length > 0 && (
-          <SearchableSelect
-            options={[{ value: '', label: tc('buttons.all') }, ...dutyStations.map(s => ({ value: s, label: s }))]}
-            value={filterStation}
-            onValueChange={setFilterStation}
-            placeholder={t('form.dutyStation')}
-          />
-        )}
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={() => { setFilterDept(''); setFilterStatus(''); setFilterType(''); setFilterStation('') }}>
+          <Button variant="ghost" size="sm" onClick={() => { setFilterDept(''); setFilterDesignation(''); setFilterStation('') }}>
             <X className="h-3.5 w-3.5 mr-1" />{tc('buttons.clear')}
           </Button>
         )}

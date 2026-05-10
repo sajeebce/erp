@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
 import { logAudit, getAuditContext } from '@/lib/audit'
+import { queueEmail } from '@/lib/email-queue'
 import {
   apiSuccess,
   apiBadRequest,
@@ -26,7 +27,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         organizationId: auth.organizationId,
         deletedAt: null,
       },
-      select: { id: true, fullName: true },
+      select: { id: true, fullName: true, employeeNo: true, email: true },
     })
 
     if (!employee) {
@@ -87,6 +88,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         },
       },
     })
+
+    if (body.isCompleted === true) {
+      const remainingTasks = await prisma.onboardingProgress.count({
+        where: { employeeId, isCompleted: false },
+      })
+
+      if (remainingTasks === 0) {
+        await queueEmail({
+          organizationId: auth.organizationId,
+          recipientEmail: employee.email,
+          eventKey: `onboarding:${employeeId}:completed`,
+          templateKey: 'ONBOARDING_COMPLETED',
+          fallbackSubject: 'Onboarding completed',
+          fallbackBody: 'Dear {{employeeName}}, your onboarding process has been completed.',
+          variables: {
+            employeeName: employee.fullName,
+            employeeNo: employee.employeeNo,
+          },
+          relatedModule: 'onboarding',
+          relatedEntityId: employeeId,
+        })
+      }
+    }
 
     const auditCtx = getAuditContext(request)
     await logAudit({

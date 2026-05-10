@@ -18,6 +18,7 @@ import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { useFormatters } from '@/hooks/use-formatters'
 
 const PIPELINE_STAGES = [
@@ -143,8 +144,48 @@ interface ApplicationDetail {
     feedback: string | null
     interviewerName: string | null
   }[]
-  offerSalary: number | null
-  offerLetterUrl: string | null
+  offeredSalary: number | string | null
+  offerSalaryGradeId?: string | null
+  offerMessage?: string | null
+  offerLeaveBenefits?: LeaveBenefit[] | null
+  offerSentAt?: string | null
+  offerLetterPath?: string | null
+  offerLetterUrl?: string | null
+  offerSalaryGrade?: SalaryGrade | null
+}
+
+interface SalaryStructureLine {
+  calculationType: string
+  amount?: number | string | null
+  percentage?: number | string | null
+  component?: { name: string; type?: string }
+}
+
+interface SalaryGrade {
+  id: string
+  code: string
+  name: string
+  midSalary: number | string
+  maxSalary: number | string
+  minSalary: number | string
+  steps?: { stepNumber: number; basicSalary: number | string }[]
+  structures?: {
+    id: string
+    name: string
+    lines: SalaryStructureLine[]
+  }[]
+}
+
+const DEFAULT_LEAVE_BENEFITS = [
+  { name: 'Annual Leave', days: 18 },
+  { name: 'Casual Leave', days: 10 },
+  { name: 'Sick Leave', days: 14 },
+  { name: 'Maternity Leave', days: 112 },
+]
+
+interface LeaveBenefit {
+  name: string
+  days: number
 }
 
 function buildDeclaration(application: ApplicationDetail) {
@@ -204,9 +245,13 @@ export default function ApplicationDetailPage() {
   const { formatDate, formatCurrency } = useFormatters()
 
   const [application, setApplication] = useState<ApplicationDetail | null>(null)
+  const [salaryGrades, setSalaryGrades] = useState<SalaryGrade[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [actionLoading, setActionLoading] = useState('')
+  const [offerGradeId, setOfferGradeId] = useState('')
+  const [offerMessage, setOfferMessage] = useState('')
+  const [offerLeaveBenefits, setOfferLeaveBenefits] = useState<LeaveBenefit[]>(DEFAULT_LEAVE_BENEFITS)
 
   // Reject dialog
   const [showRejectDialog, setShowRejectDialog] = useState(false)
@@ -241,6 +286,34 @@ export default function ApplicationDetailPage() {
       .catch(() => setError(tc('errors.loadFailed')))
       .finally(() => setLoading(false))
   }, [params.id, tc, fetchApplication])
+
+  useEffect(() => {
+    fetch('/api/v1/hr/salary-grades?isActive=true&limit=100')
+      .then((res) => res.json())
+      .then((json) => { if (json.success) setSalaryGrades(json.data) })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!application) return
+    setOfferGradeId(application.offerSalaryGradeId || '')
+    setOfferMessage(application.offerMessage || '')
+    setOfferLeaveBenefits(
+      Array.isArray(application.offerLeaveBenefits) && application.offerLeaveBenefits.length > 0
+        ? application.offerLeaveBenefits.map((leave) => ({
+            name: leave.name,
+            days: Number(leave.days) || 0,
+          }))
+        : DEFAULT_LEAVE_BENEFITS
+    )
+  }, [application])
+
+  function setOfferLeaveDays(name: string, days: string) {
+    const numericDays = Math.max(0, Number(days) || 0)
+    setOfferLeaveBenefits((current) =>
+      current.map((leave) => leave.name === name ? { ...leave, days: numericDays } : leave)
+    )
+  }
 
   async function handleScore() {
     setActionLoading('score')
@@ -329,6 +402,37 @@ export default function ApplicationDetailPage() {
     }
   }
 
+  async function handleSaveOffer() {
+    const grade = salaryGrades.find((item) => item.id === offerGradeId)
+    if (!grade) {
+      setError('Please select a salary grade for the offer')
+      return
+    }
+
+    setActionLoading('offer')
+    setError('')
+    try {
+      const res = await fetch(`/api/v1/hr/recruitment/applications/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          offerSalaryGradeId: grade.id,
+          offeredSalary: Number(grade.midSalary || grade.maxSalary || grade.minSalary || 0),
+          offerMessage: offerMessage.trim() || null,
+          offerLeaveBenefits,
+          offerSentAt: new Date().toISOString(),
+        }),
+      })
+      const json = await res.json()
+      if (res.ok && json.success) await fetchApplication()
+      else setError(json.error?.message || 'Failed to save offer')
+    } catch {
+      setError('Failed to save offer')
+    } finally {
+      setActionLoading('')
+    }
+  }
+
   function getCurrentStageIndex(): number {
     if (!application) return 0
     const currentStage = application.stage || application.status || 'APPLIED'
@@ -364,6 +468,7 @@ export default function ApplicationDetailPage() {
 
   const stageIndex = getCurrentStageIndex()
   const currentStage = application.stage || application.status || 'APPLIED'
+  const isOfferStage = currentStage === 'OFFER'
   const isRejected = currentStage === 'REJECTED'
   const isHired = currentStage === 'HIRED'
   const declaration = buildDeclaration(application)
@@ -395,6 +500,19 @@ export default function ApplicationDetailPage() {
     application.presentAddress ||
     application.permanentAddress ||
     application.phoneAlt
+  const selectedOfferGrade = salaryGrades.find((item) => item.id === offerGradeId) || application.offerSalaryGrade || null
+  const selectedOfferGross = selectedOfferGrade
+    ? Number(selectedOfferGrade.midSalary || selectedOfferGrade.maxSalary || selectedOfferGrade.minSalary || 0)
+    : Number(application.offeredSalary || 0)
+  const selectedOfferStructure = selectedOfferGrade?.structures?.[0] || null
+  const offerBreakdown = selectedOfferStructure
+    ? selectedOfferStructure.lines.map((line) => {
+        const amount = line.calculationType === 'FIXED'
+          ? Number(line.amount || 0)
+          : selectedOfferGross * (Number(line.percentage || 0) / 100)
+        return { name: line.component?.name || 'Component', amount }
+      })
+    : []
 
   return (
     <div className="space-y-6">
@@ -454,6 +572,145 @@ export default function ApplicationDetailPage() {
         </CardContent>
       </Card>
 
+      {isOfferStage ? (
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('recruitment.offerDetails')}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 rounded-md border bg-muted/30 p-3">
+                <div>
+                  <div className="text-xs text-muted-foreground">Applicant</div>
+                  <div className="font-medium">{application.applicantName}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">{t('recruitment.jobTitle')}</div>
+                  <div className="font-medium">{application.jobPosting.title}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">{t('recruitment.currentStage')}</div>
+                  <div className="mt-1"><StatusBadge status={currentStage} /></div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Salary Grade</Label>
+                <SearchableSelect
+                  value={offerGradeId}
+                  onValueChange={setOfferGradeId}
+                  options={salaryGrades.map((grade) => ({
+                    value: grade.id,
+                    label: `${grade.code} - ${grade.name} (${formatCurrency(Number(grade.midSalary || grade.maxSalary || grade.minSalary || 0))})`,
+                  }))}
+                  placeholder="Select salary grade"
+                />
+              </div>
+
+              {selectedOfferGrade && (
+                <div className="rounded-md border p-4 space-y-3">
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">Gross Salary</span>
+                    <span className="font-mono text-base font-semibold">{formatCurrency(selectedOfferGross)}</span>
+                  </div>
+                  {selectedOfferStructure && (
+                    <div className="text-xs text-muted-foreground">Structure: {selectedOfferStructure.name}</div>
+                  )}
+                  {offerBreakdown.length > 0 && (
+                    <div className="space-y-1 border-t pt-3">
+                      {offerBreakdown.map((line) => (
+                        <div key={line.name} className="flex justify-between">
+                          <span>{line.name}</span>
+                          <span className="font-mono">{formatCurrency(line.amount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="rounded-md border p-4">
+                <p className="mb-3 font-medium">Leave Benefits</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                  {offerLeaveBenefits.map((leave) => (
+                    <div key={leave.name} className="rounded bg-muted/50 px-3 py-2 space-y-1">
+                      <Label className="text-xs text-muted-foreground">{leave.name}</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={0}
+                          className="h-8"
+                          value={leave.days}
+                          onChange={(event) => setOfferLeaveDays(leave.name, event.target.value)}
+                        />
+                        <span className="text-xs text-muted-foreground">days</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="offer-message">Custom offer message</Label>
+                <Textarea
+                  id="offer-message"
+                  value={offerMessage}
+                  onChange={(event) => setOfferMessage(event.target.value)}
+                  rows={6}
+                  placeholder="Write a custom message for the applicant offer email..."
+                />
+              </div>
+
+              <Button className="w-full sm:w-auto" onClick={handleSaveOffer} disabled={actionLoading === 'offer'}>
+                {actionLoading === 'offer' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save Offer
+              </Button>
+            </CardContent>
+          </Card>
+
+          <div className="space-y-4">
+            <Card>
+              <CardHeader><CardTitle>{t('recruitment.quickInfo')}</CardTitle></CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div>
+                  <span className="text-muted-foreground">{t('recruitment.appliedDate')}:</span>{' '}
+                  <span className="font-medium">{formatDate(application.appliedAt)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">{t('recruitment.currentStage')}:</span>{' '}
+                  <StatusBadge status={currentStage} />
+                </div>
+                {application.offerSentAt && (
+                  <div>
+                    <span className="text-muted-foreground">Offer Sent:</span>{' '}
+                    <span className="font-medium">{formatDate(application.offerSentAt)}</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {!isRejected && !isHired && (
+              <Card>
+                <CardContent className="pt-4 space-y-2">
+                  <Button className="w-full" size="sm" onClick={handleAdvance} disabled={!!actionLoading}>
+                    {actionLoading === 'advance' ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 mr-2" />
+                    )}
+                    {t('recruitment.advanceToNext')}
+                  </Button>
+
+                  <Button className="w-full" variant="destructive" size="sm" onClick={() => setShowRejectDialog(true)} disabled={!!actionLoading}>
+                    <XCircle className="h-4 w-4 mr-2" />
+                    {t('recruitment.reject')}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column (2/3) */}
         <div className="lg:col-span-2 space-y-6">
@@ -944,23 +1201,81 @@ export default function ApplicationDetailPage() {
           </Card>
 
           {/* Offer Section */}
-          {currentStage === 'OFFER' && (
+          {isOfferStage && (
             <Card>
               <CardHeader><CardTitle>{t('recruitment.offerDetails')}</CardTitle></CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                {application.offerSalary != null && (
-                  <div>
-                    <span className="text-muted-foreground">{t('recruitment.offeredSalary')}:</span>{' '}
-                    <span className="font-mono font-medium">{formatCurrency(application.offerSalary)}</span>
+              <CardContent className="space-y-4 text-sm">
+                <div className="space-y-2">
+                  <Label>Salary Grade</Label>
+                  <SearchableSelect
+                    value={offerGradeId}
+                    onValueChange={setOfferGradeId}
+                    options={salaryGrades.map((grade) => ({
+                      value: grade.id,
+                      label: `${grade.code} - ${grade.name} (${formatCurrency(Number(grade.midSalary || grade.maxSalary || grade.minSalary || 0))})`,
+                    }))}
+                    placeholder="Select salary grade"
+                  />
+                </div>
+
+                {selectedOfferGrade && (
+                  <div className="rounded-md border p-3 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Gross Salary</span>
+                      <span className="font-mono font-medium">{formatCurrency(selectedOfferGross)}</span>
+                    </div>
+                    {selectedOfferStructure && (
+                      <div className="text-xs text-muted-foreground">Structure: {selectedOfferStructure.name}</div>
+                    )}
+                    {offerBreakdown.length > 0 && (
+                      <div className="space-y-1 border-t pt-2">
+                        {offerBreakdown.map((line) => (
+                          <div key={line.name} className="flex justify-between">
+                            <span>{line.name}</span>
+                            <span className="font-mono">{formatCurrency(line.amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
-                {application.offerLetterUrl && (
-                  <div>
-                    <a href={application.offerLetterUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline text-sm">
-                      {t('recruitment.viewOfferLetter')}
-                    </a>
+
+                <div className="rounded-md border p-3">
+                  <p className="mb-2 font-medium">Leave Benefits</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {offerLeaveBenefits.map((leave) => (
+                      <div key={leave.name} className="rounded bg-muted/50 px-2 py-1 space-y-1">
+                        <Label className="text-xs text-muted-foreground">{leave.name}</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            className="h-8"
+                            value={leave.days}
+                            onChange={(event) => setOfferLeaveDays(leave.name, event.target.value)}
+                          />
+                          <span className="text-xs text-muted-foreground">days</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="offer-message">Custom offer message</Label>
+                  <Textarea
+                    id="offer-message"
+                    value={offerMessage}
+                    onChange={(event) => setOfferMessage(event.target.value)}
+                    rows={4}
+                    placeholder="Write a custom message for the applicant offer email..."
+                  />
+                </div>
+
+                <Button className="w-full" onClick={handleSaveOffer} disabled={actionLoading === 'offer'}>
+                  {actionLoading === 'offer' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Save Offer
+                </Button>
               </CardContent>
             </Card>
           )}
@@ -1016,6 +1331,7 @@ export default function ApplicationDetailPage() {
           )}
         </div>
       </div>
+      )}
 
       {/* Reject Dialog */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>

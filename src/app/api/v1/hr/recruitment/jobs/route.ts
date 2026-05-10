@@ -132,21 +132,20 @@ export async function POST(request: NextRequest) {
       departmentId,
       description,
       responsibilities,
-      qualifications,
       applicationDeadline,
       location,
     } = body
 
-    if (!title || !departmentId || !description || !responsibilities || !qualifications || !applicationDeadline || !location) {
-      return apiBadRequest('title, departmentId, description, responsibilities, qualifications, applicationDeadline, and location are required')
+    if (!title || !departmentId || !description || !responsibilities || !applicationDeadline || !location) {
+      return apiBadRequest('title, departmentId, description, responsibilities, applicationDeadline, and location are required')
     }
 
     // Validate department belongs to org
     const dept = await prisma.department.findFirst({
-      where: { id: departmentId, organizationId: auth.organizationId },
+      where: { id: departmentId, organizationId: auth.organizationId, isActive: true },
       select: { id: true },
     })
-    if (!dept) return apiBadRequest('Department not found in this organization')
+    if (!dept) return apiBadRequest('Active department not found in this organization')
 
     const postingNo = await generateNextNumber(auth.organizationId, 'job-posting')
 
@@ -180,8 +179,8 @@ export async function POST(request: NextRequest) {
         showSalary: body.showSalary || false,
         description,
         responsibilities,
-        qualifications,
-        preferredSkills: body.preferredSkills || null,
+        qualifications: body.qualifications || 'See structured requirements',
+        preferredSkills: null,
         benefits: body.benefits || null,
         minEducation: body.minEducation || null,
         minExperience: body.minExperience ?? null,

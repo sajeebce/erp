@@ -75,6 +75,7 @@ const EMPTY_REF_ROW: ReferenceRow = { name: '', relationship: '', address: '', m
 const EMPTY_EMG_ROW: EmergencyRow = { name: '', relationship: '', mobile: '' }
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
+const RELIGIONS = ['Islam', 'Hinduism', 'Christianity', 'Buddhism', 'Other', 'Prefer not to say']
 
 interface JobDetail {
   id: string
@@ -244,6 +245,11 @@ export default function PublicJobDetailPage() {
         return
       }
 
+      if (!personalInfo.religion) {
+        setSubmitError('Please select religion.')
+        return
+      }
+
       setSubmitting(true)
 
       try {
@@ -364,7 +370,6 @@ export default function PublicJobDetailPage() {
   const requiredSkills = job.requiredSkills || []
   const requiredLanguages = job.requiredLanguages || []
   const requiredCertifications = job.requiredCertifications || []
-  const preferredSkillItems = splitCommaText(job.preferredSkills)
   const benefitItems = splitCommaText(job.benefits)
   const hasEligibilitySection =
     Boolean(job.minEducation) ||
@@ -488,12 +493,6 @@ export default function PublicJobDetailPage() {
             </div>
           </section>
 
-          <section className="rounded-lg border bg-card p-6">
-            <h2 className="text-xl font-semibold mb-3">Qualifications</h2>
-            <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap leading-7">
-              {job.qualifications}
-            </div>
-          </section>
         </div>
 
         <aside className="space-y-4">
@@ -505,20 +504,6 @@ export default function PublicJobDetailPage() {
                   <Badge key={skill} variant="outline">{skill}</Badge>
                 ))}
               </div>
-            </section>
-          )}
-
-          {preferredSkillItems.length > 0 && (
-            <section className="rounded-lg border bg-card p-5">
-              <h2 className="text-base font-semibold">Preferred Skills</h2>
-              <ul className="mt-3 space-y-2 text-sm">
-                {preferredSkillItems.map((skill) => (
-                  <li key={skill} className="flex gap-2">
-                    <CheckCircle className="mt-0.5 h-4 w-4 text-green-600" />
-                    <span>{skill}</span>
-                  </li>
-                ))}
-              </ul>
             </section>
           )}
 
@@ -699,13 +684,19 @@ export default function PublicJobDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="religion">Religion</Label>
-                    <Input
+                    <Label htmlFor="religion">Religion *</Label>
+                    <select
                       id="religion"
+                      required
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                       value={personalInfo.religion}
                       onChange={(e) => setPersonalInfo((p) => ({ ...p, religion: e.target.value }))}
-                      placeholder="Islam / Hindu / Christian..."
-                    />
+                    >
+                      <option value="">Select religion...</option>
+                      {RELIGIONS.map((religion) => (
+                        <option key={religion} value={religion}>{religion}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="bloodGroup">Blood Group</Label>

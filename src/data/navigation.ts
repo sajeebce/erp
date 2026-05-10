@@ -147,6 +147,7 @@ export const navigation: NavItem[] = [
     allowedRoles: ["HR"],
     items: [
       { title: "items.employeeDirectory", url: "/hr", allowedRoles: ["HR"] },
+      { title: "items.departments", url: "/hr/departments", allowedRoles: ["HR"] },
       { title: "items.recruitment", url: "/hr/recruitment", allowedRoles: ["HR"] },
       { title: "items.onboarding", url: "/hr/onboarding", allowedRoles: ["HR"] },
       { title: "items.contracts", url: "/hr/contracts", allowedRoles: ["HR"] },
@@ -167,6 +168,7 @@ export const navigation: NavItem[] = [
       { title: "items.payroll", url: "/hr/payroll", allowedRoles: ["HR"] },
       { title: "items.salaryGrades", url: "/hr/salary-grades", allowedRoles: ["HR"] },
       { title: "items.salaryStructures", url: "/hr/salary-structures", allowedRoles: ["HR"] },
+      { title: "items.notificationSettings", url: "/settings/notifications", allowedRoles: ["HR"] },
       { title: "items.pensionManagement", url: "/hr/pension", allowedRoles: ["HR"] },
       { title: "items.performance", url: "/hr/performance", allowedRoles: ["HR"] },
       { title: "items.okr", url: "/hr/okr", allowedRoles: ["HR"] },

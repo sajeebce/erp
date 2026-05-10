@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
 import { logAudit, getAuditContext } from '@/lib/audit'
+import { queueEmail } from '@/lib/email-queue'
 import {
   apiCreated,
   apiBadRequest,
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         organizationId: auth.organizationId,
         deletedAt: null,
       },
-      select: { id: true, fullName: true, employeeNo: true },
+      select: { id: true, fullName: true, employeeNo: true, email: true },
     })
 
     if (!employee) {
@@ -62,6 +63,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         employeeId,
         checklistId: c.id,
       })),
+    })
+
+    await queueEmail({
+      organizationId: auth.organizationId,
+      recipientEmail: employee.email,
+      eventKey: `onboarding:${employeeId}:started`,
+      templateKey: 'ONBOARDING_STARTED',
+      fallbackSubject: 'Onboarding started',
+      fallbackBody: 'Dear {{employeeName}}, your onboarding process has started.',
+      variables: {
+        employeeName: employee.fullName,
+        employeeNo: employee.employeeNo,
+      },
+      relatedModule: 'onboarding',
+      relatedEntityId: employeeId,
     })
 
     const auditCtx = getAuditContext(request)

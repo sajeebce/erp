@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
 import { logAudit, getAuditContext } from '@/lib/audit'
+import { queueEmail } from '@/lib/email-queue'
 import {
   apiSuccess,
   apiBadRequest,
@@ -55,6 +56,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const updated = await prisma.jobApplication.update({
       where: { id },
       data: { status: nextStatus },
+      include: { jobPosting: { select: { title: true } } },
+    })
+
+    await queueEmail({
+      organizationId: auth.organizationId,
+      recipientEmail: updated.applicantEmail,
+      eventKey: `application:${updated.id}:stage:${nextStatus}`,
+      templateKey: `RECRUITMENT_${nextStatus}`,
+      fallbackSubject: 'Application update - {{stageName}}',
+      fallbackBody: 'Dear {{applicantName}}, your application for {{jobTitle}} is now at {{stageName}} stage.',
+      variables: {
+        applicantName: updated.applicantName,
+        jobTitle: updated.jobPosting.title,
+        stageName: nextStatus,
+      },
+      relatedModule: 'recruitment',
+      relatedEntityId: updated.id,
     })
 
     const auditCtx = getAuditContext(request)

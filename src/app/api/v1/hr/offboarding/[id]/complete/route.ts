@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
 import { generateNextNumber } from '@/lib/number-sequence'
 import { logAudit, getAuditContext } from '@/lib/audit'
+import { queueEmail } from '@/lib/email-queue'
 import { Prisma } from '@prisma/client'
 import {
   apiSuccess,
@@ -335,7 +336,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       where: { id, organizationId: auth.organizationId },
       include: {
         tasks: true,
-        employee: { select: { id: true, fullName: true, status: true } },
+        employee: { select: { id: true, fullName: true, employeeNo: true, email: true, status: true } },
       },
     })
     if (!offboarding) {
@@ -406,6 +407,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       oldValues: { status: offboarding.status, employeeStatus: offboarding.employee.status },
       newValues: { status: 'COMPLETED', employeeStatus: newEmployeeStatus, journalEntryId, pfSettlementId },
       ...auditCtx,
+    })
+
+    await queueEmail({
+      organizationId: auth.organizationId,
+      recipientEmail: offboarding.employee.email,
+      eventKey: `offboarding:${offboarding.id}:completed`,
+      templateKey: 'OFFBOARDING_COMPLETED',
+      fallbackSubject: 'Offboarding completed',
+      fallbackBody: 'Dear {{employeeName}}, your offboarding process has been completed.',
+      variables: {
+        employeeName: offboarding.employee.fullName,
+        employeeNo: offboarding.employee.employeeNo,
+        offboardingNo: offboarding.offboardingNo,
+      },
+      relatedModule: 'offboarding',
+      relatedEntityId: offboarding.id,
     })
 
     return apiSuccess({ ...updated, journalEntryId, pfSettlementId })

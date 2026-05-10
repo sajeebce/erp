@@ -97,14 +97,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.showSalary !== undefined) data.showSalary = body.showSalary
     if (body.description !== undefined) data.description = body.description
     if (body.responsibilities !== undefined) data.responsibilities = body.responsibilities
-    if (body.qualifications !== undefined) data.qualifications = body.qualifications
-    if (body.preferredSkills !== undefined) data.preferredSkills = body.preferredSkills || null
+    if (body.qualifications !== undefined) data.qualifications = body.qualifications || 'See structured requirements'
+    if (body.preferredSkills !== undefined) data.preferredSkills = null
     if (body.benefits !== undefined) data.benefits = body.benefits || null
     if (body.minEducation !== undefined) data.minEducation = body.minEducation || null
     if (body.minExperience !== undefined) data.minExperience = body.minExperience ?? null
     const normalizedSkills = body.requiredSkills !== undefined ? normalizeStringArray(body.requiredSkills) : null
     const normalizedLanguages = body.requiredLanguages !== undefined ? normalizeRequiredLanguages(body.requiredLanguages) : null
     const normalizedCertifications = body.requiredCertifications !== undefined ? normalizeStringArray(body.requiredCertifications) : null
+
+    if (body.departmentId !== undefined) {
+      const department = await prisma.department.findFirst({
+        where: { id: body.departmentId, organizationId: auth.organizationId, isActive: true },
+        select: { id: true },
+      })
+      if (!department) return apiBadRequest('Active department not found in this organization')
+    }
 
     if (body.requiredSkills !== undefined) data.requiredSkills = normalizedSkills && normalizedSkills.length > 0 ? normalizedSkills : Prisma.JsonNull
     if (body.requiredLanguages !== undefined) data.requiredLanguages = normalizedLanguages && normalizedLanguages.length > 0 ? normalizedLanguages : Prisma.JsonNull

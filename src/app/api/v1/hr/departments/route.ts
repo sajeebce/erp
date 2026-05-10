@@ -14,8 +14,14 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuthFromRequest(request)
 
+    const url = new URL(request.url)
+    const isActive = url.searchParams.get('isActive')
+
     const departments = await prisma.department.findMany({
-      where: { organizationId: auth.organizationId },
+      where: {
+        organizationId: auth.organizationId,
+        ...(isActive !== null ? { isActive: isActive === 'true' } : {}),
+      },
       select: {
         id: true,
         name: true,

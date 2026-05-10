@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { apiCreated, apiBadRequest, apiNotFound, handleRouteError } from '@/lib/api-response'
 import { autoScoreApplication } from '@/lib/recruitment-scoring'
 import { getStorageAdapter } from '@/lib/storage/storage-factory'
+import { queueEmail } from '@/lib/email-queue'
 import { Prisma } from '@prisma/client'
 import { randomUUID } from 'crypto'
 
@@ -331,6 +332,9 @@ export async function POST(
     if (!isValidEmail(applicantEmail)) {
       return apiBadRequest('Invalid email address')
     }
+    if (!religion) {
+      return apiBadRequest('Religion is required')
+    }
 
     // Find organization
     const org = await prisma.organization.findUnique({
@@ -476,6 +480,21 @@ export async function POST(
         },
       })
     }
+
+    await queueEmail({
+      organizationId: org.id,
+      recipientEmail: application.applicantEmail,
+      eventKey: `application:${application.id}:received`,
+      templateKey: 'APPLICATION_RECEIVED',
+      fallbackSubject: 'Application received - {{applicationNo}}',
+      fallbackBody: 'Dear {{applicantName}}, your application {{applicationNo}} has been received.',
+      variables: {
+        applicantName: application.applicantName,
+        applicationNo: application.applicationNo,
+      },
+      relatedModule: 'recruitment',
+      relatedEntityId: application.id,
+    })
 
     // Auto-trigger scoring immediately after creation
     autoScoreApplication(application.id).catch((err) => {

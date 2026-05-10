@@ -2,6 +2,8 @@
 
 Ei document-ta new tester-er jonno end-to-end HR + Finance journey test script. Goal holo ekta notun job post create kora theke applicant hire, employee onboarding, payroll journal entry, PF, offboarding, and final settlement journal entry porjonto sob checkpoint verify kora.
 
+Note: `docs/hr-update.md` implement korar por ei test script-er HR update related checkpoint-gula active hobe. Ei update only department management, recruitment form cleanup, skills dropdown, offer/salary grade, notification email, SMTP/email queue, compensation benefits, payroll approval/email, and public career religion dropdown behavior-ke affect kore.
+
 Dev URL: `http://localhost:4000`
 
 ## 0. Before Testing
@@ -13,9 +15,13 @@ Dev URL: `http://localhost:4000`
    - Job title
    - Public job link
    - Applicant email
+   - Department code/name
+   - Salary structure name
+   - Salary grade, e.g. `G1`
    - Employee number
    - Payroll run number
    - Payroll journal entry number
+   - Email queue/event reference, if visible
    - PF settlement number
    - Offboarding number
    - Offboarding journal entry number
@@ -23,7 +29,83 @@ Dev URL: `http://localhost:4000`
 Expected:
 - Dashboard load hoy.
 - `HR & Payroll`, `Finance`, `Projects`, and `Settings` module accessible.
+- `HR & Payroll > Departments` and `HR & Payroll > Notification Settings` accessible after HR update.
 - Page-level error dekhay na.
+
+## 0A. HR Update Prerequisites
+
+Ei section only `docs/hr-update.md` implementation-er jonno.
+
+Department setup:
+
+1. Go to `/hr/departments` from `HR & Payroll > Departments`.
+2. Confirm default seeded departments exist:
+   - Finance & Accounts
+   - Programs
+   - Human Resources
+   - Field Operations
+   - IT & Systems
+   - Administration
+   - Monitoring & Evaluation
+   - Procurement & Logistics
+3. Create a test department if needed:
+   - Name: `Field Programs E2E`
+   - Code: `FP-E2E`
+   - Status: active
+
+Salary setup:
+
+1. Go to `/hr/salary-structures`.
+2. Create or verify active salary structure with gross breakdown components.
+3. Go to `/hr/salary-grades`.
+4. Create grade:
+   - Grade: `G1`
+   - Gross salary: `100000 BDT`
+   - Select active salary structure
+5. Confirm salary breakdown auto-calculates.
+
+Notification and SMTP setup:
+
+1. Go to `HR & Payroll > Notification Settings`.
+2. Confirm default templates exist for recruitment, onboarding, and offboarding stage updates.
+3. Go to `/settings/notifications`.
+4. Configure SMTP using Gmail app password or test SMTP.
+5. For Gmail test, use these values:
+   - SMTP Server: `smtp.gmail.com`
+   - SMTP Port: `587`
+   - Encryption: `STARTTLS`
+   - Gmail Username: full Gmail address, e.g. `yourname@gmail.com`
+   - Gmail App Password: Google app password, 16 characters, e.g. `abcd efgh ijkl mnop` from Google Account security page
+   - From Address: same Gmail address used in Gmail Username
+   - From Name: `CSS BD HR`
+   - Daily Send Limit: `500` or a small test limit like `20`
+6. Gmail app password setup:
+   - Open Google Account for the sender Gmail.
+   - Turn on 2-Step Verification.
+   - Go to Security > App passwords.
+   - Create app password for Mail/Other app.
+   - Copy the 16-character password and paste it in `Gmail App Password`.
+   - Do not use the normal Gmail login password.
+7. Click `Save Changes`.
+8. Refresh `/settings/notifications` and confirm SMTP values are still saved.
+9. Create a queue event by saving an offer, advancing a recruitment stage, or approving payroll.
+10. Trigger the queue worker:
+    - Browser: `/api/v1/cron/email-queue?limit=5`
+    - PowerShell:
+      ```powershell
+      Invoke-RestMethod -Uri "http://localhost:4000/api/v1/cron/email-queue?limit=5" -Method POST
+      ```
+11. Check response:
+    - `sent > 0` means email sent.
+    - `processed > 0` and `skipped > 0` usually means SMTP config is missing/incomplete.
+    - `failed > 0` means SMTP rejected or connection failed; check Gmail app password, 2-Step Verification, From Address, and SMTP port/encryption.
+12. Check recipient inbox and spam folder.
+
+Expected:
+- Department list is DB-backed and active departments are selectable in recruitment.
+- Salary grade `G1` has gross salary and component breakdown.
+- Notification templates are editable.
+- SMTP configuration saves, queue worker processes email, and Gmail test sends real mail when app password is valid.
 
 ## 1. Create Job Post
 
@@ -31,19 +113,18 @@ Go to `/hr/recruitment/new`.
 
 Create a test job:
 - Title: `Field Coordinator E2E Test`
-- Department: select any valid department
+- Department: select active department from `HR & Payroll > Departments`, e.g. `Field Programs E2E` or `Field Operations`
 - Designation: select any valid designation, if available
 - Employment type: `FULL_TIME` or `CONTRACT`
 - Location: `Dhaka`
 - Deadline: future date
-- Description, Responsibilities, Qualifications: meaningful test text
-- Preferred Skills: `Excel, Donor Reporting, Field Survey`
+- Description and Responsibilities: meaningful test text
 - Benefits: `Festival bonus, mobile allowance`
 
 Requirements:
 - Minimum education: `Masters`
 - Minimum experience: `3`
-- Required skills: `Project Management`, `Excel`, `Donor Reporting`
+- Required skills: select from multi dropdown: `Project Management`, `Excel`, `Donor Reporting`
 - Required languages: `Bengali`, `English`
 - Required certifications: `PMP`
 
@@ -53,6 +134,8 @@ Expected:
 - Job create hoy.
 - Job detail page open hoy.
 - Requirement chips/badges job detail-e show kore.
+- `Qualifications` and `Preferred Skills` fields form-e thake na.
+- Required skills dropdown/multi-select-e selected skills show kore, delete option thake, and compact display-e first skill + `more` count dekha jay.
 - Job status initially draft thakte pare.
 
 ## 2. Publish Job And Share Link
@@ -72,6 +155,8 @@ Expected:
 - Published job public URL open hoy.
 - URL pattern: `/careers/{orgSlug}/{jobSlug}`.
 - Public page admin login chara load hoy.
+- Public page-e `Qualifications` and `Preferred Skills` old free-text sections show kore na.
+- Public page-e structured required skills, education, language, and certifications show kore.
 
 ## 3. Applicant Applies From Public Link
 
@@ -81,6 +166,7 @@ Use unique applicant data:
 - Name: `Rahim E2E Test`
 - Email: `rahim.e2e.<unique-number>@example.com`
 - Phone: any valid number
+- Religion: select from dropdown, e.g. `Islam` or `Prefer not to say`
 - Education: `Masters`
 - Experience: `3`
 - Skills: select all required skills
@@ -94,6 +180,9 @@ Expected:
 - Success message show kore.
 - Same email diye abar submit korle duplicate validation ashbe.
 - Required field missing rakhle validation ashbe.
+- Religion dropdown mandatory; religion select na korle validation error ashbe.
+- Religion dropdown value application-er sathe save hoy.
+- Application received email queue/send hoy template onujayi, if SMTP/email queue active.
 
 ## 4. Move Applicant Through Recruitment Pipeline
 
@@ -104,12 +193,27 @@ Return to admin job detail page `/hr/recruitment/{jobId}`.
 3. Applicant card click korun.
 4. Verify applicant detail page.
 5. Click `Score CV` if auto score not visible.
-6. Click `Advance to Next` step by step until application reaches `HIRED`.
+6. Click `Advance to Next` step by step until application reaches `OFFER` stage.
+7. Open `Offer` tab.
+8. Select salary grade `G1`.
+9. Verify salary breakdown, gross salary, and leave benefits:
+   - Annual Leave
+   - Casual Leave
+   - Maternity Leave, if applicable
+   - Sick Leave
+10. Add custom offer message, e.g. `Welcome to CSSBD. Please review the offer details.`
+11. Send or save offer according to UI flow.
+12. Verify offer email queue/send entry is created for applicant.
+13. Continue stage update until application reaches `HIRED`.
 
 Expected:
 - Applicant detail page-e self-declared education, experience, skills, language, certifications show kore.
+- Applicant detail page-e selected religion show kore.
 - Score breakdown visible hoy.
 - Applicant pipeline stage update hoy.
+- Prottek stage update-e template-based email queue/send hoy.
+- Offer tab-e personal/other tab-er extra information show kore na; only offer details show kore.
+- Offer email-e salary grade, salary breakdown, leave benefits, and custom message thake.
 - `HIRED` stage-e gele `Convert to Employee` button visible hoy.
 
 ## 5. Convert Hired Applicant To Employee
@@ -128,8 +232,7 @@ On hired application detail page:
    - Designation
    - Joining date
    - Employment type
-   - Basic salary, e.g. `50000`
-   - Bank name and bank account number, if payroll/payslip verification korte chan
+   - Salary grade from offer, e.g. `G1`, if not already prefilled
 5. Save.
 
 Expected:
@@ -137,8 +240,12 @@ Expected:
 - Employee detail page open hoy.
 - Employee directory-te employee visible.
 - Recruitment application reference employee info-te preserved thake.
+- Applicant-er selected religion employee profile-e copy hoy.
+- Offer stage-er selected salary grade employee profile-e preserved thake.
+- Bank details initially blank thaka acceptable; onboarding/employee creation block korbe na.
 - Default onboarding checklist employee-r jonno create hoy, if active checklist exists.
 - Auto-created contract thakte pare, usually draft status-e.
+- Hired/onboarding stage email queue/send hoy template onujayi.
 
 ## 6. Verify Employee Directory And Onboarding
 
@@ -147,16 +254,33 @@ Go to `/hr/employees`.
 1. Search employee by name/email/employee number.
 2. Employee row click korun.
 3. Profile summary verify korun.
-4. Go to `/hr/onboarding`.
-5. Confirm new employee onboarding list-e visible.
-6. Open `/hr/onboarding/{employeeId}`.
-7. Checklist tasks visible kina check korun.
-8. One or more task mark complete kore save/refresh check korun.
+4. Personal Information section-e religion applicant form-er selected value-er sathe match kore kina verify korun.
+5. Open `/hr` Employee Directory.
+6. Verify `Religion-wise Employee Count` summary card/section visible.
+7. Confirm selected religion count at least `1` increase/include kore.
+8. Confirm Employee Directory main filter row only 3 ta filter show kore:
+   - Department
+   - Designation
+   - Duty Station
+9. Open employee profile again and go to `Compensation & Benefits` tab.
+10. Verify salary grade `G1`, gross salary, salary structure, component breakdown, and leave benefits show kore.
+11. Verify bank details blank ache, then optionally fill bank details later.
+12. Go to `/hr/onboarding`.
+13. Confirm new employee onboarding list-e visible.
+14. Open `/hr/onboarding/{employeeId}`.
+15. Checklist tasks visible kina check korun.
+16. One or more task mark complete kore save/refresh check korun.
 
 Expected:
 - Employee active status-e ache.
+- Employee profile-e religion show kore.
+- `/hr` Employee Directory page-e religion-wise employee count summary show kore.
+- `/hr` Employee Directory filter row-e only Department, Designation, Duty Station thake.
+- Compensation & Benefits tab offer-er salary grade and benefits show kore.
+- Blank bank details employee profile-ke invalid kore na.
 - Onboarding progress employee-r sathe linked.
 - Completed onboarding task refresh-er poro completed thake.
+- Onboarding stage update email queue/send hoy template onujayi.
 
 ## 7. Assign Business Unit And Project
 
@@ -171,9 +295,10 @@ Employment/profile section:
 
 Compensation section:
 
-1. Basic salary greater than `0` confirm korun.
-2. Salary grade/structure thakle assign korun, otherwise basic salary enough for payroll smoke test.
-3. Save.
+1. Salary grade `G1` assigned ache kina confirm korun.
+2. Salary grade breakdown and gross salary visible kina confirm korun.
+3. Bank details blank thakle optional bhabe fill korun, but payroll salary calculation salary grade theke hobe.
+4. Save.
 
 Projects tab:
 
@@ -188,6 +313,7 @@ Expected:
 - Business Unit / Concern profile-e show kore.
 - Project allocation list-e active allocation show kore.
 - Active project allocation total `100%`.
+- Salary grade assigned and payroll-ready.
 - Payroll approval-er time salary journal entry-te project/business unit dimension use hobe.
 
 ## 8. Contract Active/Approve Check
@@ -199,7 +325,7 @@ Go to `/hr/contracts`.
 3. Confirm contract has:
    - Employee
    - Start date
-   - Basic salary
+   - Salary grade/gross salary or contract salary, depending on implemented contract fields
    - Contract type
    - Project, if selected
 4. Contract status active/approved path verify korun.
@@ -207,7 +333,7 @@ Go to `/hr/contracts`.
 Expected:
 - Employee-r jonno active/approved contract available.
 - If converted employee auto-created contract draft thake and no approve action visible hoy, create a new contract from `/hr/contracts/new` for the same employee. Current new contract flow creates an active contract.
-- Contract salary employee basic salary-er sathe consistent thake.
+- Contract salary employee salary grade/gross salary-er sathe consistent thake.
 
 ## 9. Create And Process June Payroll
 
@@ -223,23 +349,28 @@ Go to `/hr/payroll`.
 6. Payroll register-e employee ache kina verify korun.
 
 Expected:
-- Payroll run draft theke processed hoy.
+- Payroll run draft theke processed/requested flow-e jay.
 - Employee count includes new active employee, if joining date June payroll period-er moddhe eligible.
-- Employee gross/net salary show kore.
+- Employee salary grade `G1` onujayi gross, breakdown, deductions, and net salary show kore.
 - Payslip icon/detail open hoy.
+- HR role diye payroll run korle action/status column-e `Requested` show kore.
 - Duplicate same month/year run create korte gele validation thakte pare.
 
 ## 10. Approve Payroll And Verify Finance Journal Entry
 
-Payroll run status `PROCESSED` hole:
+Payroll run status `Requested` or `PROCESSED` hole:
 
-1. Admin/Finance Manager role diye `Approve` click korun.
-2. Run status `APPROVED` hoy.
-3. Go to `/finance/journal-entries`.
-4. Search by payroll run number or description `Payroll`.
-5. Open generated journal entry.
+1. Admin role diye `/hr/payroll` open korun.
+2. Requested payroll row-e `Approve` click korun.
+3. Run status `APPROVED` hoy.
+4. HR role/page theke same payroll row-e `Approved` status visible kina verify korun.
+5. Verify payroll approval-er por employee payroll email queue entries create hoy.
+6. Go to `/finance/journal-entries`.
+7. Search by payroll run number or description `Payroll`.
+8. Open generated journal entry.
 
 Expected:
+- HR payroll request Admin approval chara approved hoy na.
 - Payroll approval auto-generated approved journal entry create kore.
 - Journal entry status `APPROVED`.
 - Source module payroll/run reference preserved.
@@ -248,6 +379,7 @@ Expected:
 - Credit line bank/cash account-e.
 - Payroll deductions thakle liability credit line thake.
 - Salary debit line-e business unit/project/budget dimensions appear kore, if employee project allocation and budget mapping available.
+- Payroll approval-er por employee-wise email queue status `PENDING`, `SENDING`, `SENT`, `FAILED`, or `RETRYING` hisebe track hoy.
 
 ## 11. Provident Fund Check
 
@@ -372,19 +504,33 @@ Expected:
 Recruitment:
 - Job status published.
 - Applicant final stage hired.
+- Recruitment form-e `Qualifications` and `Preferred Skills` removed.
+- Required skills multi-select/dropdown behavior verified.
+- Offer tab salary grade, leave benefits, and custom offer message verified.
 - Convert-to-employee duplicate create hoy na.
 
 Employee:
 - Employee directory-te record ache.
+- Employee profile-e applicant selected religion copied and visible.
+- `/hr` Employee Directory-te religion-wise count summary visible.
 - Employee status offboarding completion-er pore updated.
 - Business Unit / Concern assigned.
+- Salary grade and Compensation & Benefits tab verified.
+- Bank details initially blank but editable.
 - Project allocation total 100%.
 - Contract active/approved.
 
 Payroll:
 - June payroll run approved.
 - Payroll register includes employee before offboarding.
+- Payroll calculated from assigned salary grade.
+- Payroll approval email queue checked.
 - Payroll journal entry approved and balanced.
+
+Notification:
+- Recruitment, onboarding, and offboarding stage update emails are queued/sent from templates.
+- SMTP configuration/test email verified.
+- Payroll approved email queue processed or pending status visible.
 
 Finance:
 - Payroll JE and offboarding JE both visible.
@@ -396,6 +542,10 @@ PF:
 - PF settlement checked after offboarding when eligible.
 
 Regression:
+- `/hr/departments` loads.
+- `/hr/salary-structures` loads.
+- `/hr/salary-grades` loads.
+- `/settings/notifications` loads.
 - `/hr/recruitment` loads.
 - Public careers apply form works.
 - `/hr/employees` loads.
@@ -409,9 +559,12 @@ Regression:
 - Applicant email must be unique.
 - Job must be published before public link works.
 - Employee joining date must make employee eligible for selected payroll month.
-- Basic salary must be greater than `0` for meaningful payroll.
+- Active department must exist before creating job posting.
+- Salary structure and salary grade must exist before offer/payroll verification.
+- Employee must have assigned salary grade for payroll calculation.
 - Business Unit / Concern and 100% active project allocation are needed for clean dimension checks.
-- Payroll approval requires Admin/Finance Manager role.
+- Payroll approval requires Admin role after HR request.
+- SMTP config/email queue worker must be available for email send verification; otherwise verify queued entries.
 - Salary expense, bank/cash, and deduction liability accounts must exist before payroll/offboarding JE generation.
 - PF settlement only appears when employee has active PF enrollment and positive balance.
 - Offboarding cannot complete until all tasks are checked.

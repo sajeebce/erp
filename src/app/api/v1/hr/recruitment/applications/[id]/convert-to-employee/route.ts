@@ -29,6 +29,19 @@ async function getConversionPrefill(request: NextRequest, { params }: RouteParam
             location: true,
           },
         },
+        offerSalaryGrade: {
+          select: {
+            id: true,
+            midSalary: true,
+            maxSalary: true,
+            minSalary: true,
+            structures: {
+              where: { isActive: true },
+              select: { id: true },
+              take: 1,
+            },
+          },
+        },
       },
     })
 
@@ -47,10 +60,16 @@ async function getConversionPrefill(request: NextRequest, { params }: RouteParam
         fullName: application.applicantName,
         email: application.applicantEmail,
         phone: application.applicantPhone,
+        religion: application.religion,
         convertedFromApplicationId: application.id,
         education: application.parsedEducation,
         experience: application.parsedExperience,
         skills: application.parsedSkills,
+        salaryGradeId: application.offerSalaryGradeId,
+        salaryStructureId: application.offerSalaryGrade?.structures?.[0]?.id || null,
+        basicSalary: application.offerSalaryGrade
+          ? Number(application.offerSalaryGrade.midSalary || application.offerSalaryGrade.maxSalary || application.offerSalaryGrade.minSalary || 0)
+          : application.offeredSalary ? Number(application.offeredSalary) : null,
       },
       jobPosting: {
         title: application.jobPosting.title,

@@ -53,6 +53,28 @@ model NotificationSetting {
   @@unique([userId, type, channel])
 }
 
+model EmailQueue {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @db.Uuid
+  recipientEmail  String
+  subject         String
+  body            String
+  relatedModule   String?
+  relatedEntityId String?   @db.Uuid
+  eventKey        String?
+  status          String    @default("PENDING")
+  retryCount      Int       @default(0)
+  lastError       String?
+  scheduledAt     DateTime  @default(now())
+  sentAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([organizationId, eventKey])
+  @@index([organizationId, status, scheduledAt])
+  @@index([recipientEmail])
+}
+
 model Attachment {
   id           String   @id @default(uuid()) @db.Uuid
   fileName     String

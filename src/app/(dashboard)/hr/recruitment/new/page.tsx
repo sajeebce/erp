@@ -48,8 +48,6 @@ export default function NewJobPostingPage() {
   // Job Description
   const [description, setDescription] = useState('')
   const [responsibilities, setResponsibilities] = useState('')
-  const [qualifications, setQualifications] = useState('')
-  const [preferredSkills, setPreferredSkills] = useState('')
   const [benefits, setBenefits] = useState('')
 
   // Requirements (Auto-Scoring)
@@ -72,7 +70,7 @@ export default function NewJobPostingPage() {
   const [departments, setDepartments] = useState<Department[]>([])
 
   useEffect(() => {
-    fetch('/api/v1/hr/departments')
+    fetch('/api/v1/hr/departments?isActive=true')
       .then(res => res.json())
       .then(json => { if (json.success) setDepartments(json.data) })
       .catch(() => {})
@@ -116,8 +114,7 @@ export default function NewJobPostingPage() {
       !location.trim() ||
       !applicationDeadline ||
       !description.trim() ||
-      !responsibilities.trim() ||
-      !qualifications.trim()
+      !responsibilities.trim()
     ) {
       setError(t('recruitment.form.requiredFields'))
       return false
@@ -153,8 +150,7 @@ export default function NewJobPostingPage() {
     if (expectedStartDate) payload.expectedStartDate = expectedStartDate
     if (description.trim()) payload.description = description.trim()
     if (responsibilities.trim()) payload.responsibilities = responsibilities.trim()
-    if (qualifications.trim()) payload.qualifications = qualifications.trim()
-    if (preferredSkills.trim()) payload.preferredSkills = preferredSkills.trim()
+    payload.qualifications = 'See structured requirements'
     if (benefits.trim()) payload.benefits = benefits.trim()
     if (minEducation) payload.minEducation = minEducation
     if (minExperience) payload.minExperience = parseInt(minExperience)
@@ -359,27 +355,6 @@ export default function NewJobPostingPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="job-qualifications">{t('recruitment.form.qualifications')} *</Label>
-            <Textarea
-              id="job-qualifications"
-              value={qualifications}
-              onChange={(e) => setQualifications(e.target.value)}
-              rows={6}
-              placeholder={t('recruitment.form.qualificationsPlaceholder')}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="job-preferred-skills">{t('recruitment.form.preferredSkills')}</Label>
-            <Textarea
-              id="job-preferred-skills"
-              value={preferredSkills}
-              onChange={(e) => setPreferredSkills(e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="job-benefits">{t('recruitment.form.benefits')}</Label>
             <Textarea
               id="job-benefits"
@@ -429,6 +404,7 @@ export default function NewJobPostingPage() {
               suggestions={tagSuggestions.SKILL}
               onCreateSuggestion={(name) => handleCreateTag('SKILL', name)}
               placeholder={t('recruitment.form.commaSeparatedPlaceholder')}
+              maxVisibleTags={1}
             />
           </div>
 

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { requireRoleFromRequest } from '@/lib/auth'
 import { generateNextNumber } from '@/lib/number-sequence'
 import { logAudit, getAuditContext } from '@/lib/audit'
+import { queueEmail } from '@/lib/email-queue'
 import { Prisma } from '@prisma/client'
 import {
   apiSuccess,
@@ -39,6 +40,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
               select: {
                 id: true,
                 fullName: true,
+                email: true,
+                user: { select: { email: true } },
                 primaryBusinessUnitId: true,
                 projectAllocations: {
                   where: { isActive: true },
@@ -394,6 +397,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         ...(journalEntryId && { journalEntryId }),
       },
     })
+
+    const periodLabel = `${run.year}-${String(run.month).padStart(2, '0')}`
+    for (const entry of run.entries) {
+      await queueEmail({
+        organizationId: auth.organizationId,
+        recipientEmail: entry.employee.email || entry.employee.user?.email,
+        eventKey: `payroll:${run.id}:employee:${entry.employeeId}:approved`,
+        templateKey: 'PAYROLL_APPROVED',
+        fallbackSubject: 'Payroll approved - {{period}}',
+        fallbackBody: 'Dear {{employeeName}}, payroll for {{period}} has been approved. Net payable: {{netSalary}}.',
+        variables: {
+          employeeName: entry.employee.fullName,
+          period: periodLabel,
+          netSalary: `BDT ${Number(entry.netSalary).toLocaleString()}`,
+        },
+        relatedModule: 'payroll',
+        relatedEntityId: run.id,
+      })
+    }
 
     const auditCtx = getAuditContext(request)
     await logAudit({

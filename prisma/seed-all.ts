@@ -37,6 +37,7 @@ const PHASES: Phase[] = [
   { name: 'HR upgrade (recruitment, contracts, holidays)', file: 'seed-phase8-hr.ts' },
   { name: 'Pension & onboarding', file: 'seed-phase8b.ts' },
   { name: 'HR profile (emergency contacts, education, work history)', file: 'seed-phase12-hr-profile.ts' },
+  { name: 'HR update defaults (departments)', file: 'seed-hr-update.ts' },
   { name: 'HR employee detail tabs', file: 'seed-phase12b-employee-tabs.ts' },
   { name: 'Salary grades, OKR, payslip, calendar, dashboard KPIs', file: 'seed-phase8c.ts' },
   { name: 'Leave balances', file: 'seed-leave-balances.ts' },

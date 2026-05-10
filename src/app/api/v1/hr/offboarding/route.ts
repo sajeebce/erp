@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
 import { logAudit, getAuditContext } from '@/lib/audit'
 import { generateNextNumber } from '@/lib/number-sequence'
+import { queueEmail } from '@/lib/email-queue'
 import {
   apiCreated,
   apiPaginated,
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
     // Validate employee belongs to org
     const employee = await prisma.employee.findFirst({
       where: { id: employeeId, organizationId: auth.organizationId, deletedAt: null },
-      select: { id: true, fullName: true },
+      select: { id: true, fullName: true, employeeNo: true, email: true },
     })
     if (!employee) return apiBadRequest('Employee not found in this organization')
 
@@ -136,6 +137,22 @@ export async function POST(request: NextRequest) {
       description: `Initiated offboarding "${offboardingNo}" for employee "${employee.fullName}"`,
       newValues: { offboardingNo, employeeId, separationType, lastWorkingDay },
       ...auditCtx,
+    })
+
+    await queueEmail({
+      organizationId: auth.organizationId,
+      recipientEmail: employee.email,
+      eventKey: `offboarding:${offboarding.id}:started`,
+      templateKey: 'OFFBOARDING_STARTED',
+      fallbackSubject: 'Offboarding started',
+      fallbackBody: 'Dear {{employeeName}}, your offboarding process has started.',
+      variables: {
+        employeeName: employee.fullName,
+        employeeNo: employee.employeeNo,
+        offboardingNo,
+      },
+      relatedModule: 'offboarding',
+      relatedEntityId: offboarding.id,
     })
 
     return apiCreated(offboarding)

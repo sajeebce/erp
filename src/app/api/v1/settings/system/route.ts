@@ -23,6 +23,8 @@ const SYSTEM_CONFIG_DEFAULTS: Record<string, { type: string; value: string }> = 
   'email.smtpServer': { type: 'string', value: '' },
   'email.smtpPort': { type: 'number', value: '587' },
   'email.smtpSecurity': { type: 'string', value: 'STARTTLS' },
+  'email.smtpUsername': { type: 'string', value: '' },
+  'email.smtpAppPassword': { type: 'string', value: '' },
   'email.fromAddress': { type: 'string', value: '' },
   'email.fromName': { type: 'string', value: '' },
   'email.dailySendLimit': { type: 'number', value: '500' },
@@ -120,7 +122,7 @@ export async function PUT(request: NextRequest) {
       }
     } else {
       // Validate section prefix
-      const validPrefixes = ['security', 'email', 'tax', 'defaults']
+      const validPrefixes = ['security', 'email', 'tax', 'defaults', 'hrNotificationTemplate']
       if (!validPrefixes.includes(section)) {
         return apiBadRequest(`Invalid section: ${section}. Must be one of: ${validPrefixes.join(', ')}`)
       }

@@ -333,7 +333,7 @@ export default function PayrollPage() {
                   >
                     <TableCell className="font-mono text-sm font-medium">{run.runNo}</TableCell>
                     <TableCell>{monthNames[run.month - 1]} {run.year}</TableCell>
-                    <TableCell><StatusBadge status={run.status} /></TableCell>
+                    <TableCell><StatusBadge status={run.status === 'PROCESSED' ? 'REQUESTED' : run.status} /></TableCell>
                     <TableCell className="text-center">{run.employeeCount}</TableCell>
                     <TableCell className="text-right font-mono text-sm">{formatCurrency(run.totalGross)}</TableCell>
                     <TableCell className="text-right font-mono text-sm font-semibold">{formatCurrency(run.totalNet)}</TableCell>

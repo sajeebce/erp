@@ -13,6 +13,7 @@ interface TagInputProps {
   onCreateSuggestion?: (s: string) => void
   placeholder?: string
   caseInsensitive?: boolean
+  maxVisibleTags?: number
 }
 
 function normalizeTag(value: string) {
@@ -26,6 +27,7 @@ export function TagInput({
   onCreateSuggestion,
   placeholder,
   caseInsensitive = true,
+  maxVisibleTags,
 }: TagInputProps) {
   const [input, setInput] = useState('')
   const [focused, setFocused] = useState(false)
@@ -79,7 +81,7 @@ export function TagInput({
           focused && 'ring-1 ring-ring'
         )}
       >
-        {value.map((tag) => (
+        {(maxVisibleTags ? value.slice(0, maxVisibleTags) : value).map((tag) => (
           <span
             key={tag}
             className="inline-flex max-w-full items-center gap-1 rounded-md bg-secondary px-2 py-1 text-sm text-secondary-foreground"
@@ -97,6 +99,14 @@ export function TagInput({
             </Button>
           </span>
         ))}
+        {maxVisibleTags && value.length > maxVisibleTags && (
+          <span
+            className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-sm text-muted-foreground"
+            title={value.slice(maxVisibleTags).join(', ')}
+          >
+            +{value.length - maxVisibleTags} more
+          </span>
+        )}
         <Input
           value={input}
           onChange={(e) => {

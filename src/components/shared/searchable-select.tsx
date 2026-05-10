@@ -43,6 +43,7 @@ export function SearchableSelect({
   const inputRef = useRef<HTMLInputElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const selected = options.find(o => o.value === value)
 
   const filtered = search
@@ -106,12 +107,22 @@ export function SearchableSelect({
     if (e.key === 'Escape') setOpen(false)
   }, [])
 
+  const handleDropdownWheel = useCallback((event: React.WheelEvent) => {
+    const list = listRef.current
+    if (!list || list.scrollHeight <= list.clientHeight) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    list.scrollTop += event.deltaY
+  }, [])
+
   const dropdown = open ? (
     <div
       ref={dropdownRef}
       style={dropdownStyle}
       className="rounded-md border bg-popover text-popover-foreground shadow-md"
       onKeyDown={handleKeyDown}
+      onWheelCapture={handleDropdownWheel}
     >
       <div className="flex items-center gap-2 border-b px-3 h-9">
         <SearchIcon className="size-4 shrink-0 opacity-50" />
@@ -123,7 +134,11 @@ export function SearchableSelect({
           className="flex h-8 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
       </div>
-      <div className="max-h-50 overflow-y-auto overscroll-contain p-1">
+      <div
+        ref={listRef}
+        className="overflow-y-auto overscroll-contain p-1"
+        style={{ maxHeight: 220, touchAction: 'pan-y' }}
+      >
         {filtered.length === 0 ? (
           <div className="py-6 text-center text-sm text-muted-foreground">
             {emptyMessage || t('combobox.noResults')}

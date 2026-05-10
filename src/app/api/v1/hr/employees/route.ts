@@ -35,6 +35,12 @@ export async function GET(request: NextRequest) {
     const departmentId = url.searchParams.get('departmentId')
     if (departmentId) where.departmentId = departmentId
 
+    const designationId = url.searchParams.get('designationId')
+    if (designationId) where.designationId = designationId
+
+    const dutyStation = url.searchParams.get('dutyStation')
+    if (dutyStation) where.dutyStation = dutyStation
+
     const status = url.searchParams.get('status')
     if (status) where.status = status
 
@@ -50,6 +56,7 @@ export async function GET(request: NextRequest) {
           fullName: true,
           email: true,
           phone: true,
+          religion: true,
           departmentId: true,
           designationId: true,
           employmentType: true,
@@ -117,6 +124,22 @@ export async function POST(request: NextRequest) {
       if (!workLocation) return apiBadRequest('Work location not found in this organization')
     }
 
+    if (body.salaryGradeId) {
+      const salaryGrade = await prisma.salaryGrade.findFirst({
+        where: { id: body.salaryGradeId, organizationId: auth.organizationId, isActive: true },
+        select: { id: true },
+      })
+      if (!salaryGrade) return apiBadRequest('Salary grade not found in this organization')
+    }
+
+    if (body.salaryStructureId) {
+      const salaryStructure = await prisma.salaryStructure.findFirst({
+        where: { id: body.salaryStructureId, organizationId: auth.organizationId, isActive: true },
+        select: { id: true },
+      })
+      if (!salaryStructure) return apiBadRequest('Salary structure not found in this organization')
+    }
+
     const employeeNo = await generateNextNumber(auth.organizationId, 'employee')
     const contractNo = await generateNextNumber(auth.organizationId, 'employee-contract')
 
@@ -143,6 +166,7 @@ export async function POST(request: NextRequest) {
           dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
           gender: body.gender || null,
           maritalStatus: body.maritalStatus || null,
+          religion: body.religion || null,
           nidNumber: body.nidNumber || null,
           passport: body.passport || null,
           phone: body.phone || null,
@@ -160,7 +184,11 @@ export async function POST(request: NextRequest) {
           endDate: body.endDate ? new Date(body.endDate) : null,
           reportingToId: body.reportingToId || null,
           status: body.status || 'ACTIVE',
+          salaryGradeId: body.salaryGradeId || null,
+          salaryStepNo: body.salaryStepNo || (body.salaryGradeId ? 1 : null),
+          salaryStructureId: body.salaryStructureId || null,
           basicSalary: body.basicSalary ? new Prisma.Decimal(body.basicSalary) : null,
+          grossSalary: body.basicSalary ? new Prisma.Decimal(body.basicSalary) : null,
           bankAccountNo: body.bankAccountNo || null,
           bankName: body.bankName || null,
           tinNumber: body.tinNumber || null,
