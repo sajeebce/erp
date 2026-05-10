@@ -54,6 +54,11 @@ Expected:
 - Grade-wise gross salary and component breakdown correctly save hobe.
 - Grade select korle API/UI theke component breakdown retrieve kora jabe.
 - Payroll calculation salary grade-er saved breakdown follow korbe.
+- Salary grade create/edit form save korle steps preserve hobe.
+- Pay level input edit korar somoy full number unintentionally clear hoye jabe na.
+- Active grade delete icon diye deactivate kora jabe.
+- Inactive grade action icon diye abar activate kora jabe.
+- Grade-er specific salary structure na thakle active default/global salary structure fallback hisebe use hote parbe.
 
 ## 3. Recruitment Application Offer Tab
 
@@ -93,6 +98,9 @@ Expected:
 - Offer tab clean and offer-focused hobe.
 - Salary grade select korar por breakdown immediately visible hobe.
 - Offer email applicant-er email address-e queue/send hobe.
+- Offer stage-e selected salary grade later employee create/profile/payroll flow-e source of truth hisebe use hobe.
+- Offer tab-er leave benefits editable hobe.
+- Application interview history-te duration `durationMinutes` field theke proper value show korbe, e.g. `30 min`; shudhu `min` show korbe na.
 
 ## 4. Stage Update Email Notification
 
@@ -211,8 +219,24 @@ Requirements:
 Expected:
 
 - Employee conversion-er somoy salary grade link preserve hobe.
+- Offer tab-e selected salary grade employee create page-e `/hr/employees/new?fromApplication={applicationId}` diye gele auto prefill hobe.
+- Candidate public career form-e fill kora personal/contact data employee create page-e auto prefill hobe, including name, Bangla/local name, email, phone, father/spouse name, mother name, date of birth, gender, nationality, NID, religion, blood group, marital status, present/permanent address, emergency contact, education, skills, languages, and certifications.
+- Public career form-er `Male/Female/Other` and `Married/Unmarried/Other` values employee form-er dropdown values-e normalize hoye prefill hobe.
+- Employee profile-er emergency contact relationship known enum hole translated label show korbe; custom relationship value, e.g. `Uncle`, raw translation key na dekhaye readable text show korbe.
+- Salary grade-er selected basic salary pay level-er sathe match kore employee profile-e correct pay level show korbe.
+- Employee-r explicit salary structure missing hole system first grade-specific active structure, then default/global active salary structure fallback use korbe.
+- Compensation & Benefits view mode and edit mode same salary grade + salary structure calculation follow korbe.
 - Bank details blank thakleo profile valid thakbe.
 - Payroll run salary grade data use korte parbe.
+
+Current expected salary flow:
+
+1. HR offer tab-e salary grade select korbe.
+2. Hired applicant convert korle offer-er salary grade employee create form-e prefill hobe.
+3. Employee create/save korle selected grade, matching salary pay level, and resolved salary structure employee profile-e preserve hobe.
+4. Compensation & Benefits tab salary grade pay level + salary structure component rules theke breakdown calculate korbe.
+5. Edit mode-eo same calculated basic/allowance/gross values prefill hobe, so HR-ke manually allowance field fill korte hobe na.
+6. Payroll run same grade/pay level/structure source use korbe.
 
 ## 8. Payroll Run From Salary Grade
 
@@ -237,13 +261,33 @@ Page: `/hr/payroll`
 
 Requirements:
 
-1. HR role payroll run korle action column-e `Requested` status show korbe.
-2. Admin payroll page-e ei payroll request approve korte parbe.
+1. HR role payroll run korle status `Requested` show korbe and action column-e `Requested to Admin` show korbe.
+2. Admin/Finance Manager payroll page-e ei payroll request approve korte parbe.
 3. Admin approve korar por HR dashboard/page action column-e `Approved` status show korbe.
 4. Payroll approve hole oi payroll run-er under-e thaka sob employee-er kache email jabe.
 5. Payroll email direct batch send na kore queue-te add hobe.
 6. Email queue one by one process hobe.
 7. Cron job or background worker lagte pare email queue process korar jonno.
+8. Payroll run-er eye/view action `View Register` hisebe clear label thakbe and selected payroll register/details load korbe.
+
+## 9.1 Offboarding Completion Cleanup
+
+Pages: `/hr/offboarding`, `/hr/offboarding/new`
+
+Requirements:
+
+1. Offboarding initiate dropdown-e only `ACTIVE` employee selectable hobe.
+2. Same employee-er active offboarding already thakle duplicate offboarding create hobe na.
+3. Offboarding complete korle employee status separation type onujayi `RESIGNED`, `TERMINATED`, or `RETIRED` hobe.
+4. Offboarding complete korle active project allocation close hobe.
+5. Offboarding complete korle active employee contract terminate hobe.
+6. Final settlement JE and PF settlement retry-safe hobe, duplicate create hobe na.
+
+Expected:
+
+- Offboarded employee historical records-e thakbe, but active payroll/project/contract workflow theke exclude hobe.
+- Future payroll run employee status `ACTIVE` na hole include korbe na.
+- PF settlement pay korle PF enrollment `SETTLED` hoy and PF balance zero hoy.
 
 Expected:
 
@@ -370,6 +414,8 @@ Expected:
 - Select korar por skill immediately selected list-e show hobe.
 - Remove korle selected list and saved payload update hobe.
 - One skill visible rekhe baki selected skills `more` count akare compact bhabe show hobe.
+- `/hr/recruitment/{jobId}` pipeline skills filter dropdown-e selected summary/count trigger-e show korbe, but dropdown-er niche duplicate selected chips show korbe na.
+- `/hr/recruitment/new` page-e comma diye skill type korle tag create hobe and selected tags visible thakbe; ekhane `+N more` compact chips use kora hobe na.
 
 ## 14. Recruitment New/Edit Form Cleanup
 
@@ -517,6 +563,10 @@ Important behavior:
 9. Public career religion is mandatory and must block submit when empty.
 10. `/hr` Employee Directory filter UI should show only Department, Designation, and Duty Station filters.
 11. `/hr` Employee Directory should show religion-wise employee count as a separate summary, not as one of the three main filters.
+12. Provident Fund salary structure components should apply only after employee has active PF enrollment; Not Enrolled employees can show the PF line as `Not deducted - PF enroll needed`, but profile/payroll must not deduct PF amount.
+13. PF enrollment create korar sathei employee active/basic salary thakle effective month-er initial PF contribution auto-post hobe, so user-ke alada Contributions tab-e giye run dite hobe na for first balance.
+14. Employee profile Retirement Benefits card latest active PF enrollment balance theke read korbe and profile tab/window focus korle summary auto-refresh korbe.
+15. Offer tab-e salary grade select korle hidden midpoint salary auto-use kora jabe na; HR explicit pay level select korbe and selected pay level-er basic salary `offeredSalary` hisebe save hobe.
 
 ## 18. Acceptance Checklist
 
@@ -541,3 +591,9 @@ Important behavior:
 19. HR & Payroll menu-te Departments page thake, department CRUD/status manage kora jay, and seed/default department data DB-te thake.
 20. `/hr` Employee Directory-te 4 ta generic `All` filter replace hoye Department, Designation, Duty Station ei 3 ta filter thake.
 21. Public application religion applicant detail, employee profile, and `/hr` religion-wise employee count summary-te show hoy.
+22. Employee PF Not Enrolled hole Compensation & Benefits salary breakdown-e PF line `Not deducted - PF enroll needed` dekhabe and payroll calculation PF deduction skip korbe; PF enrolled active hole only tokhon PF amount apply hoy.
+23. `/hr/pension/provident-fund` theke employee enroll korle first PF balance refresh-er sathei update hobe, jodi effective date current/past hoy.
+24. PF enrollment add korar por employee profile-e fire ashle Retirement Benefits card-e updated balance show hobe without manual Contributions run.
+25. Grade-only offer theke employee convert korle first pay level default hobe; saved offered salary thakle shei amount-er matching pay level employee profile-e show hobe.
+26. `/hr` Employee Directory-te Religion filter add hobe; filter values public career religion dropdown-er sathe match korbe and mixed-case values normalized count/filter hobe.
+27. Payroll processing salary structure use korle gross salary basic salary + all earning components hisebe calculate hobe; allowance-only gross bug thakbe na.

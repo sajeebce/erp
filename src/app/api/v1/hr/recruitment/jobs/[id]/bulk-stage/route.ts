@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
 import { logAudit, getAuditContext } from '@/lib/audit'
+import { queueEmail } from '@/lib/email-queue'
 import {
   apiBadRequest,
   apiNotFound,
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const matchingApplications = await prisma.jobApplication.findMany({
       where,
-      select: { id: true, applicationNo: true, status: true },
+      select: { id: true, applicationNo: true, status: true, applicantName: true, applicantEmail: true },
     })
 
     if (matchingApplications.length === 0) {
@@ -134,6 +135,28 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       where: { id: { in: matchingApplications.map((application) => application.id) } },
       data: { status: targetStage },
     })
+
+    // OFFER email is sent later from the application PATCH route once offer details are filled in
+    if (targetStage !== 'APPLIED' && targetStage !== 'OFFER') {
+      await Promise.all(
+        matchingApplications.map((application) =>
+          queueEmail({
+            organizationId: auth.organizationId,
+            recipientEmail: application.applicantEmail,
+            templateKey: `RECRUITMENT_${targetStage}`,
+            fallbackSubject: `Application update — ${targetStage}`,
+            fallbackBody: `Dear {{applicantName}}, your application for {{jobTitle}} has been moved to ${targetStage} stage.`,
+            variables: {
+              applicantName: application.applicantName,
+              jobTitle: jobPosting.title,
+              stageName: targetStage,
+            },
+            relatedModule: 'recruitment',
+            relatedEntityId: application.id,
+          })
+        )
+      )
+    }
 
     const auditCtx = getAuditContext(request)
     await logAudit({

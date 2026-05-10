@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(ls -la /k/projects/erp/src/app/\\\\\\(dashboard\\\\\\)/finance/expenses/petty-cash/)"
+      "Bash(ls -la /k/projects/erp/src/app/\\\\\\(dashboard\\\\\\)/finance/expenses/petty-cash/)",
+      "PowerShell(pnpm -v)",
+      "PowerShell(node -v)",
+      "PowerShell(npm -v)",
+      "PowerShell(npx pnpm -v 2>&1)"
     ]
   }
 }

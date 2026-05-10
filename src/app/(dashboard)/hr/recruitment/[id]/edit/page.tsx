@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -24,11 +24,29 @@ interface Department {
 
 type RecruitmentTagType = 'SKILL' | 'LANGUAGE' | 'CERTIFICATION'
 
-export default function NewJobPostingPage() {
+function toDateInputValue(value: string | null | undefined): string {
+  if (!value) return ''
+  return value.slice(0, 10)
+}
+
+function extractLanguageStrings(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.map((item) => {
+    if (typeof item === 'string') return item
+    if (item && typeof item === 'object' && typeof (item as { language?: unknown }).language === 'string') {
+      return (item as { language: string; level?: string }).language
+    }
+    return ''
+  }).filter(Boolean)
+}
+
+export default function EditJobPostingPage() {
+  const params = useParams()
   const router = useRouter()
   const t = useTranslations('hr')
   const tc = useTranslations('common')
 
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -50,7 +68,7 @@ export default function NewJobPostingPage() {
   const [responsibilities, setResponsibilities] = useState('')
   const [benefits, setBenefits] = useState('')
 
-  // Requirements (Auto-Scoring)
+  // Requirements
   const [minEducation, setMinEducation] = useState('')
   const [minExperience, setMinExperience] = useState('')
   const [requiredSkills, setRequiredSkills] = useState<string[]>([])
@@ -66,7 +84,6 @@ export default function NewJobPostingPage() {
   const [isInternal, setIsInternal] = useState(false)
   const [requireCoverLetter, setRequireCoverLetter] = useState(false)
 
-  // Lookup data
   const [departments, setDepartments] = useState<Department[]>([])
 
   useEffect(() => {
@@ -91,6 +108,42 @@ export default function NewJobPostingPage() {
         .catch(() => {})
     })
   }, [])
+
+  useEffect(() => {
+    if (!params.id) return
+    fetch(`/api/v1/hr/recruitment/jobs/${params.id}`)
+      .then(res => res.json())
+      .then(json => {
+        if (!json.success) {
+          setError(tc('errors.notFound'))
+          return
+        }
+        const job = json.data
+        setTitle(job.title ?? '')
+        setDepartmentId(job.department?.id ?? job.departmentId ?? '')
+        setLocation(job.location ?? '')
+        setIsRemote(job.isRemote ?? false)
+        setEmploymentType(job.employmentType ?? 'FULL_TIME')
+        setVacancies(String(job.vacancies ?? 1))
+        setSalaryMin(job.salaryMin != null ? String(job.salaryMin) : '')
+        setSalaryMax(job.salaryMax != null ? String(job.salaryMax) : '')
+        setShowSalary(job.showSalary ?? true)
+        setApplicationDeadline(toDateInputValue(job.applicationDeadline))
+        setExpectedStartDate(toDateInputValue(job.expectedStartDate))
+        setDescription(job.description ?? '')
+        setResponsibilities(job.responsibilities ?? '')
+        setBenefits(job.benefits ?? '')
+        setMinEducation(job.minEducation ?? '')
+        setMinExperience(job.minExperience != null ? String(job.minExperience) : '')
+        setRequiredSkills(Array.isArray(job.requiredSkills) ? job.requiredSkills : [])
+        setRequiredLanguages(extractLanguageStrings(job.requiredLanguages))
+        setRequiredCertifications(Array.isArray(job.requiredCertifications) ? job.requiredCertifications : [])
+        setIsInternal(job.isInternal ?? false)
+        setRequireCoverLetter(job.requireCoverLetter ?? false)
+      })
+      .catch(() => setError(tc('errors.loadFailed')))
+      .finally(() => setLoading(false))
+  }, [params.id, tc])
 
   function handleCreateTag(type: RecruitmentTagType, name: string) {
     setTagSuggestions((current) => ({
@@ -143,32 +196,30 @@ export default function NewJobPostingPage() {
       showSalary,
       isInternal,
       requireCoverLetter,
+      location: location.trim(),
+      description: description.trim(),
+      responsibilities: responsibilities.trim(),
+      qualifications: 'See structured requirements',
+      benefits: benefits.trim() || null,
+      salaryMin: salaryMin ? parseFloat(salaryMin) : null,
+      salaryMax: salaryMax ? parseFloat(salaryMax) : null,
+      expectedStartDate: expectedStartDate || null,
+      minEducation: minEducation || null,
+      minExperience: minExperience ? parseInt(minExperience) : null,
+      requiredSkills: requiredSkills.length > 0 ? requiredSkills : [],
+      requiredLanguages: requiredLanguages.map((language) => ({ language })),
+      requiredCertifications: requiredCertifications.length > 0 ? requiredCertifications : [],
     }
-    if (location.trim()) payload.location = location.trim()
-    if (salaryMin) payload.salaryMin = parseFloat(salaryMin)
-    if (salaryMax) payload.salaryMax = parseFloat(salaryMax)
-    if (expectedStartDate) payload.expectedStartDate = expectedStartDate
-    if (description.trim()) payload.description = description.trim()
-    if (responsibilities.trim()) payload.responsibilities = responsibilities.trim()
-    payload.qualifications = 'See structured requirements'
-    if (benefits.trim()) payload.benefits = benefits.trim()
-    if (minEducation) payload.minEducation = minEducation
-    if (minExperience) payload.minExperience = parseInt(minExperience)
-    if (requiredSkills.length > 0) payload.requiredSkills = requiredSkills
-    if (requiredLanguages.length > 0) {
-      payload.requiredLanguages = requiredLanguages.map((language) => ({ language }))
-    }
-    if (requiredCertifications.length > 0) payload.requiredCertifications = requiredCertifications
 
     try {
-      const res = await fetch('/api/v1/hr/recruitment/jobs', {
-        method: 'POST',
+      const res = await fetch(`/api/v1/hr/recruitment/jobs/${params.id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
       const json = await res.json()
       if (res.ok && json.success) {
-        router.push(`/hr/recruitment/${json.data.id}`)
+        router.push(`/hr/recruitment/${params.id}`)
       } else {
         setError(json.error?.message || t('recruitment.form.failedToCreate'))
       }
@@ -179,10 +230,18 @@ export default function NewJobPostingPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      <PageHeader title={t('recruitment.form.createTitle')} description={t('recruitment.form.createDescription')}>
-        <Button variant="outline" size="sm" onClick={() => router.push('/hr/recruitment')}>
+      <PageHeader title={t('recruitment.form.editTitle')} description={t('recruitment.form.editDescription')}>
+        <Button variant="outline" size="sm" onClick={() => router.push(`/hr/recruitment/${params.id}`)}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           {tc('buttons.back')}
         </Button>
@@ -366,7 +425,7 @@ export default function NewJobPostingPage() {
         </CardContent>
       </Card>
 
-      {/* Card 3: Requirements for Auto-Scoring */}
+      {/* Card 3: Requirements */}
       <Card>
         <CardHeader>
           <CardTitle>{t('recruitment.form.requirementsTitle')}</CardTitle>
@@ -397,7 +456,7 @@ export default function NewJobPostingPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="job-required-skills">{t('recruitment.form.requiredSkills')}</Label>
+            <Label>{t('recruitment.form.requiredSkills')}</Label>
             <TagInput
               value={requiredSkills}
               onChange={setRequiredSkills}
@@ -408,7 +467,7 @@ export default function NewJobPostingPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="job-required-languages">{t('recruitment.form.requiredLanguages')}</Label>
+            <Label>{t('recruitment.form.requiredLanguages')}</Label>
             <TagInput
               value={requiredLanguages}
               onChange={setRequiredLanguages}
@@ -419,7 +478,7 @@ export default function NewJobPostingPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="job-required-certs">{t('recruitment.form.requiredCertifications')}</Label>
+            <Label>{t('recruitment.form.requiredCertifications')}</Label>
             <TagInput
               value={requiredCertifications}
               onChange={setRequiredCertifications}
@@ -461,7 +520,7 @@ export default function NewJobPostingPage() {
         </CardContent>
 
         <CardFooter className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => router.push('/hr/recruitment')} disabled={saving}>
+          <Button variant="outline" onClick={() => router.push(`/hr/recruitment/${params.id}`)} disabled={saving}>
             {tc('buttons.cancel')}
           </Button>
           <Button onClick={handleSubmit} disabled={saving}>
@@ -471,7 +530,7 @@ export default function NewJobPostingPage() {
                 {t('recruitment.form.saving')}
               </>
             ) : (
-              t('recruitment.form.saveJobPosting')
+              tc('buttons.save')
             )}
           </Button>
         </CardFooter>

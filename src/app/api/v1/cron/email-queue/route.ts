@@ -28,6 +28,14 @@ export async function POST(request: NextRequest) {
 
     const limit = Math.min(50, Math.max(1, Number(new URL(request.url).searchParams.get('limit') || 10)))
     const now = new Date()
+    const staleThreshold = new Date(now.getTime() - 5 * 60 * 1000) // 5 min ago
+
+    // Reset stale SENDING entries back to PENDING so the cron can retry them
+    await prisma.emailQueue.updateMany({
+      where: { status: 'SENDING', updatedAt: { lt: staleThreshold } },
+      data: { status: 'PENDING', lastError: 'Reset from stale SENDING state' },
+    })
+
     const pending = await prisma.emailQueue.findMany({
       where: {
         status: 'PENDING',

@@ -118,12 +118,13 @@ export async function sendSmtpEmail(config: SmtpConfig, input: SendMailInput) {
     await writeCommand(socket, `RCPT TO:<${input.to}>`, '250')
     await writeCommand(socket, 'DATA', '354')
 
+    const isHtml = input.body.trimStart().startsWith('<')
     const message = [
       `From: ${formatAddress(config.fromAddress, config.fromName)}`,
       `To: ${input.to}`,
       `Subject: ${encodeHeader(input.subject)}`,
       'MIME-Version: 1.0',
-      'Content-Type: text/plain; charset=UTF-8',
+      `Content-Type: ${isHtml ? 'text/html' : 'text/plain'}; charset=UTF-8`,
       'Content-Transfer-Encoding: 8bit',
       '',
       escapeData(input.body),

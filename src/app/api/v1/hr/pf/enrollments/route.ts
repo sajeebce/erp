@@ -71,7 +71,14 @@ export async function POST(request: NextRequest) {
 
     const employee = await prisma.employee.findFirst({
       where: { id: employeeId, organizationId: auth.organizationId, deletedAt: null },
-      select: { id: true, fullName: true, joiningDate: true, employmentType: true },
+      select: {
+        id: true,
+        fullName: true,
+        joiningDate: true,
+        employmentType: true,
+        status: true,
+        basicSalary: true,
+      },
     })
     if (!employee) {
       return apiBadRequest('Employee not found')
@@ -110,16 +117,63 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const enrollment = await prisma.pFEnrollment.create({
-      data: {
-        organizationId: auth.organizationId,
-        employeeId,
-        policyId,
-        enrollmentDate: enrollmentDate ? new Date(enrollmentDate) : now,
-        effectiveDate: requestedEffectiveDate,
-        employeeRate: employeeRate ?? employeeContribRate ?? policy.employeeContribRate,
-        employerRate: employerRate ?? employerContribRate ?? policy.employerContribRate,
-      },
+    const resolvedEmployeeRate = employeeRate ?? employeeContribRate ?? policy.employeeContribRate
+    const resolvedEmployerRate = employerRate ?? employerContribRate ?? policy.employerContribRate
+    const shouldPostInitialContribution =
+      employee.status === 'ACTIVE' &&
+      Boolean(employee.basicSalary) &&
+      requestedEffectiveDate <= now
+
+    const enrollment = await prisma.$transaction(async (tx) => {
+      const createdEnrollment = await tx.pFEnrollment.create({
+        data: {
+          organizationId: auth.organizationId,
+          employeeId,
+          policyId,
+          enrollmentDate: enrollmentDate ? new Date(enrollmentDate) : now,
+          effectiveDate: requestedEffectiveDate,
+          employeeRate: resolvedEmployeeRate,
+          employerRate: resolvedEmployerRate,
+        },
+      })
+
+      if (!shouldPostInitialContribution || !employee.basicSalary) {
+        return createdEnrollment
+      }
+
+      const month = requestedEffectiveDate.getMonth() + 1
+      const year = requestedEffectiveDate.getFullYear()
+      const basicSalary = employee.basicSalary
+      const employeeAmount = new Prisma.Decimal(basicSalary.toString())
+        .mul(resolvedEmployeeRate)
+        .div(100)
+      const employerAmount = new Prisma.Decimal(basicSalary.toString())
+        .mul(resolvedEmployerRate)
+        .div(100)
+      const totalAmount = employeeAmount.add(employerAmount)
+
+      await tx.pFContribution.create({
+        data: {
+          organizationId: auth.organizationId,
+          enrollmentId: createdEnrollment.id,
+          employeeId,
+          month,
+          year,
+          basicSalary,
+          employeeAmount,
+          employerAmount,
+          totalAmount,
+        },
+      })
+
+      return tx.pFEnrollment.update({
+        where: { id: createdEnrollment.id },
+        data: {
+          totalEmployeeContrib: { increment: employeeAmount },
+          totalEmployerContrib: { increment: employerAmount },
+          currentBalance: { increment: totalAmount },
+        },
+      })
     })
 
     const auditCtx = getAuditContext(request)
@@ -131,7 +185,11 @@ export async function POST(request: NextRequest) {
       resource: 'pf_enrollment',
       resourceId: enrollment.id,
       description: `Enrolled employee "${employee.fullName}" in PF`,
-      newValues: { employeeId, policyId },
+      newValues: {
+        employeeId,
+        policyId,
+        initialContributionPosted: shouldPostInitialContribution,
+      },
       ...auditCtx,
     })
 

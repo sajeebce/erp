@@ -52,7 +52,13 @@ const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'CONSULTANT', 'I
 const STATUSES = ['ACTIVE', 'INACTIVE', 'ON_LEAVE', 'SUSPENDED'] as const
 const GENDERS = ['MALE', 'FEMALE', 'OTHER'] as const
 const RELATIONSHIPS = ['SPOUSE', 'PARENT', 'SIBLING', 'CHILD', 'FRIEND', 'OTHER'] as const
-const RELIGIONS = ['ISLAM', 'HINDUISM', 'BUDDHISM', 'CHRISTIANITY', 'OTHER'] as const
+const RELIGIONS = [
+  { value: 'Islam', labelKey: 'ISLAM' },
+  { value: 'Hinduism', labelKey: 'HINDUISM' },
+  { value: 'Buddhism', labelKey: 'BUDDHISM' },
+  { value: 'Christianity', labelKey: 'CHRISTIANITY' },
+  { value: 'Other', labelKey: 'OTHER' },
+] as const
 const MARITAL_STATUSES = ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED'] as const
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const
 const PAYMENT_METHODS = ['BANK_TRANSFER', 'MOBILE_BANKING', 'CHECK', 'CASH'] as const
@@ -61,6 +67,22 @@ const PROFICIENCY_LEVELS = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'] as
 const LANGUAGE_LEVELS = ['NONE', 'BASIC', 'FLUENT', 'NATIVE'] as const
 
 const READ_ONLY_TABS = new Set(['leave', 'projects', 'performance', 'contracts', 'timeline'])
+
+function formatRawLabel(value: string) {
+  return value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function normalizeReligionValue(value: string | null | undefined) {
+  const normalized = String(value || '').trim().toUpperCase()
+  const matched = RELIGIONS.find((religion) =>
+    religion.value.toUpperCase() === normalized || religion.labelKey === normalized
+  )
+  return matched?.value || String(value || '').trim()
+}
 
 // Tab definitions for scrollable tab bar
 const TAB_ITEMS: { value: string; labelKey: string; icon: typeof User }[] = [
@@ -292,6 +314,102 @@ function num(v: string | number | null | undefined): number {
   return typeof v === 'number' ? v : parseFloat(v) || 0
 }
 
+function isProvidentFundComponent(line: NonNullable<Employee['salaryStructure']>['lines'][number]) {
+  const code = line.component.code.toUpperCase()
+  const name = line.component.name.toUpperCase()
+  return ['PF', 'PF_DEDUCTION', 'PF_EMP', 'PF_ER'].includes(code) || name.includes('PROVIDENT FUND')
+}
+
+function getEffectiveSalaryStep(employee: Employee) {
+  const steps = employee.salaryGrade?.steps || []
+  const storedBasic = num(employee.basicSalary)
+  const matchedStep = storedBasic > 0
+    ? steps.find((step) => num(step.basicSalary) === storedBasic)
+    : undefined
+  const selectedStep = steps.find((step) => step.stepNumber === (employee.salaryStepNo || 1))
+  const step = matchedStep || selectedStep || steps[0]
+
+  return {
+    step,
+    stepNo: step?.stepNumber || employee.salaryStepNo || 1,
+    basic: storedBasic > 0 ? storedBasic : num(step?.basicSalary),
+  }
+}
+
+function formatSalaryGradePayLevel(employee: Employee) {
+  if (!employee.salaryGrade) return employee.gradeLevel || ''
+
+  const effectiveStep = getEffectiveSalaryStep(employee)
+  return `${employee.salaryGrade.code} - Pay Level ${effectiveStep.stepNo}`
+}
+
+function calculateSalaryBreakdown(employee: Employee, hasActiveProvidentFund = true) {
+  const effectiveStep = getEffectiveSalaryStep(employee)
+  const basic = effectiveStep.basic
+  const lines = employee.salaryStructure?.lines || []
+  const earnings: { name: string; amount: number }[] = []
+  const deductions: { name: string; amount: number }[] = []
+  let gross = basic
+
+  for (const line of lines) {
+    if (!hasActiveProvidentFund && isProvidentFundComponent(line)) continue
+
+    let amount = 0
+    if (line.calculationType === 'FIXED') amount = num(line.amount)
+    else if (line.calculationType === 'PERCENT_OF_BASIC') amount = basic * num(line.percentage) / 100
+    else if (line.calculationType === 'PERCENT_OF_GROSS') amount = 0
+
+    const entry = { name: line.component.name, amount: Math.round(amount) }
+    if (line.component.type === 'EARNING') {
+      earnings.push(entry)
+      gross += entry.amount
+    } else if (line.component.type === 'DEDUCTION') {
+      deductions.push(entry)
+    }
+  }
+
+  for (const line of lines) {
+    if (line.calculationType !== 'PERCENT_OF_GROSS') continue
+    if (!hasActiveProvidentFund && isProvidentFundComponent(line)) continue
+
+    const amount = Math.round(gross * num(line.percentage) / 100)
+    const entry = { name: line.component.name, amount }
+    if (line.component.type === 'EARNING') {
+      earnings.push(entry)
+      gross += amount
+    } else if (line.component.type === 'DEDUCTION') {
+      deductions.push(entry)
+    }
+  }
+
+  const byName = (pattern: RegExp) => earnings.find((entry) => pattern.test(entry.name))?.amount || 0
+  const totalDeductions = deductions.reduce((sum, item) => sum + item.amount, 0)
+
+  return {
+    basic,
+    earnings,
+    deductions,
+    gross,
+    net: gross - totalDeductions,
+    houseRent: byName(/house\s*rent|hra/i),
+    medical: byName(/medical/i),
+    transport: byName(/transport/i),
+  }
+}
+
+function getPendingProvidentFundDeductions(employee: Employee, hasActiveProvidentFund: boolean) {
+  if (hasActiveProvidentFund) return []
+
+  const names = new Set<string>()
+  for (const line of employee.salaryStructure?.lines || []) {
+    if (line.component.type === 'DEDUCTION' && isProvidentFundComponent(line)) {
+      names.add(line.component.name)
+    }
+  }
+
+  return Array.from(names)
+}
+
 function RequiredLabel({ children }: { children: React.ReactNode }) {
   return (
     <span>
@@ -323,6 +441,23 @@ function getPayrollReadinessIssues(employee: Employee): string[] {
   if (activeAllocationTotal > 0 && activeAllocationTotal !== 100) issues.push('Active project allocation total must be 100%')
 
   return issues
+}
+
+function getHeaderReadinessWarnings(employee: Employee, profileSummary: ProfileSummary | null): string[] {
+  const warnings: string[] = []
+  const needsPayrollReadiness = ['ACTIVE', 'PROBATION', 'ON_LEAVE'].includes(employee.status)
+  if (!needsPayrollReadiness) return warnings
+
+  const activeAllocationTotal = (employee.projectAllocations || [])
+    .filter((allocation) => allocation.isActive)
+    .reduce((sum, allocation) => sum + num(allocation.percentage), 0)
+
+  if (!employee.primaryBusinessUnitId) warnings.push('Business Unit required')
+  if (activeAllocationTotal <= 0) warnings.push('Project allocation required')
+  else if (activeAllocationTotal !== 100) warnings.push('Project allocation must be 100%')
+  if (profileSummary && !profileSummary.contractStatus.hasActive) warnings.push('Active contract required')
+
+  return warnings
 }
 
 function dateStr(v: string | null | undefined): string {
@@ -507,6 +642,18 @@ export default function EmployeeDetailPage() {
   const [compensationForm, setCompensationForm] = useState<Record<string, string | null>>({})
   const [complianceForm, setComplianceForm] = useState<Record<string, string | boolean | null>>({})
 
+  const effectiveSalaryStep = employee ? getEffectiveSalaryStep(employee) : null
+
+  const formatRelationship = useCallback((relationship: string | null | undefined) => {
+    const value = String(relationship || '').trim()
+    if (!value) return '—'
+    const normalized = value.toUpperCase()
+    if ((RELATIONSHIPS as readonly string[]).includes(normalized)) {
+      return t(`form.relationships.${normalized}`)
+    }
+    return formatRawLabel(value)
+  }, [t])
+
   // ── Sub-resource data (lazy-loaded) ──
   const [leaveBalances, setLeaveBalances] = useState<LeaveBalance[] | null>(null)
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[] | null>(null)
@@ -549,7 +696,7 @@ export default function EmployeeDetailPage() {
 
   const fetchEmployee = useCallback(async () => {
     try {
-      const res = await fetch(`/api/v1/hr/employees/${employeeId}`)
+      const res = await fetch(`/api/v1/hr/employees/${employeeId}`, { cache: 'no-store' })
       const json = await res.json()
       if (json.success) {
         setEmployee(json.data)
@@ -566,8 +713,8 @@ export default function EmployeeDetailPage() {
     setLoading(true)
 
     Promise.all([
-      fetch(`/api/v1/hr/employees/${employeeId}`).then(r => r.json()),
-      fetch(`/api/v1/hr/employees/${employeeId}/profile-summary`).then(r => r.json()),
+      fetch(`/api/v1/hr/employees/${employeeId}`, { cache: 'no-store' }).then(r => r.json()),
+      fetch(`/api/v1/hr/employees/${employeeId}/profile-summary`, { cache: 'no-store' }).then(r => r.json()),
       fetch('/api/v1/hr/departments').then(r => r.json()),
       fetch('/api/v1/hr/designations').then(r => r.json()),
       fetch('/api/v1/settings/business-units?isActive=true').then(r => r.json()),
@@ -583,9 +730,27 @@ export default function EmployeeDetailPage() {
   }, [employeeId, tc])
 
   const fetchProfileSummary = useCallback(async () => {
-    const res = await fetch(`/api/v1/hr/employees/${employeeId}/profile-summary`).then(r => r.json()).catch(() => ({ success: false }))
+    const res = await fetch(`/api/v1/hr/employees/${employeeId}/profile-summary`, { cache: 'no-store' }).then(r => r.json()).catch(() => ({ success: false }))
     if (res.success) setProfileSummary(res.data)
   }, [employeeId])
+
+  useEffect(() => {
+    if (!employeeId) return
+
+    const refreshOnFocus = () => {
+      if (document.visibilityState === 'visible') {
+        fetchProfileSummary()
+      }
+    }
+
+    window.addEventListener('focus', refreshOnFocus)
+    document.addEventListener('visibilitychange', refreshOnFocus)
+
+    return () => {
+      window.removeEventListener('focus', refreshOnFocus)
+      document.removeEventListener('visibilitychange', refreshOnFocus)
+    }
+  }, [employeeId, fetchProfileSummary])
 
   const fetchContracts = useCallback(async () => {
     const res = await fetch(`/api/v1/hr/contracts?employeeId=${employeeId}`).then(r => r.json()).catch(() => ({ success: false }))
@@ -653,7 +818,7 @@ export default function EmployeeDetailPage() {
       gender: emp.gender || '',
       maritalStatus: emp.maritalStatus || '',
       bloodGroup: emp.bloodGroup || '',
-      religion: emp.religion || '',
+      religion: normalizeReligionValue(emp.religion),
       nationality: emp.nationality || '',
       birthPlace: emp.birthPlace || '',
       nidNumber: emp.nidNumber || '',
@@ -673,7 +838,7 @@ export default function EmployeeDetailPage() {
       designationId: emp.designationId,
       primaryBusinessUnitId: emp.primaryBusinessUnitId || '',
       employmentType: emp.employmentType,
-      gradeLevel: emp.gradeLevel || '',
+      gradeLevel: formatSalaryGradePayLevel(emp),
       joiningDate: dateStr(emp.joiningDate),
       confirmationDate: dateStr(emp.confirmationDate),
       probationEndDate: dateStr(emp.probationEndDate),
@@ -689,12 +854,16 @@ export default function EmployeeDetailPage() {
   }, [])
 
   const populateCompensationForm = useCallback((emp: Employee) => {
+    const structureBreakdown = emp.salaryGrade && emp.salaryStructure
+      ? calculateSalaryBreakdown(emp, Boolean(profileSummary?.pfBalance.enrolled))
+      : null
+
     setCompensationForm({
-      basicSalary: emp.basicSalary != null ? String(emp.basicSalary) : '',
-      houseRentAllowance: emp.houseRentAllowance != null ? String(emp.houseRentAllowance) : '',
-      medicalAllowance: emp.medicalAllowance != null ? String(emp.medicalAllowance) : '',
-      transportAllowance: emp.transportAllowance != null ? String(emp.transportAllowance) : '',
-      grossSalary: emp.grossSalary != null ? String(emp.grossSalary) : '',
+      basicSalary: String(structureBreakdown?.basic || emp.basicSalary || ''),
+      houseRentAllowance: structureBreakdown ? String(structureBreakdown.houseRent) : (emp.houseRentAllowance != null ? String(emp.houseRentAllowance) : ''),
+      medicalAllowance: structureBreakdown ? String(structureBreakdown.medical) : (emp.medicalAllowance != null ? String(emp.medicalAllowance) : ''),
+      transportAllowance: structureBreakdown ? String(structureBreakdown.transport) : (emp.transportAllowance != null ? String(emp.transportAllowance) : ''),
+      grossSalary: structureBreakdown ? String(structureBreakdown.gross) : (emp.grossSalary != null ? String(emp.grossSalary) : ''),
       payFrequency: emp.payFrequency || 'MONTHLY',
       paymentMethod: emp.paymentMethod || 'BANK_TRANSFER',
       bankName: emp.bankName || '',
@@ -707,7 +876,7 @@ export default function EmployeeDetailPage() {
       taxCircle: emp.taxCircle || '',
       taxZone: emp.taxZone || '',
     })
-  }, [])
+  }, [profileSummary?.pfBalance.enrolled])
 
   const populateComplianceForm = useCallback((emp: Employee) => {
     setComplianceForm({
@@ -795,7 +964,7 @@ export default function EmployeeDetailPage() {
         designationId: employmentForm.designationId,
         primaryBusinessUnitId: employmentForm.primaryBusinessUnitId || null,
         employmentType: employmentForm.employmentType,
-        gradeLevel: employmentForm.gradeLevel || null,
+        gradeLevel: employee.gradeLevel || null,
         joiningDate: employmentForm.joiningDate,
         confirmationDate: employmentForm.confirmationDate || null,
         probationEndDate: employmentForm.probationEndDate || null,
@@ -1203,6 +1372,11 @@ export default function EmployeeDetailPage() {
     return Object.values(obj).filter(Boolean).join(' / ')
   }, [employee?.localizedName])
 
+  const headerReadinessWarnings = useMemo(
+    () => employee ? getHeaderReadinessWarnings(employee, profileSummary) : [],
+    [employee, profileSummary],
+  )
+
   // ═══ Loading / Not Found ═══
 
   if (loading) {
@@ -1330,6 +1504,12 @@ export default function EmployeeDetailPage() {
                 <StatusBadge status={employee.status} />
                 <StatusBadge status={employee.employmentType} />
                 {employee.isExpatriate && <Badge variant="secondary">Expatriate</Badge>}
+                {headerReadinessWarnings.map((warning) => (
+                  <Badge key={warning} variant="outline" className="gap-1 border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+                    <AlertTriangle className="h-3 w-3" />
+                    {warning}
+                  </Badge>
+                ))}
               </div>
 
               {/* Smart Buttons */}
@@ -1410,7 +1590,7 @@ export default function EmployeeDetailPage() {
                   <Field label={t('form.gender')} value={employee.gender ? t(`form.genders.${employee.gender}`) : null} />
                   <Field label={t('form.maritalStatus')} value={employee.maritalStatus ? t(`form.maritalStatuses.${employee.maritalStatus}`) : null} />
                   <Field label={t('form.bloodGroup')} value={employee.bloodGroup ? t(`form.bloodGroups.${BLOOD_GROUP_KEYS[employee.bloodGroup] || employee.bloodGroup}`) : null} />
-                  <Field label={t('form.religion')} value={employee.religion ? t(`form.religions.${employee.religion}`) : null} />
+                  <Field label={t('form.religion')} value={employee.religion ? formatRawLabel(normalizeReligionValue(employee.religion)) : null} />
                   <Field label={t('form.nationality')} value={employee.nationality} />
                   <Field label={t('form.birthPlace')} value={employee.birthPlace} />
                   <Field label={t('form.nidNumber')} value={employee.nidNumber} mono />
@@ -1473,7 +1653,7 @@ export default function EmployeeDetailPage() {
                   <div className="space-y-2">
                     <Label>{t('form.religion')}</Label>
                     <SearchableSelect
-                      options={RELIGIONS.map(r => ({ value: r, label: t(`form.religions.${r}`) }))}
+                      options={RELIGIONS.map(r => ({ value: r.value, label: t(`form.religions.${r.labelKey}`) }))}
                       value={String(personalForm.religion || '')}
                       onValueChange={v => setPersonalForm(p => ({ ...p, religion: v }))}
                     />
@@ -1566,7 +1746,7 @@ export default function EmployeeDetailPage() {
                     ) : (
                       <TableRow key={contact.id}>
                         <TableCell className="font-medium">{contact.contactName}</TableCell>
-                        <TableCell>{t(`form.relationships.${contact.relationship}`)}</TableCell>
+                        <TableCell>{formatRelationship(contact.relationship)}</TableCell>
                         <TableCell className="font-mono text-xs">{contact.phone}</TableCell>
                         <TableCell className="font-mono text-xs">{contact.alternatePhone || '\u2014'}</TableCell>
                         <TableCell>{contact.isPrimary ? <Badge variant="default">Primary</Badge> : '\u2014'}</TableCell>
@@ -1636,7 +1816,7 @@ export default function EmployeeDetailPage() {
                     })()}
                   />
                   <Field label={t('fields.employmentType')} value={<StatusBadge status={employee.employmentType} />} />
-                  <Field label={t('form.gradeLevel')} value={employee.gradeLevel} />
+                  <Field label="Grade / Pay Level" value={formatSalaryGradePayLevel(employee)} />
                   <Field label={t('fields.joiningDate')} value={formatDate(employee.joiningDate)} />
                   <Field label={t('form.confirmationDate')} value={employee.confirmationDate ? formatDate(employee.confirmationDate) : null} />
                   <Field label={t('form.probationEndDate')} value={employee.probationEndDate ? formatDate(employee.probationEndDate) : null} />
@@ -1715,8 +1895,8 @@ export default function EmployeeDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('form.gradeLevel')}</Label>
-                    <Input value={String(employmentForm.gradeLevel || '')} onChange={e => setEmploymentForm(p => ({ ...p, gradeLevel: e.target.value }))} />
+                    <Label>Grade / Pay Level</Label>
+                    <Input value={String(employmentForm.gradeLevel || '')} disabled className="bg-muted" />
                   </div>
                   <div className="space-y-2">
                     <Label><RequiredLabel>{t('fields.joiningDate')}</RequiredLabel></Label>
@@ -1819,43 +1999,17 @@ export default function EmployeeDetailPage() {
                   <CardTitle>{t('profile.salaryBreakdown')}</CardTitle>
                   {employee.salaryGrade && (
                     <p className="text-sm text-muted-foreground">
-                      {employee.salaryGrade.code} — Step {employee.salaryStepNo || 1}
+                      {employee.salaryGrade.code} — Pay Level {effectiveSalaryStep?.stepNo || employee.salaryStepNo || 1}
                       {employee.salaryStructure && <> &middot; {employee.salaryStructure.name}</>}
                     </p>
                   )}
                 </CardHeader>
                 <CardContent>
-                  {employee.salaryGrade && employee.salaryStructure && employee.salaryStepNo ? (() => {
-                    const step = employee.salaryGrade!.steps.find(s => s.stepNumber === employee.salaryStepNo)
-                    const basic = step ? num(step.basicSalary) : num(employee.basicSalary)
-                    const lines = employee.salaryStructure!.lines
-                    const earnings: { name: string; amount: number }[] = []
-                    const deductions: { name: string; amount: number }[] = []
-                    let gross = basic
-
-                    for (const line of lines) {
-                      let amt = 0
-                      if (line.calculationType === 'FIXED') amt = num(line.amount)
-                      else if (line.calculationType === 'PERCENT_OF_BASIC') amt = basic * num(line.percentage) / 100
-                      else if (line.calculationType === 'PERCENT_OF_GROSS') amt = 0 // computed after
-
-                      const entry = { name: line.component.name, amount: Math.round(amt) }
-                      if (line.component.type === 'EARNING') { earnings.push(entry); gross += entry.amount }
-                      else if (line.component.type === 'DEDUCTION') deductions.push(entry)
-                    }
-
-                    // Now compute PERCENT_OF_GROSS lines
-                    for (const line of lines) {
-                      if (line.calculationType === 'PERCENT_OF_GROSS') {
-                        const amt = Math.round(gross * num(line.percentage) / 100)
-                        const entry = { name: line.component.name, amount: amt }
-                        if (line.component.type === 'EARNING') { earnings.push(entry); gross += amt }
-                        else if (line.component.type === 'DEDUCTION') deductions.push(entry)
-                      }
-                    }
-
-                    const totalDeductions = deductions.reduce((s, d) => s + d.amount, 0)
-                    const net = gross - totalDeductions
+                  {employee.salaryGrade && employee.salaryStructure && effectiveSalaryStep ? (() => {
+                    const hasActiveProvidentFund = Boolean(profileSummary?.pfBalance.enrolled)
+                    const breakdown = calculateSalaryBreakdown(employee, hasActiveProvidentFund)
+                    const { basic, earnings, deductions, gross, net } = breakdown
+                    const pendingProvidentFundDeductions = getPendingProvidentFundDeductions(employee, hasActiveProvidentFund)
 
                     return (
                       <Table>
@@ -1880,13 +2034,19 @@ export default function EmployeeDetailPage() {
                             <TableCell>{t('form.grossSalary')}</TableCell>
                             <TableCell className="text-right font-mono">{formatCurrency(gross)}</TableCell>
                           </TableRow>
+                          {pendingProvidentFundDeductions.map((name) => (
+                            <TableRow key={`pf-pending-${name}`}>
+                              <TableCell className="text-red-600 dark:text-red-400">(-) {name}</TableCell>
+                              <TableCell className="text-right text-sm text-muted-foreground">Not deducted - PF enroll needed</TableCell>
+                            </TableRow>
+                          ))}
                           {deductions.length > 0 && deductions.map((d, i) => (
                             <TableRow key={`d-${i}`}>
                               <TableCell className="text-red-600 dark:text-red-400">(-) {d.name}</TableCell>
                               <TableCell className="text-right font-mono">{formatCurrency(d.amount)}</TableCell>
                             </TableRow>
                           ))}
-                          {deductions.length > 0 && (
+                          {(deductions.length > 0 || pendingProvidentFundDeductions.length > 0) && (
                             <TableRow className="font-bold border-t-2">
                               <TableCell>{t('profile.netSalary') || 'Net Salary'}</TableCell>
                               <TableCell className="text-right font-mono text-primary">{formatCurrency(net)}</TableCell>

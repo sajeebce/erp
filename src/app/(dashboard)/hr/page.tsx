@@ -35,8 +35,27 @@ interface Employee {
 interface Department { id: string; name: string }
 interface Designation { id: string; title: string }
 
+const RELIGION_OPTIONS = [
+  'Islam',
+  'Hinduism',
+  'Christianity',
+  'Buddhism',
+  'Other',
+  'Prefer not to say',
+  'Not specified',
+] as const
+
 function getInitials(name: string): string {
   return name.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
+}
+
+function normalizeReligion(value: string | null | undefined) {
+  const raw = String(value || '').trim()
+  if (!raw) return 'Not specified'
+
+  const normalized = raw.toUpperCase()
+  const matched = RELIGION_OPTIONS.find((option) => option.toUpperCase() === normalized)
+  return matched || raw
 }
 
 export default function HRPage() {
@@ -53,8 +72,9 @@ export default function HRPage() {
   const [filterDept, setFilterDept] = useState('')
   const [filterDesignation, setFilterDesignation] = useState('')
   const [filterStation, setFilterStation] = useState('')
+  const [filterReligion, setFilterReligion] = useState('')
 
-  const hasFilters = filterDept || filterDesignation || filterStation
+  const hasFilters = filterDept || filterDesignation || filterStation || filterReligion
 
   // Derive unique duty stations from data
   const dutyStations = useMemo(() => {
@@ -65,13 +85,16 @@ export default function HRPage() {
 
   const religionCounts = useMemo(() => {
     const counts = new Map<string, number>()
+    RELIGION_OPTIONS.forEach((religion) => counts.set(religion, 0))
     employees
       .filter((employee) => employee.status === 'ACTIVE')
       .forEach((employee) => {
-        const key = employee.religion || 'Not specified'
+        const key = normalizeReligion(employee.religion)
         counts.set(key, (counts.get(key) || 0) + 1)
       })
-    return Array.from(counts.entries()).sort(([a], [b]) => a.localeCompare(b))
+    return Array.from(counts.entries()).sort(
+      ([a], [b]) => RELIGION_OPTIONS.indexOf(a as typeof RELIGION_OPTIONS[number]) - RELIGION_OPTIONS.indexOf(b as typeof RELIGION_OPTIONS[number])
+    )
   }, [employees])
 
   // Apply client-side filters
@@ -80,9 +103,10 @@ export default function HRPage() {
       if (filterDept && (e.department?.id || e.departmentId) !== filterDept) return false
       if (filterDesignation && e.designationId !== filterDesignation) return false
       if (filterStation && e.dutyStation !== filterStation) return false
+      if (filterReligion && normalizeReligion(e.religion) !== filterReligion) return false
       return true
     })
-  }, [employees, filterDept, filterDesignation, filterStation])
+  }, [employees, filterDept, filterDesignation, filterStation, filterReligion])
 
   const columns: ColumnDef<Employee>[] = [
     {
@@ -180,15 +204,16 @@ export default function HRPage() {
           onValueChange={setFilterStation}
           placeholder={t('form.dutyStation')}
         />
+        <SearchableSelect
+          options={[{ value: '', label: 'All Religions' }, ...RELIGION_OPTIONS.map(r => ({ value: r, label: r }))]}
+          value={filterReligion}
+          onValueChange={setFilterReligion}
+          placeholder="Religion"
+        />
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={() => { setFilterDept(''); setFilterDesignation(''); setFilterStation('') }}>
+          <Button variant="ghost" size="sm" onClick={() => { setFilterDept(''); setFilterDesignation(''); setFilterStation(''); setFilterReligion('') }}>
             <X className="h-3.5 w-3.5 mr-1" />{tc('buttons.clear')}
           </Button>
-        )}
-        {hasFilters && (
-          <Badge variant="secondary" className="text-xs">
-            {filteredEmployees.length} / {employees.length}
-          </Badge>
         )}
       </div>
 

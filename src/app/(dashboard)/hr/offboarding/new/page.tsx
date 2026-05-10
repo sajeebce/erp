@@ -50,7 +50,7 @@ export default function NewOffboardingPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
 
   useEffect(() => {
-    fetch('/api/v1/hr/employees?limit=500')
+    fetch('/api/v1/hr/employees?limit=500&status=ACTIVE')
       .then(res => res.json())
       .then(json => { if (json.success) setEmployees(json.data) })
       .catch(() => {})

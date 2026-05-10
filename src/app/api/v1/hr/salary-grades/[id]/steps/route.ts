@@ -34,12 +34,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return apiNotFound('Salary grade not found')
     }
 
+    const cleanedSteps = steps.map((step: { stepNumber: number | string; basicSalary: number | string; effectiveFrom?: string }) => ({
+      stepNumber: Number(step.stepNumber),
+      basicSalary: Number(step.basicSalary),
+      effectiveFrom: step.effectiveFrom || grade.effectiveFrom.toISOString(),
+    }))
+
+    if (
+      cleanedSteps.some((step) => !Number.isInteger(step.stepNumber) || step.stepNumber < 1 || !Number.isFinite(step.basicSalary) || step.basicSalary <= 0) ||
+      new Set(cleanedSteps.map((step) => step.stepNumber)).size !== cleanedSteps.length
+    ) {
+      return apiBadRequest('Salary grade steps are invalid')
+    }
+
     // Transactional: delete existing steps and recreate
     const result = await prisma.$transaction(async (tx) => {
       await tx.salaryGradeStep.deleteMany({ where: { gradeId: id } })
 
       await tx.salaryGradeStep.createMany({
-        data: steps.map((s: { stepNumber: number; basicSalary: number; effectiveFrom: string }) => ({
+        data: cleanedSteps.map((s) => ({
           gradeId: id,
           stepNumber: s.stepNumber,
           basicSalary: s.basicSalary,

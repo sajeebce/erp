@@ -12,6 +12,46 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
+function asRecordArray(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+    : []
+}
+
+function addressToText(value: unknown): string | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const address = value as Record<string, unknown>
+  const parts = ['village', 'postOffice', 'union', 'thana', 'district']
+    .map((key) => String(address[key] || '').trim())
+    .filter(Boolean)
+  return parts.length > 0 ? parts.join(', ') : null
+}
+
+async function findFallbackSalaryStructureId(organizationId: string, salaryGradeId?: string | null) {
+  if (salaryGradeId) {
+    const gradeStructure = await prisma.salaryStructure.findFirst({
+      where: { organizationId, gradeId: salaryGradeId, isActive: true },
+      select: { id: true },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+    })
+    if (gradeStructure) return gradeStructure.id
+  }
+
+  const defaultStructure = await prisma.salaryStructure.findFirst({
+    where: { organizationId, gradeId: null, isActive: true, isDefault: true },
+    select: { id: true },
+    orderBy: { createdAt: 'asc' },
+  })
+  if (defaultStructure) return defaultStructure.id
+
+  const globalStructure = await prisma.salaryStructure.findFirst({
+    where: { organizationId, gradeId: null, isActive: true },
+    select: { id: true },
+    orderBy: { createdAt: 'asc' },
+  })
+  return globalStructure?.id || null
+}
+
 async function getConversionPrefill(request: NextRequest, { params }: RouteParams) {
   try {
     const auth = await requireAuthFromRequest(request)
@@ -35,6 +75,10 @@ async function getConversionPrefill(request: NextRequest, { params }: RouteParam
             midSalary: true,
             maxSalary: true,
             minSalary: true,
+            steps: {
+              orderBy: { stepNumber: 'asc' },
+              select: { stepNumber: true, basicSalary: true },
+            },
             structures: {
               where: { isActive: true },
               select: { id: true },
@@ -55,21 +99,54 @@ async function getConversionPrefill(request: NextRequest, { params }: RouteParam
       )
     }
 
+    const salaryStructureId =
+      application.offerSalaryGrade?.structures?.[0]?.id ||
+      await findFallbackSalaryStructureId(auth.organizationId, application.offerSalaryGradeId)
+
     return apiSuccess({
       prefill: {
         fullName: application.applicantName,
+        localizedName: application.applicantNameBn,
         email: application.applicantEmail,
         phone: application.applicantPhone,
+        alternatePhone: application.phoneAlt,
+        fatherName: application.fatherSpouseName,
+        motherName: application.motherName,
+        dateOfBirth: application.dateOfBirth,
+        gender: application.gender,
+        nationality: application.nationality,
+        nidNumber: application.nidNumber,
         religion: application.religion,
+        bloodGroup: application.bloodGroup,
+        maritalStatus: application.maritalStatus,
+        presentAddress: addressToText(application.presentAddress),
+        permanentAddress: addressToText(application.permanentAddress),
+        emergencyContact: asRecordArray(application.emergencyContacts)
+          .map((contact) => [contact.name, contact.relationship, contact.mobile].filter(Boolean).join(' - '))
+          .filter(Boolean)
+          .join('; '),
+        educationRecords: asRecordArray(application.educationRecords),
+        previousEmployments: asRecordArray(application.previousEmployments),
+        references: asRecordArray(application.references),
+        emergencyContacts: asRecordArray(application.emergencyContacts),
+        languages: application.parsedLanguages,
+        certifications: application.parsedCertifications,
+        trainingDetails: application.trainingDetails,
+        professionName: application.professionName,
+        hasProfessionalLicense: application.hasProfessionalLicense,
+        hasLegalCase: application.hasLegalCase,
+        hasRelativeInOrg: application.hasRelativeInOrg,
         convertedFromApplicationId: application.id,
         education: application.parsedEducation,
         experience: application.parsedExperience,
         skills: application.parsedSkills,
         salaryGradeId: application.offerSalaryGradeId,
-        salaryStructureId: application.offerSalaryGrade?.structures?.[0]?.id || null,
-        basicSalary: application.offerSalaryGrade
-          ? Number(application.offerSalaryGrade.midSalary || application.offerSalaryGrade.maxSalary || application.offerSalaryGrade.minSalary || 0)
-          : application.offeredSalary ? Number(application.offeredSalary) : null,
+        salaryStructureId,
+        basicSalary: application.offeredSalary
+          ? Number(application.offeredSalary)
+          : application.offerSalaryGrade
+            ? Number(application.offerSalaryGrade.steps?.[0]?.basicSalary || application.offerSalaryGrade.minSalary || application.offerSalaryGrade.midSalary || application.offerSalaryGrade.maxSalary || 0)
+            : null,
       },
       jobPosting: {
         title: application.jobPosting.title,

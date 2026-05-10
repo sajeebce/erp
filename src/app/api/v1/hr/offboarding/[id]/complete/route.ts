@@ -30,6 +30,50 @@ function r2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
+async function closeEmployeeActiveAssignments(input: {
+  employeeId: string
+  lastWorkingDay: Date
+  separationType: string
+}) {
+  await prisma.$transaction([
+    prisma.employeeProjectAllocation.updateMany({
+      where: {
+        employeeId: input.employeeId,
+        isActive: true,
+        OR: [
+          { endDate: null },
+          { endDate: { gt: input.lastWorkingDay } },
+        ],
+      },
+      data: {
+        endDate: input.lastWorkingDay,
+        isActive: false,
+      },
+    }),
+    prisma.employeeProjectAllocation.updateMany({
+      where: {
+        employeeId: input.employeeId,
+        isActive: true,
+        endDate: { lte: input.lastWorkingDay },
+      },
+      data: {
+        isActive: false,
+      },
+    }),
+    prisma.employeeContract.updateMany({
+      where: {
+        employeeId: input.employeeId,
+        status: 'ACTIVE',
+      },
+      data: {
+        status: 'TERMINATED',
+        terminatedAt: input.lastWorkingDay,
+        terminationReason: `Offboarding ${input.separationType}`,
+      },
+    }),
+  ])
+}
+
 async function createFinalSettlementJournal(input: {
   organizationId: string
   userId: string
@@ -344,6 +388,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     if (offboarding.status === 'COMPLETED') {
+      await closeEmployeeActiveAssignments({
+        employeeId: offboarding.employeeId,
+        lastWorkingDay: offboarding.lastWorkingDay,
+        separationType: offboarding.separationType,
+      })
       const journalEntryId = await createFinalSettlementJournal({
         organizationId: auth.organizationId,
         userId: auth.userId,
@@ -380,6 +429,41 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       prisma.employee.update({
         where: { id: offboarding.employeeId },
         data: { status: newEmployeeStatus as 'RESIGNED' | 'TERMINATED' | 'RETIRED' },
+      }),
+      prisma.employeeProjectAllocation.updateMany({
+        where: {
+          employeeId: offboarding.employeeId,
+          isActive: true,
+          OR: [
+            { endDate: null },
+            { endDate: { gt: offboarding.lastWorkingDay } },
+          ],
+        },
+        data: {
+          endDate: offboarding.lastWorkingDay,
+          isActive: false,
+        },
+      }),
+      prisma.employeeProjectAllocation.updateMany({
+        where: {
+          employeeId: offboarding.employeeId,
+          isActive: true,
+          endDate: { lte: offboarding.lastWorkingDay },
+        },
+        data: {
+          isActive: false,
+        },
+      }),
+      prisma.employeeContract.updateMany({
+        where: {
+          employeeId: offboarding.employeeId,
+          status: 'ACTIVE',
+        },
+        data: {
+          status: 'TERMINATED',
+          terminatedAt: offboarding.lastWorkingDay,
+          terminationReason: `Offboarding ${offboarding.separationType}`,
+        },
       }),
     ])
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
-import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, Layers, TrendingUp, Hash, DollarSign } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, Pencil, Trash2, Layers, TrendingUp, Hash, DollarSign, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -30,8 +30,8 @@ import {
 
 interface SalaryStep {
   id?: string
-  stepNumber: number
-  basicSalary: number
+  stepNumber: number | string
+  basicSalary: number | string
 }
 
 interface SalaryGrade {
@@ -53,11 +53,11 @@ interface SalaryGrade {
 interface GradeForm {
   code: string
   name: string
-  level: number
+  level: number | string
   description: string
-  minSalary: number
-  midSalary: number
-  maxSalary: number
+  minSalary: number | string
+  midSalary: number | string
+  maxSalary: number | string
   currency: string
   effectiveFrom: string
   steps: SalaryStep[]
@@ -93,6 +93,8 @@ export default function SalaryGradesPage() {
   const [form, setForm] = useState<GradeForm>(emptyForm)
   const [submitting, setSubmitting] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [formError, setFormError] = useState('')
+  const formId = 'salary-grade-form'
 
   const fetchGrades = useCallback(() => {
     setLoading(true)
@@ -112,7 +114,11 @@ export default function SalaryGradesPage() {
 
   function openCreateDialog() {
     setEditingGrade(null)
-    setForm(emptyForm)
+    setForm({
+      ...emptyForm,
+      steps: emptyForm.steps.map(step => ({ ...step })),
+    })
+    setFormError('')
     setDialogOpen(true)
   }
 
@@ -121,24 +127,29 @@ export default function SalaryGradesPage() {
     setForm({
       code: grade.code,
       name: grade.name,
-      level: grade.level,
+      level: String(grade.level),
       description: grade.description || '',
-      minSalary: grade.minSalary,
-      midSalary: grade.midSalary,
-      maxSalary: grade.maxSalary,
+      minSalary: String(grade.minSalary ?? ''),
+      midSalary: String(grade.midSalary ?? ''),
+      maxSalary: String(grade.maxSalary ?? ''),
       currency: grade.currency,
       effectiveFrom: grade.effectiveFrom?.split('T')[0] || '',
       steps: grade.steps?.length > 0
-        ? grade.steps.map(s => ({ ...s }))
-        : [{ stepNumber: 1, basicSalary: 0 }, { stepNumber: 2, basicSalary: 0 }, { stepNumber: 3, basicSalary: 0 }],
+        ? grade.steps.map(s => ({
+            ...s,
+            stepNumber: String(s.stepNumber),
+            basicSalary: String(s.basicSalary ?? ''),
+          }))
+        : [{ stepNumber: '1', basicSalary: '' }, { stepNumber: '2', basicSalary: '' }, { stepNumber: '3', basicSalary: '' }],
     })
+    setFormError('')
     setDialogOpen(true)
   }
 
   function addStep() {
     setForm(prev => ({
       ...prev,
-      steps: [...prev.steps, { stepNumber: prev.steps.length + 1, basicSalary: 0 }],
+      steps: [...prev.steps, { stepNumber: String(prev.steps.length + 1), basicSalary: '' }],
     }))
   }
 
@@ -149,7 +160,7 @@ export default function SalaryGradesPage() {
     }))
   }
 
-  function updateStep(index: number, field: 'stepNumber' | 'basicSalary', value: number) {
+  function updateStep(index: number, field: 'stepNumber' | 'basicSalary', value: string) {
     setForm(prev => ({
       ...prev,
       steps: prev.steps.map((s, i) => i === index ? { ...s, [field]: value } : s),
@@ -158,8 +169,53 @@ export default function SalaryGradesPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setFormError('')
+
+    const level = Number(form.level)
+    const minSalary = Number(form.minSalary)
+    const midSalary = Number(form.midSalary)
+    const maxSalary = Number(form.maxSalary)
+    const steps = form.steps.map((step) => ({
+      stepNumber: Number(step.stepNumber),
+      basicSalary: Number(step.basicSalary),
+      effectiveFrom: form.effectiveFrom,
+    }))
+
+    if (!form.code.trim() || !form.name.trim() || !form.effectiveFrom) {
+      setFormError('Code, name, and effective from are required.')
+      return
+    }
+    if (![level, minSalary, midSalary, maxSalary].every(Number.isFinite)) {
+      setFormError('Level and salary range must be valid numbers.')
+      return
+    }
+    if (minSalary <= 0 || midSalary <= 0 || maxSalary <= 0 || minSalary > midSalary || midSalary > maxSalary) {
+      setFormError('Salary range must be positive and ordered as minimum, midpoint, maximum.')
+      return
+    }
+    if (steps.length === 0 || steps.some(step => !Number.isInteger(step.stepNumber) || step.stepNumber < 1 || !Number.isFinite(step.basicSalary) || step.basicSalary <= 0)) {
+      setFormError('Each step must have a valid step number and basic salary.')
+      return
+    }
+    if (new Set(steps.map(step => step.stepNumber)).size !== steps.length) {
+      setFormError('Pay level numbers must be unique.')
+      return
+    }
+
     setSubmitting(true)
     try {
+      const payload = {
+        ...form,
+        code: form.code.trim(),
+        name: form.name.trim(),
+        level,
+        minSalary,
+        midSalary,
+        maxSalary,
+        currency: form.currency.trim() || 'BDT',
+        description: form.description.trim(),
+        steps,
+      }
       const url = editingGrade
         ? `/api/v1/hr/salary-grades/${editingGrade.id}`
         : '/api/v1/hr/salary-grades'
@@ -167,15 +223,18 @@ export default function SalaryGradesPage() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
       const json = await res.json()
       if (json.success) {
         setDialogOpen(false)
         fetchGrades()
+      } else {
+        setFormError(json.error?.message || 'Unable to save salary grade.')
       }
     } catch (err) {
       console.error(err)
+      setFormError('Unable to save salary grade.')
     } finally {
       setSubmitting(false)
     }
@@ -184,9 +243,7 @@ export default function SalaryGradesPage() {
   async function handleDeactivate(id: string) {
     try {
       const res = await fetch(`/api/v1/hr/salary-grades/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'INACTIVE' }),
+        method: 'DELETE',
       })
       const json = await res.json()
       if (json.success) fetchGrades()
@@ -194,6 +251,20 @@ export default function SalaryGradesPage() {
       console.error(err)
     } finally {
       setDeleteConfirmId(null)
+    }
+  }
+
+  async function handleActivate(id: string) {
+    try {
+      const res = await fetch(`/api/v1/hr/salary-grades/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: true }),
+      })
+      const json = await res.json()
+      if (json.success) fetchGrades()
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -343,18 +414,30 @@ export default function SalaryGradesPage() {
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(grade.id) }}
-                              aria-label={t('salaryGrades.deleteGrade')}
-                            >
-                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                            </Button>
+                            {grade.status === 'ACTIVE' ? (
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(grade.id) }}
+                                aria-label={t('salaryGrades.deleteGrade')}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                onClick={(e) => { e.stopPropagation(); handleActivate(grade.id) }}
+                                aria-label="Activate salary grade"
+                                title="Activate salary grade"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
-                      {/* Expanded Steps Row */}
+                      {/* Expanded pay levels row */}
                       {expandedId === grade.id && grade.steps?.length > 0 && (
                         <TableRow key={`${grade.id}-steps`}>
                           <TableCell colSpan={10} className="bg-muted/30 p-0">
@@ -370,12 +453,12 @@ export default function SalaryGradesPage() {
                                   </TableHeader>
                                   <TableBody>
                                     {grade.steps
-                                      .sort((a, b) => a.stepNumber - b.stepNumber)
+                                      .sort((a, b) => Number(a.stepNumber) - Number(b.stepNumber))
                                       .map(step => (
                                         <TableRow key={step.id || step.stepNumber}>
                                           <TableCell className="font-mono">{step.stepNumber}</TableCell>
-                                          <TableCell className={`text-right font-mono text-sm ${getSalaryColor(step.basicSalary, grade.midSalary, grade.maxSalary)}`}>
-                                            {formatCurrency(step.basicSalary, grade.currency)}
+                                          <TableCell className={`text-right font-mono text-sm ${getSalaryColor(Number(step.basicSalary), grade.midSalary, grade.maxSalary)}`}>
+                                            {formatCurrency(Number(step.basicSalary), grade.currency)}
                                           </TableCell>
                                         </TableRow>
                                       ))}
@@ -403,7 +486,12 @@ export default function SalaryGradesPage() {
               {editingGrade ? t('salaryGrades.editGrade') : t('salaryGrades.addGrade')}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form id={formId} onSubmit={handleSubmit} noValidate className="space-y-4">
+            {formError && (
+              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {formError}
+              </p>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="code">{t('salaryGrades.code')}</Label>
@@ -430,7 +518,7 @@ export default function SalaryGradesPage() {
                   type="number"
                   min={1}
                   value={form.level}
-                  onChange={e => setForm(prev => ({ ...prev, level: Number(e.target.value) }))}
+                  onChange={e => setForm(prev => ({ ...prev, level: e.target.value }))}
                   required
                 />
               </div>
@@ -449,8 +537,8 @@ export default function SalaryGradesPage() {
                   id="minSalary"
                   type="number"
                   min={0}
-                  value={form.minSalary || ''}
-                  onChange={e => setForm(prev => ({ ...prev, minSalary: Number(e.target.value) }))}
+                  value={form.minSalary}
+                  onChange={e => setForm(prev => ({ ...prev, minSalary: e.target.value }))}
                   required
                 />
               </div>
@@ -460,8 +548,8 @@ export default function SalaryGradesPage() {
                   id="midSalary"
                   type="number"
                   min={0}
-                  value={form.midSalary || ''}
-                  onChange={e => setForm(prev => ({ ...prev, midSalary: Number(e.target.value) }))}
+                  value={form.midSalary}
+                  onChange={e => setForm(prev => ({ ...prev, midSalary: e.target.value }))}
                   required
                 />
               </div>
@@ -471,8 +559,8 @@ export default function SalaryGradesPage() {
                   id="maxSalary"
                   type="number"
                   min={0}
-                  value={form.maxSalary || ''}
-                  onChange={e => setForm(prev => ({ ...prev, maxSalary: Number(e.target.value) }))}
+                  value={form.maxSalary}
+                  onChange={e => setForm(prev => ({ ...prev, maxSalary: e.target.value }))}
                   required
                 />
               </div>
@@ -496,7 +584,7 @@ export default function SalaryGradesPage() {
               />
             </div>
 
-            {/* Steps Section */}
+            {/* Pay Levels Section */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-base">{t('salaryGrades.steps')}</Label>
@@ -521,7 +609,7 @@ export default function SalaryGradesPage() {
                             type="number"
                             min={1}
                             value={step.stepNumber}
-                            onChange={e => updateStep(index, 'stepNumber', Number(e.target.value))}
+                            onChange={e => updateStep(index, 'stepNumber', e.target.value)}
                             className="w-20"
                           />
                         </TableCell>
@@ -529,8 +617,8 @@ export default function SalaryGradesPage() {
                           <Input
                             type="number"
                             min={0}
-                            value={step.basicSalary || ''}
-                            onChange={e => updateStep(index, 'basicSalary', Number(e.target.value))}
+                            value={step.basicSalary}
+                            onChange={e => updateStep(index, 'basicSalary', e.target.value)}
                           />
                         </TableCell>
                         <TableCell>
@@ -553,10 +641,15 @@ export default function SalaryGradesPage() {
             </div>
 
             <DialogFooter>
+              {formError && (
+                <p className="mr-auto max-w-sm text-left text-sm text-destructive">
+                  {formError}
+                </p>
+              )}
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 {tc('buttons.cancel')}
               </Button>
-              <Button type="submit" disabled={submitting}>
+              <Button type="submit" form={formId} disabled={submitting}>
                 {submitting ? tc('labels.loading') : editingGrade ? tc('buttons.save') : tc('buttons.create')}
               </Button>
             </DialogFooter>

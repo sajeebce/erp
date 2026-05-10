@@ -59,21 +59,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       include: { jobPosting: { select: { title: true } } },
     })
 
-    await queueEmail({
-      organizationId: auth.organizationId,
-      recipientEmail: updated.applicantEmail,
-      eventKey: `application:${updated.id}:stage:${nextStatus}`,
-      templateKey: `RECRUITMENT_${nextStatus}`,
-      fallbackSubject: 'Application update - {{stageName}}',
-      fallbackBody: 'Dear {{applicantName}}, your application for {{jobTitle}} is now at {{stageName}} stage.',
-      variables: {
-        applicantName: updated.applicantName,
-        jobTitle: updated.jobPosting.title,
-        stageName: nextStatus,
-      },
-      relatedModule: 'recruitment',
-      relatedEntityId: updated.id,
-    })
+    // OFFER email is sent later from the PATCH route once offer details are filled in
+    if (nextStatus !== 'OFFER') {
+      await queueEmail({
+        organizationId: auth.organizationId,
+        recipientEmail: updated.applicantEmail,
+        eventKey: `application:${updated.id}:stage:${nextStatus}`,
+        templateKey: `RECRUITMENT_${nextStatus}`,
+        fallbackSubject: 'Application update - {{stageName}}',
+        fallbackBody: 'Dear {{applicantName}}, your application for {{jobTitle}} is now at {{stageName}} stage.',
+        variables: {
+          applicantName: updated.applicantName,
+          jobTitle: updated.jobPosting.title,
+          stageName: nextStatus,
+        },
+        relatedModule: 'recruitment',
+        relatedEntityId: updated.id,
+      })
+    }
 
     const auditCtx = getAuditContext(request)
     await logAudit({

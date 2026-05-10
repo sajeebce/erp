@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireRoleFromRequest } from '@/lib/auth'
 import { apiSuccess, apiBadRequest, handleRouteError } from '@/lib/api-response'
+import { HR_TEMPLATE_DEFAULTS } from '@/lib/email-templates'
 
 const EMAIL_DEFAULTS: Record<string, { type: string; value: string }> = {
   smtpServer: { type: 'string', value: '' },
@@ -14,60 +15,6 @@ const EMAIL_DEFAULTS: Record<string, { type: string; value: string }> = {
   dailySendLimit: { type: 'number', value: '500' },
 }
 
-const HR_TEMPLATE_DEFAULTS: Record<string, { subject: string; body: string }> = {
-  APPLICATION_RECEIVED: {
-    subject: 'Application received - {{jobTitle}}',
-    body: 'Dear {{applicantName}}, we received your application for {{jobTitle}}. We will keep you updated.',
-  },
-  RECRUITMENT_SCREENED: {
-    subject: 'Application update - Screened',
-    body: 'Dear {{applicantName}}, your application for {{jobTitle}} is now at Screened stage.',
-  },
-  RECRUITMENT_SHORTLISTED: {
-    subject: 'Application update - Shortlisted',
-    body: 'Dear {{applicantName}}, your application for {{jobTitle}} has been shortlisted.',
-  },
-  RECRUITMENT_TECHNICAL_TEST: {
-    subject: 'Application update - Technical test',
-    body: 'Dear {{applicantName}}, your application for {{jobTitle}} is now at Technical Test stage.',
-  },
-  RECRUITMENT_INTERVIEW: {
-    subject: 'Application update - Interview',
-    body: 'Dear {{applicantName}}, your application for {{jobTitle}} is now at Interview stage.',
-  },
-  RECRUITMENT_REFERENCE_CHECK: {
-    subject: 'Application update - Reference check',
-    body: 'Dear {{applicantName}}, your application for {{jobTitle}} is now at Reference Check stage.',
-  },
-  RECRUITMENT_OFFER: {
-    subject: 'Offer details - {{jobTitle}}',
-    body: 'Dear {{applicantName}}, please review your offer details for {{jobTitle}}.\n\nSalary Grade: {{salaryGrade}}\nGross Salary: {{grossSalary}}\nLeave Benefits: {{leaveBenefits}}\n\n{{offerMessage}}',
-  },
-  RECRUITMENT_HIRED: {
-    subject: 'Application update - Hired',
-    body: 'Dear {{applicantName}}, congratulations. Your application for {{jobTitle}} has moved to Hired stage.',
-  },
-  ONBOARDING_STARTED: {
-    subject: 'Onboarding started',
-    body: 'Dear {{employeeName}}, your onboarding process has started.',
-  },
-  ONBOARDING_COMPLETED: {
-    subject: 'Onboarding completed',
-    body: 'Dear {{employeeName}}, your onboarding process has been completed.',
-  },
-  OFFBOARDING_STARTED: {
-    subject: 'Offboarding started',
-    body: 'Dear {{employeeName}}, your offboarding process has started.',
-  },
-  OFFBOARDING_COMPLETED: {
-    subject: 'Offboarding completed',
-    body: 'Dear {{employeeName}}, your offboarding process has been completed.',
-  },
-  PAYROLL_APPROVED: {
-    subject: 'Payroll approved - {{period}}',
-    body: 'Dear {{employeeName}}, payroll for {{period}} has been approved. Net payable: {{netSalary}}.',
-  },
-}
 
 function parseConfigValue(value: string, type: string): string | number | boolean {
   if (type === 'number') return Number(value) || 0

@@ -14,6 +14,38 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
+const salaryStructureInclude = {
+  lines: {
+    where: { isActive: true },
+    include: { component: true },
+    orderBy: { sortOrder: 'asc' as const },
+  },
+}
+
+async function findFallbackSalaryStructure(organizationId: string, salaryGradeId?: string | null) {
+  if (salaryGradeId) {
+    const gradeStructure = await prisma.salaryStructure.findFirst({
+      where: { organizationId, gradeId: salaryGradeId, isActive: true },
+      include: salaryStructureInclude,
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+    })
+    if (gradeStructure) return gradeStructure
+  }
+
+  const defaultStructure = await prisma.salaryStructure.findFirst({
+    where: { organizationId, gradeId: null, isActive: true, isDefault: true },
+    include: salaryStructureInclude,
+    orderBy: { createdAt: 'asc' },
+  })
+  if (defaultStructure) return defaultStructure
+
+  return prisma.salaryStructure.findFirst({
+    where: { organizationId, gradeId: null, isActive: true },
+    include: salaryStructureInclude,
+    orderBy: { createdAt: 'asc' },
+  })
+}
+
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const auth = await requireAuthFromRequest(request)
@@ -46,19 +78,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           include: { steps: { orderBy: { stepNumber: 'asc' } } },
         },
         salaryStructure: {
-          include: {
-            lines: {
-              where: { isActive: true },
-              include: { component: true },
-              orderBy: { sortOrder: 'asc' },
-            },
-          },
+          include: salaryStructureInclude,
         },
       },
     })
 
     if (!employee) {
       return apiNotFound('Employee not found')
+    }
+
+    if (!employee.salaryStructure) {
+      const fallbackStructure = await findFallbackSalaryStructure(auth.organizationId, employee.salaryGradeId)
+      if (fallbackStructure) {
+        return apiSuccess({ ...employee, salaryStructure: fallbackStructure, salaryStructureId: fallbackStructure.id })
+      }
     }
 
     return apiSuccess(employee)

@@ -16,6 +16,7 @@ const EMPLOYMENT_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'CONSULTANT', 'I
 const GENDERS = ['MALE', 'FEMALE', 'OTHER'] as const
 const MARITAL_STATUSES = ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED'] as const
 const RELIGIONS = ['Islam', 'Hinduism', 'Christianity', 'Buddhism', 'Other', 'Prefer not to say'] as const
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const
 
 interface Department {
   id: string
@@ -34,6 +35,22 @@ interface SalaryGrade {
   midSalary: number | string
   maxSalary: number | string
   minSalary: number | string
+  steps?: { stepNumber: number; basicSalary: number | string }[]
+}
+
+type CandidateRecord = Record<string, unknown>
+
+function normalizeGender(value: unknown) {
+  const normalized = String(value || '').trim().toUpperCase()
+  if (normalized === 'MALE' || normalized === 'FEMALE' || normalized === 'OTHER') return normalized
+  return ''
+}
+
+function normalizeMaritalStatus(value: unknown) {
+  const normalized = String(value || '').trim().toUpperCase()
+  if (normalized === 'UNMARRIED') return 'SINGLE'
+  if (normalized === 'SINGLE' || normalized === 'MARRIED' || normalized === 'DIVORCED' || normalized === 'WIDOWED') return normalized
+  return ''
 }
 
 export default function NewEmployeePage() {
@@ -51,6 +68,8 @@ export default function NewEmployeePage() {
   // Form state
   const [fullName, setFullName] = useState('')
   const [localizedName, setLocalizedName] = useState('')
+  const [fatherName, setFatherName] = useState('')
+  const [motherName, setMotherName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [departmentId, setDepartmentId] = useState('')
@@ -59,7 +78,9 @@ export default function NewEmployeePage() {
   const [joiningDate, setJoiningDate] = useState('')
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [gender, setGender] = useState('')
+  const [nationality, setNationality] = useState('Bangladeshi')
   const [religion, setReligion] = useState('')
+  const [bloodGroup, setBloodGroup] = useState('')
   const [maritalStatus, setMaritalStatus] = useState('')
   const [nidNumber, setNidNumber] = useState('')
   const [basicSalary, setBasicSalary] = useState('')
@@ -71,6 +92,13 @@ export default function NewEmployeePage() {
   const [bankName, setBankName] = useState('')
   const [bankAccountNo, setBankAccountNo] = useState('')
   const [notes, setNotes] = useState('')
+  const [candidateNotes, setCandidateNotes] = useState('')
+  const [educationRecords, setEducationRecords] = useState<CandidateRecord[]>([])
+  const [previousEmployments, setPreviousEmployments] = useState<CandidateRecord[]>([])
+  const [emergencyContacts, setEmergencyContacts] = useState<CandidateRecord[]>([])
+  const [candidateSkills, setCandidateSkills] = useState<CandidateRecord[] | string[]>([])
+  const [candidateLanguages, setCandidateLanguages] = useState<CandidateRecord[] | string[]>([])
+  const [candidateCertifications, setCandidateCertifications] = useState<CandidateRecord[] | string[]>([])
 
   // Lookup data
   const [departments, setDepartments] = useState<Department[]>([])
@@ -103,9 +131,38 @@ export default function NewEmployeePage() {
           if (json.success) {
             const { prefill, jobPosting } = json.data
             setFullName(prefill.fullName || '')
+            setLocalizedName(prefill.localizedName || '')
             setEmail(prefill.email || '')
             setPhone(prefill.phone || '')
+            setFatherName(prefill.fatherName || '')
+            setMotherName(prefill.motherName || '')
+            setDateOfBirth(prefill.dateOfBirth ? String(prefill.dateOfBirth).split('T')[0] : '')
+            setGender(normalizeGender(prefill.gender))
+            setNationality(prefill.nationality || 'Bangladeshi')
             setReligion(prefill.religion || '')
+            setBloodGroup(prefill.bloodGroup || '')
+            setMaritalStatus(normalizeMaritalStatus(prefill.maritalStatus))
+            setNidNumber(prefill.nidNumber || '')
+            setPresentAddress(prefill.presentAddress || '')
+            setPermanentAddress(prefill.permanentAddress || '')
+            setEmergencyContact(prefill.emergencyContact || '')
+            setEducationRecords(Array.isArray(prefill.educationRecords) ? prefill.educationRecords : [])
+            setPreviousEmployments(Array.isArray(prefill.previousEmployments) ? prefill.previousEmployments : [])
+            setEmergencyContacts(Array.isArray(prefill.emergencyContacts) ? prefill.emergencyContacts : [])
+            setCandidateSkills(Array.isArray(prefill.skills) ? prefill.skills : [])
+            setCandidateLanguages(Array.isArray(prefill.languages) ? prefill.languages : [])
+            setCandidateCertifications(Array.isArray(prefill.certifications) ? prefill.certifications : [])
+            const candidateSummary = [
+              prefill.alternatePhone ? `Alternate phone: ${prefill.alternatePhone}` : '',
+              prefill.trainingDetails ? `Training: ${prefill.trainingDetails}` : '',
+              prefill.professionName ? `Profession/license: ${prefill.professionName}` : '',
+              prefill.hasProfessionalLicense !== null && prefill.hasProfessionalLicense !== undefined ? `Has professional license: ${prefill.hasProfessionalLicense ? 'Yes' : 'No'}` : '',
+              prefill.hasLegalCase !== null && prefill.hasLegalCase !== undefined ? `Has legal case: ${prefill.hasLegalCase ? 'Yes' : 'No'}` : '',
+              prefill.hasRelativeInOrg !== null && prefill.hasRelativeInOrg !== undefined ? `Has relative in organization: ${prefill.hasRelativeInOrg ? 'Yes' : 'No'}` : '',
+              Array.isArray(prefill.references) && prefill.references.length > 0 ? `References: ${JSON.stringify(prefill.references)}` : '',
+              Array.isArray(prefill.previousEmployments) && prefill.previousEmployments.length > 0 ? `Candidate previous employment form: ${JSON.stringify(prefill.previousEmployments)}` : '',
+            ].filter(Boolean).join('\n')
+            setCandidateNotes(candidateSummary)
             if (jobPosting.departmentId) setDepartmentId(jobPosting.departmentId)
             if (jobPosting.designationId) setDesignationId(jobPosting.designationId)
             if (jobPosting.employmentType) setEmploymentType(jobPosting.employmentType)
@@ -150,7 +207,11 @@ export default function NewEmployeePage() {
     if (phone.trim()) payload.phone = phone.trim()
     if (dateOfBirth) payload.dateOfBirth = dateOfBirth
     if (gender) payload.gender = gender
+    if (fatherName.trim()) payload.fatherName = fatherName.trim()
+    if (motherName.trim()) payload.motherName = motherName.trim()
+    if (nationality.trim()) payload.nationality = nationality.trim()
     if (religion) payload.religion = religion
+    if (bloodGroup) payload.bloodGroup = bloodGroup
     if (maritalStatus) payload.maritalStatus = maritalStatus
     if (nidNumber.trim()) payload.nidNumber = nidNumber.trim()
     if (basicSalary) payload.basicSalary = parseFloat(basicSalary)
@@ -161,7 +222,14 @@ export default function NewEmployeePage() {
     if (emergencyContact.trim()) payload.emergencyContact = emergencyContact.trim()
     if (bankName.trim()) payload.bankName = bankName.trim()
     if (bankAccountNo.trim()) payload.bankAccountNo = bankAccountNo.trim()
-    if (notes.trim()) payload.notes = notes.trim()
+    if (educationRecords.length > 0) payload.educationRecords = educationRecords
+    if (previousEmployments.length > 0) payload.previousEmployments = previousEmployments
+    if (emergencyContacts.length > 0) payload.emergencyContacts = emergencyContacts
+    if (candidateSkills.length > 0) payload.skills = candidateSkills
+    if (candidateLanguages.length > 0) payload.languages = candidateLanguages
+    if (candidateCertifications.length > 0) payload.certifications = candidateCertifications
+    const combinedNotes = [notes.trim(), candidateNotes].filter(Boolean).join('\n\n')
+    if (combinedNotes) payload.notes = combinedNotes
     if (convertedFromApplicationId) payload.convertedFromApplicationId = convertedFromApplicationId
 
     try {
@@ -251,6 +319,25 @@ export default function NewEmployeePage() {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="emp-father-name">{t('form.fatherName')}</Label>
+              <Input
+                id="emp-father-name"
+                value={fatherName}
+                onChange={(e) => setFatherName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="emp-mother-name">{t('form.motherName')}</Label>
+              <Input
+                id="emp-mother-name"
+                value={motherName}
+                onChange={(e) => setMotherName(e.target.value)}
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="emp-dob">{t('form.dateOfBirth')}</Label>
@@ -293,6 +380,17 @@ export default function NewEmployeePage() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="emp-nationality">{t('form.nationality')}</Label>
+              <Input
+                id="emp-nationality"
+                value={nationality}
+                onChange={(e) => setNationality(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="emp-religion">{t('form.religion')}</Label>
               <SearchableSelect
                 id="emp-religion"
@@ -300,6 +398,16 @@ export default function NewEmployeePage() {
                 value={religion}
                 onValueChange={setReligion}
                 placeholder="Select religion"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="emp-blood-group">{t('form.bloodGroup')}</Label>
+              <SearchableSelect
+                id="emp-blood-group"
+                options={BLOOD_GROUPS.map((item) => ({ value: item, label: item }))}
+                value={bloodGroup}
+                onValueChange={setBloodGroup}
+                placeholder="Select blood group"
               />
             </div>
           </div>
@@ -380,7 +488,7 @@ export default function NewEmployeePage() {
               onValueChange={(value) => {
                 setSalaryGradeId(value)
                 const grade = salaryGrades.find((item) => item.id === value)
-                if (grade) setBasicSalary(String(grade.midSalary || grade.maxSalary || grade.minSalary || ''))
+                if (grade) setBasicSalary(String(grade.steps?.[0]?.basicSalary || grade.minSalary || grade.midSalary || grade.maxSalary || ''))
               }}
               placeholder="Select salary grade"
             />

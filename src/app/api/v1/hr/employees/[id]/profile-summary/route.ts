@@ -71,7 +71,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     let pfBalance: { enrolled: boolean; balance: number } = { enrolled: false, balance: 0 }
     try {
       const pf = await prisma.pFEnrollment.findFirst({
-        where: { employeeId },
+        where: { employeeId, status: 'ACTIVE' },
+        orderBy: { createdAt: 'desc' },
       })
       if (pf) {
         pfBalance = {

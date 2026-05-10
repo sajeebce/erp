@@ -106,6 +106,14 @@ export default function JobPostingDetailPage() {
   const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([])
   const [bulkTargetStage, setBulkTargetStage] = useState<(typeof PIPELINE_STAGES)[number]>('SCREENED')
 
+  const fetchJob = useCallback(async () => {
+    if (!params.id) return
+    const res = await fetch(`/api/v1/hr/recruitment/jobs/${params.id}`)
+    const json = await res.json()
+    if (json.success) setJob(json.data)
+    else setError(tc('errors.notFound'))
+  }, [params.id, tc])
+
   const q = searchParams.get('q') || ''
   const minScore = searchParams.get('minScore') || ''
   const skillsParam = searchParams.get('skills') || ''
@@ -171,12 +179,7 @@ export default function JobPostingDetailPage() {
   useEffect(() => {
     if (!params.id) return
 
-    fetch(`/api/v1/hr/recruitment/jobs/${params.id}`)
-      .then(res => res.json())
-      .then(json => {
-        if (json.success) setJob(json.data)
-        else setError(tc('errors.notFound'))
-      })
+    fetchJob()
       .catch(() => setError(tc('errors.loadFailed')))
       .finally(() => setLoading(false))
 
@@ -208,7 +211,7 @@ export default function JobPostingDetailPage() {
         }
       })
       .catch(() => {})
-  }, [params.id, tc])
+  }, [params.id, tc, fetchJob])
 
   useEffect(() => {
     fetchApplications()
@@ -224,9 +227,9 @@ export default function JobPostingDetailPage() {
       const res = await fetch(`/api/v1/hr/recruitment/jobs/${params.id}/publish`, { method: 'POST' })
       const json = await res.json()
       if (res.ok && json.success) {
-        setJob(json.data)
+        await fetchJob()
       } else {
-        setError(json.error || t('recruitment.form.actionFailed'))
+        setError(json.error?.message || json.error || t('recruitment.form.actionFailed'))
       }
     } catch {
       setError(t('recruitment.form.actionFailed'))
@@ -241,9 +244,9 @@ export default function JobPostingDetailPage() {
       const res = await fetch(`/api/v1/hr/recruitment/jobs/${params.id}/close`, { method: 'POST' })
       const json = await res.json()
       if (res.ok && json.success) {
-        setJob(json.data)
+        await fetchJob()
       } else {
-        setError(json.error || t('recruitment.form.actionFailed'))
+        setError(json.error?.message || json.error || t('recruitment.form.actionFailed'))
       }
     } catch {
       setError(t('recruitment.form.actionFailed'))
@@ -675,7 +678,7 @@ export default function JobPostingDetailPage() {
                     })}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                {selectedSkills.length > 0 && (
+                {false && selectedSkills.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {selectedSkills.map((skill) => (
                       <button

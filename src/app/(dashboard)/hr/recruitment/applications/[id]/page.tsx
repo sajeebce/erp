@@ -138,7 +138,8 @@ interface ApplicationDetail {
     id: string
     interviewType: string
     scheduledAt: string
-    duration: number
+    durationMinutes?: number | null
+    duration?: number | null
     status: string
     rating: number | null
     feedback: string | null
@@ -182,6 +183,15 @@ const DEFAULT_LEAVE_BENEFITS = [
   { name: 'Sick Leave', days: 14 },
   { name: 'Maternity Leave', days: 112 },
 ]
+
+function getSortedGradeSteps(grade: SalaryGrade | null | undefined) {
+  return [...(grade?.steps || [])].sort((a, b) => a.stepNumber - b.stepNumber)
+}
+
+function getDefaultGradeSalary(grade: SalaryGrade | null | undefined) {
+  const firstStep = getSortedGradeSteps(grade)[0]
+  return Number(firstStep?.basicSalary || grade?.minSalary || grade?.midSalary || grade?.maxSalary || 0)
+}
 
 interface LeaveBenefit {
   name: string
@@ -250,6 +260,7 @@ export default function ApplicationDetailPage() {
   const [error, setError] = useState('')
   const [actionLoading, setActionLoading] = useState('')
   const [offerGradeId, setOfferGradeId] = useState('')
+  const [offerSalaryAmount, setOfferSalaryAmount] = useState('')
   const [offerMessage, setOfferMessage] = useState('')
   const [offerLeaveBenefits, setOfferLeaveBenefits] = useState<LeaveBenefit[]>(DEFAULT_LEAVE_BENEFITS)
 
@@ -297,6 +308,7 @@ export default function ApplicationDetailPage() {
   useEffect(() => {
     if (!application) return
     setOfferGradeId(application.offerSalaryGradeId || '')
+    setOfferSalaryAmount(application.offeredSalary ? String(application.offeredSalary) : '')
     setOfferMessage(application.offerMessage || '')
     setOfferLeaveBenefits(
       Array.isArray(application.offerLeaveBenefits) && application.offerLeaveBenefits.length > 0
@@ -313,6 +325,12 @@ export default function ApplicationDetailPage() {
     setOfferLeaveBenefits((current) =>
       current.map((leave) => leave.name === name ? { ...leave, days: numericDays } : leave)
     )
+  }
+
+  function handleOfferGradeChange(gradeId: string) {
+    setOfferGradeId(gradeId)
+    const grade = salaryGrades.find((item) => item.id === gradeId)
+    setOfferSalaryAmount(grade ? String(getDefaultGradeSalary(grade)) : '')
   }
 
   async function handleScore() {
@@ -408,6 +426,11 @@ export default function ApplicationDetailPage() {
       setError('Please select a salary grade for the offer')
       return
     }
+    const offeredSalary = Number(offerSalaryAmount || getDefaultGradeSalary(grade))
+    if (!Number.isFinite(offeredSalary) || offeredSalary <= 0) {
+      setError('Please select a pay level for the offer')
+      return
+    }
 
     setActionLoading('offer')
     setError('')
@@ -417,7 +440,7 @@ export default function ApplicationDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           offerSalaryGradeId: grade.id,
-          offeredSalary: Number(grade.midSalary || grade.maxSalary || grade.minSalary || 0),
+          offeredSalary,
           offerMessage: offerMessage.trim() || null,
           offerLeaveBenefits,
           offerSentAt: new Date().toISOString(),
@@ -501,9 +524,11 @@ export default function ApplicationDetailPage() {
     application.permanentAddress ||
     application.phoneAlt
   const selectedOfferGrade = salaryGrades.find((item) => item.id === offerGradeId) || application.offerSalaryGrade || null
+  const selectedOfferSteps = getSortedGradeSteps(selectedOfferGrade)
   const selectedOfferGross = selectedOfferGrade
-    ? Number(selectedOfferGrade.midSalary || selectedOfferGrade.maxSalary || selectedOfferGrade.minSalary || 0)
+    ? Number(offerSalaryAmount || application.offeredSalary || getDefaultGradeSalary(selectedOfferGrade))
     : Number(application.offeredSalary || 0)
+  const selectedOfferStep = selectedOfferSteps.find((step) => Number(step.basicSalary) === selectedOfferGross) || null
   const selectedOfferStructure = selectedOfferGrade?.structures?.[0] || null
   const offerBreakdown = selectedOfferStructure
     ? selectedOfferStructure.lines.map((line) => {
@@ -598,10 +623,11 @@ export default function ApplicationDetailPage() {
                 <Label>Salary Grade</Label>
                 <SearchableSelect
                   value={offerGradeId}
-                  onValueChange={setOfferGradeId}
+                  onValueChange={handleOfferGradeChange}
                   options={salaryGrades.map((grade) => ({
                     value: grade.id,
-                    label: `${grade.code} - ${grade.name} (${formatCurrency(Number(grade.midSalary || grade.maxSalary || grade.minSalary || 0))})`,
+                    label: `${grade.code} - ${grade.name}`,
+                    description: `${formatCurrency(Number(grade.minSalary || 0))} - ${formatCurrency(Number(grade.maxSalary || 0))}`,
                   }))}
                   placeholder="Select salary grade"
                 />
@@ -609,8 +635,25 @@ export default function ApplicationDetailPage() {
 
               {selectedOfferGrade && (
                 <div className="rounded-md border p-4 space-y-3">
+                  {selectedOfferSteps.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Pay Level</Label>
+                      <SearchableSelect
+                        value={offerSalaryAmount || String(getDefaultGradeSalary(selectedOfferGrade))}
+                        onValueChange={setOfferSalaryAmount}
+                        options={selectedOfferSteps.map((step) => ({
+                          value: String(step.basicSalary),
+                          label: `Pay Level ${step.stepNumber}`,
+                          description: formatCurrency(Number(step.basicSalary)),
+                        }))}
+                        placeholder="Select pay level"
+                      />
+                    </div>
+                  )}
                   <div className="flex justify-between gap-4">
-                    <span className="text-muted-foreground">Gross Salary</span>
+                    <span className="text-muted-foreground">
+                      Offered Basic Salary{selectedOfferStep ? ` - Pay Level ${selectedOfferStep.stepNumber}` : ''}
+                    </span>
                     <span className="font-mono text-base font-semibold">{formatCurrency(selectedOfferGross)}</span>
                   </div>
                   {selectedOfferStructure && (
@@ -1012,7 +1055,7 @@ export default function ApplicationDetailPage() {
                           {t(`recruitment.interviewTypes.${interview.interviewType}`)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {formatDate(interview.scheduledAt)} &middot; {interview.duration} {t('recruitment.minutes')}
+                          {formatDate(interview.scheduledAt)} &middot; {interview.durationMinutes ?? interview.duration ?? 60} {t('recruitment.minutes')}
                         </p>
                         {interview.interviewerName && (
                           <p className="text-xs text-muted-foreground">{t('recruitment.interviewer')}: {interview.interviewerName}</p>
@@ -1209,10 +1252,11 @@ export default function ApplicationDetailPage() {
                   <Label>Salary Grade</Label>
                   <SearchableSelect
                     value={offerGradeId}
-                    onValueChange={setOfferGradeId}
+                    onValueChange={handleOfferGradeChange}
                     options={salaryGrades.map((grade) => ({
                       value: grade.id,
-                      label: `${grade.code} - ${grade.name} (${formatCurrency(Number(grade.midSalary || grade.maxSalary || grade.minSalary || 0))})`,
+                      label: `${grade.code} - ${grade.name}`,
+                      description: `${formatCurrency(Number(grade.minSalary || 0))} - ${formatCurrency(Number(grade.maxSalary || 0))}`,
                     }))}
                     placeholder="Select salary grade"
                   />
@@ -1220,8 +1264,25 @@ export default function ApplicationDetailPage() {
 
                 {selectedOfferGrade && (
                   <div className="rounded-md border p-3 space-y-2">
+                    {selectedOfferSteps.length > 0 && (
+                      <div className="space-y-2">
+                        <Label>Pay Level</Label>
+                        <SearchableSelect
+                          value={offerSalaryAmount || String(getDefaultGradeSalary(selectedOfferGrade))}
+                          onValueChange={setOfferSalaryAmount}
+                          options={selectedOfferSteps.map((step) => ({
+                            value: String(step.basicSalary),
+                            label: `Pay Level ${step.stepNumber}`,
+                            description: formatCurrency(Number(step.basicSalary)),
+                          }))}
+                          placeholder="Select pay level"
+                        />
+                      </div>
+                    )}
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Gross Salary</span>
+                      <span className="text-muted-foreground">
+                        Offered Basic Salary{selectedOfferStep ? ` - Pay Level ${selectedOfferStep.stepNumber}` : ''}
+                      </span>
                       <span className="font-mono font-medium">{formatCurrency(selectedOfferGross)}</span>
                     </div>
                     {selectedOfferStructure && (

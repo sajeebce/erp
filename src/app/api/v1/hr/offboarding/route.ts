@@ -99,9 +99,24 @@ export async function POST(request: NextRequest) {
     // Validate employee belongs to org
     const employee = await prisma.employee.findFirst({
       where: { id: employeeId, organizationId: auth.organizationId, deletedAt: null },
-      select: { id: true, fullName: true, employeeNo: true, email: true },
+      select: { id: true, fullName: true, employeeNo: true, email: true, status: true },
     })
     if (!employee) return apiBadRequest('Employee not found in this organization')
+    if (employee.status !== 'ACTIVE') {
+      return apiBadRequest(`Cannot initiate offboarding for employee with status "${employee.status}"`)
+    }
+
+    const existingOpenExit = await prisma.offboarding.findFirst({
+      where: {
+        organizationId: auth.organizationId,
+        employeeId,
+        status: { in: ['INITIATED', 'IN_PROGRESS'] },
+      },
+      select: { offboardingNo: true },
+    })
+    if (existingOpenExit) {
+      return apiBadRequest(`Employee already has an active offboarding: ${existingOpenExit.offboardingNo}`)
+    }
 
     const offboardingNo = await generateNextNumber(auth.organizationId, 'offboarding')
 

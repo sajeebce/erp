@@ -53,7 +53,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     if (newGrade.steps.length === 0) {
-      return apiBadRequest(`Step ${newStepNo} not found in grade ${newGrade.code}`)
+      return apiBadRequest(`Pay Level ${newStepNo} not found in grade ${newGrade.code}`)
     }
 
     const newBasicSalary = newGrade.steps[0].basicSalary

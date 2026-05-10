@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Plus, Download, Loader2, Eye, Play, CheckCircle } from 'lucide-react'
@@ -94,9 +94,11 @@ export default function PayrollPage() {
   const [creating, setCreating] = useState(false)
   const [actionId, setActionId] = useState<string | null>(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [userRole, setUserRole] = useState<string>('')
   const [createMonth, setCreateMonth] = useState('6')
   const [createYear, setCreateYear] = useState('2026')
   const [error, setError] = useState('')
+  const registerRef = useRef<HTMLDivElement | null>(null)
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -114,6 +116,24 @@ export default function PayrollPage() {
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    fetch('/api/v1/auth/me')
+      .then(res => res.json())
+      .then(json => {
+        if (json.success) {
+          setUserRole(json.data.role?.name || '')
+        }
+      })
+      .catch(console.error)
+  }, [])
+
+  useEffect(() => {
+    if (!selectedRun) return
+    requestAnimationFrame(() => {
+      registerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [selectedRun?.id])
 
   function loadRunEntries(run: PayrollRun) {
     setSelectedRun(run)
@@ -193,6 +213,7 @@ export default function PayrollPage() {
   }
 
   const latestRun = runs[0]
+  const canApprovePayroll = ['ADMIN', 'FINANCE_MANAGER'].includes(userRole)
 
   if (loading) {
     return (
@@ -361,19 +382,32 @@ export default function PayrollPage() {
                             {actionId === `process:${run.id}` ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Play className="h-4 w-4 mr-1" />}
                             Reprocess
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => { e.stopPropagation(); runAction(run, 'approve') }}
-                            disabled={actionId === `approve:${run.id}`}
-                          >
-                            {actionId === `approve:${run.id}` ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-1" />}
-                            Approve
-                          </Button>
+                          {canApprovePayroll ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => { e.stopPropagation(); runAction(run, 'approve') }}
+                              disabled={actionId === `approve:${run.id}`}
+                            >
+                              {actionId === `approve:${run.id}` ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-1" />}
+                              Approve
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled
+                              title="This payroll run is waiting for admin approval."
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Requested to Admin
+                            </Button>
+                          )}
                         </>
                       )}
                       <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); loadRunEntries(run) }}>
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-4 w-4 mr-1" />
+                        View Register
                       </Button>
                       </div>
                     </TableCell>
@@ -387,6 +421,7 @@ export default function PayrollPage() {
 
       {/* Run Detail — Employee Entries */}
       {selectedRun && (
+        <div ref={registerRef} className="scroll-mt-24">
         <Card>
           <CardHeader>
             <CardTitle>
@@ -440,6 +475,7 @@ export default function PayrollPage() {
             )}
           </CardContent>
         </Card>
+        </div>
       )}
     </div>
   )

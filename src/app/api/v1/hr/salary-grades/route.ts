@@ -74,9 +74,40 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
 
     const { code, name, level, minSalary, midSalary, maxSalary, currency, effectiveFrom, description, steps } = body
+    const parsedLevel = Number(level)
+    const parsedMinSalary = Number(minSalary)
+    const parsedMidSalary = Number(midSalary)
+    const parsedMaxSalary = Number(maxSalary)
 
     if (!code || !name || level == null || !minSalary || !midSalary || !maxSalary || !effectiveFrom) {
       return apiBadRequest('code, name, level, minSalary, midSalary, maxSalary, and effectiveFrom are required')
+    }
+    if (
+      !Number.isInteger(parsedLevel) ||
+      parsedLevel < 1 ||
+      ![parsedMinSalary, parsedMidSalary, parsedMaxSalary].every(Number.isFinite) ||
+      parsedMinSalary <= 0 ||
+      parsedMidSalary <= 0 ||
+      parsedMaxSalary <= 0 ||
+      parsedMinSalary > parsedMidSalary ||
+      parsedMidSalary > parsedMaxSalary
+    ) {
+      return apiBadRequest('Salary grade level and range are invalid')
+    }
+
+    const cleanedSteps = Array.isArray(steps)
+      ? steps.map((step: { stepNumber: number | string; basicSalary: number | string; effectiveFrom?: string }) => ({
+          stepNumber: Number(step.stepNumber),
+          basicSalary: Number(step.basicSalary),
+          effectiveFrom: step.effectiveFrom || effectiveFrom,
+        }))
+      : []
+
+    if (
+      cleanedSteps.some((step) => !Number.isInteger(step.stepNumber) || step.stepNumber < 1 || !Number.isFinite(step.basicSalary) || step.basicSalary <= 0) ||
+      new Set(cleanedSteps.map((step) => step.stepNumber)).size !== cleanedSteps.length
+    ) {
+      return apiBadRequest('Salary grade steps are invalid')
     }
 
     // Check unique code within org
@@ -92,19 +123,19 @@ export async function POST(request: NextRequest) {
         organizationId: auth.organizationId,
         code,
         name,
-        level,
+        level: parsedLevel,
         description: description || null,
-        minSalary,
-        midSalary,
-        maxSalary,
+        minSalary: parsedMinSalary,
+        midSalary: parsedMidSalary,
+        maxSalary: parsedMaxSalary,
         currency: currency || 'BDT',
         effectiveFrom: new Date(effectiveFrom),
-        steps: steps?.length
+        steps: cleanedSteps.length
           ? {
-              create: steps.map((s: { stepNumber: number; basicSalary: number; effectiveFrom: string }) => ({
+              create: cleanedSteps.map((s) => ({
                 stepNumber: s.stepNumber,
                 basicSalary: s.basicSalary,
-                effectiveFrom: s.effectiveFrom ? new Date(s.effectiveFrom) : new Date(effectiveFrom),
+                effectiveFrom: new Date(s.effectiveFrom),
               })),
             }
           : undefined,

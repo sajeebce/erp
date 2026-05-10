@@ -63,6 +63,8 @@ Salary setup:
    - Gross salary: `100000 BDT`
    - Select active salary structure
 5. Confirm salary breakdown auto-calculates.
+6. Edit salary grade pay levels and save.
+7. Deactivate a test grade with the delete icon, then activate it again with the activate icon.
 
 Notification and SMTP setup:
 
@@ -104,6 +106,8 @@ Notification and SMTP setup:
 Expected:
 - Department list is DB-backed and active departments are selectable in recruitment.
 - Salary grade `G1` has gross salary and component breakdown.
+- Salary grade create/edit saves successfully; pay levels do not clear unexpectedly while editing.
+- Salary grade inactive/active toggle works from action icons.
 - Notification templates are editable.
 - SMTP configuration saves, queue worker processes email, and Gmail test sends real mail when app password is valid.
 
@@ -135,7 +139,8 @@ Expected:
 - Job detail page open hoy.
 - Requirement chips/badges job detail-e show kore.
 - `Qualifications` and `Preferred Skills` fields form-e thake na.
-- Required skills dropdown/multi-select-e selected skills show kore, delete option thake, and compact display-e first skill + `more` count dekha jay.
+- Required skills comma diye type korle tag create hoy and selected tags visible thake.
+- Job pipeline skills filter dropdown/multi-select-e trigger summary first skill + `more` count show kore, but dropdown-er niche duplicate selected chips show kore na.
 - Job status initially draft thakte pare.
 
 ## 2. Publish Job And Share Link
@@ -201,10 +206,11 @@ Return to admin job detail page `/hr/recruitment/{jobId}`.
    - Casual Leave
    - Maternity Leave, if applicable
    - Sick Leave
-10. Add custom offer message, e.g. `Welcome to CSSBD. Please review the offer details.`
-11. Send or save offer according to UI flow.
-12. Verify offer email queue/send entry is created for applicant.
-13. Continue stage update until application reaches `HIRED`.
+10. Edit leave benefit days if needed and confirm values update.
+11. Add custom offer message, e.g. `Welcome to CSSBD. Please review the offer details.`
+12. Send or save offer according to UI flow.
+13. Verify offer email queue/send entry is created for applicant.
+14. Continue stage update until application reaches `HIRED`.
 
 Expected:
 - Applicant detail page-e self-declared education, experience, skills, language, certifications show kore.
@@ -214,6 +220,8 @@ Expected:
 - Prottek stage update-e template-based email queue/send hoy.
 - Offer tab-e personal/other tab-er extra information show kore na; only offer details show kore.
 - Offer email-e salary grade, salary breakdown, leave benefits, and custom message thake.
+- Offer tab-e salary grade select korar por pay level explicitly select kora jay; hidden midpoint salary automatically use hoy na.
+- Interview history duration number shoho show kore, e.g. `30 min`; shudhu `min` show kore na.
 - `HIRED` stage-e gele `Convert to Employee` button visible hoy.
 
 ## 5. Convert Hired Applicant To Employee
@@ -226,6 +234,10 @@ On hired application detail page:
    - Full name
    - Email
    - Phone
+   - Bangla/local name, father/spouse name, mother name
+   - Date of birth, gender, nationality, NID, religion, blood group, marital status
+   - Present/permanent address and emergency contact
+   - Education, skills, languages, certifications, if candidate submitted them
    - Department/designation from job, if configured
 4. Required fields complete korun:
    - Department
@@ -241,7 +253,12 @@ Expected:
 - Employee directory-te employee visible.
 - Recruitment application reference employee info-te preserved thake.
 - Applicant-er selected religion employee profile-e copy hoy.
+- Applicant-er selected gender/marital status employee form-e normalized hoye selected thake, e.g. `Male` -> `MALE`, `Unmarried` -> `SINGLE`.
+- Applicant-er emergency contact custom relationship, e.g. `Uncle`, profile-e readable text hisebe show kore; raw translation key show kore na.
 - Offer stage-er selected salary grade employee profile-e preserved thake.
+- Offer stage-er selected salary grade employee create form-e prefilled thake.
+- Offer stage-er selected pay level/basic amount employee create form-e prefilled thake and employee profile-e matching grade pay level show kore.
+- Salary structure missing thakle employee create/profile active grade-specific or default/global active salary structure fallback use kore.
 - Bank details initially blank thaka acceptable; onboarding/employee creation block korbe na.
 - Default onboarding checklist employee-r jonno create hoy, if active checklist exists.
 - Auto-created contract thakte pare, usually draft status-e.
@@ -264,12 +281,18 @@ Go to `/hr/employees`.
    - Duty Station
 9. Open employee profile again and go to `Compensation & Benefits` tab.
 10. Verify salary grade `G1`, gross salary, salary structure, component breakdown, and leave benefits show kore.
-11. Verify bank details blank ache, then optionally fill bank details later.
-12. Go to `/hr/onboarding`.
-13. Confirm new employee onboarding list-e visible.
-14. Open `/hr/onboarding/{employeeId}`.
-15. Checklist tasks visible kina check korun.
-16. One or more task mark complete kore save/refresh check korun.
+11. Click edit on `Compensation & Benefits` and verify calculated fields are prefilled from salary grade + salary structure:
+   - Basic Salary
+   - House Rent Allowance
+   - Medical Allowance
+   - Transport Allowance
+   - Gross Salary
+12. Verify bank details blank ache, then optionally fill bank details later.
+13. Go to `/hr/onboarding`.
+14. Confirm new employee onboarding list-e visible.
+15. Open `/hr/onboarding/{employeeId}`.
+16. Checklist tasks visible kina check korun.
+17. One or more task mark complete kore save/refresh check korun.
 
 Expected:
 - Employee active status-e ache.
@@ -277,6 +300,17 @@ Expected:
 - `/hr` Employee Directory page-e religion-wise employee count summary show kore.
 - `/hr` Employee Directory filter row-e only Department, Designation, Duty Station thake.
 - Compensation & Benefits tab offer-er salary grade and benefits show kore.
+- Compensation & Benefits view mode and edit mode same grade + salary structure calculation follow kore.
+- Example `G-1 Pay Level 3` with `Standard Bangladesh` and PF Not Enrolled:
+  - Basic `20,000`
+  - House Rent `10,000`
+  - Medical `2,000`
+- Transport `3,000`
+- Gross `35,000`
+  - PF line `Not deducted - PF enroll needed` show korbe, but amount deduct korbe na
+  - Tax deduction `1,000`
+  - Net `34,000`
+- Same employee PF active enrollment hole PF deduction `2,000` apply hobe and net `32,000` hobe.
 - Blank bank details employee profile-ke invalid kore na.
 - Onboarding progress employee-r sathe linked.
 - Completed onboarding task refresh-er poro completed thake.
@@ -345,15 +379,15 @@ Go to `/hr/payroll`.
    - Year: current test year, e.g. `2026`
 3. Click `Create Run`.
 4. Payroll run row-e `Process` click korun.
-5. Process complete hole payroll run select/open korun.
+5. Process complete hole payroll run select/open korun or `View Register` click korun.
 6. Payroll register-e employee ache kina verify korun.
 
 Expected:
 - Payroll run draft theke processed/requested flow-e jay.
 - Employee count includes new active employee, if joining date June payroll period-er moddhe eligible.
 - Employee salary grade `G1` onujayi gross, breakdown, deductions, and net salary show kore.
-- Payslip icon/detail open hoy.
-- HR role diye payroll run korle action/status column-e `Requested` show kore.
+- `View Register` action selected payroll register/details load kore.
+- HR role diye payroll run korle status `Requested` and action column-e `Requested to Admin` show kore.
 - Duplicate same month/year run create korte gele validation thakte pare.
 
 ## 10. Approve Payroll And Verify Finance Journal Entry
@@ -361,7 +395,7 @@ Expected:
 Payroll run status `Requested` or `PROCESSED` hole:
 
 1. Admin role diye `/hr/payroll` open korun.
-2. Requested payroll row-e `Approve` click korun.
+2. Requested payroll row-e `Approve` click korun. HR role-e ei jaygay `Requested to Admin` disabled action show korbe.
 3. Run status `APPROVED` hoy.
 4. HR role/page theke same payroll row-e `Approved` status visible kina verify korun.
 5. Verify payroll approval-er por employee payroll email queue entries create hoy.
@@ -424,6 +458,8 @@ Expected:
 - Offboarding record create hoy.
 - Offboarding number generate hoy.
 - Status `INITIATED`.
+- Offboarding employee dropdown only `ACTIVE` employee show kore.
+- Same employee-er active offboarding already thakle duplicate offboarding create hoy na.
 - Default tasks create hoy:
   - Return Laptop & Equipment
   - Revoke Email & System Access
@@ -459,6 +495,7 @@ Expected:
 - Incomplete task thakle complete exit blocked hoy.
 - All tasks complete hole `Complete Exit` available.
 - Completion employee status update kore separation type onujayi, e.g. `RESIGNED`, `TERMINATED`, or `RETIRED`.
+- Completion active project allocation close kore and active contract terminate kore, so employee future payroll/allocation readiness theke baad pore.
 - Final settlement data remains visible.
 
 ## 14. Verify Offboarding Journal Entry
@@ -497,6 +534,7 @@ Go to `/hr/pension/provident-fund/settlements`.
 Expected:
 - Employee active PF enrollment and positive balance thakle offboarding completion PF settlement create kore.
 - No duplicate PF settlement create hoy if complete endpoint/action retried.
+- PF settlement approve/pay korle PF enrollment `SETTLED` hoy and balance zero hoy.
 - If employee PF enrolled na thake or balance zero hoy, settlement absent thaka acceptable; tester note korbe.
 
 ## 16. Final Cross-Checks
@@ -513,9 +551,13 @@ Employee:
 - Employee directory-te record ache.
 - Employee profile-e applicant selected religion copied and visible.
 - `/hr` Employee Directory-te religion-wise count summary visible.
+- `/hr` Employee Directory-te Religion filter diye employee list filter kora jay.
 - Employee status offboarding completion-er pore updated.
+- Offboarded employee notun offboarding selection list-e ar show kore na.
+- Offboarded employee-er active project allocation/active contract remain kore na.
 - Business Unit / Concern assigned.
 - Salary grade and Compensation & Benefits tab verified.
+- Provident Fund Not Enrolled hole Compensation & Benefits salary breakdown-e PF line `Not deducted - PF enroll needed` show korbe, but amount deduct korbe na; PF active enrollment korar por PF deduction amount show/apply korbe.
 - Bank details initially blank but editable.
 - Project allocation total 100%.
 - Contract active/approved.
@@ -524,6 +566,7 @@ Payroll:
 - June payroll run approved.
 - Payroll register includes employee before offboarding.
 - Payroll calculated from assigned salary grade.
+- Payroll gross salary basic salary + salary structure earning components include kore, only allowance sum hisebe show kore na.
 - Payroll approval email queue checked.
 - Payroll journal entry approved and balanced.
 
@@ -539,6 +582,8 @@ Finance:
 
 PF:
 - PF enrollment/contribution checked.
+- PF enrollment create korar sathei first effective month contribution auto-post hoy and employee profile refresh korle PF balance update dekha jay.
+- PF enrollment page theke employee profile tab-e fire ashle Retirement Benefits card latest PF balance show kore.
 - PF settlement checked after offboarding when eligible.
 
 Regression:
@@ -562,6 +607,10 @@ Regression:
 - Active department must exist before creating job posting.
 - Salary structure and salary grade must exist before offer/payroll verification.
 - Employee must have assigned salary grade for payroll calculation.
+- Salary structure-e PF component thakleo employee PF active enrollment na thakle PF amount deduct hobe na; profile-e status text `Not deducted - PF enroll needed` show korte pare.
+- PF enrollment create hole first contribution auto-create hoy; first balance check korte Contributions tab-e manual run mandatory na.
+- Employee profile summary/latest PF balance focus/refresh-e update hoy, so stale `BDT 0` thakar kotha na.
+- Religion filter public career religion values-er sathe match kore and `Islam`/`ISLAM` duplicate count kore na.
 - Business Unit / Concern and 100% active project allocation are needed for clean dimension checks.
 - Payroll approval requires Admin role after HR request.
 - SMTP config/email queue worker must be available for email send verification; otherwise verify queued entries.

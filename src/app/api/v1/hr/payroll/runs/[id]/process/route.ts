@@ -19,6 +19,12 @@ function r2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
+function isProvidentFundComponent(code: string, name?: string | null): boolean {
+  const normalizedCode = code.toUpperCase()
+  const normalizedName = (name || '').toUpperCase()
+  return ['PF', 'PF_DEDUCTION', 'PF_EMP', 'PF_ER'].includes(normalizedCode) || normalizedName.includes('PROVIDENT FUND')
+}
+
 function toDateKey(date: Date): string {
   return date.toISOString().slice(0, 10)
 }
@@ -303,13 +309,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         useStructure = true
 
         // First pass: calculate FIXED and PERCENT_OF_BASIC earnings to get subtotal for PERCENT_OF_GROSS
-        let earningsSubtotal = 0
+        let earningsSubtotal = basicSalary
         const pendingGrossLines: typeof structureLines = []
 
         for (const line of structureLines) {
           const comp = line.component
           const componentCode = comp.code.toUpperCase()
-          const isPFComponent = componentCode === 'PF' || componentCode === 'PF_DEDUCTION'
+          const isPFComponent = isProvidentFundComponent(componentCode, comp.name)
 
           if (isPFComponent && !hasActivePFEnrollment) {
             continue
@@ -349,15 +355,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           })
         }
 
-        // Calculate gross from earnings so far (for PERCENT_OF_GROSS)
-        // Gross = all earnings summed
+        // Calculate gross from basic + earnings so far (for PERCENT_OF_GROSS)
         grossSalary = earningsSubtotal
 
         // Second pass: PERCENT_OF_GROSS
         for (const line of pendingGrossLines) {
           const comp = line.component
           const componentCode = comp.code.toUpperCase()
-          const isPFComponent = componentCode === 'PF' || componentCode === 'PF_DEDUCTION'
+          const isPFComponent = isProvidentFundComponent(componentCode, comp.name)
 
           if (isPFComponent && !hasActivePFEnrollment) {
             continue
@@ -385,8 +390,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           })
         }
 
-        // Re-calculate grossSalary as sum of all EARNING lines
-        grossSalary = r2(entryLines
+        // Re-calculate grossSalary as basic + all EARNING lines.
+        // Basic salary is stored separately on PayrollEntry and most structures
+        // only define allowances/deductions, so it must be included here.
+        const hasBasicEarningLine = entryLines.some(
+          (l) => l.lineType === 'EARNING' && l.componentCode.toUpperCase() === 'BASIC'
+        )
+        grossSalary = r2((hasBasicEarningLine ? 0 : basicSalary) + entryLines
           .filter((l) => l.lineType === 'EARNING')
           .reduce((s, l) => s + l.amount, 0))
 
@@ -406,7 +416,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
               otherEarnings += line.amount
             }
           } else if (line.lineType === 'DEDUCTION') {
-            if (code === 'PF' || code === 'PF_DEDUCTION') {
+            if (isProvidentFundComponent(code, line.componentName)) {
               pfDeduction += line.amount
             } else if (code === 'TDS' || code === 'TAX') {
               tdsDeduction += line.amount
