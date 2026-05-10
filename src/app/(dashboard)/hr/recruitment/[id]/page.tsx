@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Checkbox } from '@/components/ui/checkbox'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
 import { useFormatters } from '@/hooks/use-formatters'
@@ -345,6 +346,12 @@ export default function JobPostingDetailPage() {
     })
   }
 
+  function selectedSkillLabel() {
+    if (selectedSkills.length === 0) return 'Select skills'
+    if (selectedSkills.length === 1) return selectedSkills[0]
+    return `${selectedSkills[0]} +${selectedSkills.length - 1} more`
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -638,23 +645,50 @@ export default function JobPostingDetailPage() {
               />
             </div>
             {job.requiredSkills && job.requiredSkills.length > 0 && (
-              <div className="min-w-0 flex-1 space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Skills</p>
-                <div className="flex flex-wrap gap-1">
-                  {job.requiredSkills.map((skill) => {
-                    const selected = selectedSkills.some((item) => item.toLowerCase() === skill.toLowerCase())
-                    return (
+              <div className="min-w-0 flex-1 space-y-1 md:max-w-xs">
+                <label className="text-xs font-medium text-muted-foreground">Skills</label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="h-9 w-full justify-between px-3 font-normal">
+                      <span className="truncate">{selectedSkillLabel()}</span>
+                      {selectedSkills.length > 0 && (
+                        <Badge variant="secondary" className="ml-2 shrink-0">{selectedSkills.length}</Badge>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="max-h-72 w-72 overflow-y-auto">
+                    {job.requiredSkills.map((skill) => {
+                      const selected = selectedSkills.some((item) => item.toLowerCase() === skill.toLowerCase())
+                      return (
+                        <DropdownMenuItem
+                          key={skill}
+                          onSelect={(event) => {
+                            event.preventDefault()
+                            toggleSkillFilter(skill)
+                          }}
+                          className="gap-2"
+                        >
+                          <Checkbox checked={selected} aria-hidden="true" />
+                          <span className="truncate">{skill}</span>
+                        </DropdownMenuItem>
+                      )
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                {selectedSkills.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {selectedSkills.map((skill) => (
                       <button
                         key={skill}
                         type="button"
-                        className={`rounded-md border px-2 py-1 text-xs ${selected ? 'bg-primary text-primary-foreground' : 'bg-background'}`}
                         onClick={() => toggleSkillFilter(skill)}
+                        className="rounded-md border bg-primary/10 px-2 py-0.5 text-xs text-primary"
                       >
-                        {skill}
+                        {skill} ×
                       </button>
-                    )
-                  })}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             <Button
