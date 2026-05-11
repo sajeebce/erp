@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAuthFromRequest, requireRoleFromRequest } from '@/lib/auth'
+import { invalidateStorageCache } from '@/lib/storage/storage-factory'
 import {
   apiSuccess,
   apiBadRequest,
@@ -46,37 +47,63 @@ function parseConfigValue(value: string, type: string): string | number | boolea
   return value
 }
 
+function maskSecret(secret: string | null | undefined): string {
+  if (!secret) return ''
+  if (secret.length <= 4) return '****'
+  return '*'.repeat(secret.length - 4) + secret.slice(-4)
+}
+
+function isMaskedSecret(value: unknown): boolean {
+  return typeof value === 'string' && /^\*+$/.test(value.trim())
+}
+
+async function buildSystemSettingsPayload(organizationId: string) {
+  const configs = await prisma.systemConfig.findMany({
+    where: { organizationId },
+  })
+
+  const configMap: Record<string, unknown> = {}
+  for (const [key, def] of Object.entries(SYSTEM_CONFIG_DEFAULTS)) {
+    configMap[key] = parseConfigValue(def.value, def.type)
+  }
+  for (const cfg of configs) {
+    const def = SYSTEM_CONFIG_DEFAULTS[cfg.key]
+    configMap[cfg.key] = def
+      ? parseConfigValue(cfg.value, def.type)
+      : cfg.value
+  }
+
+  const mediaSetting = await prisma.mediaSetting.findFirst({ where: { isActive: true } })
+    ?? await prisma.mediaSetting.findFirst({ orderBy: { updatedAt: 'desc' } })
+
+  configMap['storage.provider'] = mediaSetting?.provider ?? 'cloudflare_r2'
+  configMap['storage.bucketName'] = mediaSetting?.bucketName ?? ''
+  configMap['storage.region'] = mediaSetting?.region ?? 'auto'
+  configMap['storage.endpoint'] = mediaSetting?.endpoint ?? ''
+  configMap['storage.accessKeyId'] = mediaSetting?.accessKeyId ?? ''
+  configMap['storage.secretAccessKey'] = maskSecret(mediaSetting?.secretAccessKey)
+  configMap['storage.publicUrl'] = mediaSetting?.publicUrl ?? ''
+  configMap['storage.maxFileSizeMb'] = mediaSetting?.maxFileSizeMb ?? 50
+  configMap['storage.allowedMimeTypes'] = mediaSetting?.allowedMimeTypes
+    ?? 'image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  configMap['storage.isActive'] = mediaSetting?.isActive ?? false
+
+  const sequences = await prisma.numberSequence.findMany({
+    where: { organizationId },
+    orderBy: { entity: 'asc' },
+  })
+
+  return {
+    config: configMap,
+    numberSequences: sequences,
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuthFromRequest(request)
 
-    // Fetch SystemConfig key-value pairs
-    const configs = await prisma.systemConfig.findMany({
-      where: { organizationId: auth.organizationId },
-    })
-
-    // Build config object with defaults
-    const configMap: Record<string, unknown> = {}
-    for (const [key, def] of Object.entries(SYSTEM_CONFIG_DEFAULTS)) {
-      configMap[key] = parseConfigValue(def.value, def.type)
-    }
-    for (const cfg of configs) {
-      const def = SYSTEM_CONFIG_DEFAULTS[cfg.key]
-      configMap[cfg.key] = def
-        ? parseConfigValue(cfg.value, def.type)
-        : cfg.value
-    }
-
-    // Fetch NumberSequences
-    const sequences = await prisma.numberSequence.findMany({
-      where: { organizationId: auth.organizationId },
-      orderBy: { entity: 'asc' },
-    })
-
-    return apiSuccess({
-      config: configMap,
-      numberSequences: sequences,
-    })
+    return apiSuccess(await buildSystemSettingsPayload(auth.organizationId))
   } catch (error) {
     return handleRouteError(error)
   }
@@ -120,11 +147,63 @@ export async function PUT(request: NextRequest) {
           },
         })
       }
+    } else if (section === 'storage') {
+      const existing = await prisma.mediaSetting.findFirst({ orderBy: { updatedAt: 'desc' } })
+      const provider = String(data.provider || 'cloudflare_r2')
+      const bucketName = String(data.bucketName || '').trim()
+      const region = String(data.region || 'auto').trim() || 'auto'
+      let endpoint = String(data.endpoint || '').trim().replace(/\/+$/, '')
+      const trailingBucket = `/${bucketName}`
+      if (bucketName && endpoint.toLowerCase().endsWith(trailingBucket.toLowerCase())) {
+        endpoint = endpoint.slice(0, -trailingBucket.length)
+      }
+      const accessKeyId = String(data.accessKeyId || '').trim()
+      const providedSecret = String(data.secretAccessKey || '').trim()
+      const secretAccessKey = providedSecret && !isMaskedSecret(providedSecret)
+        ? providedSecret
+        : existing?.secretAccessKey
+      const publicUrl = String(data.publicUrl || '').trim()
+      const maxFileSizeMb = Number(data.maxFileSizeMb || 50)
+      const allowedMimeTypes = String(data.allowedMimeTypes || '').trim()
+      const isActive = data.isActive === undefined ? true : Boolean(data.isActive)
+
+      if (provider !== 'cloudflare_r2') {
+        return apiBadRequest('Only cloudflare_r2 storage is supported from system settings')
+      }
+      if (!bucketName || !endpoint || !accessKeyId || !secretAccessKey) {
+        return apiBadRequest('Bucket name, endpoint, access key id, and secret access key are required')
+      }
+      if (!Number.isFinite(maxFileSizeMb) || maxFileSizeMb < 1) {
+        return apiBadRequest('Max file size must be a positive number')
+      }
+
+      const payload = {
+        provider,
+        bucketName,
+        region,
+        endpoint,
+        accessKeyId,
+        secretAccessKey,
+        publicUrl: publicUrl || null,
+        maxFileSizeMb,
+        allowedMimeTypes: allowedMimeTypes || 'image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        isActive,
+      }
+
+      if (existing) {
+        await prisma.mediaSetting.update({
+          where: { id: existing.id },
+          data: payload,
+        })
+      } else {
+        await prisma.mediaSetting.create({ data: payload })
+      }
+      invalidateStorageCache()
     } else {
       // Validate section prefix
       const validPrefixes = ['security', 'email', 'tax', 'defaults', 'hrNotificationTemplate']
       if (!validPrefixes.includes(section)) {
-        return apiBadRequest(`Invalid section: ${section}. Must be one of: ${validPrefixes.join(', ')}`)
+        return apiBadRequest(`Invalid section: ${section}. Must be one of: ${[...validPrefixes, 'storage'].join(', ')}`)
       }
 
       // Upsert each key-value pair
@@ -153,31 +232,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Re-fetch and return updated data
-    const configs = await prisma.systemConfig.findMany({
-      where: { organizationId: auth.organizationId },
-    })
-
-    const configMap: Record<string, unknown> = {}
-    for (const [key, def] of Object.entries(SYSTEM_CONFIG_DEFAULTS)) {
-      configMap[key] = parseConfigValue(def.value, def.type)
-    }
-    for (const cfg of configs) {
-      const def = SYSTEM_CONFIG_DEFAULTS[cfg.key]
-      configMap[cfg.key] = def
-        ? parseConfigValue(cfg.value, def.type)
-        : cfg.value
-    }
-
-    const sequences = await prisma.numberSequence.findMany({
-      where: { organizationId: auth.organizationId },
-      orderBy: { entity: 'asc' },
-    })
-
-    return apiSuccess({
-      config: configMap,
-      numberSequences: sequences,
-    })
+    return apiSuccess(await buildSystemSettingsPayload(auth.organizationId))
   } catch (error) {
     return handleRouteError(error)
   }

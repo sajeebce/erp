@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAuthFromRequest } from '@/lib/auth'
 import { logAudit, getAuditContext } from '@/lib/audit'
+import { uploadFile } from '@/lib/storage/storage-service'
 import {
   apiCreated,
   apiSuccess,
@@ -47,16 +48,27 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return apiBadRequest('Document type is required')
     }
 
-    // Generate a placeholder file path (actual R2 upload would happen here)
-    const fileName = file ? file.name : `${type}_${Date.now()}`
-    const filePath = `uploads/hr/employees/${employeeId}/${type}/${fileName}`
+    if (!file || file.size === 0) {
+      return apiBadRequest('Document file is required')
+    }
+
+    const uploaded = await uploadFile({
+      organizationId: auth.organizationId,
+      module: 'hr',
+      entityType: 'employee_document',
+      entityId: employeeId,
+      fileName: file.name,
+      fileBuffer: Buffer.from(await file.arrayBuffer()),
+      mimeType: file.type || 'application/octet-stream',
+      uploadedById: auth.userId,
+    })
 
     const document = await prisma.employeeDocument.create({
       data: {
         employeeId,
         name: name || type,
         type,
-        filePath,
+        filePath: uploaded.storageKey,
         documentNumber: documentNumber || undefined,
         issuedDate: issuedDate ? new Date(issuedDate) : undefined,
         expiryDate: expiryDate ? new Date(expiryDate) : undefined,

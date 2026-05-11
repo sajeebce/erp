@@ -24,16 +24,24 @@ export class R2StorageAdapter implements StorageAdapter {
   private publicUrl?: string
 
   constructor(config: R2Config) {
+    // Strip any trailing slash or accidental "/bucketName" suffix users sometimes paste
+    let endpoint = config.endpoint.trim().replace(/\/+$/, '')
+    const trailingBucket = `/${config.bucketName}`
+    if (endpoint.toLowerCase().endsWith(trailingBucket.toLowerCase())) {
+      endpoint = endpoint.slice(0, -trailingBucket.length)
+    }
+
     this.client = new S3Client({
-      endpoint: config.endpoint,
+      endpoint,
       region: config.region || 'auto',
       credentials: {
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
       },
+      forcePathStyle: true,
     })
     this.bucket = config.bucketName
-    this.publicUrl = config.publicUrl
+    this.publicUrl = config.publicUrl?.replace(/\/+$/, '')
   }
 
   async upload(params: UploadParams): Promise<UploadResult> {

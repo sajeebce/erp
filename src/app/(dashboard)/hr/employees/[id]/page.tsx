@@ -622,6 +622,11 @@ export default function EmployeeDetailPage() {
   const tc = useTranslations('common')
   const { formatCurrency, formatDate, formatNumber } = useFormatters()
   const employeeId = params.id as string
+  const documentUrl = useCallback((filePath: string | null | undefined) => {
+    if (!filePath) return ''
+    if (/^(https?:|\/)/.test(filePath)) return filePath
+    return `/api/v1/hr/employees/${employeeId}/documents/download?key=${encodeURIComponent(filePath)}`
+  }, [employeeId])
 
   // ── Core State ──
   const [employee, setEmployee] = useState<Employee | null>(null)
@@ -1461,7 +1466,7 @@ export default function EmployeeDetailPage() {
             <div className="flex-shrink-0">
               <div className="relative h-20 w-20 shrink-0 group">
                 {employee.photo ? (
-                  <img src={employee.photo} alt={employee.fullName} className="h-20 w-20 rounded-full object-cover" />
+                  <img src={documentUrl(employee.photo)} alt={employee.fullName} className="h-20 w-20 rounded-full object-cover" />
                 ) : (
                   <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold">
                     {getInitials(employee.fullName)}
@@ -2302,19 +2307,20 @@ export default function EmployeeDetailPage() {
                               size="sm"
                               variant="outline"
                               className="h-7 text-xs"
-                              onClick={() => window.open(uploaded.filePath, '_blank')}
+                              onClick={() => window.open(documentUrl(uploaded.filePath), '_blank')}
                             >
                               <ExternalLink className="h-3 w-3 mr-1" />{tc('buttons.view')}
                             </Button>
-                            <label className="cursor-pointer">
-                              <Button size="sm" variant="outline" className="h-7 text-xs pointer-events-none">
-                                {tc('buttons.replace')}
-                              </Button>
-                              <input
-                                type="file"
-                                className="hidden"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0]
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                const input = document.createElement('input')
+                                input.type = 'file'
+                                input.accept = 'image/*,.pdf,.doc,.docx'
+                                input.onchange = async () => {
+                                  const file = input.files?.[0]
                                   if (!file) return
                                   const formData = new FormData()
                                   formData.append('file', file)
@@ -2325,23 +2331,30 @@ export default function EmployeeDetailPage() {
                                       method: 'PUT',
                                       body: formData,
                                     })
-                                    if (res.ok) await fetchEmployee()
-                                  } catch { /* ignore */ }
-                                  e.target.value = ''
-                                }}
-                              />
-                            </label>
+                                    const json = await res.json()
+                                    if (json.success) await fetchEmployee()
+                                    else setError(json.error?.message || 'Failed to replace document')
+                                  } catch {
+                                    setError('Failed to replace document')
+                                  }
+                                }
+                                input.click()
+                              }}
+                            >
+                              {tc('buttons.replace')}
+                            </Button>
                           </div>
                         ) : (
-                          <label className="cursor-pointer">
-                            <Button size="sm" variant="outline" className="h-7 text-xs pointer-events-none">
-                              <Plus className="h-3 w-3 mr-1" />{tc('buttons.upload')}
-                            </Button>
-                            <input
-                              type="file"
-                              className="hidden"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0]
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              const input = document.createElement('input')
+                              input.type = 'file'
+                              input.accept = 'image/*,.pdf,.doc,.docx'
+                              input.onchange = async () => {
+                                const file = input.files?.[0]
                                 if (!file) return
                                 const formData = new FormData()
                                 formData.append('file', file)
@@ -2352,12 +2365,18 @@ export default function EmployeeDetailPage() {
                                     method: 'POST',
                                     body: formData,
                                   })
-                                  if (res.ok) await fetchEmployee()
-                                } catch { /* ignore */ }
-                                e.target.value = ''
-                              }}
-                            />
-                          </label>
+                                  const json = await res.json()
+                                  if (json.success) await fetchEmployee()
+                                  else setError(json.error?.message || 'Failed to upload document')
+                                } catch {
+                                  setError('Failed to upload document')
+                                }
+                              }
+                              input.click()
+                            }}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />{tc('buttons.upload')}
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -2638,7 +2657,7 @@ export default function EmployeeDetailPage() {
                         <TableCell>
                           {edu.filePath ? (
                             <div className="flex gap-1">
-                              <Button size="icon" variant="ghost" title={t('profile.viewDocument')} onClick={() => window.open(edu.filePath!, '_blank')}><Eye className="h-4 w-4 text-green-600" /></Button>
+                              <Button size="icon" variant="ghost" title={t('profile.viewDocument')} onClick={() => window.open(documentUrl(edu.filePath), '_blank')}><Eye className="h-4 w-4 text-green-600" /></Button>
                               <Button size="icon" variant="ghost" title={t('profile.removeDocument')} onClick={() => removeRowDocument('education', edu.id)}><X className="h-3 w-3 text-muted-foreground" /></Button>
                             </div>
                           ) : (
@@ -2734,7 +2753,7 @@ export default function EmployeeDetailPage() {
                         <TableCell>
                           {wh.filePath ? (
                             <div className="flex gap-1">
-                              <Button size="icon" variant="ghost" title={t('profile.viewDocument')} onClick={() => window.open(wh.filePath!, '_blank')}><Eye className="h-4 w-4 text-green-600" /></Button>
+                              <Button size="icon" variant="ghost" title={t('profile.viewDocument')} onClick={() => window.open(documentUrl(wh.filePath), '_blank')}><Eye className="h-4 w-4 text-green-600" /></Button>
                               <Button size="icon" variant="ghost" title={t('profile.removeDocument')} onClick={() => removeRowDocument('work-history', wh.id)}><X className="h-3 w-3 text-muted-foreground" /></Button>
                             </div>
                           ) : (
@@ -2955,7 +2974,7 @@ export default function EmployeeDetailPage() {
                         <TableCell>
                           {cert.filePath ? (
                             <div className="flex gap-1">
-                              <Button size="icon" variant="ghost" title={t('profile.viewDocument')} onClick={() => window.open(cert.filePath!, '_blank')}><Eye className="h-4 w-4 text-green-600" /></Button>
+                              <Button size="icon" variant="ghost" title={t('profile.viewDocument')} onClick={() => window.open(documentUrl(cert.filePath), '_blank')}><Eye className="h-4 w-4 text-green-600" /></Button>
                               <Button size="icon" variant="ghost" title={t('profile.removeDocument')} onClick={() => removeRowDocument('certifications', cert.id)}><X className="h-3 w-3 text-muted-foreground" /></Button>
                             </div>
                           ) : (
@@ -3074,7 +3093,7 @@ export default function EmployeeDetailPage() {
                       <span className="text-xs text-muted-foreground">{t('compliance.uploadFd4')}</span>
                       {employee.fd4DocumentFilePath ? (
                         <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={() => window.open(employee.fd4DocumentFilePath!, '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
+                          <Button size="sm" variant="outline" onClick={() => window.open(documentUrl(employee.fd4DocumentFilePath), '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
                           <Button size="sm" variant="ghost" onClick={() => uploadComplianceDoc('fd4DocumentFilePath', 'NGOAB_FD4_NOTIFICATION', new File([], ''))}><X className="h-3 w-3" /></Button>
                         </div>
                       ) : (
@@ -3101,7 +3120,7 @@ export default function EmployeeDetailPage() {
                       <span className="text-xs text-muted-foreground">{t('compliance.uploadCoc')}</span>
                       {employee.codeOfConductFilePath ? (
                         <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={() => window.open(employee.codeOfConductFilePath!, '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
+                          <Button size="sm" variant="outline" onClick={() => window.open(documentUrl(employee.codeOfConductFilePath), '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
                         </div>
                       ) : (
                         <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm text-primary hover:underline">
@@ -3118,7 +3137,7 @@ export default function EmployeeDetailPage() {
                       <span className="text-xs text-muted-foreground">{t('compliance.uploadPsea')}</span>
                       {employee.pseaDeclarationFilePath ? (
                         <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={() => window.open(employee.pseaDeclarationFilePath!, '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
+                          <Button size="sm" variant="outline" onClick={() => window.open(documentUrl(employee.pseaDeclarationFilePath), '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
                         </div>
                       ) : (
                         <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm text-primary hover:underline">
@@ -3132,7 +3151,7 @@ export default function EmployeeDetailPage() {
                       <span className="text-xs text-muted-foreground">{t('compliance.uploadSafeguarding')}</span>
                       {employee.safeguardingCertFilePath ? (
                         <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={() => window.open(employee.safeguardingCertFilePath!, '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
+                          <Button size="sm" variant="outline" onClick={() => window.open(documentUrl(employee.safeguardingCertFilePath), '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
                         </div>
                       ) : (
                         <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm text-primary hover:underline">
@@ -3147,7 +3166,7 @@ export default function EmployeeDetailPage() {
                       <span className="text-xs text-muted-foreground">{t('compliance.uploadBackgroundCheck')}</span>
                       {employee.backgroundCheckFilePath ? (
                         <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={() => window.open(employee.backgroundCheckFilePath!, '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
+                          <Button size="sm" variant="outline" onClick={() => window.open(documentUrl(employee.backgroundCheckFilePath), '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
                         </div>
                       ) : (
                         <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm text-primary hover:underline">

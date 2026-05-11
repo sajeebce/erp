@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import {
   Pencil, Save, X, Loader2, Check,
   Shield, Mail, Receipt, Settings, Hash, Server, Database,
+  Cloud,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,7 +32,7 @@ interface NumberSequence {
   padLength: number
 }
 
-type SectionId = 'security' | 'email' | 'tax' | 'defaults' | 'numberSequences'
+type SectionId = 'security' | 'email' | 'storage' | 'tax' | 'defaults' | 'numberSequences'
 
 // ─── Reusable Components ───
 
@@ -486,7 +487,6 @@ export default function SystemConfigurationPage() {
           </CardContent>
         </Card>
 
-        {/* ─── Tax Configuration ─── */}
         <Card>
           <SectionHeader
             title={t('taxConfig')}
@@ -595,6 +595,101 @@ export default function SystemConfigurationPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ─── Cloudflare R2 Storage ─── */}
+      <Card>
+        <SectionHeader
+          title="Cloudflare R2 Storage"
+          description="Document and applicant file upload storage"
+          icon={Cloud}
+          editing={isEditing('storage')}
+          saving={saving}
+          onEdit={() => startEditing('storage')}
+          onSave={handleSave}
+          onCancel={cancelEditing}
+          savedLabel={isSaved('storage') ? t('saved') : null}
+          saveLabel={tc('buttons.save')}
+          cancelLabel={tc('buttons.cancel')}
+        />
+        <CardContent>
+          {isEditing('storage') ? (
+            <div className="space-y-5">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900/40 dark:bg-blue-950/30 px-3 py-2 text-xs text-blue-900 dark:text-blue-200">
+                <strong>Endpoint format:</strong> only the account URL without the bucket name —
+                e.g. <code className="font-mono">https://&lt;account-id&gt;.r2.cloudflarestorage.com</code>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <EditRow label="Provider">
+                  <SearchableSelect
+                    id="storage-provider"
+                    options={[{ value: 'cloudflare_r2', label: 'Cloudflare R2' }]}
+                    value={String(formFields.provider ?? 'cloudflare_r2')}
+                    onValueChange={v => setField('provider', v)}
+                  />
+                </EditRow>
+                <EditRow label="Bucket name">
+                  <Input value={String(formFields.bucketName ?? '')} onChange={e => setField('bucketName', e.target.value)} placeholder="cssbd-documents" />
+                </EditRow>
+                <EditRow label="Region">
+                  <Input value={String(formFields.region ?? 'auto')} onChange={e => setField('region', e.target.value)} placeholder="auto" />
+                </EditRow>
+                <EditRow label="Endpoint">
+                  <Input value={String(formFields.endpoint ?? '')} onChange={e => setField('endpoint', e.target.value)} placeholder="https://account-id.r2.cloudflarestorage.com" />
+                </EditRow>
+                <EditRow label="Public URL">
+                  <Input value={String(formFields.publicUrl ?? '')} onChange={e => setField('publicUrl', e.target.value)} placeholder="https://pub-xxxx.r2.dev" />
+                </EditRow>
+                <EditRow label="Max file size (MB)">
+                  <Input type="number" min={1} value={String(formFields.maxFileSizeMb ?? 50)} onChange={e => setField('maxFileSizeMb', Number(e.target.value))} />
+                </EditRow>
+                <EditRow label="Access key ID">
+                  <Input value={String(formFields.accessKeyId ?? '')} onChange={e => setField('accessKeyId', e.target.value)} />
+                </EditRow>
+                <EditRow label="Secret access key">
+                  <Input type="password" value={String(formFields.secretAccessKey ?? '')} onChange={e => setField('secretAccessKey', e.target.value)} placeholder="Leave masked value to keep existing" />
+                </EditRow>
+                <EditRow label="Active">
+                  <div className="flex h-10 items-center">
+                    <Switch checked={Boolean(formFields.isActive ?? true)} onCheckedChange={v => setField('isActive', v)} />
+                  </div>
+                </EditRow>
+                <EditRow label="Allowed MIME types">
+                  <Input value={String(formFields.allowedMimeTypes ?? '')} onChange={e => setField('allowedMimeTypes', e.target.value)} placeholder="image/*,application/pdf,.doc,.docx" />
+                </EditRow>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+              <div>
+                <FieldRow label="Provider" value={<Badge variant="outline">Cloudflare R2</Badge>} />
+                <FieldRow label="Status" value={
+                  <Badge variant={cfg('storage.isActive') ? 'default' : 'outline'}>
+                    {cfg('storage.isActive') ? tc('status.ACTIVE') : t('notConfigured')}
+                  </Badge>
+                } />
+                <FieldRow label="Bucket" value={String(cfg('storage.bucketName')) || <span className="text-muted-foreground italic">{t('notConfigured')}</span>} />
+                <FieldRow label="Region" value={String(cfg('storage.region')) || 'auto'} />
+              </div>
+              <div>
+                <FieldRow label="Endpoint" value={
+                  cfg('storage.endpoint')
+                    ? <span className="font-mono text-xs break-all">{String(cfg('storage.endpoint'))}</span>
+                    : <span className="text-muted-foreground italic">{t('notConfigured')}</span>
+                } />
+                <FieldRow label="Public URL" value={
+                  cfg('storage.publicUrl')
+                    ? <span className="font-mono text-xs break-all">{String(cfg('storage.publicUrl'))}</span>
+                    : <span className="text-muted-foreground italic">{t('notConfigured')}</span>
+                } />
+                <FieldRow label="Max file size" value={`${cfg('storage.maxFileSizeMb')} MB`} />
+                <FieldRow label="Allowed MIME" value={
+                  <span className="text-xs break-all">{String(cfg('storage.allowedMimeTypes')) || '—'}</span>
+                } />
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ─── Number Sequences ─── */}
       <Card>

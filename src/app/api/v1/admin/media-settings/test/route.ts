@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireSuperAdminFromRequest } from '@/lib/auth/session'
+import { getStorageAdapter } from '@/lib/storage/storage-factory'
 import {
   apiSuccess,
   apiNotFound,
@@ -18,10 +19,11 @@ export async function POST(request: NextRequest) {
       return apiNotFound('No media settings configured. Please configure media settings first.')
     }
 
-    // TODO: Implement actual R2/S3 connection test when storage adapter is built
-    // For now, return success with the configured provider info
+    const result = await getStorageAdapter().then((adapter) => adapter.testConnection())
+
     return apiSuccess({
-      connected: true,
+      connected: result.success,
+      error: result.error,
       provider: settings.provider,
       bucket: settings.bucketName,
     })

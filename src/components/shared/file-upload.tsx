@@ -55,6 +55,7 @@ export function FileUpload({ entityType, entityId, module, readOnly }: FileUploa
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   // Fetch existing attachments
   const fetchAttachments = useCallback(() => {
@@ -70,6 +71,7 @@ export function FileUpload({ entityType, entityId, module, readOnly }: FileUploa
   useEffect(() => { fetchAttachments() }, [fetchAttachments])
 
   async function uploadFile(file: File) {
+    setUploadError(null)
     if (!entityId) {
       // Queue for later — entity not yet saved
       setPendingFiles(prev => [...prev, {
@@ -91,9 +93,11 @@ export function FileUpload({ entityType, entityId, module, readOnly }: FileUploa
       const json = await res.json()
       if (json.success) {
         fetchAttachments()
+      } else {
+        setUploadError(json.error?.message || 'Upload failed')
       }
     } catch {
-      // ignore
+      setUploadError('Upload failed')
     }
   }
 
@@ -173,6 +177,12 @@ export function FileUpload({ entityType, entityId, module, readOnly }: FileUploa
 
   return (
     <div className="space-y-3">
+      {uploadError && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {uploadError}
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium">
           {t('attachments')} {totalItems > 0 && <span className="text-muted-foreground">({totalItems})</span>}

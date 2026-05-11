@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { apiCreated, apiBadRequest, apiNotFound, handleRouteError } from '@/lib/api-response'
 import { autoScoreApplication } from '@/lib/recruitment-scoring'
-import { getStorageAdapter } from '@/lib/storage/storage-factory'
+import { getRequiredUploadStorageAdapter } from '@/lib/storage/storage-factory'
 import { queueEmail } from '@/lib/email-queue'
 import { Prisma } from '@prisma/client'
 import { randomUUID } from 'crypto'
@@ -213,8 +213,10 @@ async function uploadApplicationDocument(
   label: string
 ) {
   if (!file || file.size === 0) return null
-  if (file.size > MAX_DOCUMENT_SIZE) {
-    throw new Error(`${label} file size exceeds 10MB`)
+  const mediaSetting = await prisma.mediaSetting.findFirst({ where: { isActive: true } })
+  const maxSizeMb = mediaSetting?.maxFileSizeMb ?? MAX_DOCUMENT_SIZE / (1024 * 1024)
+  if (file.size > maxSizeMb * 1024 * 1024) {
+    throw new Error(`${label} file size exceeds ${maxSizeMb}MB`)
   }
   if (!ALLOWED_DOCUMENT_TYPES.has(file.type)) {
     throw new Error(`${label} must be a PDF, DOC, or DOCX file`)
@@ -225,7 +227,7 @@ async function uploadApplicationDocument(
   const month = String(now.getMonth() + 1).padStart(2, '0')
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
   const storageKey = `${organizationId}/hr/recruitment/${year}/${month}/${applicationId}/${randomUUID()}-${safeName}`
-  const adapter = await getStorageAdapter()
+  const adapter = await getRequiredUploadStorageAdapter()
   await adapter.upload({
     key: storageKey,
     body: Buffer.from(await file.arrayBuffer()),
@@ -358,6 +360,7 @@ export async function POST(
         requiredSkills: true,
         requiredLanguages: true,
         requiredCertifications: true,
+        requireCoverLetter: true,
       },
     })
     if (!job) return apiNotFound('Job posting not found')
@@ -395,6 +398,9 @@ export async function POST(
     }
     if (job.minExperience !== null && job.minExperience !== undefined && declaredExperienceYears === null) {
       return apiBadRequest('Experience declaration is required')
+    }
+    if (job.requireCoverLetter && (!coverLetterFile || coverLetterFile.size === 0)) {
+      return apiBadRequest('Cover letter file is required')
     }
 
     const skillsError = assertStringSubset(declaredSkills, job.requiredSkills as string[] | null, 'Declared skills')

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import { prisma } from '@/lib/db'
-import { getStorageAdapter } from './storage-factory'
+import { getRequiredUploadStorageAdapter, getStorageAdapter } from './storage-factory'
 
 interface UploadFileParams {
   organizationId: string
@@ -47,7 +47,7 @@ export async function uploadFile(params: UploadFileParams): Promise<UploadedFile
   const storageKey = `${params.organizationId}/${params.module}/${year}/${month}/${uuid}-${safeName}`
 
   // 4. Upload via adapter
-  const adapter = await getStorageAdapter()
+  const adapter = await getRequiredUploadStorageAdapter()
   const result = await adapter.upload({
     key: storageKey,
     body: params.fileBuffer,

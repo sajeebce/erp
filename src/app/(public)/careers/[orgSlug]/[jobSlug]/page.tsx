@@ -23,6 +23,7 @@ import {
   Languages,
   Award,
   CheckCircle,
+  X,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -150,6 +151,77 @@ function toggleListItem(list: string[], item: string, checked: boolean) {
   return list.filter((value) => value !== item)
 }
 
+function ApplicationFileDropZone({
+  id,
+  label,
+  required,
+  file,
+  onFileChange,
+}: {
+  id: string
+  label: string
+  required?: boolean
+  file: File | null
+  onFileChange: (file: File | null) => void
+}) {
+  const [dragOver, setDragOver] = useState(false)
+
+  function handleFiles(files: FileList | null) {
+    onFileChange(files?.[0] || null)
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>
+        {label} {required && <span className="text-destructive">*</span>}
+      </Label>
+      <label
+        htmlFor={id}
+        onDrop={(event) => {
+          event.preventDefault()
+          setDragOver(false)
+          handleFiles(event.dataTransfer.files)
+        }}
+        onDragOver={(event) => {
+          event.preventDefault()
+          setDragOver(true)
+        }}
+        onDragLeave={() => setDragOver(false)}
+        className={`flex min-h-[132px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
+          dragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'
+        }`}
+      >
+        <input
+          id={id}
+          type="file"
+          accept=".pdf,.doc,.docx"
+          className="hidden"
+          onChange={(event) => handleFiles(event.target.files)}
+        />
+        {file ? (
+          <>
+            <CheckCircle className="mb-2 h-6 w-6 text-emerald-600" />
+            <span className="max-w-full truncate text-sm font-medium">{file.name}</span>
+            <span className="mt-1 text-xs text-muted-foreground">{(file.size / (1024 * 1024)).toFixed(2)} MB</span>
+          </>
+        ) : (
+          <>
+            <Upload className="mb-2 h-6 w-6 text-muted-foreground" />
+            <span className="text-sm font-medium">Drag and drop or upload</span>
+            <span className="mt-1 text-xs text-muted-foreground">PDF, DOC, DOCX</span>
+          </>
+        )}
+      </label>
+      {file && (
+        <Button type="button" variant="ghost" size="sm" className="h-8 px-2" onClick={() => onFileChange(null)}>
+          <X className="mr-1 h-3.5 w-3.5" />
+          Remove
+        </Button>
+      )}
+    </div>
+  )
+}
+
 export default function PublicJobDetailPage() {
   const params = useParams<{ orgSlug: string; jobSlug: string }>()
   const [job, setJob] = useState<JobDetail | null>(null)
@@ -247,6 +319,11 @@ export default function PublicJobDetailPage() {
 
       if (!personalInfo.religion) {
         setSubmitError('Please select religion.')
+        return
+      }
+
+      if (job.requireCoverLetter && !coverLetterFile) {
+        setSubmitError('Please upload a cover letter.')
         return
       }
 
@@ -1154,41 +1231,21 @@ export default function PublicJobDetailPage() {
 
               {/* File Uploads */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cvFile">
-                    CV / Resume
-                  </Label>
-                  <div className="border-2 border-dashed rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
-                    <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-                    <Input
-                      id="cvFile"
-                      type="file"
-                      accept=".pdf,.doc,.docx"
-                      className="cursor-pointer"
-                      onChange={(e) => setCvFile(e.target.files?.[0] || null)}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX</p>
-                  </div>
-                </div>
+                <ApplicationFileDropZone
+                  id="cvFile"
+                  label="CV / Resume"
+                  file={cvFile}
+                  onFileChange={setCvFile}
+                />
 
                 {job.requireCoverLetter && (
-                  <div className="space-y-2">
-                    <Label htmlFor="coverLetterFile">
-                      Cover Letter <span className="text-destructive">*</span>
-                    </Label>
-                    <div className="border-2 border-dashed rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
-                      <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-                      <Input
-                        id="coverLetterFile"
-                        type="file"
-                        required={job.requireCoverLetter}
-                        accept=".pdf,.doc,.docx"
-                        className="cursor-pointer"
-                        onChange={(e) => setCoverLetterFile(e.target.files?.[0] || null)}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX</p>
-                    </div>
-                  </div>
+                  <ApplicationFileDropZone
+                    id="coverLetterFile"
+                    label="Cover Letter"
+                    required={job.requireCoverLetter}
+                    file={coverLetterFile}
+                    onFileChange={setCoverLetterFile}
+                  />
                 )}
               </div>
 

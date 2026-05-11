@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireSuperAdminFromRequest } from '@/lib/auth/session'
+import { invalidateStorageCache } from '@/lib/storage/storage-factory'
 import {
   apiSuccess,
   apiBadRequest,
@@ -92,6 +93,7 @@ export async function PUT(request: NextRequest) {
     } else {
       settings = await prisma.mediaSetting.create({ data })
     }
+    invalidateStorageCache()
 
     await prisma.superAdminAuditLog.create({
       data: {
