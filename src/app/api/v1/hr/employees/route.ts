@@ -136,10 +136,18 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuthFromRequest(request)
     const body = await request.json()
 
-    const { fullName, departmentId, designationId, joiningDate, primaryBusinessUnitId, workLocationId } = body
+    const {
+      fullName,
+      departmentId,
+      designationId,
+      joiningDate,
+      primaryBusinessUnitId,
+      workLocationId,
+      projectAllocationProjectId,
+    } = body
 
-    if (!fullName || !departmentId || !designationId || !joiningDate) {
-      return apiBadRequest('fullName, departmentId, designationId, and joiningDate are required')
+    if (!fullName || !departmentId || !designationId || !joiningDate || !primaryBusinessUnitId || !projectAllocationProjectId) {
+      return apiBadRequest('fullName, departmentId, designationId, joiningDate, primaryBusinessUnitId, and projectAllocationProjectId are required')
     }
 
     // Validate department belongs to org
@@ -156,12 +164,40 @@ export async function POST(request: NextRequest) {
     })
     if (!desig) return apiBadRequest('Designation not found')
 
-    if (primaryBusinessUnitId) {
-      const businessUnit = await prisma.businessUnit.findFirst({
-        where: { id: primaryBusinessUnitId, organizationId: auth.organizationId },
-        select: { id: true },
+    const businessUnit = await prisma.businessUnit.findFirst({
+      where: { id: primaryBusinessUnitId, organizationId: auth.organizationId, isActive: true },
+      select: { id: true },
+    })
+    if (!businessUnit) return apiBadRequest('Active business unit not found in this organization')
+
+    const allocationProject = await prisma.project.findFirst({
+      where: {
+        id: projectAllocationProjectId,
+        organizationId: auth.organizationId,
+        deletedAt: null,
+        status: 'ACTIVE',
+      },
+      select: { id: true },
+    })
+    if (!allocationProject) return apiBadRequest('Active project not found in this organization')
+
+    const allocationPercentage = Number(body.projectAllocationPercentage ?? 100)
+    if (!Number.isFinite(allocationPercentage) || allocationPercentage <= 0 || allocationPercentage > 100) {
+      return apiBadRequest('projectAllocationPercentage must be between 1 and 100')
+    }
+
+    if (body.convertedFromApplicationId) {
+      const existingConvertedEmployee = await prisma.employee.findFirst({
+        where: {
+          organizationId: auth.organizationId,
+          convertedFromApplicationId: body.convertedFromApplicationId,
+          deletedAt: null,
+        },
+        select: { id: true, employeeNo: true },
       })
-      if (!businessUnit) return apiBadRequest('Business unit not found in this organization')
+      if (existingConvertedEmployee) {
+        return apiBadRequest(`Application is already converted to employee ${existingConvertedEmployee.employeeNo}`)
+      }
     }
 
     if (workLocationId) {
@@ -292,6 +328,17 @@ export async function POST(request: NextRequest) {
         await tx.employeeWorkHistory.createMany({ data: previousEmployments })
       }
 
+      await tx.employeeProjectAllocation.create({
+        data: {
+          employeeId: createdEmployee.id,
+          projectId: projectAllocationProjectId,
+          percentage: new Prisma.Decimal(allocationPercentage),
+          startDate: new Date(joiningDate),
+          endDate: body.contractEndDate ? new Date(body.contractEndDate) : null,
+          isActive: true,
+        },
+      })
+
       const emergencyContacts = asRecordArray(body.emergencyContacts)
         .map((record, index) => ({
           employeeId: createdEmployee.id,
@@ -368,9 +415,10 @@ export async function POST(request: NextRequest) {
           contractType: body.employmentType || 'FULL_TIME',
           title: `${body.fullName} - Employment Contract`,
           startDate: new Date(body.joiningDate),
-          endDate: body.endDate ? new Date(body.endDate) : null,
+          endDate: body.contractEndDate ? new Date(body.contractEndDate) : body.endDate ? new Date(body.endDate) : null,
           basicSalary: body.basicSalary ? new Prisma.Decimal(body.basicSalary) : new Prisma.Decimal(0),
-          status: 'DRAFT',
+          projectId: projectAllocationProjectId,
+          status: 'ACTIVE',
         },
       })
 

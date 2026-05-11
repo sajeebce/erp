@@ -82,7 +82,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return apiNotFound('Application not found')
     }
 
-    return apiSuccess(application)
+    const convertedEmployee = await prisma.employee.findFirst({
+      where: {
+        organizationId: auth.organizationId,
+        convertedFromApplicationId: application.id,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        employeeNo: true,
+        fullName: true,
+      },
+    })
+
+    return apiSuccess({ ...application, convertedEmployee })
   } catch (error) {
     return handleRouteError(error)
   }

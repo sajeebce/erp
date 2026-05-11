@@ -38,6 +38,20 @@ interface SalaryGrade {
   steps?: { stepNumber: number; basicSalary: number | string }[]
 }
 
+interface BusinessUnit {
+  id: string
+  code: string
+  name: string
+  shortName?: string | null
+}
+
+interface ProjectOption {
+  id: string
+  projectNo?: string
+  name: string
+  status?: string
+}
+
 type CandidateRecord = Record<string, unknown>
 
 function normalizeGender(value: unknown) {
@@ -74,8 +88,12 @@ export default function NewEmployeePage() {
   const [phone, setPhone] = useState('')
   const [departmentId, setDepartmentId] = useState('')
   const [designationId, setDesignationId] = useState('')
+  const [primaryBusinessUnitId, setPrimaryBusinessUnitId] = useState('')
   const [employmentType, setEmploymentType] = useState('FULL_TIME')
   const [joiningDate, setJoiningDate] = useState('')
+  const [contractEndDate, setContractEndDate] = useState('')
+  const [projectAllocationProjectId, setProjectAllocationProjectId] = useState('')
+  const [projectAllocationPercentage, setProjectAllocationPercentage] = useState('100')
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [gender, setGender] = useState('')
   const [nationality, setNationality] = useState('Bangladeshi')
@@ -104,6 +122,8 @@ export default function NewEmployeePage() {
   const [departments, setDepartments] = useState<Department[]>([])
   const [designations, setDesignations] = useState<Designation[]>([])
   const [salaryGrades, setSalaryGrades] = useState<SalaryGrade[]>([])
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([])
+  const [projectOptions, setProjectOptions] = useState<ProjectOption[]>([])
 
   useEffect(() => {
     fetch('/api/v1/hr/departments')
@@ -119,6 +139,16 @@ export default function NewEmployeePage() {
     fetch('/api/v1/hr/salary-grades?isActive=true&limit=100')
       .then(res => res.json())
       .then(json => { if (json.success) setSalaryGrades(json.data) })
+      .catch(() => {})
+
+    fetch('/api/v1/settings/business-units?isActive=true')
+      .then(res => res.json())
+      .then(json => { if (json.success) setBusinessUnits(json.data) })
+      .catch(() => {})
+
+    fetch('/api/v1/hr/projects/options?status=ACTIVE')
+      .then(res => res.json())
+      .then(json => { if (json.success) setProjectOptions(json.data) })
       .catch(() => {})
   }, [])
 
@@ -177,8 +207,13 @@ export default function NewEmployeePage() {
   }, [fromApplicationId])
 
   function validate(): boolean {
-    if (!fullName.trim() || !departmentId || !designationId || !joiningDate) {
+    if (!fullName.trim() || !departmentId || !designationId || !joiningDate || !primaryBusinessUnitId || !projectAllocationProjectId) {
       setError(t('form.requiredFields'))
+      return false
+    }
+    const allocation = Number(projectAllocationPercentage)
+    if (!Number.isFinite(allocation) || allocation <= 0 || allocation > 100) {
+      setError('Project allocation must be between 1 and 100 percent')
       return false
     }
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -199,9 +234,14 @@ export default function NewEmployeePage() {
       fullName: fullName.trim(),
       departmentId,
       designationId,
+      primaryBusinessUnitId,
       joiningDate,
       employmentType,
+      contractStatus: 'ACTIVE',
+      projectAllocationProjectId,
+      projectAllocationPercentage: parseFloat(projectAllocationPercentage),
     }
+    if (contractEndDate) payload.contractEndDate = contractEndDate
     if (localizedName.trim()) payload.localizedName = localizedName.trim()
     if (email.trim()) payload.email = email.trim()
     if (phone.trim()) payload.phone = phone.trim()
@@ -442,6 +482,37 @@ export default function NewEmployeePage() {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="emp-business-unit">Business Unit / Concern *</Label>
+              <SearchableSelect
+                id="emp-business-unit"
+                options={businessUnits.map((unit) => ({
+                  value: unit.id,
+                  label: `${unit.code} - ${unit.name}`,
+                  description: unit.shortName || undefined,
+                }))}
+                value={primaryBusinessUnitId}
+                onValueChange={setPrimaryBusinessUnitId}
+                placeholder="Select business unit"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="emp-project">Project Allocation *</Label>
+              <SearchableSelect
+                id="emp-project"
+                options={projectOptions.map((project) => ({
+                  value: project.id,
+                  label: `${project.projectNo ? `${project.projectNo} - ` : ''}${project.name}`,
+                  description: project.status,
+                }))}
+                value={projectAllocationProjectId}
+                onValueChange={setProjectAllocationProjectId}
+                placeholder="Select active project"
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="emp-type">{t('fields.employmentType')} *</Label>
@@ -471,6 +542,40 @@ export default function NewEmployeePage() {
                 step="0.01"
                 value={basicSalary}
                 onChange={(e) => setBasicSalary(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="emp-allocation-percent">Allocation % *</Label>
+              <Input
+                id="emp-allocation-percent"
+                type="number"
+                min="1"
+                max="100"
+                step="0.01"
+                value={projectAllocationPercentage}
+                onChange={(e) => setProjectAllocationPercentage(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="emp-contract-status">Active Contract *</Label>
+              <Input
+                id="emp-contract-status"
+                value="ACTIVE"
+                readOnly
+                className="bg-muted"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="emp-contract-end">Contract End Date</Label>
+              <Input
+                id="emp-contract-end"
+                type="date"
+                value={contractEndDate}
+                onChange={(e) => setContractEndDate(e.target.value)}
               />
             </div>
           </div>

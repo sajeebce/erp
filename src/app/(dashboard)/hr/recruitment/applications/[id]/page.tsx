@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import {
   ArrowLeft, Loader2, ChevronRight, XCircle, CalendarPlus,
-  Calculator, GraduationCap, BriefcaseBusiness, Code2, Languages, Award, UserCheck,
-  FileText, ExternalLink, User,
+  GraduationCap, BriefcaseBusiness, Code2, Languages, Award, UserCheck,
+  FileText, ExternalLink, User, Copy, CheckCircle2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -153,6 +153,11 @@ interface ApplicationDetail {
   offerLetterPath?: string | null
   offerLetterUrl?: string | null
   offerSalaryGrade?: SalaryGrade | null
+  convertedEmployee?: {
+    id: string
+    employeeNo: string
+    fullName: string
+  } | null
 }
 
 interface SalaryStructureLine {
@@ -259,6 +264,7 @@ export default function ApplicationDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [actionLoading, setActionLoading] = useState('')
+  const [selectedStage, setSelectedStage] = useState<string | null>(null)
   const [offerGradeId, setOfferGradeId] = useState('')
   const [offerSalaryAmount, setOfferSalaryAmount] = useState('')
   const [offerMessage, setOfferMessage] = useState('')
@@ -307,6 +313,13 @@ export default function ApplicationDetailPage() {
 
   useEffect(() => {
     if (!application) return
+    const actualStage = application.stage || application.status || 'APPLIED'
+    setSelectedStage((current) => {
+      const currentIndex = PIPELINE_STAGES.indexOf(current as typeof PIPELINE_STAGES[number])
+      const actualIndex = PIPELINE_STAGES.indexOf(actualStage as typeof PIPELINE_STAGES[number])
+      if (currentIndex >= 0 && actualIndex >= 0 && currentIndex <= actualIndex) return current
+      return actualStage
+    })
     setOfferGradeId(application.offerSalaryGradeId || '')
     setOfferSalaryAmount(application.offeredSalary ? String(application.offeredSalary) : '')
     setOfferMessage(application.offerMessage || '')
@@ -333,27 +346,17 @@ export default function ApplicationDetailPage() {
     setOfferSalaryAmount(grade ? String(getDefaultGradeSalary(grade)) : '')
   }
 
-  async function handleScore() {
-    setActionLoading('score')
-    try {
-      const res = await fetch(`/api/v1/hr/recruitment/applications/${params.id}/score`, { method: 'POST' })
-      const json = await res.json()
-      if (res.ok && json.success) await fetchApplication()
-      else setError(json.error?.message || t('recruitment.form.actionFailed'))
-    } catch {
-      setError(t('recruitment.form.actionFailed'))
-    } finally {
-      setActionLoading('')
-    }
-  }
-
   async function handleAdvance() {
     setActionLoading('advance')
     try {
       const res = await fetch(`/api/v1/hr/recruitment/applications/${params.id}/advance`, { method: 'POST' })
       const json = await res.json()
-      if (res.ok && json.success) await fetchApplication()
-      else setError(json.error?.message || t('recruitment.form.actionFailed'))
+      if (res.ok && json.success) {
+        await fetchApplication()
+        setSelectedStage(json.data.stage || json.data.status || null)
+      } else {
+        setError(json.error?.message || t('recruitment.form.actionFailed'))
+      }
     } catch {
       setError(t('recruitment.form.actionFailed'))
     } finally {
@@ -490,10 +493,17 @@ export default function ApplicationDetailPage() {
   }
 
   const stageIndex = getCurrentStageIndex()
-  const currentStage = application.stage || application.status || 'APPLIED'
+  const actualCurrentStage = application.stage || application.status || 'APPLIED'
+  const viewedStage = selectedStage || actualCurrentStage
+  const viewedStageIndex = PIPELINE_STAGES.indexOf(viewedStage as typeof PIPELINE_STAGES[number])
+  const currentStage = viewedStageIndex >= 0 ? viewedStage : actualCurrentStage
+  const isCurrentStageView = currentStage === actualCurrentStage
+  const isConvertedEmployee = Boolean(application.convertedEmployee)
+  const canEditCurrentStage = isCurrentStageView && !isConvertedEmployee
   const isOfferStage = currentStage === 'OFFER'
-  const isRejected = currentStage === 'REJECTED'
-  const isHired = currentStage === 'HIRED'
+  const isRejected = actualCurrentStage === 'REJECTED'
+  const isHired = actualCurrentStage === 'HIRED'
+  const canShowScheduleInterview = canEditCurrentStage && actualCurrentStage === 'TECHNICAL_TEST'
   const declaration = buildDeclaration(application)
   const cvUrl = `/api/v1/hr/recruitment/applications/${application.id}/documents/cv`
   const coverLetterUrl = `/api/v1/hr/recruitment/applications/${application.id}/documents/cover-letter`
@@ -564,21 +574,26 @@ export default function ApplicationDetailPage() {
         <CardContent className="py-4">
           <div className="flex items-center gap-1 overflow-x-auto">
             {PIPELINE_STAGES.map((stage, idx) => {
-              const isCurrent = currentStage === stage
+              const isSelected = currentStage === stage
+              const isCurrent = actualCurrentStage === stage
               const isPast = idx < stageIndex
+              const canOpenStage = idx <= stageIndex
               return (
                 <div key={stage} className="flex items-center gap-1 flex-shrink-0">
-                  <div
+                  <button
+                    type="button"
+                    disabled={!canOpenStage}
+                    onClick={() => canOpenStage && setSelectedStage(stage)}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                      isCurrent
+                      isSelected
                         ? 'bg-primary text-primary-foreground'
-                        : isPast
+                        : isPast || isCurrent
                           ? 'bg-primary/20 text-primary'
                           : 'bg-muted text-muted-foreground'
-                    } ${isRejected ? 'opacity-50' : ''}`}
+                    } ${isRejected ? 'opacity-50' : ''} ${canOpenStage ? 'cursor-pointer hover:bg-primary/30' : 'cursor-not-allowed'}`}
                   >
                     {t(`recruitment.stages.${stage}`)}
-                  </div>
+                  </button>
                   {idx < PIPELINE_STAGES.length - 1 && (
                     <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                   )}
@@ -596,6 +611,12 @@ export default function ApplicationDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {!canEditCurrentStage && (
+        <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+          Viewing {PIPELINE_STAGES.includes(currentStage as typeof PIPELINE_STAGES[number]) ? t(`recruitment.stages.${currentStage}`) : currentStage} in read-only mode.
+        </div>
+      )}
 
       {isOfferStage ? (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
@@ -624,6 +645,7 @@ export default function ApplicationDetailPage() {
                 <SearchableSelect
                   value={offerGradeId}
                   onValueChange={handleOfferGradeChange}
+                  disabled={!canEditCurrentStage}
                   options={salaryGrades.map((grade) => ({
                     value: grade.id,
                     label: `${grade.code} - ${grade.name}`,
@@ -641,6 +663,7 @@ export default function ApplicationDetailPage() {
                       <SearchableSelect
                         value={offerSalaryAmount || String(getDefaultGradeSalary(selectedOfferGrade))}
                         onValueChange={setOfferSalaryAmount}
+                        disabled={!canEditCurrentStage}
                         options={selectedOfferSteps.map((step) => ({
                           value: String(step.basicSalary),
                           label: `Pay Level ${step.stepNumber}`,
@@ -684,6 +707,7 @@ export default function ApplicationDetailPage() {
                           min={0}
                           className="h-8"
                           value={leave.days}
+                          disabled={!canEditCurrentStage}
                           onChange={(event) => setOfferLeaveDays(leave.name, event.target.value)}
                         />
                         <span className="text-xs text-muted-foreground">days</span>
@@ -699,15 +723,18 @@ export default function ApplicationDetailPage() {
                   id="offer-message"
                   value={offerMessage}
                   onChange={(event) => setOfferMessage(event.target.value)}
+                  disabled={!canEditCurrentStage}
                   rows={6}
                   placeholder="Write a custom message for the applicant offer email..."
                 />
               </div>
 
-              <Button className="w-full sm:w-auto" onClick={handleSaveOffer} disabled={actionLoading === 'offer'}>
-                {actionLoading === 'offer' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save Offer
-              </Button>
+              {canEditCurrentStage && (
+                <Button className="w-full sm:w-auto" onClick={handleSaveOffer} disabled={actionLoading === 'offer'}>
+                  {actionLoading === 'offer' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Save Offer
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -732,7 +759,7 @@ export default function ApplicationDetailPage() {
               </CardContent>
             </Card>
 
-            {!isRejected && !isHired && (
+            {!isRejected && !isHired && canEditCurrentStage && (
               <Card>
                 <CardContent className="pt-4 space-y-2">
                   <Button className="w-full" size="sm" onClick={handleAdvance} disabled={!!actionLoading}>
@@ -1231,13 +1258,37 @@ export default function ApplicationDetailPage() {
               {application.applicantEmail && (
                 <div>
                   <span className="text-muted-foreground">{t('fields.email')}:</span>{' '}
-                  <span>{application.applicantEmail}</span>
+                  <a className="font-medium text-primary hover:underline" href={`mailto:${application.applicantEmail}`}>
+                    {application.applicantEmail}
+                  </a>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="ml-1 h-7 w-7"
+                    title="Copy email"
+                    onClick={() => navigator.clipboard?.writeText(application.applicantEmail)}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               )}
               {application.applicantPhone && (
                 <div>
                   <span className="text-muted-foreground">{t('fields.phone')}:</span>{' '}
-                  <span>{application.applicantPhone}</span>
+                  <a className="font-medium text-primary hover:underline" href={`tel:${application.applicantPhone}`}>
+                    {application.applicantPhone}
+                  </a>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="ml-1 h-7 w-7"
+                    title="Copy phone"
+                    onClick={() => navigator.clipboard?.writeText(application.applicantPhone || '')}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -1253,6 +1304,7 @@ export default function ApplicationDetailPage() {
                   <SearchableSelect
                     value={offerGradeId}
                     onValueChange={handleOfferGradeChange}
+                    disabled={!canEditCurrentStage}
                     options={salaryGrades.map((grade) => ({
                       value: grade.id,
                       label: `${grade.code} - ${grade.name}`,
@@ -1270,6 +1322,7 @@ export default function ApplicationDetailPage() {
                         <SearchableSelect
                           value={offerSalaryAmount || String(getDefaultGradeSalary(selectedOfferGrade))}
                           onValueChange={setOfferSalaryAmount}
+                          disabled={!canEditCurrentStage}
                           options={selectedOfferSteps.map((step) => ({
                             value: String(step.basicSalary),
                             label: `Pay Level ${step.stepNumber}`,
@@ -1313,6 +1366,7 @@ export default function ApplicationDetailPage() {
                             min={0}
                             className="h-8"
                             value={leave.days}
+                            disabled={!canEditCurrentStage}
                             onChange={(event) => setOfferLeaveDays(leave.name, event.target.value)}
                           />
                           <span className="text-xs text-muted-foreground">days</span>
@@ -1328,36 +1382,46 @@ export default function ApplicationDetailPage() {
                     id="offer-message"
                     value={offerMessage}
                     onChange={(event) => setOfferMessage(event.target.value)}
+                    disabled={!canEditCurrentStage}
                     rows={4}
                     placeholder="Write a custom message for the applicant offer email..."
                   />
                 </div>
 
-                <Button className="w-full" onClick={handleSaveOffer} disabled={actionLoading === 'offer'}>
-                  {actionLoading === 'offer' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Save Offer
-                </Button>
+                {canEditCurrentStage && (
+                  <Button className="w-full" onClick={handleSaveOffer} disabled={actionLoading === 'offer'}>
+                    {actionLoading === 'offer' && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Save Offer
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}
 
           {/* Convert to Employee */}
-          {isHired && (
+          {isHired && currentStage === 'HIRED' && (
             <Card>
               <CardContent className="pt-4 space-y-2">
-                <Button
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  onClick={() => router.push(`/hr/employees/new?fromApplication=${application.id}`)}
-                >
-                  <UserCheck className="h-4 w-4 mr-2" />
-                  Convert to Employee
-                </Button>
+                {application.convertedEmployee ? (
+                  <div className="flex items-center justify-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-700">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Employee: {application.convertedEmployee.employeeNo}
+                  </div>
+                ) : (
+                  <Button
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    onClick={() => router.push(`/hr/employees/new?fromApplication=${application.id}`)}
+                  >
+                    <UserCheck className="h-4 w-4 mr-2" />
+                    Convert to Employee
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}
 
           {/* Action Buttons */}
-          {!isRejected && !isHired && (
+          {!isRejected && !isHired && canEditCurrentStage && (
             <Card>
               <CardContent className="pt-4 space-y-2">
                 <Button className="w-full" size="sm" onClick={handleAdvance} disabled={!!actionLoading}>
@@ -1369,19 +1433,12 @@ export default function ApplicationDetailPage() {
                   {t('recruitment.advanceToNext')}
                 </Button>
 
-                <Button className="w-full" variant="outline" size="sm" onClick={handleScore} disabled={!!actionLoading}>
-                  {actionLoading === 'score' ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Calculator className="h-4 w-4 mr-2" />
-                  )}
-                  {t('recruitment.scoreCV')}
-                </Button>
-
-                <Button className="w-full" variant="outline" size="sm" onClick={() => setShowScheduleDialog(true)} disabled={!!actionLoading}>
-                  <CalendarPlus className="h-4 w-4 mr-2" />
-                  {t('recruitment.scheduleInterview')}
-                </Button>
+                {canShowScheduleInterview && (
+                  <Button className="w-full" variant="outline" size="sm" onClick={() => setShowScheduleDialog(true)} disabled={!!actionLoading}>
+                    <CalendarPlus className="h-4 w-4 mr-2" />
+                    {t('recruitment.scheduleInterview')}
+                  </Button>
+                )}
 
                 <Button className="w-full" variant="destructive" size="sm" onClick={() => setShowRejectDialog(true)} disabled={!!actionLoading}>
                   <XCircle className="h-4 w-4 mr-2" />

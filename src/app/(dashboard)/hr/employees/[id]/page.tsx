@@ -476,11 +476,13 @@ const BLOOD_GROUP_KEYS: Record<string, string> = {
 // ─── Field Display Component ────────────────────────────────────────
 
 function Field({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
-  if (value === null || value === undefined || value === '') return null
+  const isBlank = value === null || value === undefined || value === ''
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span className={`text-sm font-medium ${mono ? 'font-mono' : ''}`}>{value}</span>
+      <span className={`min-h-5 text-sm font-medium ${mono ? 'font-mono' : ''}`}>
+        {isBlank ? '\u00a0' : value}
+      </span>
     </div>
   )
 }
@@ -530,6 +532,10 @@ function ScrollableTabBar({
     }
   }, [updateScrollState])
 
+  const stopAutoScroll = useCallback(() => {
+    if (scrollIntervalRef.current) { clearInterval(scrollIntervalRef.current); scrollIntervalRef.current = null }
+  }, [])
+
   const startAutoScroll = useCallback((direction: 'left' | 'right') => {
     stopAutoScroll()
     scrollIntervalRef.current = setInterval(() => {
@@ -537,11 +543,7 @@ function ScrollableTabBar({
       if (!el) return
       el.scrollLeft += direction === 'right' ? 3 : -3
     }, 8)
-  }, [])
-
-  const stopAutoScroll = useCallback(() => {
-    if (scrollIntervalRef.current) { clearInterval(scrollIntervalRef.current); scrollIntervalRef.current = null }
-  }, [])
+  }, [stopAutoScroll])
 
   useEffect(() => () => stopAutoScroll(), [stopAutoScroll])
 
@@ -811,6 +813,11 @@ export default function EmployeeDetailPage() {
   const populatePersonalForm = useCallback((emp: Employee) => {
     setPersonalForm({
       fullName: emp.fullName,
+      localizedName: typeof emp.localizedName === 'string'
+        ? emp.localizedName
+        : emp.localizedName
+          ? Object.values(emp.localizedName).filter(Boolean).join(' / ')
+          : '',
       fatherName: emp.fatherName || '',
       motherName: emp.motherName || '',
       spouseName: emp.spouseName || '',
@@ -926,6 +933,7 @@ export default function EmployeeDetailPage() {
       }
       payload = {
         fullName: String(personalForm.fullName).trim(),
+        localizedName: personalForm.localizedName || null,
         fatherName: personalForm.fatherName || null,
         motherName: personalForm.motherName || null,
         spouseName: personalForm.spouseName || null,
@@ -969,6 +977,7 @@ export default function EmployeeDetailPage() {
         confirmationDate: employmentForm.confirmationDate || null,
         probationEndDate: employmentForm.probationEndDate || null,
         endDate: employmentForm.endDate || null,
+        reportingToId: employmentForm.reportingToId || null,
         dutyStation: employmentForm.dutyStation || null,
         costCenter: employmentForm.costCenter || null,
         shiftSchedule: employmentForm.shiftSchedule || null,
@@ -1608,6 +1617,10 @@ export default function EmployeeDetailPage() {
                     <Input value={String(personalForm.fullName || '')} onChange={e => setPersonalForm(p => ({ ...p, fullName: e.target.value }))} />
                   </div>
                   <div className="space-y-2">
+                    <Label>{t('form.localizedName')}</Label>
+                    <Input value={String(personalForm.localizedName || '')} onChange={e => setPersonalForm(p => ({ ...p, localizedName: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
                     <Label>{t('form.fatherName')}</Label>
                     <Input value={String(personalForm.fatherName || '')} onChange={e => setPersonalForm(p => ({ ...p, fatherName: e.target.value }))} />
                   </div>
@@ -1953,6 +1966,10 @@ export default function EmployeeDetailPage() {
                   <div className="space-y-2 flex items-center gap-2 pt-6">
                     <input type="checkbox" id="edit-expat" checked={Boolean(employmentForm.isExpatriate)} onChange={e => setEmploymentForm(p => ({ ...p, isExpatriate: e.target.checked }))} />
                     <Label htmlFor="edit-expat">{t('form.isExpatriate')}</Label>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>{t('form.convertedFrom')}</Label>
+                    <Input value={employee.convertedFromApplicationId || ''} disabled className="bg-muted font-mono" />
                   </div>
                 </div>
               )}
