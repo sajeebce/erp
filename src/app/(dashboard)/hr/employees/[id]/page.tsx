@@ -84,6 +84,11 @@ function normalizeReligionValue(value: string | null | undefined) {
   return matched?.value || String(value || '').trim()
 }
 
+function getApiError(json: { error?: string | { message?: string } } | null, fallback: string) {
+  if (typeof json?.error === 'string') return json.error
+  return json?.error?.message || fallback
+}
+
 // Tab definitions for scrollable tab bar
 const TAB_ITEMS: { value: string; labelKey: string; icon: typeof User }[] = [
   { value: 'personal', labelKey: 'profile.tabs.personal', icon: User },
@@ -1329,10 +1334,15 @@ export default function EmployeeDetailPage() {
 
   // Compliance document upload helper
   const uploadComplianceDoc = useCallback(async (
-    field: string,
+    field: 'codeOfConductFilePath' | 'pseaDeclarationFilePath' | 'safeguardingCertFilePath' | 'backgroundCheckFilePath' | 'fd4DocumentFilePath',
     docType: string,
     file: File,
   ) => {
+    if (!file || file.size === 0) {
+      setError('Please select a document to upload.')
+      return
+    }
+    setError('')
     const formData = new FormData()
     formData.append('file', file)
     formData.append('type', docType)
@@ -1343,14 +1353,45 @@ export default function EmployeeDetailPage() {
         body: formData,
       })
       const uploadJson = await uploadRes.json()
-      if (!uploadJson.success) return
-      await fetch(`/api/v1/hr/employees/${employeeId}`, {
+      if (!uploadRes.ok || !uploadJson.success || !uploadJson.data?.filePath) {
+        setError(getApiError(uploadJson, 'Failed to upload document'))
+        return
+      }
+      const updateRes = await fetch(`/api/v1/hr/employees/${employeeId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [field]: uploadJson.data.filePath }),
       })
+      const updateJson = await updateRes.json()
+      if (!updateRes.ok || !updateJson.success) {
+        setError(getApiError(updateJson, 'Document uploaded, but employee record could not be updated'))
+        return
+      }
       await fetchEmployee()
-    } catch { /* silently fail */ }
+    } catch {
+      setError('Failed to upload document')
+    }
+  }, [employeeId, fetchEmployee])
+
+  const clearComplianceDoc = useCallback(async (
+    field: 'codeOfConductFilePath' | 'pseaDeclarationFilePath' | 'safeguardingCertFilePath' | 'backgroundCheckFilePath' | 'fd4DocumentFilePath',
+  ) => {
+    setError('')
+    try {
+      const res = await fetch(`/api/v1/hr/employees/${employeeId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: null }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setError(getApiError(json, 'Failed to remove document from employee profile'))
+        return
+      }
+      await fetchEmployee()
+    } catch {
+      setError('Failed to remove document from employee profile')
+    }
   }, [employeeId, fetchEmployee])
 
   const saveCert = useCallback(async (isNew: boolean) => {
@@ -3094,7 +3135,7 @@ export default function EmployeeDetailPage() {
                       {employee.fd4DocumentFilePath ? (
                         <div className="flex items-center gap-2">
                           <Button size="sm" variant="outline" onClick={() => window.open(documentUrl(employee.fd4DocumentFilePath), '_blank')}><Eye className="h-3.5 w-3.5 mr-1" />{t('profile.viewDocument')}</Button>
-                          <Button size="sm" variant="ghost" onClick={() => uploadComplianceDoc('fd4DocumentFilePath', 'NGOAB_FD4_NOTIFICATION', new File([], ''))}><X className="h-3 w-3" /></Button>
+                          <Button size="sm" variant="ghost" onClick={() => clearComplianceDoc('fd4DocumentFilePath')}><X className="h-3 w-3" /></Button>
                         </div>
                       ) : (
                         <label className="inline-flex items-center gap-1.5 cursor-pointer text-sm text-primary hover:underline">

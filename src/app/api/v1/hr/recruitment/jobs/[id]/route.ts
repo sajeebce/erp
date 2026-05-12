@@ -16,6 +16,13 @@ interface RouteParams {
 }
 
 function normalizeStringArray(value: unknown): string[] {
+  if (typeof value === 'string') {
+    try {
+      return normalizeStringArray(JSON.parse(value))
+    } catch {
+      return value.trim() ? [value.trim()] : []
+    }
+  }
   if (!Array.isArray(value)) return []
   return value
     .map((item) => (typeof item === 'string' ? item.trim() : ''))
@@ -23,6 +30,14 @@ function normalizeStringArray(value: unknown): string[] {
 }
 
 function normalizeRequiredLanguages(value: unknown): { language: string; level?: string }[] {
+  if (typeof value === 'string') {
+    try {
+      return normalizeRequiredLanguages(JSON.parse(value))
+    } catch {
+      const language = value.trim()
+      return language ? [{ language }] : []
+    }
+  }
   if (!Array.isArray(value)) return []
   return value
     .map((item) => {
@@ -44,6 +59,24 @@ function normalizeRequiredLanguages(value: unknown): { language: string; level?:
     .filter((item): item is { language: string; level?: string } => Boolean(item))
 }
 
+function normalizeEducationLevel(value: string | null): string | null {
+  if (!value) return null
+  const normalized = value.trim().toUpperCase()
+  const aliases: Record<string, string> = {
+    PHD: 'PHD',
+    PH_D: 'PHD',
+    DOCTORATE: 'PHD',
+    MASTERS: 'MASTERS',
+    MASTER: 'MASTERS',
+    BACHELORS: 'BACHELORS',
+    BACHELOR: 'BACHELORS',
+    DIPLOMA: 'DIPLOMA',
+    HIGH_SCHOOL: 'HIGH_SCHOOL',
+    'HIGH SCHOOL': 'HIGH_SCHOOL',
+  }
+  return aliases[normalized] || normalized
+}
+
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const auth = await requireAuthFromRequest(request)
@@ -62,7 +95,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return apiNotFound('Job posting not found')
     }
 
-    return apiSuccess(jobPosting)
+    return apiSuccess({
+      ...jobPosting,
+      minEducation: normalizeEducationLevel(jobPosting.minEducation),
+      requiredSkills: normalizeStringArray(jobPosting.requiredSkills),
+      requiredLanguages: normalizeRequiredLanguages(jobPosting.requiredLanguages),
+      requiredCertifications: normalizeStringArray(jobPosting.requiredCertifications),
+    })
   } catch (error) {
     return handleRouteError(error)
   }

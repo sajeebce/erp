@@ -39,6 +39,8 @@ export class R2StorageAdapter implements StorageAdapter {
         secretAccessKey: config.secretAccessKey,
       },
       forcePathStyle: true,
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
     })
     this.bucket = config.bucketName
     this.publicUrl = config.publicUrl?.replace(/\/+$/, '')

@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { PageHeader } from '@/components/shared/page-header'
@@ -31,6 +32,12 @@ const PIPELINE_STAGES = [
   'OFFER',
   'HIRED',
 ] as const
+
+const SCHEDULE_INTERVIEW_STAGES = new Set<string>([
+  'TECHNICAL_TEST',
+  'INTERVIEW',
+  'REFERENCE_CHECK',
+])
 
 interface AddressData {
   village?: string
@@ -182,11 +189,19 @@ interface SalaryGrade {
   }[]
 }
 
+interface LeaveType {
+  id: string
+  name: string
+  code: string
+  daysPerYear: number
+  isPaid?: boolean
+}
+
 const DEFAULT_LEAVE_BENEFITS = [
-  { name: 'Annual Leave', days: 18 },
-  { name: 'Casual Leave', days: 10 },
-  { name: 'Sick Leave', days: 14 },
-  { name: 'Maternity Leave', days: 112 },
+  { name: 'Annual Leave', code: 'AL', days: 15, selected: true },
+  { name: 'Casual Leave', code: 'CL', days: 10, selected: true },
+  { name: 'Sick Leave', code: 'SL', days: 14, selected: true },
+  { name: 'Maternity Leave', code: 'ML', days: 112, selected: true },
 ]
 
 function getSortedGradeSteps(grade: SalaryGrade | null | undefined) {
@@ -199,8 +214,45 @@ function getDefaultGradeSalary(grade: SalaryGrade | null | undefined) {
 }
 
 interface LeaveBenefit {
+  leaveTypeId?: string
+  code?: string
   name: string
   days: number
+  selected?: boolean
+}
+
+function buildLeaveBenefits(
+  savedBenefits: LeaveBenefit[] | null | undefined,
+  leaveTypes: LeaveType[]
+): LeaveBenefit[] {
+  if (Array.isArray(savedBenefits) && savedBenefits.length > 0) {
+    return savedBenefits.map((benefit) => {
+      const matchedType = leaveTypes.find((type) =>
+        type.id === benefit.leaveTypeId ||
+        type.code.toLowerCase() === String(benefit.code || '').toLowerCase() ||
+        type.name.toLowerCase() === benefit.name.toLowerCase()
+      )
+      return {
+        leaveTypeId: benefit.leaveTypeId || matchedType?.id,
+        code: benefit.code || matchedType?.code,
+        name: benefit.name || matchedType?.name || 'Leave',
+        days: Number(benefit.days) || 0,
+        selected: benefit.selected ?? true,
+      }
+    })
+  }
+
+  if (leaveTypes.length > 0) {
+    return leaveTypes.map((type) => ({
+      leaveTypeId: type.id,
+      code: type.code,
+      name: type.name,
+      days: Number(type.daysPerYear) || 0,
+      selected: type.isPaid !== false,
+    }))
+  }
+
+  return DEFAULT_LEAVE_BENEFITS
 }
 
 function buildDeclaration(application: ApplicationDetail) {
@@ -244,6 +296,15 @@ function boolLabel(val: boolean | null | undefined): string {
   return '—'
 }
 
+function hasReferenceDetails(reference: ReferenceRecord) {
+  return Boolean(
+    reference.name?.trim() ||
+    reference.relationship?.trim() ||
+    reference.address?.trim() ||
+    reference.mobile?.trim()
+  )
+}
+
 function getStoredFileName(path: string) {
   return path.split('/').pop()?.replace(/^[0-9a-f-]+-/i, '') || path
 }
@@ -261,6 +322,7 @@ export default function ApplicationDetailPage() {
 
   const [application, setApplication] = useState<ApplicationDetail | null>(null)
   const [salaryGrades, setSalaryGrades] = useState<SalaryGrade[]>([])
+  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [actionLoading, setActionLoading] = useState('')
@@ -309,6 +371,11 @@ export default function ApplicationDetailPage() {
       .then((res) => res.json())
       .then((json) => { if (json.success) setSalaryGrades(json.data) })
       .catch(() => {})
+
+    fetch('/api/v1/hr/leave/types')
+      .then((res) => res.json())
+      .then((json) => { if (json.success) setLeaveTypes(json.data) })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -323,20 +390,27 @@ export default function ApplicationDetailPage() {
     setOfferGradeId(application.offerSalaryGradeId || '')
     setOfferSalaryAmount(application.offeredSalary ? String(application.offeredSalary) : '')
     setOfferMessage(application.offerMessage || '')
-    setOfferLeaveBenefits(
-      Array.isArray(application.offerLeaveBenefits) && application.offerLeaveBenefits.length > 0
-        ? application.offerLeaveBenefits.map((leave) => ({
-            name: leave.name,
-            days: Number(leave.days) || 0,
-          }))
-        : DEFAULT_LEAVE_BENEFITS
-    )
-  }, [application])
+    setOfferLeaveBenefits(buildLeaveBenefits(application.offerLeaveBenefits, leaveTypes))
+  }, [application, leaveTypes])
 
-  function setOfferLeaveDays(name: string, days: string) {
+  function setOfferLeaveSelected(leave: LeaveBenefit, selected: boolean) {
+    setOfferLeaveBenefits((current) =>
+      current.map((item) => (
+        (item.leaveTypeId || item.name) === (leave.leaveTypeId || leave.name)
+          ? { ...item, selected }
+          : item
+      ))
+    )
+  }
+
+  function setOfferLeaveDays(leave: LeaveBenefit, days: string) {
     const numericDays = Math.max(0, Number(days) || 0)
     setOfferLeaveBenefits((current) =>
-      current.map((leave) => leave.name === name ? { ...leave, days: numericDays } : leave)
+      current.map((item) => (
+        (item.leaveTypeId || item.name) === (leave.leaveTypeId || leave.name)
+          ? { ...item, days: numericDays }
+          : item
+      ))
     )
   }
 
@@ -445,7 +519,9 @@ export default function ApplicationDetailPage() {
           offerSalaryGradeId: grade.id,
           offeredSalary,
           offerMessage: offerMessage.trim() || null,
-          offerLeaveBenefits,
+          offerLeaveBenefits: offerLeaveBenefits
+            .filter((leave) => leave.selected !== false && leave.days > 0)
+            .map(({ leaveTypeId, code, name, days }) => ({ leaveTypeId, code, name, days })),
           offerSentAt: new Date().toISOString(),
         }),
       })
@@ -501,9 +577,11 @@ export default function ApplicationDetailPage() {
   const isConvertedEmployee = Boolean(application.convertedEmployee)
   const canEditCurrentStage = isCurrentStageView && !isConvertedEmployee
   const isOfferStage = currentStage === 'OFFER'
+  const isReferenceCheckStage = currentStage === 'REFERENCE_CHECK'
   const isRejected = actualCurrentStage === 'REJECTED'
   const isHired = actualCurrentStage === 'HIRED'
-  const canShowScheduleInterview = canEditCurrentStage && actualCurrentStage === 'TECHNICAL_TEST'
+  const canShowScheduleInterview = canEditCurrentStage && SCHEDULE_INTERVIEW_STAGES.has(actualCurrentStage)
+  const applicantReferences = (application.references || []).filter(hasReferenceDetails)
   const declaration = buildDeclaration(application)
   const cvUrl = `/api/v1/hr/recruitment/applications/${application.id}/documents/cv`
   const coverLetterUrl = `/api/v1/hr/recruitment/applications/${application.id}/documents/cover-letter`
@@ -700,15 +778,22 @@ export default function ApplicationDetailPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                   {offerLeaveBenefits.map((leave) => (
                     <div key={leave.name} className="rounded bg-muted/50 px-3 py-2 space-y-1">
-                      <Label className="text-xs text-muted-foreground">{leave.name}</Label>
-                      <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                        <Checkbox
+                          checked={leave.selected !== false}
+                          onCheckedChange={(checked) => setOfferLeaveSelected(leave, checked === true)}
+                          disabled={!canEditCurrentStage}
+                        />
+                        <span>{leave.name}</span>
+                      </label>
+                      <div className="flex items-center gap-2 pl-6">
                         <Input
                           type="number"
                           min={0}
                           className="h-8"
                           value={leave.days}
                           disabled={!canEditCurrentStage}
-                          onChange={(event) => setOfferLeaveDays(leave.name, event.target.value)}
+                          onChange={(event) => setOfferLeaveDays(leave, event.target.value)}
                         />
                         <span className="text-xs text-muted-foreground">days</span>
                       </div>
@@ -784,6 +869,52 @@ export default function ApplicationDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column (2/3) */}
         <div className="lg:col-span-2 space-y-6">
+
+          {isReferenceCheckStage && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Reference Check</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Verify applicant references before moving to offer.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {applicantReferences.length > 0 ? (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {applicantReferences.map((reference, i) => (
+                        <div key={i} className="rounded-md border p-4 space-y-3">
+                          <p className="text-sm font-medium text-muted-foreground">Reference {i + 1}</p>
+                          <div className="space-y-1 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">Name: </span>
+                              <span className="font-medium">{reference.name || '-'}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Relationship: </span>
+                              <span className="font-medium">{reference.relationship || '-'}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Address: </span>
+                              <span className="font-medium">{reference.address || '-'}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Mobile Number: </span>
+                              <span className="font-medium">{reference.mobile || '-'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded-md border border-dashed p-6 text-center">
+                    <p className="font-medium">No references were provided by the applicant.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Personal Info Card */}
           {hasPersonalInfo && (
@@ -1359,15 +1490,22 @@ export default function ApplicationDetailPage() {
                   <div className="grid grid-cols-2 gap-2">
                     {offerLeaveBenefits.map((leave) => (
                       <div key={leave.name} className="rounded bg-muted/50 px-2 py-1 space-y-1">
-                        <Label className="text-xs text-muted-foreground">{leave.name}</Label>
-                        <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                          <Checkbox
+                            checked={leave.selected !== false}
+                            onCheckedChange={(checked) => setOfferLeaveSelected(leave, checked === true)}
+                            disabled={!canEditCurrentStage}
+                          />
+                          <span>{leave.name}</span>
+                        </label>
+                        <div className="flex items-center gap-2 pl-6">
                           <Input
                             type="number"
                             min={0}
                             className="h-8"
                             value={leave.days}
                             disabled={!canEditCurrentStage}
-                            onChange={(event) => setOfferLeaveDays(leave.name, event.target.value)}
+                            onChange={(event) => setOfferLeaveDays(leave, event.target.value)}
                           />
                           <span className="text-xs text-muted-foreground">days</span>
                         </div>

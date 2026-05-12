@@ -56,6 +56,16 @@ export default function NewOffboardingPage() {
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    if (!lastWorkingDay || !noticeDate) return
+    const start = new Date(noticeDate)
+    const end = new Date(lastWorkingDay)
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return
+    const diffMs = end.getTime() - start.getTime()
+    const diffDays = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)))
+    setNoticePeriodDays(String(diffDays))
+  }, [lastWorkingDay, noticeDate])
+
   function validate(): boolean {
     if (!employeeId || !separationType || !lastWorkingDay) {
       setError(t('offboarding.form.requiredFields'))

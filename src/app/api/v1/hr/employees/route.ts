@@ -200,6 +200,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const convertedApplication = body.convertedFromApplicationId
+      ? await prisma.jobApplication.findFirst({
+          where: {
+            id: body.convertedFromApplicationId,
+            organizationId: auth.organizationId,
+          },
+          select: {
+            id: true,
+            status: true,
+            offerLeaveBenefits: true,
+          },
+        })
+      : null
+
+    if (body.convertedFromApplicationId && !convertedApplication) {
+      return apiBadRequest('Recruitment application not found in this organization')
+    }
+    if (convertedApplication && convertedApplication.status !== 'HIRED') {
+      return apiBadRequest(`Cannot convert application with status "${convertedApplication.status}". Move it to HIRED first.`)
+    }
+
+    const offerLeaveBenefits = asRecordArray(convertedApplication?.offerLeaveBenefits)
+
     if (workLocationId) {
       const workLocation = await prisma.operatingLocation.findFirst({
         where: { id: workLocationId, organizationId: auth.organizationId },
@@ -298,31 +321,47 @@ export async function POST(request: NextRequest) {
       })
 
       const educationRecords = asRecordArray(body.educationRecords)
-        .map((record) => ({
-          employeeId: createdEmployee.id,
-          degree: text(record.examName || record.degree),
-          institution: text(record.institution),
-          fieldOfStudy: text(record.board || record.fieldOfStudy) || null,
-          endYear: Number.isFinite(Number(record.passingYear || record.endYear)) ? Number(record.passingYear || record.endYear) : null,
-          grade: text(record.gradeGpa || record.grade) || null,
-          country: 'Bangladesh',
-        }))
-        .filter((record) => record.degree && record.institution)
+        .map((record) => {
+          const degree = text(record.examName || record.degree)
+          const institution = text(record.institution)
+          if (!degree && !institution) return null
+          return {
+            employeeId: createdEmployee.id,
+            degree: degree || 'Not specified',
+            institution: institution || 'Not specified',
+            fieldOfStudy: text(record.board || record.fieldOfStudy) || null,
+            endYear: Number.isFinite(Number(record.passingYear || record.endYear)) ? Number(record.passingYear || record.endYear) : null,
+            grade: text(record.gradeGpa || record.grade) || null,
+            country: 'Bangladesh',
+          }
+        })
+        .filter((record): record is NonNullable<typeof record> => record !== null)
 
       if (educationRecords.length > 0) {
         await tx.employeeEducation.createMany({ data: educationRecords })
       }
 
+      const joiningDateValue = new Date(joiningDate)
       const previousEmployments = asRecordArray(body.previousEmployments)
-        .map((record) => ({
-          employeeId: createdEmployee.id,
-          employer: text(record.orgName || record.employer),
-          jobTitle: text(record.designation || record.jobTitle),
-          startDate: parseYearDate(record.period || record.startDate),
-          reasonForLeaving: text(record.reasonForLeaving) || null,
-          responsibilities: text(record.lastSalary) ? `Last salary: ${text(record.lastSalary)}` : null,
-        }))
-        .filter((record): record is Omit<typeof record, 'startDate'> & { startDate: Date } => Boolean(record.employer && record.jobTitle && record.startDate))
+        .map((record) => {
+          const employer = text(record.orgName || record.employer)
+          const jobTitle = text(record.designation || record.jobTitle)
+          if (!employer && !jobTitle) return null
+          const period = text(record.period)
+          const lastSalary = text(record.lastSalary)
+          const notes = [period ? `Period: ${period}` : '', lastSalary ? `Last salary: ${lastSalary}` : '']
+            .filter(Boolean)
+            .join('; ')
+          return {
+            employeeId: createdEmployee.id,
+            employer: employer || 'Not specified',
+            jobTitle: jobTitle || 'Not specified',
+            startDate: parseYearDate(record.period || record.startDate) || joiningDateValue,
+            reasonForLeaving: text(record.reasonForLeaving) || null,
+            responsibilities: notes || null,
+          }
+        })
+        .filter((record): record is NonNullable<typeof record> => record !== null)
 
       if (previousEmployments.length > 0) {
         await tx.employeeWorkHistory.createMany({ data: previousEmployments })
@@ -421,6 +460,48 @@ export async function POST(request: NextRequest) {
           status: 'ACTIVE',
         },
       })
+
+      if (offerLeaveBenefits.length > 0) {
+        const leaveTypes = await tx.leaveType.findMany({
+          where: { isActive: true },
+          select: { id: true, name: true, code: true },
+        })
+        const leaveBalanceByType = new Map<string, { leaveTypeId: string; entitled: number }>()
+
+        for (const benefit of offerLeaveBenefits) {
+          const days = Math.max(0, Number(benefit.days || 0))
+          if (!Number.isFinite(days) || days <= 0) continue
+
+          const leaveTypeId = text(benefit.leaveTypeId)
+          const code = text(benefit.code).toLowerCase()
+          const name = text(benefit.name).toLowerCase()
+          const leaveType = leaveTypes.find((type) =>
+            type.id === leaveTypeId ||
+            type.code.toLowerCase() === code ||
+            type.name.toLowerCase() === name
+          )
+          if (!leaveType) continue
+
+          leaveBalanceByType.set(leaveType.id, {
+            leaveTypeId: leaveType.id,
+            entitled: Math.round(days),
+          })
+        }
+
+        if (leaveBalanceByType.size > 0) {
+          await tx.leaveBalance.createMany({
+            data: Array.from(leaveBalanceByType.values()).map((balance) => ({
+              employeeId: createdEmployee.id,
+              leaveTypeId: balance.leaveTypeId,
+              fiscalYearId: null,
+              entitled: balance.entitled,
+              taken: 0,
+              remaining: balance.entitled,
+              carriedForward: 0,
+            })),
+          })
+        }
+      }
 
       if (checklists.length > 0) {
         await tx.onboardingProgress.createMany({

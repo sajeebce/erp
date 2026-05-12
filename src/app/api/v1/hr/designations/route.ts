@@ -37,10 +37,15 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuthFromRequest(request)
     const body = await request.json()
 
-    const { title, level } = body
+    const { isActive } = body
+    const title = String(body.title || '').trim()
+    const level = body.level === null || body.level === '' || body.level === undefined ? null : Number(body.level)
 
     if (!title) {
       return apiBadRequest('title is required')
+    }
+    if (level !== null && (!Number.isInteger(level) || level < 1)) {
+      return apiBadRequest('level must be a positive whole number')
     }
 
     const existing = await prisma.designation.findUnique({
@@ -52,8 +57,9 @@ export async function POST(request: NextRequest) {
 
     const designation = await prisma.designation.create({
       data: {
-        title: title.trim(),
-        level: level ?? null,
+        title,
+        level,
+        isActive: isActive ?? true,
       },
     })
 
@@ -66,7 +72,7 @@ export async function POST(request: NextRequest) {
       resource: 'designation',
       resourceId: designation.id,
       description: `Created designation "${title}"`,
-      newValues: { title, level },
+      newValues: { title, level, isActive: isActive ?? true },
       ...auditCtx,
     })
 
